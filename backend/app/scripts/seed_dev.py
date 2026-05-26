@@ -33,7 +33,7 @@ logger = get_logger(__name__)
 SEED_PASSWORD = "ChangeMe123!"  # à modifier au premier login
 
 
-async def _ensure_company(repo: CompanyRepository, data: CreateCompanyInput):
+async def _ensure_company(repo: CompanyRepository, data: CreateCompanyInput) -> Company:
     existing = await repo.get_by_name(data.name)
     if existing:
         logger.info("seed.company.skipped", name=data.name)
@@ -47,7 +47,7 @@ async def _ensure_user(
     users: UserRepository,
     companies: CompanyRepository,
     data: CreateUserInput,
-):
+) -> User | None:
     existing = await users.get_by_email(data.email)
     if existing:
         logger.info("seed.user.skipped", email=data.email)

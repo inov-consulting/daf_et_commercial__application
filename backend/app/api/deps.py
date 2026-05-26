@@ -1,6 +1,6 @@
 """Dépendances FastAPI transverses : repositories, current_user, RBAC."""
 
-from typing import Annotated
+from typing import Annotated, Any, Callable
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
@@ -57,7 +57,7 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 # ── Autorisation (RBAC) ─────────────────────────────────────────────────
-def require_role(*allowed: Role):
+def require_role(*allowed: Role) -> Callable[..., Any]:
     """Factory de dépendance : restreint l'accès à une liste de rôles."""
 
     async def _check(user: CurrentUser) -> User:
@@ -71,7 +71,7 @@ def require_role(*allowed: Role):
     return _check
 
 
-def require_permission(permission: str):
+def require_permission(permission: str) -> Callable[..., Any]:
     """Factory de dépendance : restreint l'accès via la matrice de permissions."""
 
     async def _check(user: CurrentUser) -> User:
