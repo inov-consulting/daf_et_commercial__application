@@ -5,8 +5,6 @@ Pas de DB requise. Couvre le flow HTTP + Pydantic + middleware d'erreurs.
 """
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app.api.deps import get_company_repo, get_user_repo
 from app.core.security import hash_password
 from app.domain.shared.company import Company
@@ -14,6 +12,8 @@ from app.domain.shared.role import Role
 from app.domain.shared.user import User
 from app.domain.shared.value_objects import Country, Currency
 from app.main import app
+from fastapi.testclient import TestClient
+
 from tests.fakes.repositories import InMemoryCompanyRepository, InMemoryUserRepository
 
 

@@ -1,10 +1,9 @@
 """Router /auth : login, refresh, me."""
 
-from fastapi import APIRouter
-from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import APIRouter, Depends
+from fastapi.security import OAuth2PasswordRequestForm
 
 from app.api.deps import CurrentUser, UserRepoDep
 from app.api.v1.schemas.auth import LoginRequest, RefreshRequest, TokenResponse

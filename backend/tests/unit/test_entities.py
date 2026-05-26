@@ -1,7 +1,6 @@
 from uuid import uuid4
 
 import pytest
-
 from app.domain.shared.company import Company
 from app.domain.shared.role import Role
 from app.domain.shared.user import User

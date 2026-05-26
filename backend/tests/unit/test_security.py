@@ -1,7 +1,6 @@
 from uuid import uuid4
 
 import pytest
-
 from app.core.security import (
     TokenError,
     create_access_token,

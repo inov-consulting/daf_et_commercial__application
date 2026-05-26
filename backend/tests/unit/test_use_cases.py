@@ -4,7 +4,6 @@ Pas de DB, pas de HTTP — uniquement la logique métier.
 """
 
 import pytest
-
 from app.application.auth.login_user import LoginUserUseCase
 from app.application.auth.refresh_token import RefreshTokenUseCase
 from app.application.companies.create_company import (
@@ -23,6 +22,7 @@ from app.domain.shared.company import Company
 from app.domain.shared.role import Role
 from app.domain.shared.user import User
 from app.domain.shared.value_objects import Country, Currency
+
 from tests.fakes.repositories import InMemoryCompanyRepository, InMemoryUserRepository
 
 
