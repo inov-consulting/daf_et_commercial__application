@@ -1,0 +1,48 @@
+# syntax=docker/dockerfile:1.7
+# ───── Base : uv + Python 3.12 ─────────────────────────────────────────
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1 \
+    PATH="/app/.venv/bin:$PATH"
+
+WORKDIR /app
+
+# Dépendances système minimales (libpq pour psycopg si besoin futur)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+# ───── Stage dev : volume monté + reload ────────────────────────────────
+FROM base AS dev
+
+# Installer toutes les deps (prod + dev)
+COPY pyproject.toml uv.lock* ./
+RUN uv sync --frozen --no-install-project 2>/dev/null || uv sync --no-install-project
+
+# Le code sera monté en volume (cf docker-compose), donc on ne le COPY pas ici
+EXPOSE 8000
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+# ───── Stage prod : code embarqué, pas de deps dev ──────────────────────
+FROM base AS prod
+
+COPY pyproject.toml uv.lock* ./
+RUN uv sync --frozen --no-dev --no-install-project 2>/dev/null || uv sync --no-dev --no-install-project
+
+COPY . .
+
+# User non-root pour la prod
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "3"]
