@@ -1,153 +1,41 @@
-name: Build & Deploy
+name: Deploy Staging
 
 on:
-  push:
-    branches: [main]
-    tags: ['v*']
-  pull_request:
-    branches: [main]
-
-env:
-  REGISTRY: ghcr.io
-  BACKEND_IMAGE: ghcr.io/${{ github.repository }}/backend
-  FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/frontend
+  workflow_run:
+    workflows: ["CI - SonarQube, Tests & Build"]
+    branches: [staging]
+    types: [completed]
 
 jobs:
-  # ── Tests & Lint ──────────────────────────────────────────────────
-  test-backend:
+  # ═══════════════════════════════════════════════════════════════════════
+  # Déploiement Staging  Build + Run directement sur le serveur SSH
+  # Pas de registry : le serveur clone, build et déploie localement
+  # ═══════════════════════════════════════════════════════════════════════
+  deploy-staging:
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./backend
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@8f7ff77302c4609bbe2c97748b52241025f17a61 # v1.1.0
         with:
-          version: "latest"
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_KEY }}
+          script: |
+            set -e
+            PROJECT_DIR="/opt/daf-augmente"
 
-      - name: Set up Python
-        run: uv python install 3.12
+            # 1. Mise à jour du code
+            cd "$PROJECT_DIR"
+            git fetch origin
+            git checkout staging
+            git pull origin staging
 
-      - name: Install dependencies
-        run: uv sync --all-extras
+            # 2. Build des images directement sur le serveur
+            docker compose -f docker-compose.staging.yml build
 
-      - name: Run lint
-        run: uv run ruff check .
+            # 3. Redémarrage des services
+            docker compose -f docker-compose.staging.yml up -d --remove-orphans
 
-      - name: Run type check
-        run: uv run mypy app
-
-      - name: Run tests
-        run: uv run pytest
-
-  test-frontend:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./front_web
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'yarn'
-          cache-dependency-path: ./front_web/yarn.lock
-
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-
-      - name: Lint
-        run: yarn lint
-
-      - name: Type check
-        run: yarn type-check
-
-      - name: Build
-        run: yarn build
-
-  # ── Docker Build & Push ───────────────────────────────────────────
-  build-push:
-    needs: [test-backend, test-frontend]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata (backend)
-        id: meta-backend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.BACKEND_IMAGE }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix=,suffix=,format=short
-
-      - name: Extract metadata (frontend)
-        id: meta-frontend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.FRONTEND_IMAGE }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix=,suffix=,format=short
-
-      - name: Build and push backend
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          target: prod
-          push: true
-          tags: ${{ steps.meta-backend.outputs.tags }}
-          labels: ${{ steps.meta-backend.outputs.labels }}
-          cache-from: type=gha,scope=backend
-          cache-to: type=gha,scope=backend,mode=max
-
-      - name: Build and push frontend
-        uses: docker/build-push-action@v5
-        with:
-          context: ./front_web
-          target: runner
-          push: true
-          tags: ${{ steps.meta-frontend.outputs.tags }}
-          labels: ${{ steps.meta-frontend.outputs.labels }}
-          cache-from: type=gha,scope=frontend
-          cache-to: type=gha,scope=frontend,mode=max
-
-  # ── Deploy (optionnel - décommenter si serveur dédié) ────────────
-  # deploy:
-  #   needs: build-push
-  #   runs-on: ubuntu-latest
-  #   if: github.ref == 'refs/heads/main'
-  #   steps:
-  #     - name: Deploy via SSH
-  #       uses: appleboy/ssh-action@v1.0.0
-  #       with:
-  #         host: ${{ secrets.DEPLOY_HOST }}
-  #         username: ${{ secrets.DEPLOY_USER }}
-  #         key: ${{ secrets.DEPLOY_KEY }}
-  #         script: |
-  #           cd /opt/daf-augmente
-  #           docker compose pull
-  #           docker compose up -d
+            # 4. Migrations (optionnel)
+            docker compose exec -T backend uv run aerich upgrade || true
