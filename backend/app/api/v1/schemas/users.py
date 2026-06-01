@@ -5,34 +5,31 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from app.domain.shared.role import Role
+from app.api.v1.schemas.companies import CompanyOut
 from app.domain.shared.user import User
 
 
 class UserCreate(BaseModel):
-    company_id: UUID
+    company_ids: list[UUID]
     email: EmailStr
-    password: str = Field(..., min_length=8, max_length=128)
-    role: Role
     first_name: str = Field("", max_length=128)
     last_name: str = Field("", max_length=128)
 
 
 class UserUpdate(BaseModel):
-    role: Role | None = None
+    company_ids: list[UUID] | None = None
     first_name: str | None = Field(None, max_length=128)
     last_name: str | None = Field(None, max_length=128)
     is_active: bool | None = None
-    new_password: str | None = Field(None, min_length=8, max_length=128)
 
 
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    company_id: UUID
+    company_ids: list[UUID]
+    companies: list[CompanyOut] = []
     email: EmailStr
-    role: Role
     first_name: str
     last_name: str
     is_active: bool
@@ -40,5 +37,15 @@ class UserOut(BaseModel):
     updated_at: datetime | None
 
     @classmethod
-    def from_domain(cls, user: User) -> "UserOut":
-        return cls.model_validate(user)
+    def from_domain(cls, user: User, companies: list[CompanyOut] | None = None) -> "UserOut":
+        return cls(
+            id=user.id,
+            company_ids=user.company_ids,
+            companies=companies or [],
+            email=user.email,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            is_active=user.is_active,
+            created_at=user.created_at,
+            updated_at=user.updated_at,
+        )

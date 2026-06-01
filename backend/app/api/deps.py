@@ -1,18 +1,18 @@
 """Dépendances FastAPI transverses : repositories, current_user, RBAC."""
 
+import logging
 from typing import Annotated
-from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.core.security import TokenError, decode_token
-from app.domain.shared.role import Role, has_permission
 from app.domain.shared.user import User
+from app.infrastructure.auth.keycloak import KeycloakClient
 from app.infrastructure.db.repositories.company import CompanyRepository
 from app.infrastructure.db.repositories.user import UserRepository
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=True)
+logger = logging.getLogger(__name__)
+http_bearer = HTTPBearer(auto_error=True)
 
 
 # ── Repositories ────────────────────────────────────────────────────────
@@ -28,28 +28,42 @@ UserRepoDep = Annotated[UserRepository, Depends(get_user_repo)]
 CompanyRepoDep = Annotated[CompanyRepository, Depends(get_company_repo)]
 
 
-# ── Authentification ────────────────────────────────────────────────────
+# ── Authentification (Keycloak) ───────────────────────────────────────
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
+    request: Request,
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(http_bearer)],
     user_repo: UserRepoDep,
 ) -> User:
+    token = credentials.credentials
+    logger.info("Header Authorization token (début) : %s", token[:50])
+    kc = KeycloakClient()
     try:
-        payload = decode_token(token, expected_type="access")
-    except TokenError as e:
+        payload = await kc.introspect_token(token)
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e),
+            detail="Token invalide",
             headers={"WWW-Authenticate": "Bearer"},
         ) from e
 
-    try:
-        user_id = UUID(payload["sub"])
-    except (KeyError, ValueError) as e:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token mal formé") from e
+    if payload is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token expiré ou révoqué",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
-    user = await user_repo.get_by_id(user_id)
+    # Stocke les rôles du token pour les dépendances d'autorisation
+    roles = set(kc.extract_roles(payload))
+    request.state.keycloak_roles = roles
+
+    email = kc.extract_email(payload)
+    user = await user_repo.get_by_email(email)
     if user is None or not user.is_active:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Utilisateur introuvable ou inactif")
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Utilisateur introuvable ou inactif",
+        )
     return user
 
 
@@ -57,25 +71,18 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 # ── Autorisation (RBAC) ─────────────────────────────────────────────────
-def require_role(*allowed: Role):
-    """Factory de dépendance : restreint l'accès à une liste de rôles."""
-
-    async def _check(user: CurrentUser) -> User:
-        if user.role not in allowed:
-            raise HTTPException(
-                status.HTTP_403_FORBIDDEN,
-                f"Rôle requis : {[r.value for r in allowed]}",
-            )
-        return user
-
-    return _check
-
-
 def require_permission(permission: str):
-    """Factory de dépendance : restreint l'accès via la matrice de permissions."""
+    """Factory de dépendance : vérifie que le rôle action est présent dans le token Keycloak.
 
-    async def _check(user: CurrentUser) -> User:
-        if not has_permission(user.role, permission):
+    Le rôle ``admin`` bypass toutes les vérifications (super-user).
+    """
+
+    async def _check(
+        request: Request,
+        user: CurrentUser,
+    ) -> User:
+        roles: set[str] = getattr(request.state, "keycloak_roles", set())
+        if "admin" not in roles and permission not in roles:
             raise HTTPException(
                 status.HTTP_403_FORBIDDEN,
                 f"Permission requise : {permission}",

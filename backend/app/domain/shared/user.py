@@ -4,16 +4,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from app.domain.shared.role import Role
-
-
 @dataclass(slots=True, kw_only=True)
 class User:
     id: UUID
-    company_id: UUID
+    company_ids: list[UUID]
     email: str
-    password_hash: str
-    role: Role
     first_name: str = ""
     last_name: str = ""
     is_active: bool = True
@@ -24,10 +19,8 @@ class User:
     def new(
         cls,
         *,
-        company_id: UUID,
+        company_ids: list[UUID],
         email: str,
-        password_hash: str,
-        role: Role,
         first_name: str = "",
         last_name: str = "",
     ) -> "User":
@@ -36,10 +29,8 @@ class User:
             raise ValueError(f"Email invalide : {email}")
         return cls(
             id=uuid4(),
-            company_id=company_id,
+            company_ids=list(company_ids),
             email=email_clean,
-            password_hash=password_hash,
-            role=role,
             first_name=first_name.strip(),
             last_name=last_name.strip(),
         )
@@ -51,9 +42,3 @@ class User:
 
     def deactivate(self) -> None:
         self.is_active = False
-
-    def update_password(self, new_password_hash: str) -> None:
-        self.password_hash = new_password_hash
-
-    def change_role(self, new_role: Role) -> None:
-        self.role = new_role

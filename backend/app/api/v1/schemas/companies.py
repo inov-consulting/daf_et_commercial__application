@@ -21,13 +21,26 @@ class CompanyOut(BaseModel):
 
     id: UUID
     name: str
-    country: Country
-    default_currency: Currency
-    parent_company_id: UUID | None
-    is_active: bool
-    created_at: datetime | None
-    updated_at: datetime | None
+    country: str
+    default_currency: str
+    erp_id: int | None = None
+    parent_company_id: UUID | None = None
+    is_active: bool = True
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     @classmethod
     def from_domain(cls, company: Company) -> "CompanyOut":
-        return cls.model_validate(company)
+        # country = nom complet si dispo (Odoo), sinon code ISO
+        country_display = company.country_name or company.country.value
+        return cls(
+            id=company.id,
+            name=company.name,
+            country=country_display,
+            default_currency=company.default_currency.value,
+            erp_id=company.erp_id,
+            parent_company_id=company.parent_company_id,
+            is_active=company.is_active,
+            created_at=company.created_at,
+            updated_at=company.updated_at,
+        )

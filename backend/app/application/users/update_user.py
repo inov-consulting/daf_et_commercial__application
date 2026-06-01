@@ -1,22 +1,19 @@
-"""Use case : mettre à jour un utilisateur (rôle, identité, statut, mot de passe)."""
+"""Use case : mettre à jour un utilisateur (rôle, identité, statut)."""
 
 from dataclasses import dataclass
 from uuid import UUID
 
 from app.application.shared.exceptions import NotFoundError
-from app.core.security import hash_password
 from app.domain.shared.ports.repositories import UserRepository
-from app.domain.shared.role import Role
 from app.domain.shared.user import User
 
 
 @dataclass(slots=True, frozen=True)
 class UpdateUserInput:
-    role: Role | None = None
+    company_ids: list[UUID] | None = None
     first_name: str | None = None
     last_name: str | None = None
     is_active: bool | None = None
-    new_password: str | None = None
 
 
 class UpdateUserUseCase:
@@ -28,8 +25,8 @@ class UpdateUserUseCase:
         if user is None:
             raise NotFoundError(f"User {user_id} introuvable")
 
-        if data.role is not None:
-            user.change_role(data.role)
+        if data.company_ids is not None:
+            user.company_ids = list(data.company_ids)
         if data.first_name is not None:
             user.first_name = data.first_name.strip()
         if data.last_name is not None:
@@ -38,7 +35,5 @@ class UpdateUserUseCase:
             user.deactivate()
         elif data.is_active is True:
             user.is_active = True
-        if data.new_password is not None:
-            user.update_password(hash_password(data.new_password))
 
         return await self._user_repo.update(user)

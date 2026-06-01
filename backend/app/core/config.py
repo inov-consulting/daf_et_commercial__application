@@ -42,12 +42,26 @@ class Settings(BaseSettings):
     minio_root_user: str = "minioadmin"
     minio_root_password: str = "minioadmin"
 
+    # ── Keycloak ───────────────────────────────────────────────────────
+    keycloak_url: str = ""
+    keycloak_realm: str = ""
+    keycloak_client_id: str = ""
+    keycloak_client_secret: str = ""
+    keycloak_admin_client_id: str = ""
+    keycloak_admin_client_secret: str = ""
+
     # ── IA ─────────────────────────────────────────────────────────────
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-opus-4-7"
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
     ai_default_provider: Literal["anthropic", "openai"] = "anthropic"
+
+    # ── Odoo ───────────────────────────────────────────────────────────
+    odoo_url: str = ""
+    odoo_db: str = ""
+    odoo_username: str = ""
+    odoo_password: str = ""
 
     # ── Observability ──────────────────────────────────────────────────
     sentry_dsn: str = ""

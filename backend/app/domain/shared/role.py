@@ -62,8 +62,8 @@ _PERMISSIONS: dict[Role, frozenset[str]] = {
         "report:read_all",
     }),
     Role.ADMIN_INOV: frozenset({
-        "user:create", "user:read_all", "user:update_all", "user:delete",
-        "company:create", "company:read_all", "company:update_all",
+        "user:create", "user:read", "user:update", "user:delete",
+        "company:create", "company:read", "company:update", "company:delete",
         "role:assign",
         "system:read_logs", "system:configure",
     }),

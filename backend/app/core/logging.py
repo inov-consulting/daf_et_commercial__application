@@ -11,7 +11,6 @@ def configure_logging(level: str = "INFO") -> None:
 
     shared_processors: list[Processor] = [
         structlog.contextvars.merge_contextvars,
-        structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
         timestamper,
         structlog.processors.StackInfoRenderer(),

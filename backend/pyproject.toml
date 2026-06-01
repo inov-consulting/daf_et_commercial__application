@@ -29,10 +29,6 @@ dependencies = [
     "boto3>=1.35",
     "python-multipart>=0.0.20",
 
-    # ── Auth / security ──
-    "pyjwt[crypto]>=2.10",
-    "argon2-cffi>=23.1",
-
     # ── Observability ──
     "structlog>=24.4",
     "sentry-sdk[fastapi]>=2.18",
@@ -40,6 +36,10 @@ dependencies = [
     # ── AI providers ──
     "anthropic>=0.39",
     "openai>=1.55",
+
+    # ── Auth ──
+    "python-keycloak>=7.1",
+    "pyjwt>=2.10",
 
     # ── Misc ──
     "python-dateutil>=2.9",

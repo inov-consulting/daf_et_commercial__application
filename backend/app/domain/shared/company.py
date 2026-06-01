@@ -17,7 +17,9 @@ class Company:
     id: UUID
     name: str
     country: Country
+    country_name: str = ""
     default_currency: Currency
+    erp_id: int | None = None
     parent_company_id: UUID | None = None
     is_active: bool = True
     created_at: datetime | None = None
@@ -29,7 +31,9 @@ class Company:
         *,
         name: str,
         country: Country,
+        country_name: str = "",
         default_currency: Currency,
+        erp_id: int | None = None,
         parent_company_id: UUID | None = None,
     ) -> "Company":
         if not name.strip():
@@ -38,7 +42,9 @@ class Company:
             id=uuid4(),
             name=name.strip(),
             country=country,
+            country_name=country_name,
             default_currency=default_currency,
+            erp_id=erp_id,
             parent_company_id=parent_company_id,
         )
 
