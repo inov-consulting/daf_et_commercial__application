@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 
 export type ButtonVariant =
   | 'primary' | 'secondary' | 'ghost'
-  | 'danger' | 'success' | 'gradient' | 'outline-gradient';
+  | 'danger' | 'success' | 'gradient' | 'outline-gradient' | 'login';
 
 export type ButtonSize = '2xs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
@@ -67,6 +67,10 @@ const variantClasses: Record<ButtonVariant, string> = {
     '[&:not(:disabled)]:hover:-translate-y-px [&:not(:disabled)]:hover:shadow-[0_4px_16px_rgba(107,53,201,.42)]',
   ].join(' '),
   'outline-gradient': 'btn-outline-grad text-primary-600 border-transparent',
+  login: [
+    'btn-login text-white border-transparent',
+    '[&:not(:disabled)]:hover:-translate-y-px',
+  ].join(' '),
 };
 
 const spinnerClasses: Record<ButtonVariant, string> = {
@@ -77,6 +81,7 @@ const spinnerClasses: Record<ButtonVariant, string> = {
   secondary: 'border-primary-500/25 border-t-primary-500',
   ghost: 'border-primary-500/25 border-t-primary-500',
   'outline-gradient': 'border-primary-500/25 border-t-primary-500',
+  login: 'border-white/30 border-t-white',
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(

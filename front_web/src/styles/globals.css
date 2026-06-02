@@ -212,6 +212,25 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+
+  /* Login button: gradient on mobile, solid primary on desktop */
+  .btn-login {
+    background: var(--grad);
+    transition: opacity var(--dur-norm) var(--ease);
+  }
+  .btn-login:not(:disabled):hover {
+    opacity: 0.9;
+  }
+  @media (min-width: 1024px) {
+    .btn-login {
+      background: var(--p500);
+      transition: background-color var(--dur-fast) var(--ease);
+    }
+    .btn-login:not(:disabled):hover {
+      background: var(--p600);
+      opacity: 1;
+    }
+  }
 }
 
 @keyframes skel-wave {
