@@ -2,9 +2,9 @@
  * Keycloak OAuth 2.0 utilities
  *
  * Required env vars:
- *   KEYCLOAK_URL      – e.g. https://auth.portalis.io
- *   KEYCLOAK_REALM    – e.g. portalis
- *   KEYCLOAK_CLIENT_ID – e.g. portalis-web
+ *   NEXT_PUBLIC_KEYCLOAK_URL      – e.g. https://auth.portalis.io
+ *   NEXT_PUBLIC_KEYCLOAK_REALM    – e.g. portalis
+ *   NEXT_PUBLIC_KEYCLOAK_CLIENT_ID – e.g. portalis-web
  */
 
 import Keycloak from 'keycloak-js';
@@ -15,9 +15,9 @@ let _instance: Keycloak | null = null;
 export function getKeycloakInstance(): Keycloak {
   if (!_instance) {
     _instance = new Keycloak({
-      url: process.env.KEYCLOAK_URL!,
-      realm: process.env.KEYCLOAK_REALM!,
-      clientId: process.env.KEYCLOAK_CLIENT_ID!,
+      url: process.env.NEXT_PUBLIC_KEYCLOAK_URL!,
+      realm: process.env.NEXT_PUBLIC_KEYCLOAK_REALM!,
+      clientId: process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID!,
     });
   }
   return _instance;
@@ -42,15 +42,15 @@ export async function loginWithCredentials(
   password: string,
 ): Promise<TokenResponse> {
   const url =
-    `${process.env.KEYCLOAK_URL}/realms/` +
-    `${process.env.KEYCLOAK_REALM}/protocol/openid-connect/token`;
+    `${process.env.NEXT_PUBLIC_KEYCLOAK_URL}/realms/` +
+    `${process.env.NEXT_PUBLIC_KEYCLOAK_REALM}/protocol/openid-connect/token`;
 
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       grant_type: 'password',
-      client_id: process.env.KEYCLOAK_CLIENT_ID!,
+      client_id: process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID!,
       username,
       password,
     }),

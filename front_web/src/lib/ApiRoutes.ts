@@ -3,14 +3,14 @@ const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
 export const ApiRoutes = {
   // ── Auth (Keycloak) ─────────────────────────────────────────────────
   AUTH_TOKEN:
-    `${process.env.KEYCLOAK_URL}/realms/` +
-    `${process.env.KEYCLOAK_REALM}/protocol/openid-connect/token`,
+    `${process.env.NEXT_PUBLIC_KEYCLOAK_URL}/realms/` +
+    `${process.env.NEXT_PUBLIC_KEYCLOAK_REALM}/protocol/openid-connect/token`,
   AUTH_LOGOUT:
-    `${process.env.KEYCLOAK_URL}/realms/` +
-    `${process.env.KEYCLOAK_REALM}/protocol/openid-connect/logout`,
+    `${process.env.NEXT_PUBLIC_KEYCLOAK_URL}/realms/` +
+    `${process.env.NEXT_PUBLIC_KEYCLOAK_REALM}/protocol/openid-connect/logout`,
   AUTH_USERINFO:
-    `${process.env.KEYCLOAK_URL}/realms/` +
-    `${process.env.KEYCLOAK_REALM}/protocol/openid-connect/userinfo`,
+    `${process.env.NEXT_PUBLIC_KEYCLOAK_URL}/realms/` +
+    `${process.env.NEXT_PUBLIC_KEYCLOAK_REALM}/protocol/openid-connect/userinfo`,
 
   // ── Users ────────────────────────────────────────────────────────────
   USERS_ME:     `${BASE}/api/users/me`,
