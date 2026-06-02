@@ -48,7 +48,7 @@ const defaultIcons: Record<ToastType, ReactNode> = {
       <line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
     </svg>
   ),
-};
+}; 
 
 export function Toast({ type = 'info', title, message, icon, onDismiss, className, ...props }: ToastProps) {
   return (
