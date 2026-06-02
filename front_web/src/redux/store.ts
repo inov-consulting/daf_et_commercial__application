@@ -5,7 +5,7 @@ import { TypedUseSelectorHook, useSelector } from "react-redux";
 
 const persistConfig = {
   key: "root",
-  storage: sessionStorage,
+  storage,
   version: 1,
   whitelist: [
     "auth",
