@@ -1,22 +1,20 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { fontVariables } from '@/lib/fonts';
 import '@/styles/globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
-
 export const metadata: Metadata = {
-  title: 'DAF & Commercial',
-  description: 'Application web DAF et commercial',
+  title: 'DAF & Commercial | INOV Consulting',
+  description: 'Application web DAF et commercial – INOV Consulting',
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
+type RootLayoutProps = {
   children: React.ReactNode;
-}>) {
+};
+
+export default function RootLayout({ children }: Readonly<RootLayoutProps>) {
   return (
-    <html lang="fr">
-      <body className={inter.className}>{children}</body>
+    <html data-theme="light" className={fontVariables}>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }
