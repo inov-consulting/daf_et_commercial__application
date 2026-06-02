@@ -9,6 +9,8 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   state?: InputState;
   iconLeft?: ReactNode;
   iconRight?: ReactNode;
+  iconRightAction?: () => void;
+  iconRightAriaLabel?: string;
   label?: string;
   hint?: string;
   errorMessage?: string;
@@ -28,6 +30,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       state = 'default',
       iconLeft,
       iconRight,
+      iconRightAction,
+      iconRightAriaLabel,
       label,
       hint,
       errorMessage,
@@ -92,7 +96,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     ) : (
       <div className="relative">
         {iconLeft && (
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground-3 w-4 h-4 pointer-events-none flex items-center">
+          <span className={cn(
+            'absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none flex items-center',
+            state === 'error' ? 'text-error' : state === 'success' ? 'text-success' : 'text-foreground-3',
+          )}>
             {iconLeft}
           </span>
         )}
@@ -105,9 +112,21 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           {...props}
         />
         {iconRight && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-3 w-4 h-4 pointer-events-none flex items-center">
-            {iconRight}
-          </span>
+          iconRightAction ? (
+            <button
+              type="button"
+              onClick={iconRightAction}
+              tabIndex={-1}
+              aria-label={iconRightAriaLabel}
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center text-foreground-3 hover:text-foreground-2 transition-colors"
+            >
+              {iconRight}
+            </button>
+          ) : (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-3 w-4 h-4 pointer-events-none flex items-center">
+              {iconRight}
+            </span>
+          )
         )}
       </div>
     );
