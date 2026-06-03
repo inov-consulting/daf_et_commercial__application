@@ -13,10 +13,10 @@ export default function DashboardShell({ locale, children }: DashboardShellProps
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
-    <div className="flex h-screen bg-[var(--bg-page)] overflow-hidden">
-      <Sidebar locale={locale} open={sidebarOpen} />
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <TopBar onToggleSidebar={() => setSidebarOpen(v => !v)} />
+    <div className="flex flex-col h-screen bg-[var(--bg-page)] overflow-hidden">
+      <TopBar onToggleSidebar={() => setSidebarOpen(v => !v)} />
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        <Sidebar locale={locale} open={sidebarOpen} />
         <main className="flex-1 overflow-y-auto">
           {children}
         </main>

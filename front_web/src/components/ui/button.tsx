@@ -98,7 +98,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         style={variant === 'gradient' ? { background: 'var(--grad)', ...style } : style}
         className={cn(
           'relative inline-flex items-center justify-center gap-2',
-          'font-body font-semibold border-[1.5px] cursor-pointer whitespace-nowrap',
+          'font-body font-normal border-[1.5px] cursor-pointer whitespace-nowrap',
           'transition-all duration-norm ease outline-none tracking-[.01em]',
           'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px]',
           'focus-visible:outline-border-focus rounded-[inherit]',

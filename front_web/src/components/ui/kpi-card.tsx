@@ -12,6 +12,7 @@ export interface KpiCardProps extends HTMLAttributes<HTMLDivElement> {
   trendValue?: string;
   sparkline?: ReactNode;
   accent?: KpiAccent;
+  styleValue?: string;
 }
 
 const accentBar: Record<KpiAccent, string> = {
@@ -37,6 +38,7 @@ export function KpiCard({
   sparkline,
   accent = 'primary',
   className,
+  styleValue,
   ...props
 }: KpiCardProps) {
   return (
@@ -66,16 +68,18 @@ export function KpiCard({
                 ? 'text-success-600 bg-success-50 dark:text-[#6EE7B7] dark:bg-[rgba(16,185,129,.15)]'
                 : trend === 'down'
                   ? 'text-error bg-error-50 dark:text-[#FCA5A5] dark:bg-[rgba(239,68,68,.15)]'
-                  : 'text-foreground-2 bg-surface-sink',
+                  : trend === 'warning'
+                  ? 'text-warning-600 bg-warning-50 dark:text-[#FBBF24] dark:bg-[rgba(245,158,11,.15)]'
+                  :'text-foreground-2 bg-surface-sink',
             )}
           >
-            {trend === 'up' ? 'â†‘' : trend === 'down' ? 'â†“' : 'â†’'} {trendValue}
+            {trend === 'up' ? '▲' : trend === 'down' ? '▼' : ''} {trendValue}
           </span>
         )}
       </div>
 
       <p
-        className="font-display text-3xl font-bold text-foreground leading-none mb-[.3rem] tracking-tight"
+        className={cn('font-display text-3xl font-bold text-foreground leading-none mb-[.3rem] tracking-tight', `${styleValue}`)}
         aria-label={`${label}: ${value}`}
       >
         {value}

@@ -11,9 +11,9 @@ const NOTIFICATIONS = [
 ] as const;
 
 const MENU_ITEMS = [
-  { Icon: User,    label: 'Mon profil',   danger: false },
-  { Icon: Gear,    label: 'Paramètres',   danger: false },
-  { Icon: SignOut, label: 'Déconnexion',  danger: true  },
+  { Icon: User, label: 'Mon profil', danger: false },
+  { Icon: Gear, label: 'Paramètres', danger: false },
+  { Icon: SignOut, label: 'Déconnexion', danger: true },
 ] as const;
 
 interface TopBarProps {
@@ -21,7 +21,7 @@ interface TopBarProps {
 }
 
 export default function TopBar({ onToggleSidebar }: TopBarProps) {
-  const [showNotifs,   setShowNotifs]   = useState(false);
+  const [showNotifs, setShowNotifs] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const closeAll = () => { setShowNotifs(false); setShowUserMenu(false); };
@@ -32,21 +32,23 @@ export default function TopBar({ onToggleSidebar }: TopBarProps) {
         <div className="fixed inset-0 z-40" onClick={closeAll} />
       )}
 
-      <header className="h-14 bg-white border-b border-[var(--bd-def)] flex items-center gap-3 px-4 flex-shrink-0 relative z-50">
-        {/* Toggle sidebar */}
-        <button
-          onClick={onToggleSidebar}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--tx-2)] hover:bg-[var(--bg-sink)] transition-colors flex-shrink-0"
-        >
-          <List size={18} />
-        </button>
+      <header className="h-14 bg-white border-b border-[var(--bd-def)] flex items-center justify-between px-4 flex-shrink-0 relative z-50">
+        <div className="flex items-center gap-3">
+          {/* Toggle sidebar */}
+          <button
+            onClick={onToggleSidebar}
+            className="w-8 h-8 border rounded-lg flex items-center justify-center text-[var(--tx-2)] hover:bg-[var(--bg-sink)] transition-colors flex-shrink-0"
+          >
+            <List size={18} />
+          </button>
 
-        {/* Brand + IA status */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="font-display font-bold text-[var(--tx-1)]">PortaLis</span>
-          <div className="hidden sm:flex items-center gap-1.5 bg-[#ECFDF5] border border-[#D1FAE5] text-[#059669] rounded-full px-2.5 py-1 text-[11px] font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-            IA active · 1 en cours
+          {/* Brand + IA status */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="font-display font-bold text-2xl text-gradient">PortaLis</span>
+            <div className="hidden sm:flex items-center gap-1.5 bg-primary/5 border border-primary/40 text-primary rounded-full px-2.5 py-1 text-[11px] font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              IA active · 1 en cours
+            </div>
           </div>
         </div>
 
@@ -60,7 +62,7 @@ export default function TopBar({ onToggleSidebar }: TopBarProps) {
             <input
               type="text"
               placeholder="Rechercher prospects, missions, documents..."
-              className="w-full h-9 pl-9 pr-11 bg-[var(--bg-sink)] rounded-lg text-sm text-[var(--tx-1)] placeholder:text-[var(--tx-3)] border border-transparent focus:border-[var(--bd-focus)] focus:bg-white focus:outline-none transition-all"
+              className="w-full h-9 pl-9 pr-11 bg-[var(--bg-sink)] rounded-full text-sm text-[var(--tx-1)] placeholder:text-[var(--tx-3)] border border-transparent focus:border-[var(--bd-focus)] focus:bg-white focus:outline-none transition-all"
             />
             <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-[var(--tx-3)] bg-white border border-[var(--bd-def)] rounded px-1.5 py-0.5 font-mono">
               ⌘K
@@ -68,7 +70,7 @@ export default function TopBar({ onToggleSidebar }: TopBarProps) {
           </div>
         </div>
 
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5">
           {/* Notifications */}
           <div className="relative">
             <button
@@ -106,18 +108,18 @@ export default function TopBar({ onToggleSidebar }: TopBarProps) {
           <div className="w-px h-6 bg-[var(--bd-def)] mx-1" />
 
           {/* User menu */}
-          <div className="relative">
+          <div className="relative border rounded-full">
             <button
               onClick={() => { setShowUserMenu(v => !v); setShowNotifs(false); }}
-              className="flex items-center gap-2 h-9 pl-1 pr-2.5 rounded-lg hover:bg-[var(--bg-sink)] transition-colors"
+              className="flex items-center gap-2 h-9 pl-1 pr-2.5 rounded-lg hover:bg-[var(--bg-sink)] hover:rounded-full transition-colors"
             >
-              <div className="w-7 h-7 rounded-full bg-[#6B35C9] flex items-center justify-center flex-shrink-0">
+              <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'var(--grad)' }}>
                 <span className="text-white text-xs font-bold">HK</span>
               </div>
               <span className="text-sm font-medium text-[var(--tx-1)] hidden sm:block">Hawa Konaté</span>
-              <span className="text-[10px] font-bold text-[var(--tx-3)] bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded px-1.5 py-0.5 hidden sm:block">
-                DG
-              </span>
+              <div className="w-7 h-7 rounded-full bg-[var(--bg-sink)] border border-[var(--bd-def)]] hidden sm:block">
+                <span className="text-[10px] font-bold text-[var(--tx-3)]">DG</span>
+              </div>
               <CaretDown size={12} className="text-[var(--tx-3)]" />
             </button>
 
