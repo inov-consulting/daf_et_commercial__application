@@ -20,5 +20,5 @@ export default function HomePage({ params }: Props) {
   const cookieStore = cookies();
   const isAuthenticated = !!cookieStore.get('portalis_at')?.value;
 
-  redirect(isAuthenticated ? `/${locale}/dashboard` : `/${locale}/auth/login`);
+  redirect(isAuthenticated ? `/${locale}/page/dashboard` : `/${locale}/auth/login`);
 }

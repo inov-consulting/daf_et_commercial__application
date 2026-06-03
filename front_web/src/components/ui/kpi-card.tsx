@@ -1,7 +1,7 @@
-import { HTMLAttributes, ReactNode } from 'react';
+﻿import { HTMLAttributes, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
-export type KpiTrend = 'up' | 'down' | 'neutral';
+export type KpiTrend = 'up' | 'down' | 'neutral' | 'warning';
 export type KpiAccent = 'primary' | 'success' | 'warning' | 'secondary';
 
 export interface KpiCardProps extends HTMLAttributes<HTMLDivElement> {
@@ -69,7 +69,7 @@ export function KpiCard({
                   : 'text-foreground-2 bg-surface-sink',
             )}
           >
-            {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'} {trendValue}
+            {trend === 'up' ? 'â†‘' : trend === 'down' ? 'â†“' : 'â†’'} {trendValue}
           </span>
         )}
       </div>
@@ -86,3 +86,4 @@ export function KpiCard({
     </div>
   );
 }
+
