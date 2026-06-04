@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, PaperPlaneTilt } from '@phosphor-icons/react';
+import { X, PaperPlaneTilt, Sparkle } from '@phosphor-icons/react';
 
 const INITIAL_MESSAGES = [
   {
@@ -104,7 +104,7 @@ export default function FloatingChat() {
               : '0 4px 16px rgba(107,53,201,.35)',
           }}
         >
-          <span className="text-white text-xl leading-none">✦</span>
+          <Sparkle size={20} weight="fill" className="text-white" />
           <span className="absolute -top-1 -right-1 w-5 h-5 bg-error rounded-full text-white text-[9px] font-bold flex items-center justify-center border-2 border-white leading-none">
             3
           </span>
