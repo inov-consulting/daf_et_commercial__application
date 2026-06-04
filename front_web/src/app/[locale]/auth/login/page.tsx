@@ -22,7 +22,7 @@ const FEATURES = [
 
 function SessionExpiredBanner() {
   return (
-    <div className="bg-[#FFFBEB] border-b border-[#FCD34D] px-6 py-3">
+    <div className="bg-warning-50 border-b border-warning-500 px-6 py-3">
       <p className="text-sm text-[#92400E] text-center">
         Session expirée — Veuillez vous reconnecter pour continuer.
       </p>
@@ -46,10 +46,10 @@ export default function LoginPage({ params, searchParams }: Props) {
   const sessionExpired = searchParams.reason === 'session_expired';
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
+    <div className="min-h-screen flex flex-col lg:flex-row bg-white">
       {/* ── Left panel (desktop only) ────────────────────────── */}
       <aside
-        className="hidden lg:flex lg:w-[44%] xl:w-[42%] flex-shrink-0 flex-col p-10 xl:p-14"
+        className="hidden lg:flex lg:w-[44%] xl:w-[42%] flex-shrink-0 flex-col p-10 xl:p-14 lg:m-10 rounded-3xl"
         style={{ background: 'linear-gradient(160deg, #0A1627 0%, #0C1E3A 100%)' }}
       >
         {/* Brand */}
@@ -77,7 +77,7 @@ export default function LoginPage({ params, searchParams }: Props) {
       </aside>
 
       {/* ── Right panel ──────────────────────────────────────── */}
-      <main className="flex-1 flex flex-col bg-[#EEF2F7] lg:bg-white">
+      <main className="flex-1 flex flex-col bg-neutral-100 lg:bg-white">
         {/* Session expired banner */}
         {sessionExpired && <SessionExpiredBanner />}
 

@@ -74,6 +74,7 @@ const config: Config = {
         warning: {
           50:      '#FFFBEB',
           DEFAULT: '#F59E0B',
+          500:     '#F59E0B',
           600:     '#D97706',
         },
         error: {
