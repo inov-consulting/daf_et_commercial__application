@@ -3,11 +3,11 @@
 import { useState } from 'react';
 import { Export, UserPlus, Warning, Trash, Check } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
-import { UserKpiRow } from '@/components/layout/user-kpi-row';
-import { UserTable } from '@/components/layout/user-table';
 import { UserDetailPanel } from '@/components/layout/user-detail-panel';
 import { UserFormModal } from '@/components/layout/user-form-modal';
 import { MOCK_USERS, type User } from '@/types/user_type';
+import { UserTable } from '@/components/layout/user-table';
+import { UserKpiRow } from '@/components/layout/user-kpi-row';
 
 export default function UtilisateursPage() {
   const [users, setUsers] = useState<User[]>(MOCK_USERS);
