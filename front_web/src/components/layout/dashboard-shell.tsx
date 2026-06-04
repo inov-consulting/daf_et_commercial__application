@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Sidebar from './sidebar';
 import TopBar from './top-bar';
+import FloatingChat from './floating-chat';
 
 interface DashboardShellProps {
   locale: string;
@@ -21,6 +22,7 @@ export default function DashboardShell({ locale, children }: DashboardShellProps
           {children}
         </main>
       </div>
+      <FloatingChat />
     </div>
   );
 }
