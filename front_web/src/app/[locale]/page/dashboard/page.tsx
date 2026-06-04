@@ -180,7 +180,7 @@ function IACenter() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_288px] divide-y lg:divide-y-0 lg:divide-x divide-[var(--bd-def)]">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] divide-y lg:divide-y-0 lg:divide-x divide-[var(--bd-def)]">
         {/* Validation items */}
         <div className="bg-[var(--bg-sink)]">
           <p className="px-5 pt-4 pb-3 text-[10px] font-semibold tracking-[.08em] text-[var(--tx-3)] uppercase">
@@ -505,7 +505,7 @@ function ActivityFeed() {
 
 export default function DashboardPage() {
   return (
-    <div className="p-6 max-w-[1440px] mx-auto">
+    <div className="p-6 mx-auto">
       <PageHeader />
       <IACenter />
       <KpiRow />
