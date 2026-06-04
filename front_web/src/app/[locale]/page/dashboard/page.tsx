@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import {
-  ArrowRight, Truck, UserCircle, TrendUp, Sparkle,
+  ArrowRight, Truck, User, TrendUp, Sparkle,
   Check, PencilSimple, X, ArrowUpRight, Warning,
   Export, Plus, Circle,
 } from '@phosphor-icons/react';
@@ -63,9 +63,9 @@ const MISSIONS = [
 ];
 
 const ALERTS = [
-  { id: 1, color: '#10B981', text: 'MIS-2026-0140 livré · SITARAIL', sub: 'Confirmé à Douala · 13h47' },
-  { id: 2, color: '#F59E0B', text: 'Retard · MIS-2026-0142 · ETA +48h', sub: 'Blocage douanier Abidjan · ETA +48h' },
-  { id: 3, color: '#0E86E8', text: 'IA · 3 éléments à valider', sub: '2 CR + 1 offre · règle R-05' },
+  { id: 1, color: '#10B981', bgColor: 'rgba(16,185,129,0.08)', type: 'success' as const, text: 'MIS-2026-0140 livré · SITARAIL', sub: 'SITARAIL · Confirmé à Douala · 13h47' },
+  { id: 2, color: '#F59E0B', bgColor: 'rgba(245,158,11,0.08)', type: 'warning' as const, text: 'Retard · MIS-2026-0142 · ETA +48h', sub: 'Blocage douanier Abidjan · ETA +48h' },
+  { id: 3, color: '#0E86E8', bgColor: 'rgba(14,134,232,0.08)', type: 'info' as const, text: 'IA · 3 éléments à valider', sub: '2 CR + 1 offre · règle R-05' },
 ];
 
 const PIPELINE = [
@@ -106,9 +106,9 @@ function Card({ children, className }: { children: React.ReactNode; className?: 
 /* ── Sections ────────────────────────────────────────────────────────── */
 
 const ENTITIES = [
-  { key: 'all', label: 'Toutes entités' },
-  { key: 'sn', label: '🇸🇳 Sénégal' },
-  { key: 'ci', label: "🇨🇮 Côte d'Ivoire" },
+  { key: 'all', label: 'Toutes entités', flag: null },
+  { key: 'sn', label: 'Sénégal', flag: 'sn' },
+  { key: 'ci', label: "Côte d'Ivoire", flag: 'ci' },
 ] as const;
 
 type EntityKey = typeof ENTITIES[number]['key'];
@@ -124,17 +124,27 @@ function PageHeader() {
       </div>
       <div className="flex items-center gap-2 flex-wrap">
         <div className="flex items-center gap-0.5 bg-white border border-[var(--bd-def)] rounded-lg p-0.5 shadow-[var(--sh-xs)]">
-          {ENTITIES.map(({ key, label }) => (
+          {ENTITIES.map(({ key, label, flag }) => (
             <button
               key={key}
               onClick={() => setEntity(key)}
               className={cn(
-                'px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
                 entity === key
                   ? 'bg-[var(--p500)] text-white'
                   : 'text-[var(--tx-2)] hover:bg-[var(--bg-sink)]',
               )}
             >
+              {flag && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`https://flagcdn.com/16x12/${flag}.png`}
+                  width={16}
+                  height={12}
+                  alt={label}
+                  className="rounded-[2px] flex-shrink-0"
+                />
+              )}
               {label}
             </button>
           ))}
@@ -246,7 +256,7 @@ function KpiRow() {
     <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
       <KpiCard label="Pipeline commercial · cumul 2026" value="463,5M" styleValue="text-gradient" icon={<ArrowRight size={17} />} trend="up" trendValue="+18%" accent="primary" sparkline={<Progress value={72} size="sm" shimmer={false} />} />
       <KpiCard label="+3 créées ce mois" value="18" icon={<Truck size={17} />} trend="warning" trendValue="4 urgentes" accent="primary" />
-      <KpiCard label="8 nouveaux ce mois" value="47" icon={<UserCircle size={17} />} trend="up" trendValue="+12" accent="primary" />
+      <KpiCard label="8 nouveaux ce mois" value="47" icon={<User size={17} />} trend="up" trendValue="+12" accent="primary" />
       <KpiCard label="Objectif 40% · T3 2026" value="34%" icon={<TrendUp size={17} />} trend="up" trendValue="+2 pts" accent="primary" sparkline={<Progress value={34} max={40} size="sm" color="warning" shimmer={false} />} />
     </div>
   );
@@ -390,12 +400,20 @@ function ActiveAlerts() {
     <Card className="p-5">
       <div className="flex items-center justify-between mb-4">
         <p className="font-semibold text-[var(--tx-1)]">Alertes actives</p>
-        <Badge color="error" variant="outline">3</Badge>
+        <Badge color="error" variant="subtle">3</Badge>
       </div>
-      <div className="flex flex-col gap-2.5">
+      <div className="flex flex-col gap-2">
         {ALERTS.map(a => (
-          <div key={a.id} className="flex items-start gap-3 p-3 rounded-xl bg-[var(--bg-sink)]">
-            <Warning size={15} weight="fill" style={{ color: a.color }} className="flex-shrink-0 mt-0.5" />
+          <div
+            key={a.id}
+            className="flex items-start gap-3 px-3 py-2.5 rounded-xl border-l-[3px]"
+            style={{ borderLeftColor: a.color, backgroundColor: a.bgColor }}
+          >
+            <div className="flex-shrink-0 mt-0.5">
+              {a.type === 'success' && <Check size={14} weight="bold" style={{ color: a.color }} />}
+              {a.type === 'warning' && <Warning size={14} weight="fill" style={{ color: a.color }} />}
+              {a.type === 'info' && <span className="text-xl leading-none" style={{ color: a.color }} >✦</span>}
+            </div>
             <div className="min-w-0">
               <p className="text-sm font-medium text-[var(--tx-1)]">{a.text}</p>
               <p className="text-xs text-[var(--tx-3)] mt-0.5">{a.sub}</p>

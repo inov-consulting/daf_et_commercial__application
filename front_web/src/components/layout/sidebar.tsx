@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  SquaresFour, Brain, UserCircle, Truck, Funnel,
+  SquaresFour, Brain, User, Truck, Funnel,
   Files, FileText, Diamond, ChartLine, DownloadSimple,
   Users, Gear, SignOut, CaretUpDown,
 } from '@phosphor-icons/react';
@@ -16,6 +16,7 @@ type NavItem = {
   customIcon?: React.ReactNode;
   badge?: number;
   badgeDanger?: boolean;
+  customBadge?: React.ReactNode;
 };
 
 type NavSection = { title: string; items: NavItem[] };
@@ -26,38 +27,47 @@ function buildNav(locale: string): NavSection[] {
       title: 'PRINCIPAL',
       items: [
         { href: `/${locale}/page/dashboard`, label: 'Tableau de bord', Icon: SquaresFour },
-        { href: `/${locale}/page/ia`, label: 'Centre IA', Icon: Brain, badge: 3, badgeDanger: true,
+        {
+          href: `/${locale}/page/ia`, label: 'Centre IA', Icon: Brain, badge: 3,
           customIcon: (
             <span className="flex-shrink-0 w-[18px] h-[18px] rounded-[4px] flex items-center justify-center text-white text-[9px] font-bold leading-none" style={{ background: 'var(--grad)' }}>
               IA
             </span>
           ),
+          customBadge: (
+            <span
+              className="min-w-5 h-7 px-1 rounded-full text-[10px] font-bold flex items-center justify-center"
+              style={{ background: 'var(--grad)'}}
+            >
+              3
+            </span>
+          ),
         },
-        { href: `/${locale}/page/prospects`, label: 'Prospects',       Icon: UserCircle,    badge: 47 },
-        { href: `/${locale}/page/missions`,  label: 'Missions',        Icon: Truck,         badge: 4,  badgeDanger: true },
-        { href: `/${locale}/page/pipeline`,  label: 'Pipeline',        Icon: Funnel },
+        { href: `/${locale}/page/prospects`, label: 'Prospects', Icon: User, badge: 47 },
+        { href: `/${locale}/page/missions`, label: 'Missions', Icon: Truck, badge: 4, badgeDanger: true },
+        { href: `/${locale}/page/pipeline`, label: 'Pipeline', Icon: Funnel },
       ],
     },
     {
       title: 'OPÉRATIONS',
       items: [
-        { href: `/${locale}/page/documents`,      label: 'Documents',      Icon: Files },
+        { href: `/${locale}/page/documents`, label: 'Documents', Icon: Files },
         { href: `/${locale}/page/comptes-rendus`, label: 'Comptes-rendus', Icon: FileText },
-        { href: `/${locale}/page/offres`,         label: 'Offres',         Icon: Diamond },
+        { href: `/${locale}/page/offres`, label: 'Offres', Icon: Diamond },
       ],
     },
     {
       title: 'RAPPORTS',
       items: [
         { href: `/${locale}/page/analytics`, label: 'Analytics', Icon: ChartLine },
-        { href: `/${locale}/page/exports`,   label: 'Exports',   Icon: DownloadSimple },
+        { href: `/${locale}/page/exports`, label: 'Exports', Icon: DownloadSimple },
       ],
     },
     {
       title: 'ADMIN',
       items: [
         { href: `/${locale}/page/utilisateurs`, label: 'Utilisateurs', Icon: Users },
-        { href: `/${locale}/page/parametres`,   label: 'Paramètres',   Icon: Gear },
+        { href: `/${locale}/page/parametres`, label: 'Paramètres', Icon: Gear },
       ],
     },
   ];
@@ -88,13 +98,20 @@ export default function Sidebar({ locale, open }: SidebarProps) {
 
       <div className="border-b border-[var(--bd-def)] px-3 py-2">
         {open ? (
-          <button className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-[var(--bg-sink)] transition-colors text-left">
+          <div className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg transition-colors text-left">
             <div className="min-w-0">
               <p className="text-[var(--tx-1)] text-[13px] font-semibold truncate">Group Holding</p>
-              <p className="text-[var(--tx-3)] text-[11px] truncate">Sénégal 🇸🇳 · Côte d&apos;Ivoire 🇨🇮</p>
+              <div className="flex items-center gap-1 text-[var(--tx-3)] text-[11px] min-w-0">
+                <span>Sénégal</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="https://flagcdn.com/16x12/sn.png" width={16} height={12} alt="" className="rounded-[2px] flex-shrink-0" />
+                <span>·</span>
+                <span className="truncate">Côte d&apos;Ivoire</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="https://flagcdn.com/16x12/ci.png" width={16} height={12} alt="" className="rounded-[2px] flex-shrink-0" />
+              </div>
             </div>
-            <CaretUpDown size={13} className="text-[var(--tx-3)] flex-shrink-0 ml-2" />
-          </button>
+          </div>
         ) : (
           <div className="flex justify-center py-1.5">
             <div
@@ -118,7 +135,7 @@ export default function Sidebar({ locale, open }: SidebarProps) {
                 {section.title}
               </p>
             )}
-            {section.items.map(({ href, label, Icon, customIcon, badge, badgeDanger }) => {
+            {section.items.map(({ href, label, Icon, customIcon, badge, badgeDanger, customBadge }) => {
               const active = pathname === href;
               return (
                 <Link
@@ -141,12 +158,14 @@ export default function Sidebar({ locale, open }: SidebarProps) {
                         <span
                           className={cn(
                             'min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center',
-                            badgeDanger
-                              ? 'bg-error/10 text-error'
+                            customBadge 
+                            ? 'text-white'
+                            :badgeDanger
+                              ? 'bg-error text-white'
                               : 'bg-[rgba(14,134,232,0.1)] text-[var(--p500)]',
                           )}
                         >
-                          {badge}
+                          {customBadge || badge}
                         </span>
                       )}
                     </>
