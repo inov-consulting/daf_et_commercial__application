@@ -1,4 +1,8 @@
-"""ORM model pour User."""
+"""ORM model pour User.
+
+Seules les données applicatives sont persistées.
+L'identité (email, prénom, nom) vit dans Keycloak.
+"""
 
 from uuid import UUID
 
@@ -9,10 +13,8 @@ from app.infrastructure.db.base import BaseModel
 
 
 class UserOrm(BaseModel):
+    # id (hérité de BaseModel) = UUID Keycloak (sub du token)
     company_ids: list[str] = fields.JSONField(default=list)
-    email: str = fields.CharField(max_length=255, unique=True, index=True)
-    first_name: str = fields.CharField(max_length=128, default="")
-    last_name: str = fields.CharField(max_length=128, default="")
     is_active: bool = fields.BooleanField(default=True)
 
     class Meta:
@@ -22,9 +24,6 @@ class UserOrm(BaseModel):
         return User(
             id=self.id,
             company_ids=[UUID(c) for c in self.company_ids] if self.company_ids else [],
-            email=self.email,
-            first_name=self.first_name,
-            last_name=self.last_name,
             is_active=self.is_active,
             created_at=self.created_at,
             updated_at=self.updated_at,
@@ -35,15 +34,9 @@ class UserOrm(BaseModel):
         return cls(
             id=user.id,
             company_ids=[str(c) for c in user.company_ids],
-            email=user.email,
-            first_name=user.first_name,
-            last_name=user.last_name,
             is_active=user.is_active,
         )
 
     def apply_domain(self, user: User) -> None:
-        self.email = user.email
         self.company_ids = [str(c) for c in user.company_ids]
-        self.first_name = user.first_name
-        self.last_name = user.last_name
         self.is_active = user.is_active

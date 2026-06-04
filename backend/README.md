@@ -70,6 +70,100 @@ make test                 # depuis la racine, dans le container
 cd backend && uv run pytest tests/unit -v   # ou en local
 ```
 
+## Agent IA & Chat
+
+### Architecture
+
+```
+POST /api/v1/chat
+POST /api/v1/chat/stream   (SSE)
+GET  /api/v1/chat/tools
+```
+
+L'agent utilise **LangGraph** (`create_react_agent`) avec gestion de sessions multi-tours.
+
+```
+Client
+  │
+  ▼
+POST /chat  { session_id?, message }
+  │
+  ▼
+Agent LangGraph
+  ├── Tools Python locaux
+  │     ├── builtin_tools.py   → search_companies, get_company_details, get_current_date
+  │     └── custom_tools.py    → tes propres tools (ajouter ici)
+  └── Tools MCP externes (stdio)
+        └── Odoo  (uvx mcp-server-odoo)
+  │
+  ▼
+{ session_id, response, tool_used, turn }
+```
+
+### Ajouter un custom tool
+
+1. Ouvrir `app/infrastructure/ai/custom_tools.py`
+2. Écrire une fonction `async` avec une docstring claire
+3. L'enregistrer dans `CUSTOM_REGISTRY`
+
+```python
+async def get_invoice_status(invoice_id: str) -> str:
+    """Retourne le statut d'une facture par son ID."""
+    ...
+
+CUSTOM_REGISTRY = {
+    "get_invoice_status": get_invoice_status,
+}
+```
+
+C'est tout — le tool est disponible immédiatement dans l'agent.
+
+### Ajouter un serveur MCP externe
+
+Ouvrir `app/infrastructure/ai/mcp_servers.py` et ajouter un bloc dans `MCP_SERVERS` :
+
+```python
+MCP_SERVERS["mon_service"] = {
+    "command": "uvx",
+    "args": ["mcp-server-mon-service", "--transport", "stdio"],
+    "env": {"API_KEY": "..."},
+    "transport": "stdio",
+}
+```
+
+### Gestion des sessions
+
+- Chaque session est identifiée par un `session_id` (UUID)
+- Omis dans la requête → nouvelle session générée par le serveur
+- L'historique est conservé en **mémoire RAM** (perdu au redémarrage)
+- Compression automatique : les 15 derniers messages sont conservés (`MAX_CONTEXT_MESSAGES`)
+
+### Modèles IA
+
+Configurés en DB via `GET/PATCH /api/v1/ai/config`.
+Provider par défaut : **Groq** (`llama-3.3-70b-versatile`).
+Supporte : Anthropic Claude, OpenAI GPT, Groq.
+
+Variables `.env` requises selon le provider :
+
+| Provider  | Variable         |
+|-----------|-----------------|
+| Groq      | `GROQ_API_KEY`  |
+| Anthropic | `ANTHROPIC_API_KEY` |
+| OpenAI    | `OPENAI_API_KEY` |
+
+### Permissions
+
+Tous les endpoints `/chat` requièrent la permission `chat:create`.
+
+Pour synchroniser les permissions vers Keycloak :
+
+```bash
+cd backend
+uv run python -m app.scripts.extract_permissions    # voir les permissions détectées
+uv run python -m app.scripts.sync_keycloak_roles    # créer les rôles dans Keycloak
+```
+
 ## Lint & types
 
 ```bash

@@ -17,10 +17,6 @@ class UserRepository:
         orm = await UserOrm.get_or_none(id=user_id)
         return orm.to_domain() if orm else None
 
-    async def get_by_email(self, email: str) -> User | None:
-        orm = await UserOrm.get_or_none(email=email.strip().lower())
-        return orm.to_domain() if orm else None
-
     async def list_by_company(
         self,
         company_id: UUID,

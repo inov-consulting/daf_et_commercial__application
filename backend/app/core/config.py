@@ -1,8 +1,29 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Catalogue des modèles supportés → provider associé
+AI_MODEL_PROVIDERS: dict[str, Literal["anthropic", "openai", "groq"]] = {
+    # Anthropic — Claude
+    "claude-opus-4-7": "anthropic",
+    "claude-opus-4-5": "anthropic",
+    "claude-sonnet-4-6": "anthropic",
+    "claude-sonnet-4-5": "anthropic",
+    "claude-haiku-4-5": "anthropic",
+    # OpenAI — GPT
+    "gpt-4o": "openai",
+    "gpt-4o-mini": "openai",
+    "gpt-4-turbo": "openai",
+    "o1": "openai",
+    "o1-mini": "openai",
+    # Groq — gratuit, idéal pour les tests
+    "llama-3.3-70b-versatile": "groq",
+    "llama-3.1-8b-instant":    "groq",
+    "mixtral-8x7b-32768":      "groq",
+    "gemma2-9b-it":            "groq",
+}
 
 
 class Settings(BaseSettings):
@@ -29,6 +50,10 @@ class Settings(BaseSettings):
     secret_key: str = Field(..., min_length=16)
     jwt_access_minutes: int = 15
     jwt_refresh_days: int = 30
+    # Tolérance clock skew entre backend et Keycloak (en secondes).
+    # Augmenter si les serveurs sont dans des fuseaux horaires différents
+    # et que NTP n'est pas parfaitement synchronisé (60s est la valeur standard).
+    jwt_leeway_seconds: int = 60
 
     # ── Database ───────────────────────────────────────────────────────
     app_database_url: str
@@ -52,16 +77,32 @@ class Settings(BaseSettings):
 
     # ── IA ─────────────────────────────────────────────────────────────
     anthropic_api_key: str = ""
-    anthropic_model: str = "claude-opus-4-7"
     openai_api_key: str = ""
-    openai_model: str = "gpt-4o-mini"
-    ai_default_provider: Literal["anthropic", "openai"] = "anthropic"
+    groq_api_key: str = ""
+    # Modèle par défaut pour l'agent. Le provider est déduit automatiquement
+    # depuis AI_MODEL_PROVIDERS. Exemples : claude-opus-4-7, gpt-4o-mini
+    ai_default_model: str = "gpt-4o-mini"
+    # Résolu automatiquement — ne pas définir dans .env
+    ai_provider: Literal["anthropic", "openai", "groq"] = "openai"
+
+    @model_validator(mode="after")
+    def resolve_ai_provider(self) -> "Settings":
+        provider = AI_MODEL_PROVIDERS.get(self.ai_default_model)
+        if provider is None:
+            known = ", ".join(AI_MODEL_PROVIDERS)
+            raise ValueError(
+                f"Modèle IA inconnu : '{self.ai_default_model}'. "
+                f"Modèles supportés : {known}"
+            )
+        self.ai_provider = provider
+        return self
 
     # ── Odoo ───────────────────────────────────────────────────────────
     odoo_url: str = ""
     odoo_db: str = ""
     odoo_username: str = ""
     odoo_password: str = ""
+    odoo_api_key: str = ""
 
     # ── Observability ──────────────────────────────────────────────────
     sentry_dsn: str = ""
