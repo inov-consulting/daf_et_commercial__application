@@ -1,9 +1,12 @@
 """Router /users : CRUD utilisateurs."""
 
+import logging
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+
+logger = logging.getLogger(__name__)
 
 from app.api.deps import CompanyRepoDep, UserRepoDep, require_permission
 from app.api.v1.schemas.companies import CompanyOut
@@ -29,32 +32,38 @@ async def create_user(
     user_repo: UserRepoDep,
     company_repo: CompanyRepoDep,
 ) -> UserOut:
-    user = await CreateUserUseCase(user_repo, company_repo).execute(
-        CreateUserInput(
-            company_ids=payload.company_ids,
+    # Résolution du keycloak_id depuis l'email via l'admin Keycloak
+    kc = KeycloakAdminClient()
+    users_kc = await kc.search_users(payload.email)
+    keycloak_user = next(
+        (u for u in users_kc if u.get("email", "").lower() == payload.email.lower()),
+        None,
+    )
+    if keycloak_user is None:
+        # Utilisateur absent de Keycloak → on le crée
+        keycloak_id_str = await kc.create_user(
             email=payload.email,
             first_name=payload.first_name,
             last_name=payload.last_name,
-        )
-    )
-
-    # Créer l'utilisateur dans Keycloak et envoyer l'email de vérification
-    try:
-        kc = KeycloakAdminClient()
-        keycloak_id = await kc.create_user(
-            email=user.email,
-            first_name=user.first_name,
-            last_name=user.last_name,
             required_actions=["VERIFY_EMAIL"],
         )
-        await kc.send_verify_email(keycloak_id)
-    except Exception as exc:
-        # Log mais ne pas bloquer la création locale
-        import logging
-        logging.getLogger(__name__).warning(
-            f"Échec création/envoi email Keycloak pour {user.email}: {exc}"
-        )
+        await kc.send_verify_email(keycloak_id_str)
+        logger.info("Utilisateur créé dans Keycloak : %s", payload.email)
+    else:
+        keycloak_id_str = keycloak_user["id"]
 
+    try:
+        keycloak_id = UUID(keycloak_id_str)
+    except ValueError:
+        logger.error("ID Keycloak invalide pour %s : %s", payload.email, keycloak_id_str)
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Réponse Keycloak invalide")
+
+    user = await CreateUserUseCase(user_repo, company_repo).execute(
+        CreateUserInput(
+            keycloak_id=keycloak_id,
+            company_ids=payload.company_ids,
+        )
+    )
     return UserOut.from_domain(user)
 
 
@@ -116,8 +125,6 @@ async def update_user(
         user_id,
         UpdateUserInput(
             company_ids=payload.company_ids,
-            first_name=payload.first_name,
-            last_name=payload.last_name,
             is_active=payload.is_active,
         ),
     )

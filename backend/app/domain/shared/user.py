@@ -1,38 +1,35 @@
-"""Entité User."""
+"""Entité User.
+
+L'identité (email, prénom, nom) est gérée par Keycloak.
+En base locale on stocke uniquement ce qui est propre à l'application :
+- id        : UUID Keycloak (sub du token)
+- company_ids : entreprises rattachées (multi-tenant)
+- is_active : statut applicatif
+"""
 
 from dataclasses import dataclass
 from datetime import datetime
-from uuid import UUID, uuid4
+from uuid import UUID
+
 
 @dataclass(slots=True, kw_only=True)
 class User:
     id: UUID
     company_ids: list[UUID]
-    email: str
-    first_name: str = ""
-    last_name: str = ""
     is_active: bool = True
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
+    # Champs Keycloak — non persistés en DB, populés depuis le token
+    email: str = ""
+    first_name: str = ""
+    last_name: str = ""
+
     @classmethod
-    def new(
-        cls,
-        *,
-        company_ids: list[UUID],
-        email: str,
-        first_name: str = "",
-        last_name: str = "",
-    ) -> "User":
-        email_clean = email.strip().lower()
-        if "@" not in email_clean or "." not in email_clean:
-            raise ValueError(f"Email invalide : {email}")
+    def new(cls, *, keycloak_id: UUID, company_ids: list[UUID]) -> "User":
         return cls(
-            id=uuid4(),
+            id=keycloak_id,
             company_ids=list(company_ids),
-            email=email_clean,
-            first_name=first_name.strip(),
-            last_name=last_name.strip(),
         )
 
     @property

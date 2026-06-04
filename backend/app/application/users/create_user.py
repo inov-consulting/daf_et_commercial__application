@@ -1,4 +1,4 @@
-"""Use case : créer un utilisateur (profil métier local)."""
+"""Use case : créer un profil utilisateur local (company_ids + statut)."""
 
 from dataclasses import dataclass
 from uuid import UUID
@@ -10,10 +10,8 @@ from app.domain.shared.user import User
 
 @dataclass(slots=True, frozen=True)
 class CreateUserInput:
+    keycloak_id: UUID       # sub du token Keycloak
     company_ids: list[UUID]
-    email: str
-    first_name: str = ""
-    last_name: str = ""
 
 
 class CreateUserUseCase:
@@ -31,14 +29,9 @@ class CreateUserUseCase:
             if company is None:
                 raise NotFoundError(f"Company {cid} introuvable")
 
-        existing = await self._user_repo.get_by_email(data.email)
+        existing = await self._user_repo.get_by_id(data.keycloak_id)
         if existing is not None:
-            raise ConflictError(f"Email déjà utilisé : {data.email}")
+            raise ConflictError(f"Utilisateur {data.keycloak_id} existe déjà")
 
-        user = User.new(
-            company_ids=data.company_ids,
-            email=data.email,
-            first_name=data.first_name,
-            last_name=data.last_name,
-        )
+        user = User.new(keycloak_id=data.keycloak_id, company_ids=data.company_ids)
         return await self._user_repo.add(user)
