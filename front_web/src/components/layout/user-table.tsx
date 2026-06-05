@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import {
-  MagnifyingGlass, PencilSimple, PaperPlaneTilt, X,
-  DotsThreeVertical, DeviceMobile, Desktop, Devices,
+  MagnifyingGlassIcon, PencilSimpleIcon, PaperPlaneTiltIcon, XIcon,
+  DotsThreeVerticalIcon, DeviceMobileIcon, DesktopIcon, DevicesIcon,
 } from '@phosphor-icons/react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -78,7 +78,7 @@ export function UserTable({
       {/* Toolbar */}
       <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2 w-56 h-9 bg-surface-sink border border-border rounded-lg px-3">
-          <MagnifyingGlass size={14} className="text-foreground-3 flex-shrink-0" />
+          <MagnifyingGlassIcon size={14} className="text-foreground-3 flex-shrink-0" />
           <input
             type="text"
             value={search}
@@ -228,9 +228,9 @@ export function UserTable({
                 <td className="px-4">
                   {user.status !== 'pending' ? (
                     <span className="flex items-center gap-1.5 text-[11px] text-foreground-3">
-                      {user.surface === 'Mobile' && <DeviceMobile size={13} />}
-                      {user.surface === 'Web' && <Desktop size={13} />}
-                      {user.surface === 'Mobile + Web' && <Devices size={13} />}
+                      {user.surface === 'Mobile' && <DeviceMobileIcon size={13} />}
+                      {user.surface === 'Web' && <DesktopIcon size={13} />}
+                      {user.surface === 'Mobile + Web' && <DevicesIcon size={13} />}
                       {user.surface}
                     </span>
                   ) : (
@@ -247,14 +247,14 @@ export function UserTable({
                           onClick={e => { e.stopPropagation(); onResendInvite?.(user.uid); }}
                           className="w-[30px] h-[30px] rounded-md border border-border bg-surface flex items-center justify-center text-foreground-3 hover:bg-surface-sink hover:text-foreground transition-colors"
                         >
-                          <PaperPlaneTilt size={13} weight="fill" />
+                          <PaperPlaneTiltIcon size={13} weight="fill" />
                         </button>
                         <button
                           title="Révoquer"
                           onClick={e => e.stopPropagation()}
                           className="w-[30px] h-[30px] rounded-md border border-border bg-surface flex items-center justify-center text-foreground-3 hover:bg-error-50 hover:text-error hover:border-error transition-colors"
                         >
-                          <X size={13} />
+                          <XIcon size={13} />
                         </button>
                       </>
                     ) : (
@@ -264,14 +264,14 @@ export function UserTable({
                           onClick={e => { e.stopPropagation(); onEditUser(user.uid); }}
                           className="w-[30px] h-[30px] rounded-md border border-border bg-surface flex items-center justify-center text-foreground-3 hover:bg-surface-sink hover:text-foreground transition-colors"
                         >
-                          <PencilSimple size={13} />
+                          <PencilSimpleIcon size={13} />
                         </button>
                         <button
                           title="Plus d'actions"
                           onClick={e => e.stopPropagation()}
                           className="w-[30px] h-[30px] rounded-md border border-border bg-surface flex items-center justify-center text-foreground-3 hover:bg-surface-sink hover:text-foreground transition-colors"
                         >
-                          <DotsThreeVertical size={13} />
+                          <DotsThreeVerticalIcon size={13} />
                         </button>
                       </>
                     )}

@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
-  X, Check, CaretDown, DeviceMobile, Desktop, Devices,
-  UserPlus, PencilSimple, PaperPlaneTilt,
+  XIcon, CheckIcon, CaretDownIcon, DeviceMobileIcon, DesktopIcon, DevicesIcon,
+  UserPlusIcon, PencilSimpleIcon, PaperPlaneTiltIcon,
 } from '@phosphor-icons/react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -74,8 +74,8 @@ export function UserFormModal({ mode, user, onClose, onSubmit }: UserFormModalPr
             style={{ background: mode === 'edit' && user ? user.bg : 'var(--grad)' }}
           >
             {mode === 'edit'
-              ? <PencilSimple size={15} className="text-white" />
-              : <UserPlus size={16} className="text-white" />
+              ? <PencilSimpleIcon size={15} className="text-white" />
+              : <UserPlusIcon size={16} className="text-white" />
             }
           </div>
           <p className="flex-1 font-display font-bold text-foreground">
@@ -85,7 +85,7 @@ export function UserFormModal({ mode, user, onClose, onSubmit }: UserFormModalPr
             onClick={onClose}
             className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-foreground-3 hover:bg-surface-sink transition-colors"
           >
-            <X size={13} />
+            <XIcon size={13} />
           </button>
         </div>
 
@@ -162,7 +162,7 @@ export function UserFormModal({ mode, user, onClose, onSubmit }: UserFormModalPr
                     </>
                   )}
                 </span>
-                <CaretDown size={12} className={cn('text-foreground-3 transition-transform', ddOpen && 'rotate-180')} />
+                <CaretDownIcon size={12} className={cn('text-foreground-3 transition-transform', ddOpen && 'rotate-180')} />
               </button>
 
               {ddOpen && (
@@ -183,7 +183,7 @@ export function UserFormModal({ mode, user, onClose, onSubmit }: UserFormModalPr
                           'w-4 h-4 rounded-[4px] border-[1.5px] flex items-center justify-center flex-shrink-0',
                           checked ? 'bg-primary-500 border-primary-500' : 'border-border-strong bg-surface',
                         )}>
-                          {checked && <Check size={9} className="text-white" />}
+                          {checked && <CheckIcon size={9} className="text-white" />}
                         </span>
                         <span className="text-sm text-foreground font-medium">{company}</span>
                       </button>
@@ -206,7 +206,7 @@ export function UserFormModal({ mode, user, onClose, onSubmit }: UserFormModalPr
                       onClick={() => toggleCompany(e)}
                       className="w-[14px] h-[14px] rounded-full bg-primary-200 flex items-center justify-center hover:bg-primary-300 transition-colors"
                     >
-                      <X size={8} />
+                      <XIcon size={8} />
                     </button>
                   </span>
                 ))}
@@ -236,7 +236,7 @@ export function UserFormModal({ mode, user, onClose, onSubmit }: UserFormModalPr
                       'w-4 h-4 rounded-[4px] border-[1.5px] flex items-center justify-center flex-shrink-0',
                       checked ? 'bg-primary-500 border-primary-500' : 'border-border-strong bg-surface',
                     )}>
-                      {checked && <Check size={9} className="text-white" />}
+                      {checked && <CheckIcon size={9} className="text-white" />}
                     </span>
                     {g}
                   </button>
@@ -262,9 +262,9 @@ export function UserFormModal({ mode, user, onClose, onSubmit }: UserFormModalPr
                       : 'bg-surface text-foreground-2 hover:bg-surface-sink',
                   )}
                 >
-                  {s === 'Mobile' && <DeviceMobile size={13} />}
-                  {s === 'Web' && <Desktop size={13} />}
-                  {s === 'Mobile + Web' && <Devices size={13} />}
+                  {s === 'Mobile' && <DeviceMobileIcon size={13} />}
+                  {s === 'Web' && <DesktopIcon size={13} />}
+                  {s === 'Mobile + Web' && <DevicesIcon size={13} />}
                   {s}
                 </button>
               ))}
@@ -288,12 +288,12 @@ export function UserFormModal({ mode, user, onClose, onSubmit }: UserFormModalPr
               disabled={saved}
             >
               {saved ? (
-                <><Check size={13} />{mode === 'invite' ? 'Invitation envoyée !' : 'Enregistré !'}</>
+                <><CheckIcon size={13} />{mode === 'invite' ? 'Invitation envoyée !' : 'Enregistré !'}</>
               ) : (
                 <>
                   {mode === 'invite'
-                    ? <PaperPlaneTilt size={13} weight="fill" />
-                    : <Check size={13} weight="bold" />
+                    ? <PaperPlaneTiltIcon size={13} weight="fill" />
+                    : <CheckIcon size={13} weight="bold" />
                   }
                   {mode === 'invite' ? 'Créer & inviter' : 'Enregistrer'}
                 </>

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Export, UserPlus, Warning, Trash, Check } from '@phosphor-icons/react';
+import { ExportIcon, UserPlusIcon, WarningIcon, TrashIcon, CheckIcon } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { UserKpiRow } from '@/components/layout/user-kpi-row';
 import { UserTable } from '@/components/layout/user-table';
@@ -107,7 +107,7 @@ export default function UtilisateursPage() {
         </div>
         <div className="flex items-center gap-2.5 pt-1">
           <Button variant="ghost" size="sm">
-            <Export size={13} />
+            <ExportIcon size={13} />
             Exporter CSV
           </Button>
           <Button
@@ -115,7 +115,7 @@ export default function UtilisateursPage() {
             size="sm"
             onClick={() => setFormModal({ mode: 'invite' })}
           >
-            <UserPlus size={14} weight="fill" />
+            <UserPlusIcon size={14} weight="fill" />
             Inviter un membre
           </Button>
         </div>
@@ -165,7 +165,7 @@ export default function UtilisateursPage() {
             onClick={e => e.stopPropagation()}
           >
             <div className="w-9 h-9 rounded-lg bg-error/20 flex items-center justify-center text-error flex-shrink-0">
-              <Warning size={16} weight="fill" />
+              <WarningIcon size={16} weight="fill" />
             </div>
             <div className="flex-1">
               <p className="font-display font-bold text-white text-sm mb-1.5">
@@ -186,7 +186,7 @@ export default function UtilisateursPage() {
                   onClick={handleDelete}
                   className="flex-1 h-8 rounded-md border border-error/40 bg-error/15 text-xs font-display font-semibold text-red-300 flex items-center justify-center gap-1.5 hover:bg-error/25 transition-colors"
                 >
-                  <Trash size={12} />
+                  <TrashIcon size={12} />
                   Confirmer la suppression
                 </button>
               </div>
@@ -199,7 +199,7 @@ export default function UtilisateursPage() {
       {toast && (
         <div className="fixed top-20 right-6 z-[80] bg-surface border border-success rounded-xl p-3 flex items-start gap-2.5 shadow-[0_4px_20px_rgba(16,185,129,.18)] max-w-[280px]">
           <div className="w-[30px] h-[30px] rounded-lg bg-success-50 flex items-center justify-center text-success flex-shrink-0">
-            <Check size={14} weight="bold" />
+            <CheckIcon size={14} weight="bold" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-display font-bold text-foreground text-xs">{toast.message}</p>
