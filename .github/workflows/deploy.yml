@@ -136,18 +136,18 @@ jobs:
           cache-to: type=gha,scope=frontend,mode=max
 
   # ── Deploy (optionnel - décommenter si serveur dédié) ────────────
-  # deploy:
-  #   needs: build-push
-  #   runs-on: ubuntu-latest
-  #   if: github.ref == 'refs/heads/main'
-  #   steps:
-  #     - name: Deploy via SSH
-  #       uses: appleboy/ssh-action@v1.0.0
-  #       with:
-  #         host: ${{ secrets.DEPLOY_HOST }}
-  #         username: ${{ secrets.DEPLOY_USER }}
-  #         key: ${{ secrets.DEPLOY_KEY }}
-  #         script: |
-  #           cd /opt/daf-augmente
-  #           docker compose pull
-  #           docker compose up -d
+  deploy:
+    needs: build-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          script: |
+            cd /opt/daf-augmente
+            docker compose pull
+            docker compose up -d
