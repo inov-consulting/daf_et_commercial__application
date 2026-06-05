@@ -1,12 +1,14 @@
 """Dépendances FastAPI transverses : repositories, current_user, RBAC."""
 
 import logging
-from typing import Annotated
+from collections.abc import Callable
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from app.domain.shared.role import Role
 from app.domain.shared.user import User
 from app.infrastructure.auth.keycloak import KeycloakClient
 from app.infrastructure.db.repositories.company import CompanyRepository
@@ -74,7 +76,7 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token invalide",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from None
 
     email = kc.extract_email(payload)
     first_name: str = payload.get("given_name", "")
@@ -106,11 +108,22 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 # ── Autorisation (RBAC) ─────────────────────────────────────────────────
-def require_permission(permission: str):
-    """Factory de dépendance : vérifie que le rôle action est présent dans le token Keycloak.
+def require_role(*allowed: Role) -> Callable[..., Any]:
+    """Factory de dépendance : restreint l'accès à une liste de rôles."""
 
-    Le rôle ``admin`` bypass toutes les vérifications (super-user).
-    """
+    async def _check(user: CurrentUser) -> User:
+        if getattr(user, "role", None) not in allowed:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                f"Rôle requis : {[r.value for r in allowed]}",
+            )
+        return user
+
+    return _check
+
+
+def require_permission(permission: str) -> Callable[..., Any]:
+    """Factory de dépendance : restreint l'accès via la matrice de permissions."""
 
     async def _check(
         request: Request,

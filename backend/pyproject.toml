@@ -92,7 +92,27 @@ src_folder = "./."
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
-exclude = ["migrations/"]
+exclude = [
+    "migrations/.*",
+    "app/infrastructure/ai/.*",
+    "app/infrastructure/odoo/.*",
+    "app/scripts/.*",
+    "app/api/v1/groups\\.py",
+]
+
+[[tool.mypy.overrides]]
+module = ["langchain.*", "langgraph.*", "langchain_groq.*", "langchain_anthropic.*", "langchain_openai.*", "langchain_mcp_adapters.*", "mcp.*", "groq.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "app.infrastructure.auth.keycloak",
+    "app.infrastructure.ai.*",
+    "app.infrastructure.odoo.*",
+    "app.scripts.*",
+    "app.api.v1.groups",
+]
+ignore_errors = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

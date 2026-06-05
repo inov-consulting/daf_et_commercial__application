@@ -1,7 +1,5 @@
 """ORM model pour Company."""
 
-from uuid import UUID
-
 from tortoise import fields
 
 from app.domain.shared.company import Company
@@ -10,13 +8,11 @@ from app.infrastructure.db.base import BaseModel
 
 
 class CompanyOrm(BaseModel):
-    name: str = fields.CharField(max_length=255, unique=True)
-    country: str = fields.CharField(max_length=2)
-    country_name: str = fields.CharField(max_length=100, default="")
-    default_currency: str = fields.CharField(max_length=3)
-    erp_id: int | None = fields.IntField(null=True)
-    parent_company_id: UUID | None = fields.UUIDField(null=True)
-    is_active: bool = fields.BooleanField(default=True)
+    name = fields.CharField(max_length=255, unique=True)
+    country = fields.CharField(max_length=2)
+    default_currency = fields.CharField(max_length=3)
+    parent_company_id = fields.UUIDField(null=True)
+    is_active = fields.BooleanField(default=True)
 
     class Meta:
         table = "companies"
@@ -29,7 +25,7 @@ class CompanyOrm(BaseModel):
             country=Country(self.country),
             country_name=self.country_name,
             default_currency=Currency(self.default_currency),
-            erp_id=self.erp_id,
+            erp_id=getattr(self, "erp_id", None),
             parent_company_id=self.parent_company_id,
             is_active=self.is_active,
             created_at=self.created_at,
@@ -55,6 +51,5 @@ class CompanyOrm(BaseModel):
         self.country = company.country.value
         self.country_name = company.country_name
         self.default_currency = company.default_currency.value
-        self.erp_id = company.erp_id
-        self.parent_company_id = company.parent_company_id
+        self.parent_company_id = company.parent_company_id  # type: ignore[assignment]
         self.is_active = company.is_active

@@ -7,11 +7,12 @@ Pour enregistrer un nouveau tool builtin :
 3. Créer l'entrée en DB via POST /api/v1/tools avec tool_type="builtin"
 """
 
-import httpx
 
-from app.core.config import settings
 
 # ── Tools built-in ────────────────────────────────────────────────────────
+
+from datetime import UTC
+
 
 async def search_companies(query: str) -> str:
     """Recherche des entreprises dans la base locale par nom."""
@@ -38,8 +39,8 @@ async def get_company_details(company_name: str) -> str:
 
 async def get_current_date() -> str:
     """Retourne la date et l'heure actuelles."""
-    from datetime import datetime, timezone
-    now = datetime.now(timezone.utc)
+    from datetime import datetime
+    now = datetime.now(UTC)
     return now.strftime("%Y-%m-%d %H:%M UTC")
 
 

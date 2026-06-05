@@ -11,6 +11,8 @@ from app.domain.shared.user import User
 @dataclass(slots=True, frozen=True)
 class UpdateUserInput:
     company_ids: list[UUID] | None = None
+    first_name: str | None = None
+    last_name: str | None = None
     is_active: bool | None = None
 
 
@@ -25,6 +27,10 @@ class UpdateUserUseCase:
 
         if data.company_ids is not None:
             user.company_ids = list(data.company_ids)
+        if data.first_name is not None:
+            user.first_name = data.first_name
+        if data.last_name is not None:
+            user.last_name = data.last_name
         if data.is_active is False:
             user.deactivate()
         elif data.is_active is True:

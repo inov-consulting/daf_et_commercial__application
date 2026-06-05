@@ -7,10 +7,10 @@ from app.infrastructure.db.base import BaseModel
 
 
 class AiModelOrm(BaseModel):
-    name: str = fields.CharField(max_length=128, unique=True)
-    provider: str = fields.CharField(max_length=32)   # "anthropic" | "openai" | "groq"
-    is_embedding: bool = fields.BooleanField(default=False)
-    is_active: bool = fields.BooleanField(default=True)
+    name = fields.CharField(max_length=128, unique=True)
+    provider = fields.CharField(max_length=32)   # "anthropic" | "openai" | "groq"
+    is_embedding = fields.BooleanField(default=False)
+    is_active = fields.BooleanField(default=True)
 
     class Meta:
         table = "ai_models"

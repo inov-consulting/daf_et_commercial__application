@@ -6,8 +6,6 @@ une authentification admin (token admin ou client avec droits admin).
 
 from __future__ import annotations
 
-from typing import Annotated
-
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import require_permission

@@ -1,7 +1,5 @@
 """Router /auth : authentification et profil utilisateur (Keycloak)."""
 
-from __future__ import annotations
-
 import httpx
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
