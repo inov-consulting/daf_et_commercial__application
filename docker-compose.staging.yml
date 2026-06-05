@@ -1,0 +1,21 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      target: prod
+    env_file:
+      - /home/debian/.services_datas/portalis/backend/.env
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./front_web
+      target: runner
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
