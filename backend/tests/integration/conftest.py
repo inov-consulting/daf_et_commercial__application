@@ -4,6 +4,8 @@ Stratégie : on override les dépendances de repositories par des InMemory.
 Pas de DB requise. Couvre le flow HTTP + Pydantic + middleware d'erreurs.
 """
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from app.api.deps import get_company_repo, get_user_repo
 from app.core.security import hash_password
@@ -34,8 +36,12 @@ def client(
 ):
     app.dependency_overrides[get_user_repo] = lambda: fake_user_repo
     app.dependency_overrides[get_company_repo] = lambda: fake_company_repo
-    with TestClient(app) as c:
-        yield c
+    with (
+        patch("app.main.init_db", new_callable=AsyncMock),
+        patch("app.main.close_db", new_callable=AsyncMock),
+    ):
+        with TestClient(app) as c:
+            yield c
     app.dependency_overrides.clear()
 
 
