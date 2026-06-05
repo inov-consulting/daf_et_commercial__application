@@ -5,12 +5,13 @@ L'historique des messages est conservé en mémoire via MemorySaver.
 """
 
 import logging
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import AsyncIterator
 from uuid import UUID, uuid4
 
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
-from langchain_core.tools import BaseTool, tool as lc_tool
+from langchain_core.tools import BaseTool
+from langchain_core.tools import tool as lc_tool
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
@@ -66,12 +67,14 @@ async def _get_llm(provider: str, model: str):  # type: ignore[return]
 
 def _get_local_tools() -> list[BaseTool]:
     from app.infrastructure.ai.builtin_tools import BUILTIN_REGISTRY
+    extra: dict = {}
     try:
         from app.infrastructure.ai.custom_tools import CUSTOM_REGISTRY
+        extra = dict(CUSTOM_REGISTRY)  # type: ignore[arg-type]
     except ImportError:
-        CUSTOM_REGISTRY: dict = {}
+        pass
 
-    registry = {**BUILTIN_REGISTRY, **CUSTOM_REGISTRY}
+    registry = {**BUILTIN_REGISTRY, **extra}
     tools: list[BaseTool] = []
     for name, fn in registry.items():
         lc = lc_tool(name, description=fn.__doc__ or name)(fn)  # type: ignore[arg-type]

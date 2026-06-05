@@ -1,7 +1,7 @@
 """Router /chat : interface de conversation multi-tours avec l'agent IA."""
 
 import logging
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 from uuid import UUID
 
 from fastapi import APIRouter, Depends

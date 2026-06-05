@@ -16,7 +16,6 @@ import json
 import sys
 from pathlib import Path
 
-
 API_DIR = Path(__file__).resolve().parent.parent / "api" / "v1"
 
 
@@ -33,8 +32,8 @@ def _find_require_permission_calls(source: str) -> set[str]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Call):
             func = node.func
-            if isinstance(func, ast.Name) and func.id == "require_permission":
-                if node.args and isinstance(node.args[0], ast.Constant):
+            if (isinstance(func, ast.Name) and func.id == "require_permission"
+                    and node.args and isinstance(node.args[0], ast.Constant)):
                     perms.add(node.args[0].value)
     return perms
 

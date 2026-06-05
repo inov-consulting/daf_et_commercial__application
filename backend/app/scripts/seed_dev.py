@@ -20,6 +20,8 @@ from app.application.companies.create_company import (
 from app.application.shared.exceptions import ConflictError
 from app.application.users.create_user import CreateUserInput, CreateUserUseCase
 from app.core.logging import configure_logging, get_logger
+from app.domain.shared.company import Company
+from app.domain.shared.user import User
 from app.domain.shared.value_objects import Country, Currency
 from app.infrastructure.db.repositories.company import CompanyRepository
 from app.infrastructure.db.repositories.user import UserRepository
@@ -28,8 +30,10 @@ from app.infrastructure.db.session import close_db, init_db
 configure_logging("INFO")
 logger = get_logger(__name__)
 
+SEED_PASSWORD = "ChangeMe123!"  # à modifier au premier login
 
-async def _ensure_company(repo: CompanyRepository, data: CreateCompanyInput):
+
+async def _ensure_company(repo: CompanyRepository, data: CreateCompanyInput) -> Company:
     existing = await repo.get_by_name(data.name)
     if existing:
         logger.info("seed.company.skipped", name=data.name)
@@ -43,7 +47,7 @@ async def _ensure_user(
     users: UserRepository,
     companies: CompanyRepository,
     data: CreateUserInput,
-):
+) -> User | None:
     existing = await users.get_by_email(data.email)
     if existing:
         logger.info("seed.user.skipped", email=data.email)

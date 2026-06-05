@@ -33,7 +33,7 @@ class AiConfig:
 
 
 # Catalogue initial chargé au premier démarrage (seed)
-INITIAL_MODELS: list[dict] = [
+INITIAL_MODELS: list[dict[str, object]] = [
     # ── Anthropic ─────────────────────────────────────────────────────
     {"name": "claude-opus-4-7",    "provider": "anthropic", "is_embedding": False},
     {"name": "claude-opus-4-5",    "provider": "anthropic", "is_embedding": False},

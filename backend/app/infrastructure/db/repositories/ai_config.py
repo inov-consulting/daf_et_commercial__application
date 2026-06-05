@@ -81,9 +81,7 @@ class AiConfigRepository:
         await orm.fetch_related("default_model", "default_embedding_model")
         return (
             orm.to_domain(),
-            orm.default_model.to_domain(),  # type: ignore[union-attr]
-            orm.default_embedding_model.to_domain(),  # type: ignore[union-attr]
-        )
+            orm.default_model.to_domain(),            orm.default_embedding_model.to_domain(),        )
 
     async def set_default_model(self, model_orm: AiModelOrm) -> tuple[AiConfig, AiModel, AiModel]:
         orm = await self._get_or_create()
@@ -92,9 +90,7 @@ class AiConfigRepository:
         await orm.fetch_related("default_model", "default_embedding_model")
         return (
             orm.to_domain(),
-            orm.default_model.to_domain(),  # type: ignore[union-attr]
-            orm.default_embedding_model.to_domain(),  # type: ignore[union-attr]
-        )
+            orm.default_model.to_domain(),            orm.default_embedding_model.to_domain(),        )
 
     async def set_default_embedding_model(self, model_orm: AiModelOrm) -> tuple[AiConfig, AiModel, AiModel]:
         orm = await self._get_or_create()
@@ -103,6 +99,4 @@ class AiConfigRepository:
         await orm.fetch_related("default_model", "default_embedding_model")
         return (
             orm.to_domain(),
-            orm.default_model.to_domain(),  # type: ignore[union-attr]
-            orm.default_embedding_model.to_domain(),  # type: ignore[union-attr]
-        )
+            orm.default_model.to_domain(),            orm.default_embedding_model.to_domain(),        )

@@ -6,8 +6,6 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-logger = logging.getLogger(__name__)
-
 from app.api.deps import CompanyRepoDep, UserRepoDep, require_permission
 from app.api.v1.schemas.companies import CompanyOut
 from app.api.v1.schemas.pagination import Page, PageParams
@@ -18,6 +16,7 @@ from app.application.users.list_users import ListUsersUseCase
 from app.application.users.update_user import UpdateUserInput, UpdateUserUseCase
 from app.infrastructure.auth.keycloak import KeycloakAdminClient
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/users", tags=["users"])
 
 
@@ -56,7 +55,7 @@ async def create_user(
         keycloak_id = UUID(keycloak_id_str)
     except ValueError:
         logger.error("ID Keycloak invalide pour %s : %s", payload.email, keycloak_id_str)
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Réponse Keycloak invalide")
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Réponse Keycloak invalide") from None
 
     user = await CreateUserUseCase(user_repo, company_repo).execute(
         CreateUserInput(
@@ -64,6 +63,10 @@ async def create_user(
             company_ids=payload.company_ids,
         )
     )
+    # Enrichit avec l'identité connue au moment de la création
+    user.email = payload.email
+    user.first_name = payload.first_name
+    user.last_name = payload.last_name
     return UserOut.from_domain(user)
 
 
@@ -125,6 +128,8 @@ async def update_user(
         user_id,
         UpdateUserInput(
             company_ids=payload.company_ids,
+            first_name=payload.first_name,
+            last_name=payload.last_name,
             is_active=payload.is_active,
         ),
     )
