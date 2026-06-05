@@ -140,11 +140,11 @@ jobs:
           key: ${{ secrets.STAGING_KEY }}
           script: |
             set -e
-            PROJECT_DIR="/opt/portalis"
             REPO="git@github.com:inov-consulting/daf_et_commercial__application.git"
+            PROJECT_DIR="/opt/portalis/daf_et_commercial__application"
 
             if [ ! -d "$PROJECT_DIR/.git" ]; then
-              git clone --branch staging "$REPO" "$PROJECT_DIR"
+              git clone --branch staging "$REPO" /opt/portalis/
             fi
 
             cd "$PROJECT_DIR"
