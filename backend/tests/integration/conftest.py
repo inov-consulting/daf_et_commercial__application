@@ -39,9 +39,9 @@ def client(
     with (
         patch("app.main.init_db", new_callable=AsyncMock),
         patch("app.main.close_db", new_callable=AsyncMock),
+        TestClient(app) as c,
     ):
-        with TestClient(app) as c:
-            yield c
+        yield c
     app.dependency_overrides.clear()
 
 
