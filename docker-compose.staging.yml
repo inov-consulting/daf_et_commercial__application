@@ -1,20 +1,16 @@
 services:
   backend:
-    build:
-      context: ./backend
-      target: prod
+    image: ghcr.io/inov-consulting/daf_et_commercial__application/backend:staging
     env_file:
       - /home/debian/.services_datas/portalis/backend/.env
     ports:
-      - "8000:8000"
+      - "8101:8000"
 
   frontend:
-    build:
-      context: ./front_web
-      target: runner
+    image: ghcr.io/inov-consulting/daf_et_commercial__application/frontend:staging
     env_file:
       - /home/debian/.services_datas/portalis/front/.env
     ports:
-      - "3000:3000"
+      - "3101:3000"
     depends_on:
       - backend
