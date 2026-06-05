@@ -133,7 +133,7 @@ jobs:
     if: github.ref == 'refs/heads/staging'
     steps:
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@8f7ff77302c4609bbe2c97748b52241025f17a61 # v1.1.0
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.STAGING_HOST }}
           username: ${{ secrets.STAGING_USER }}
