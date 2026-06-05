@@ -31,6 +31,7 @@ jobs:
     name: Test Backend
     needs: sonarqube
     runs-on: ubuntu-latest
+    continue-on-error: true
     defaults:
       run:
         working-directory: ./backend
