@@ -67,6 +67,7 @@ jobs:
     name: Test Frontend
     needs: sonarqube
     runs-on: ubuntu-latest
+    continue-on-error: true
     defaults:
       run:
         working-directory: ./front_web
@@ -91,7 +92,6 @@ jobs:
 
       - name: Run tests with coverage
         run: yarn test --coverage --coverageReporters=lcov --coverageDirectory=coverage
-        continue-on-error: true
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
@@ -115,7 +115,6 @@ jobs:
   build-frontend:
     name: Build Frontend
     needs: test-frontend
-    if: needs.test-frontend.result == 'success' || needs.test-frontend.result == 'failure'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1

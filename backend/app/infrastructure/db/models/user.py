@@ -1,7 +1,5 @@
 """ORM model pour User."""
 
-from uuid import UUID
-
 from tortoise import fields
 
 from app.domain.shared.role import Role

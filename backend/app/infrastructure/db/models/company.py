@@ -1,7 +1,5 @@
 """ORM model pour Company."""
 
-from uuid import UUID
-
 from tortoise import fields
 
 from app.domain.shared.company import Company
