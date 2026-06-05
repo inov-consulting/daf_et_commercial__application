@@ -18,6 +18,7 @@ interface UserDetailPanelProps {
   user: User | null;
   onEdit: (uid: string) => void;
   onDelete: (uid: string) => void;
+  onToggleActive?: (uid: string, active: boolean) => void;
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -128,11 +129,12 @@ function PendingDetail({ user }: { user: User }) {
 }
 
 function ActiveDetail({
-  user, onEdit, onDelete,
+  user, onEdit, onDelete, onToggleActive,
 }: {
   user: User;
   onEdit: () => void;
   onDelete: () => void;
+  onToggleActive?: (active: boolean) => void;
 }) {
   const [mode, setMode] = useState<PanelMode>('info');
   const [resetSent, setResetSent] = useState(false);
@@ -235,7 +237,7 @@ function ActiveDetail({
                   Annuler
                 </button>
                 <button
-                  onClick={() => setMode('disabled')}
+                  onClick={() => { setMode('disabled'); onToggleActive?.(false); }}
                   className="flex-1 h-7 rounded-md border border-warning bg-warning-50 text-[11px] font-semibold text-warning-600 hover:bg-[#FEF3C7] transition-colors"
                 >
                   Désactiver
@@ -253,7 +255,7 @@ function ActiveDetail({
                 {user.prenom} n&apos;a plus accès à PortaLis.
               </p>
               <button
-                onClick={() => setMode('info')}
+                onClick={() => { setMode('info'); onToggleActive?.(true); }}
                 className="flex items-center gap-1 text-[11px] font-semibold text-success hover:underline"
               >
                 <ToggleRight size={12} />
@@ -324,7 +326,7 @@ function ActiveDetail({
   );
 }
 
-export function UserDetailPanel({ user, onEdit, onDelete }: UserDetailPanelProps) {
+export function UserDetailPanel({ user, onEdit, onDelete, onToggleActive }: UserDetailPanelProps) {
   return (
     <div className="w-[340px] flex-shrink-0 bg-surface rounded-2xl border border-border shadow-xs overflow-hidden flex flex-col">
       {!user ? (
@@ -342,6 +344,7 @@ export function UserDetailPanel({ user, onEdit, onDelete }: UserDetailPanelProps
           user={user}
           onEdit={() => onEdit(user.uid)}
           onDelete={() => onDelete(user.uid)}
+          onToggleActive={(active) => onToggleActive?.(user.uid, active)}
         />
       )}
     </div>

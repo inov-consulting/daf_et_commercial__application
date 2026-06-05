@@ -1,20 +1,39 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'next/navigation';
 import { Export, UserPlus, Warning, Trash, Check } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { UserKpiRow } from '@/components/layout/user-kpi-row';
 import { UserTable } from '@/components/layout/user-table';
 import { UserDetailPanel } from '@/components/layout/user-detail-panel';
 import { UserFormModal } from '@/components/layout/user-form-modal';
-import { MOCK_USERS, type User } from '@/types/user_type';
+import { useAppDispatch, useAppSelector } from '@/redux/store';
+import {
+  fetchUsers,
+  createUser,
+  updateUser,
+  removeUser,
+  updateUserLocal,
+} from '@/redux/features/users/usersSlice';
+import { mapApiUser, type User } from '@/types/user_type';
 
 export default function UtilisateursPage() {
-  const [users, setUsers] = useState<User[]>(MOCK_USERS);
+  const dispatch = useAppDispatch();
+  const { list: apiUsers, loading, error: apiError } = useAppSelector(state => state.users);
+
+  // Mapping API → UI à chaque changement de la liste Redux
+  const users = useMemo(() => apiUsers.map(mapApiUser), [apiUsers]);
+
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [formModal, setFormModal] = useState<{ mode: 'invite' | 'edit'; uid?: string } | null>(null);
   const [deleteUid, setDeleteUid] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; sub?: string } | null>(null);
+
+  // Chargement initial
+  useEffect(() => {
+    dispatch(fetchUsers());
+  }, [dispatch]);
 
   const selectedUser = selectedUid ? (users.find(u => u.uid === selectedUid) ?? null) : null;
   const editUser = formModal?.uid ? users.find(u => u.uid === formModal.uid) : undefined;
@@ -25,23 +44,50 @@ export default function UtilisateursPage() {
     setTimeout(() => setToast(null), 4000);
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!deleteUid) return;
-    setUsers(prev => prev.filter(u => u.uid !== deleteUid));
-    if (selectedUid === deleteUid) setSelectedUid(null);
+    const uid = deleteUid;
+    if (selectedUid === uid) setSelectedUid(null);
     setDeleteUid(null);
-    showToast('Utilisateur supprimé', 'Le compte a été supprimé définitivement');
+    // Suppression optimiste + désactivation côté backend (pas de DELETE endpoint)
+    dispatch(removeUser(uid));
+    await dispatch(updateUser({ id: uid, payload: { is_active: false } }));
+    showToast('Utilisateur supprimé', 'Le compte a été désactivé');
   }
 
-  function handleFormSubmit(data: Partial<User>) {
+  async function handleFormSubmit(data: Partial<User>) {
     if (formModal?.mode === 'edit' && formModal.uid) {
-      setUsers(prev =>
-        prev.map(u => u.uid === formModal.uid ? { ...u, ...data } : u),
-      );
+      // Mise à jour locale des champs non encore exposés dans le PATCH backend
+      dispatch(updateUserLocal({
+        id: formModal.uid,
+        changes: {
+          ...(data.prenom !== undefined && { first_name: data.prenom }),
+          ...(data.nom !== undefined && { last_name: data.nom }),
+          ...(data.email !== undefined && { email: data.email }),
+        },
+      }));
       showToast('Modifications enregistrées', 'Profil mis à jour avec succès');
     } else {
-      showToast('Invitation envoyée', "Email d'invitation envoyé avec succès");
+      const result = await dispatch(createUser({
+        email: data.email ?? '',
+        first_name: data.prenom ?? '',
+        last_name: data.nom ?? '',
+        company_ids: [], // TODO: résoudre UUIDs depuis noms d'entreprises
+      }));
+      if (createUser.fulfilled.match(result)) {
+        showToast('Invitation envoyée', "Email d'invitation envoyé avec succès");
+      } else {
+        showToast('Erreur', "Impossible de créer l'utilisateur");
+      }
     }
+  }
+
+  async function handleToggleActive(uid: string, active: boolean) {
+    await dispatch(updateUser({ id: uid, payload: { is_active: active } }));
+    showToast(
+      active ? 'Compte réactivé' : 'Compte désactivé',
+      active ? "L'utilisateur a de nouveau accès à PortaLis" : "L'accès à PortaLis a été retiré",
+    );
   }
 
   return (
@@ -54,7 +100,9 @@ export default function UtilisateursPage() {
           </h1>
           <p className="text-xs text-foreground-3 mt-0.5">
             <span className="text-foreground-2">Dashboard</span>
-            {' › '}Admin › Utilisateurs · 4 juin 2026
+            {' › '}Admin › Utilisateurs
+            {loading && <span className="ml-2 text-primary-400 animate-pulse">· chargement…</span>}
+            {apiError && <span className="ml-2 text-error"> · {apiError}</span>}
           </p>
         </div>
         <div className="flex items-center gap-2.5 pt-1">
@@ -92,6 +140,7 @@ export default function UtilisateursPage() {
           user={selectedUser}
           onEdit={uid => setFormModal({ mode: 'edit', uid })}
           onDelete={uid => setDeleteUid(uid)}
+          onToggleActive={handleToggleActive}
         />
       </div>
 

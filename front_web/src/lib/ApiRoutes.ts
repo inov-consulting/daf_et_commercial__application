@@ -13,36 +13,38 @@ export const ApiRoutes = {
     `${process.env.NEXT_PUBLIC_KEYCLOAK_REALM}/protocol/openid-connect/userinfo`,
 
   // ── Users ────────────────────────────────────────────────────────────
-  USERS_ME:     `${BASE}/api/users/me`,
-  USERS_LIST:   `${BASE}/api/users`,
-  USERS_DETAIL: (id: string) => `${BASE}/api/users/${id}`,
+  USERS_ME:     `${BASE}/api/v1/users/me`,
+  USERS_LIST:   `${BASE}/api/v1/users`,
+  USERS_DETAIL: (id: string) => `${BASE}/api/v1/users/${id}`,
+  USERS_ADD:    `${BASE}/api/v1/users`,
+  USERS_UPDATE: (id: string) => `${BASE}/api/v1/users/${id}`,
 
   // ── Commercial ───────────────────────────────────────────────────────
-  COMMERCIAL_LEADS:         `${BASE}/api/commercial/leads`,
-  COMMERCIAL_LEAD_DETAIL:   (id: string) => `${BASE}/api/commercial/leads/${id}`,
-  COMMERCIAL_PIPELINE:      `${BASE}/api/commercial/pipeline`,
-  COMMERCIAL_CLIENTS:       `${BASE}/api/commercial/clients`,
-  COMMERCIAL_CLIENT_DETAIL: (id: string) => `${BASE}/api/commercial/clients/${id}`,
+  COMMERCIAL_LEADS:         `${BASE}/api/v1/commercial/leads`,
+  COMMERCIAL_LEAD_DETAIL:   (id: string) => `${BASE}/api/v1/commercial/leads/${id}`,
+  COMMERCIAL_PIPELINE:      `${BASE}/api/v1/commercial/pipeline`,
+  COMMERCIAL_CLIENTS:       `${BASE}/api/v1/commercial/clients`,
+  COMMERCIAL_CLIENT_DETAIL: (id: string) => `${BASE}/api/v1/commercial/clients/${id}`,
 
   // ── Transport ────────────────────────────────────────────────────────
-  TRANSPORT_DOSSIERS:       `${BASE}/api/transport/dossiers`,
-  TRANSPORT_DOSSIER_DETAIL: (id: string) => `${BASE}/api/transport/dossiers/${id}`,
-  TRANSPORT_VEHICLES:       `${BASE}/api/transport/vehicles`,
-  TRANSPORT_DRIVERS:        `${BASE}/api/transport/drivers`,
+  TRANSPORT_DOSSIERS:       `${BASE}/api/v1/transport/dossiers`,
+  TRANSPORT_DOSSIER_DETAIL: (id: string) => `${BASE}/api/v1/transport/dossiers/${id}`,
+  TRANSPORT_VEHICLES:       `${BASE}/api/v1/transport/vehicles`,
+  TRANSPORT_DRIVERS:        `${BASE}/api/v1/transport/drivers`,
 
   // ── Finance (DAF) ────────────────────────────────────────────────────
-  FINANCE_INVOICES:        `${BASE}/api/finance/invoices`,
-  FINANCE_INVOICE_DETAIL:  (id: string) => `${BASE}/api/finance/invoices/${id}`,
-  FINANCE_PAYMENTS:        `${BASE}/api/finance/payments`,
-  FINANCE_REPORTS:         `${BASE}/api/finance/reports`,
-  FINANCE_DASHBOARD:       `${BASE}/api/finance/dashboard`,
+  FINANCE_INVOICES:        `${BASE}/api/v1/finance/invoices`,
+  FINANCE_INVOICE_DETAIL:  (id: string) => `${BASE}/api/v1/finance/invoices/${id}`,
+  FINANCE_PAYMENTS:        `${BASE}/api/v1/finance/payments`,
+  FINANCE_REPORTS:         `${BASE}/api/v1/finance/reports`,
+  FINANCE_DASHBOARD:       `${BASE}/api/v1/finance/dashboard`,
 
   // ── Agents IA ────────────────────────────────────────────────────────
-  AI_DAF_QUERY:         `${BASE}/api/ai/daf/query`,
-  AI_COMMERCIAL_QUERY:  `${BASE}/api/ai/commercial/query`,
-  AI_TRANSPORT_QUERY:   `${BASE}/api/ai/transport/query`,
+  AI_DAF_QUERY:         `${BASE}/api/v1/ai/daf/query`,
+  AI_COMMERCIAL_QUERY:  `${BASE}/api/v1/ai/commercial/query`,
+  AI_TRANSPORT_QUERY:   `${BASE}/api/v1/ai/transport/query`,
 
   // ── Dashboard ────────────────────────────────────────────────────────
-  DASHBOARD_STATS:    `${BASE}/api/dashboard/stats`,
-  DASHBOARD_ACTIVITY: `${BASE}/api/dashboard/activity`,
+  DASHBOARD_STATS:    `${BASE}/api/v1/dashboard/stats`,
+  DASHBOARD_ACTIVITY: `${BASE}/api/v1/dashboard/activity`,
 } as const;

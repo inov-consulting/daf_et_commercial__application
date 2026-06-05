@@ -1,3 +1,34 @@
+// ── Type backend (shape retournée par l'API) ───────────────────────────────
+export interface ApiUser {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  company_ids: string[];
+  is_active: boolean;
+  created_at?: string;
+  last_login_at?: string;
+}
+
+// ── Palette déterministe basée sur l'id ───────────────────────────────────
+const BG_PALETTE = [
+  'linear-gradient(135deg,#C2257A,#6B35C9)',
+  '#0E86E8',
+  '#6B35C9',
+  '#10B981',
+  '#F59E0B',
+  '#C2257A',
+  '#8B5CF6',
+  '#0891B2',
+];
+
+function hashColor(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = ((h << 5) - h + id.charCodeAt(i)) | 0;
+  return BG_PALETTE[Math.abs(h) % BG_PALETTE.length];
+}
+
+// ── Types UI ───────────────────────────────────────────────────────────────
 export type UserStatus = 'active' | 'pending' | 'inactive';
 export type UserRole = 'DG' | 'Commercial' | 'DAF' | 'Opérations';
 export type AccessSurface = 'Mobile' | 'Web' | 'Mobile + Web';
@@ -31,6 +62,28 @@ export const ROLES: { value: UserRole; label: string }[] = [
 ];
 
 export const SURFACES: AccessSurface[] = ['Mobile', 'Web', 'Mobile + Web'];
+
+// ── Mapper API → UI ───────────────────────────────────────────────────────
+export function mapApiUser(u: ApiUser): User {
+  const first = u.first_name ?? '';
+  const last = u.last_name ?? '';
+  return {
+    uid: u.id,
+    initials: `${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase(),
+    prenom: first,
+    nom: last,
+    email: u.email,
+    role: 'Commercial',        // non exposé encore par le backend
+    groupes: [],               // idem
+    surface: 'Mobile + Web',  // idem
+    // Les company_ids (UUIDs) sont tronqués en attendant le mapping UUID→nom
+    entreprises: u.company_ids.map(id => id.length > 12 ? `${id.slice(0, 8)}…` : id),
+    status: u.is_active ? 'active' : 'inactive',
+    lastLogin: u.last_login_at ?? null,
+    created: u.created_at ?? null,
+    bg: hashColor(u.id),
+  };
+}
 
 export const MOCK_USERS: User[] = [
   {
