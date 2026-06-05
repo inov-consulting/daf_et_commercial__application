@@ -3,13 +3,8 @@ services:
     build:
       context: ./backend
       target: prod
-    environment:
-      APP_DATABASE_URL: ${APP_DATABASE_URL}
-      REDIS_URL: ${REDIS_URL}
-      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
-      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
-      SECRET_KEY: ${SECRET_KEY}
-      BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS}
+    env_file:
+      - /home/debian/.services_datas/portalis/backend
     ports:
       - "8000:8000"
 
