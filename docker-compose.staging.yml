@@ -12,7 +12,6 @@ services:
     build:
       context: ./front_web
       target: runner
-    environment:
     env_file:
       - /home/debian/.services_datas/portalis/front/.env
     ports:
