@@ -122,3 +122,28 @@ jobs:
 
       - name: Build Docker image
         run: docker build --target runner -t portalis-frontend:ci ./front_web
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # 4. DEPLOY — Staging (après les builds, uniquement sur la branche staging)
+  # ═══════════════════════════════════════════════════════════════════════
+  deploy-staging:
+    name: Deploy Staging
+    needs: [build-backend, build-frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/staging'
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@8f7ff77302c4609bbe2c97748b52241025f17a61 # v1.1.0
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_KEY }}
+          script: |
+            set -e
+            cd /opt/daf-augmente
+            git fetch origin
+            git checkout staging
+            git pull origin staging
+            docker compose -f docker-compose.staging.yml build
+            docker compose -f docker-compose.staging.yml up -d --remove-orphans
+            docker compose -f docker-compose.staging.yml exec -T backend uv run aerich upgrade || true
