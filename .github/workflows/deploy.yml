@@ -32,10 +32,10 @@ jobs:
             git pull origin staging
 
             # 2. Build des images directement sur le serveur
-            docker compose -f docker-compose.staging.yml --env-file /home/debian/.services_datas/portalis/backend/.env build
+            docker compose -f docker-compose.staging.yml build
 
             # 3. Redémarrage des services
-            docker compose -f docker-compose.staging.yml --env-file /home/debian/.services_datas/portalis/backend/.env up -d --remove-orphans
+            docker compose -f docker-compose.staging.yml up -d --remove-orphans
 
-            # 4. Migrations (optionnel)
-            docker compose -f docker-compose.staging.yml --env-file /home/debian/.services_datas/portalis/backend/.env exec -T backend uv run aerich upgrade || true
+            # 4. Migrations
+            docker compose -f docker-compose.staging.yml exec -T backend uv run aerich upgrade || true

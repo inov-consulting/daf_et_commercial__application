@@ -4,7 +4,7 @@ services:
       context: ./backend
       target: prod
     env_file:
-      - /home/debian/.services_datas/portalis/backend
+      - /home/debian/.services_datas/portalis/backend/.env
     ports:
       - "8000:8000"
 

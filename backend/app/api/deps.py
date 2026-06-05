@@ -1,6 +1,7 @@
 """Dépendances FastAPI transverses : repositories, current_user, RBAC."""
 
-from typing import Annotated, Any, Callable
+from collections.abc import Callable
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status

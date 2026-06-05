@@ -22,6 +22,8 @@ from app.application.users.create_user import CreateUserInput, CreateUserUseCase
 from app.core.logging import configure_logging, get_logger
 from app.domain.shared.role import Role
 from app.domain.shared.value_objects import Country, Currency
+from app.domain.shared.company import Company
+from app.domain.shared.user import User
 from app.infrastructure.db.repositories.company import CompanyRepository
 from app.infrastructure.db.repositories.user import UserRepository
 from app.infrastructure.db.session import close_db, init_db
