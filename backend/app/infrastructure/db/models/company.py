@@ -10,11 +10,11 @@ from app.infrastructure.db.base import BaseModel
 
 
 class CompanyOrm(BaseModel):
-    name: str = fields.CharField(max_length=255, unique=True)
-    country: str = fields.CharField(max_length=2)
-    default_currency: str = fields.CharField(max_length=3)
-    parent_company_id: UUID | None = fields.UUIDField(null=True)
-    is_active: bool = fields.BooleanField(default=True)
+    name = fields.CharField(max_length=255, unique=True)
+    country = fields.CharField(max_length=2)
+    default_currency = fields.CharField(max_length=3)
+    parent_company_id = fields.UUIDField(null=True)
+    is_active = fields.BooleanField(default=True)
 
     class Meta:
         table = "companies"
@@ -48,5 +48,5 @@ class CompanyOrm(BaseModel):
         self.name = company.name
         self.country = company.country.value
         self.default_currency = company.default_currency.value
-        self.parent_company_id = company.parent_company_id
+        self.parent_company_id = company.parent_company_id  # type: ignore[assignment]
         self.is_active = company.is_active

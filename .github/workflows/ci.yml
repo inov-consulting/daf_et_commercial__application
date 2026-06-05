@@ -100,27 +100,25 @@ jobs:
           path: front_web/coverage/lcov.info
 
   # ═══════════════════════════════════════════════════════════════════════
-  # 3. BUILD — Frontend (après les tests)
+  # 3. BUILD — Backend + Frontend (après les tests)
   # ═══════════════════════════════════════════════════════════════════════
-  build-frontend:
-    name: Build Frontend
-    needs: test-frontend
+  build-backend:
+    name: Build Backend
+    needs: test-backend
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./front_web
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - name: Set up Node.js
-        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.3
-        with:
-          node-version: '20'
-          cache: 'yarn'
-          cache-dependency-path: ./front_web/yarn.lock
+      - name: Build Docker image
+        run: docker build --target prod -t portalis-backend:ci ./backend
 
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
+  build-frontend:
+    name: Build Frontend
+    needs: test-frontend
+    if: needs.test-frontend.result == 'success' || needs.test-frontend.result == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - name: Build
-        run: yarn build
+      - name: Build Docker image
+        run: docker build --target runner -t portalis-frontend:ci ./front_web
