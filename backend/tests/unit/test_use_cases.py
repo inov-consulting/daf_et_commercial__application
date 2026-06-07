@@ -4,7 +4,6 @@ Pas de DB, pas de HTTP — uniquement la logique métier.
 """
 
 import pytest
-
 from app.application.companies.create_company import (
     CreateCompanyInput,
     CreateCompanyUseCase,
@@ -13,8 +12,8 @@ from app.application.shared.exceptions import ConflictError, NotFoundError
 from app.application.users.create_user import CreateUserInput, CreateUserUseCase
 from app.application.users.list_users import ListUsersUseCase
 from app.domain.shared.company import Company
-from app.domain.shared.user import User
 from app.domain.shared.value_objects import Country, Currency
+
 from tests.fakes.repositories import InMemoryCompanyRepository, InMemoryUserRepository
 
 
@@ -74,33 +73,26 @@ async def test_create_user_requires_existing_company() -> None:
     with pytest.raises(NotFoundError):
         await uc.execute(
             CreateUserInput(
+                keycloak_id=uuid4(),
                 company_ids=[uuid4()],
-                email="a@b.com",
             )
         )
 
 
-async def test_create_user_duplicate_email_rejected() -> None:
+async def test_create_user_duplicate_keycloak_id_rejected() -> None:
+    from uuid import uuid4
+
     users = InMemoryUserRepository()
     companies = InMemoryCompanyRepository()
     company = await companies.add(
         Company.new(name="C1", country=Country.SN, default_currency=Currency.XOF)
     )
+    kid = uuid4()
 
     uc = CreateUserUseCase(users, companies)
-    await uc.execute(
-        CreateUserInput(
-            company_ids=[company.id],
-            email="x@y.com",
-        )
-    )
+    await uc.execute(CreateUserInput(keycloak_id=kid, company_ids=[company.id]))
     with pytest.raises(ConflictError):
-        await uc.execute(
-            CreateUserInput(
-                company_ids=[company.id],
-                email="x@y.com",
-            )
-        )
+        await uc.execute(CreateUserInput(keycloak_id=kid, company_ids=[company.id]))
 
 
 async def test_list_users_filters_by_company() -> None:
@@ -112,23 +104,17 @@ async def test_list_users_filters_by_company() -> None:
     c2 = await companies.add(
         Company.new(name="C2", country=Country.CI, default_currency=Currency.XOF)
     )
+    from uuid import uuid4
+
     create = CreateUserUseCase(users, companies)
-    await create.execute(
-        CreateUserInput(
-            company_ids=[c1.id], email="a@c1.com"
-        )
-    )
-    await create.execute(
-        CreateUserInput(
-            company_ids=[c2.id], email="b@c2.com"
-        )
-    )
+    u1 = await create.execute(CreateUserInput(keycloak_id=uuid4(), company_ids=[c1.id]))
+    u2 = await create.execute(CreateUserInput(keycloak_id=uuid4(), company_ids=[c2.id]))
 
     list_c1 = await ListUsersUseCase(users).execute(company_id=c1.id)
     list_c2 = await ListUsersUseCase(users).execute(company_id=c2.id)
     assert len(list_c1) == 1
-    assert list_c1[0].email == "a@c1.com"
+    assert list_c1[0].id == u1.id
     assert len(list_c2) == 1
-    assert list_c2[0].email == "b@c2.com"
+    assert list_c2[0].id == u2.id
 
 

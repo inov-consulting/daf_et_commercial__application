@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from uuid import UUID, uuid5
+from uuid import UUID
 
 from app.domain.shared.company import Company
 from app.domain.shared.value_objects import Country, Currency

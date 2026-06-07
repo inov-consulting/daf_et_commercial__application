@@ -1,5 +1,5 @@
 [project]
-name = "projet4-backend"
+name = "PortaLis"
 version = "0.1.0"
 description = "Backend FastAPI — Plateforme IA Commerciale & DAF (Hawa Paraiso / INOV Consulting)"
 requires-python = ">=3.12"
@@ -11,40 +11,40 @@ dependencies = [
     "uvicorn[standard]>=0.32",
     "pydantic[email]>=2.9",
     "pydantic-settings>=2.6",
-
     # ── DB ──
     "asyncpg>=0.30",
     "tortoise-orm[asyncpg]>=0.21",
     "aerich>=0.7",
-
     # ── HTTP client (Odoo, IA) ──
     "httpx>=0.27",
     "tenacity>=9.0",
-
     # ── Async tasks ──
     "celery[redis]>=5.4",
     "redis>=5.2",
-
     # ── Storage / files ──
     "boto3>=1.35",
     "python-multipart>=0.0.20",
-
     # ── Observability ──
     "structlog>=24.4",
     "sentry-sdk[fastapi]>=2.18",
-
     # ── AI providers ──
     "anthropic>=0.39",
     "openai>=1.55",
-
+    # ── LangChain Agent + MCP ──
+    "langchain>=0.3",
+    "langchain-anthropic>=0.3",
+    "langchain-openai>=0.3",
+    "langchain-mcp-adapters>=0.1",
+    "mcp>=1.0",
+    "langgraph>=0.2",
     # ── Auth ──
     "python-keycloak>=7.1",
     "pyjwt>=2.10",
-
     # ── Misc ──
     "python-dateutil>=2.9",
     "babel>=2.16",
     "pyyaml>=6.0",
+    "langchain-groq>=1.1.2",
 ]
 
 [dependency-groups]
@@ -92,7 +92,27 @@ src_folder = "./."
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
-exclude = ["migrations/"]
+exclude = [
+    "migrations/.*",
+    "app/infrastructure/ai/.*",
+    "app/infrastructure/odoo/.*",
+    "app/scripts/.*",
+    "app/api/v1/groups\\.py",
+]
+
+[[tool.mypy.overrides]]
+module = ["langchain.*", "langgraph.*", "langchain_groq.*", "langchain_anthropic.*", "langchain_openai.*", "langchain_mcp_adapters.*", "mcp.*", "groq.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "app.infrastructure.auth.keycloak",
+    "app.infrastructure.ai.*",
+    "app.infrastructure.odoo.*",
+    "app.scripts.*",
+    "app.api.v1.groups",
+]
+ignore_errors = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
