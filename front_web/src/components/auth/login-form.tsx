@@ -6,6 +6,7 @@ import { loginWithCredentials, storeTokens } from '@/lib/keycloak';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Alert } from '@/components/ui/alert';
 
 /* ── Minimal icons (no icon library dependency) ──────────────────────── */
 
@@ -54,6 +55,7 @@ export default function LoginForm({ locale }: LoginFormProps) {
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -63,15 +65,17 @@ export default function LoginForm({ locale }: LoginFormProps) {
     try {
       const tokens = await loginWithCredentials(email, password);
       storeTokens(tokens, rememberMe);
-      router.push(`/${locale}`);
+      setSuccess(true);
+      // Invalide le cache du routeur pour que le Server Component lise le cookie à jour
+      router.refresh();
+      setTimeout(() => {
+        router.push(`/${locale}/page/dashboard`);
+      }, 1400);
     } catch {
       setError('Adresse email ou mot de passe incorrect.');
-    } finally {
       setIsLoading(false);
     }
   };
-
-  const inputState = error ? 'error' as const : 'default' as const;
 
   return (
     <form onSubmit={handleSubmit} noValidate>
@@ -83,6 +87,20 @@ export default function LoginForm({ locale }: LoginFormProps) {
         <p className="text-sm text-neutral-500 mt-1">Tableau de bord PortaLis</p>
       </div>
 
+      {/* Success alert */}
+      {success && (
+        <Alert type="success" title="Connexion réussie !" className="mb-5">
+          Bienvenue sur PortaLis · Redirection en cours…
+        </Alert>
+      )}
+
+      {/* Error alert */}
+      {error && (
+        <Alert type="error" title="Identifiants incorrects" className="mb-5" onDismiss={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+
       {/* Email */}
       <div className="mb-4">
         <Input
@@ -91,11 +109,10 @@ export default function LoginForm({ locale }: LoginFormProps) {
           autoComplete="email"
           label="Adresse email"
           placeholder="vous@exemple.com"
-          state={inputState}
           iconLeft={<IconEnvelope />}
           value={email}
           onChange={e => setEmail(e.target.value)}
-          disabled={isLoading}
+          disabled={isLoading || success}
         />
       </div>
 
@@ -106,14 +123,12 @@ export default function LoginForm({ locale }: LoginFormProps) {
           type={showPassword ? 'text' : 'password'}
           autoComplete="current-password"
           label="Mot de passe"
-          state={inputState}
-          errorMessage={error ?? undefined}
           iconRight={showPassword ? <IconEyeOff /> : <IconEye />}
           iconRightAction={() => setShowPassword(v => !v)}
           iconRightAriaLabel={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
           value={password}
           onChange={e => setPassword(e.target.value)}
-          disabled={isLoading}
+          disabled={isLoading || success}
         />
       </div>
 
@@ -136,13 +151,13 @@ export default function LoginForm({ locale }: LoginFormProps) {
       {/* Submit */}
       <Button
         type="submit"
-        variant="login"
+        variant={success ? 'success' : 'login'}
         size="lg"
         loading={isLoading}
-        disabled={!email || !password}
+        disabled={!email || !password || success}
         className="w-full"
       >
-        {isLoading ? '' : 'Se connecter'}
+        {isLoading ? '' : success ? 'Connecté !' : 'Se connecter'}
       </Button>
 
       {/* Session footnote */}
