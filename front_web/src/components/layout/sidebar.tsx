@@ -1,15 +1,16 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   SquaresFour, Brain, User, Truck, Funnel,
   Files, FileText, Diamond, ChartLine, DownloadSimple,
-  Users, Gear, SignOut,
+  Users, Gear, SignOut, X,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { ApiUser, User as UserType } from '@/types/user_type';
+import { getRoleAbbreviation } from '@/lib/roleAbbreviation';
 
 type NavItem = {
   href: string;
@@ -86,12 +87,26 @@ interface SidebarProps {
 export default function Sidebar({ locale, open, onClose, user, rawUser }: SidebarProps) {
   const pathname = usePathname();
   const sections = buildNav(locale);
+  const sidebarRef = useRef<HTMLElement>(null);
 
   // Ferme la sidebar mobile à chaque changement de route
   useEffect(() => {
-    onClose();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) {
+      onClose();
+    }
+  }, [pathname, onClose]);
+
+  // Gérer la touche Escape
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && open) {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [open, onClose]);
 
   const initials = user?.initials ||
     `${rawUser?.first_name?.[0] ?? ''}${rawUser?.last_name?.[0] ?? ''}`.toUpperCase() ||
@@ -106,15 +121,16 @@ export default function Sidebar({ locale, open, onClose, user, rawUser }: Sideba
       {/* Backdrop mobile */}
       {open && (
         <div
-          className="fixed inset-0 bg-black/40 z-[59] md:hidden"
+          className="fixed inset-0 bg-black/40 z-[59] md:hidden backdrop-blur-sm"
           onClick={onClose}
           aria-hidden="true"
         />
       )}
 
       <aside
+        ref={sidebarRef}
         className={cn(
-          'relative flex flex-col flex-shrink-0 overflow-hidden',
+          'flex flex-col flex-shrink-0 overflow-hidden',
           'bg-[var(--bg-surf)] border-r border-[var(--bd-def)]',
           // Mobile : overlay fixe, glissement depuis la gauche
           'fixed inset-y-0 left-0 z-[60] w-72 h-full',
@@ -122,7 +138,7 @@ export default function Sidebar({ locale, open, onClose, user, rawUser }: Sideba
           open ? 'translate-x-0' : '-translate-x-full',
           // Desktop : in-flow, transition de largeur
           'md:relative md:inset-y-auto md:left-auto md:z-auto md:h-auto',
-          'md:translate-x-0 md:transition-[width]',
+          'md:translate-x-0 md:transition-all md:duration-300',
           open ? 'md:w-60' : 'md:w-16',
         )}
       >
@@ -131,6 +147,15 @@ export default function Sidebar({ locale, open, onClose, user, rawUser }: Sideba
           className="absolute left-0 top-0 h-full w-[3px] z-10 pointer-events-none"
           style={{ background: 'linear-gradient(to bottom, #0E86E8 0%, #6B35C9 50%, #C2257A 100%)' }}
         />
+
+        {/* Bouton fermer sur mobile */}
+        <button
+          onClick={onClose}
+          className="md:hidden absolute top-3 right-3 w-8 h-8 rounded-lg flex items-center justify-center text-[var(--tx-2)] hover:bg-[var(--bg-sink)] z-20"
+          aria-label="Fermer le menu"
+        >
+          <X size={18} />
+        </button>
 
         {/* En-tête workspace */}
         <div className="border-b border-[var(--bd-def)] px-3 py-2">
@@ -196,14 +221,12 @@ export default function Sidebar({ locale, open, onClose, user, rawUser }: Sideba
                           <span
                             className={cn(
                               'min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center',
-                              customBadge
-                                ? 'text-white'
-                                : badgeDanger
-                                  ? 'bg-error text-white'
-                                  : 'bg-[rgba(14,134,232,0.1)] text-[var(--p500)]',
+                              badgeDanger
+                                ? 'bg-error text-white'
+                                : 'bg-[rgba(14,134,232,0.1)] text-[var(--p500)]',
                             )}
                           >
-                            {customBadge || badge}
+                            {badge}
                           </span>
                         )}
                       </>
@@ -228,7 +251,14 @@ export default function Sidebar({ locale, open, onClose, user, rawUser }: Sideba
               <div className="flex-1 min-w-0">
                 <p className="text-[var(--tx-1)] text-[13px] font-medium truncate">{fullName}</p>
                 {role && (
-                  <p className="text-[var(--tx-3)] text-[11px] truncate">{role}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="w-5 h-5 rounded-full bg-[var(--bg-sink)] border border-[var(--bd-def)] flex items-center justify-center flex-shrink-0">
+                      <span className="text-[9px] font-bold text-[var(--tx-3)]">
+                        {getRoleAbbreviation(role)}
+                      </span>
+                    </span>
+                    <span className="text-[var(--tx-3)] text-[11px] truncate">{role}</span>
+                  </div>
                 )}
               </div>
               <button className="text-[var(--tx-3)] hover:text-[var(--tx-1)] transition-colors p-1 rounded flex-shrink-0">
@@ -236,13 +266,20 @@ export default function Sidebar({ locale, open, onClose, user, rawUser }: Sideba
               </button>
             </div>
           ) : (
-            <div className="flex justify-center">
+            <div className="flex flex-col items-center gap-2">
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center"
                 style={{ background: 'var(--grad)' }}
               >
                 <span className="text-white text-xs font-bold">{initials}</span>
               </div>
+              {role && (
+                <div className="w-6 h-6 rounded-full bg-[var(--bg-sink)] border border-[var(--bd-def)] flex items-center justify-center">
+                  <span className="text-[8px] font-bold text-[var(--tx-3)]">
+                    {getRoleAbbreviation(role)}
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>
