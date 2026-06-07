@@ -105,12 +105,12 @@ export default function UtilisateursPage() {
           <h1 className="font-display text-[22px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight">
             Utilisateurs
           </h1>
-          <p className="text-[11px] sm:text-xs text-foreground-3 mt-0.5">
-            <span className="text-foreground-2">Dashboard</span>
-            {' › '}Admin › Utilisateurs
-            {loading && <span className="ml-2 text-primary-400 animate-pulse">· chargement…</span>}
-            {apiError && <span className="ml-2 text-error"> · {apiError}</span>}
-          </p>
+          {(loading) && (
+            <p className="text-sm text-foreground-3 mt-1">Chargement des utilisateurs...</p>
+          )}
+          {(apiError) && (
+            <p className="text-sm text-red-500 mt-1">Erreur lors du chargement des utilisateurs: {apiError}</p>
+          )}
         </div>
         <div className="flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
           <Button variant="ghost" size="sm" className="flex-1 sm:flex-none">

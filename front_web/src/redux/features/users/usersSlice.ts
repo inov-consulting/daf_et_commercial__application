@@ -7,16 +7,27 @@ import type { ApiUser } from '@/types/user_type';
 
 interface UsersState {
   list: ApiUser[];
+  total: number;
+  // fetchUsers
   loading: boolean;
   error: string | null;
-  total: number;
+  // createUser
+  creating: boolean;
+  createError: string | null;
+  // updateUser
+  updating: boolean;
+  updateError: string | null;
 }
 
 const initialState: UsersState = {
   list: [],
+  total: 0,
   loading: false,
   error: null,
-  total: 0,
+  creating: false,
+  createError: null,
+  updating: false,
+  updateError: null,
 };
 
 // ── Payload types ──────────────────────────────────────────────────────────
@@ -39,7 +50,13 @@ type UpdateUserPayload = {
   is_active?: boolean;
 };
 
-type ListResponse = ApiUser[] | { results: ApiUser[]; total: number; data?: ApiUser[] };
+// Shape réelle retournée par GET /users
+type ListResponse = {
+  items: ApiUser[];
+  limit: number;
+  offset: number;
+  count: number;
+};
 
 // ── Thunks ─────────────────────────────────────────────────────────────────
 
@@ -60,11 +77,7 @@ export const fetchUsers = createAsyncThunk(
     if (!res.ok) return rejectWithValue(res.error ?? 'Impossible de charger les utilisateurs');
 
     const data = res.data!;
-    if (Array.isArray(data)) return { results: data, total: data.length };
-    const results = (data as { results?: ApiUser[]; data?: ApiUser[] }).results
-      ?? (data as { data?: ApiUser[] }).data
-      ?? [];
-    return { results, total: (data as { total?: number }).total ?? results.length };
+    return { results: data.items ?? [], total: data.count ?? data.items?.length ?? 0 };
   },
 );
 
@@ -111,6 +124,8 @@ const usersSlice = createSlice({
     },
     clearError(state) {
       state.error = null;
+      state.createError = null;
+      state.updateError = null;
     },
   },
   extraReducers(builder) {
@@ -128,13 +143,31 @@ const usersSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
+      .addCase(createUser.pending, state => {
+        state.creating = true;
+        state.createError = null;
+      })
       .addCase(createUser.fulfilled, (state, action) => {
+        state.creating = false;
         state.list.unshift(action.payload);
         state.total += 1;
       })
+      .addCase(createUser.rejected, (state, action) => {
+        state.creating = false;
+        state.createError = action.payload as string;
+      })
+      .addCase(updateUser.pending, state => {
+        state.updating = true;
+        state.updateError = null;
+      })
       .addCase(updateUser.fulfilled, (state, action) => {
+        state.updating = false;
         const idx = state.list.findIndex(u => u.id === action.payload.id);
         if (idx !== -1) state.list[idx] = action.payload;
+      })
+      .addCase(updateUser.rejected, (state, action) => {
+        state.updating = false;
+        state.updateError = action.payload as string;
       });
   },
 });
