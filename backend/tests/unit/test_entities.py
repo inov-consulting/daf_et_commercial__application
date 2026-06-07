@@ -1,7 +1,6 @@
 from uuid import uuid4
 
 import pytest
-
 from app.domain.shared.company import Company
 from app.domain.shared.user import User
 from app.domain.shared.value_objects import Country, Currency
@@ -25,19 +24,18 @@ def test_company_rejects_empty_name() -> None:
         Company.new(name="   ", country=Country.SN, default_currency=Currency.XOF)
 
 
-def test_user_new_normalizes_email_lowercase() -> None:
-    u = User.new(
-        company_ids=[uuid4()],
-        email="  HAWA@Paraiso.SN  ",
-    )
-    assert u.email == "hawa@paraiso.sn"
+def test_user_new_creates_with_keycloak_id() -> None:
+    kid = uuid4()
+    cid = uuid4()
+    u = User.new(keycloak_id=kid, company_ids=[cid])
+    assert u.id == kid
+    assert u.company_ids == [cid]
+    assert u.is_active is True
 
 
 def test_user_display_name_fallbacks_to_email() -> None:
-    u = User.new(
-        company_ids=[uuid4()],
-        email="a@b.com",
-    )
+    u = User.new(keycloak_id=uuid4(), company_ids=[])
+    u.email = "a@b.com"
     assert u.display_name == "a@b.com"
 
     u.first_name = "Edwin"
@@ -45,9 +43,6 @@ def test_user_display_name_fallbacks_to_email() -> None:
     assert u.display_name == "Edwin Tchakounte"
 
 
-def test_user_invalid_email_raises() -> None:
-    with pytest.raises(ValueError):
-        User.new(
-            company_ids=[uuid4()],
-            email="not-an-email",
-        )
+def test_user_new_empty_company_ids() -> None:
+    u = User.new(keycloak_id=uuid4(), company_ids=[])
+    assert u.company_ids == []
