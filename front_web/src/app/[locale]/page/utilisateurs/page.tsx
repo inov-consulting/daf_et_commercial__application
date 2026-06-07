@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
+
 import { ExportIcon, UserPlusIcon, WarningIcon, TrashIcon, CheckIcon } from '@phosphor-icons/react';
+import { useAuthError } from '@/hooks/useAuthError';
 import { Button } from '@/components/ui/button';
 import { UserDetailPanel } from '@/components/layout/user-detail-panel';
 import { UserFormModal } from '@/components/layout/user-form-modal';
@@ -35,6 +36,9 @@ export default function UtilisateursPage() {
   useEffect(() => {
     dispatch(fetchUsers());
   }, [dispatch]);
+
+  // Redirection automatique vers le login si session expirée
+  useAuthError(apiError);
 
   const selectedUser = selectedUid ? (users.find(u => u.uid === selectedUid) ?? null) : null;
   const editUser = formModal?.uid ? users.find(u => u.uid === formModal.uid) : undefined;
