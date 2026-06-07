@@ -83,8 +83,25 @@ async function request<TData = unknown, TBody = Record<string, unknown>>(
 
     if (!res.ok) {
       const payload = responseData as Record<string, unknown> | null;
+
+      // Erreur de validation FastAPI : { detail: [{ loc, msg, type }] }
+      if (Array.isArray(payload?.detail)) {
+        type ValidationEntry = { loc?: unknown[]; msg?: string };
+        const entries = payload!.detail as ValidationEntry[];
+        const errMsg = entries
+          .map(e => {
+            const field = Array.isArray(e.loc) ? String(e.loc[e.loc.length - 1]) : '';
+            return field ? `${field}: ${e.msg ?? ''}` : (e.msg ?? '');
+          })
+          .filter(Boolean)
+          .join(' · ');
+        return { data: null, status: res.status, ok: false, error: errMsg || `HTTP ${res.status}` };
+      }
+
+      // Erreur générique
       const errMsg =
         (payload?.message as string) ??
+        (payload?.detail as string) ??
         (payload?.error_description as string) ??
         (payload?.error as string) ??
         `HTTP ${res.status}`;

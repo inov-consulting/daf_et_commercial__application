@@ -72,10 +72,10 @@ const config: Config = {
           600: "#059669",
         },
         warning: {
-          50:      '#FFFBEB',
-          DEFAULT: '#F59E0B',
-          500:     '#F59E0B',
-          600:     '#D97706',
+          50: "#FFFBEB",
+          DEFAULT: "#F59E0B",
+          500: "#F59E0B",
+          600: "#D97706",
         },
         error: {
           50: "#FEF2F2",
@@ -180,6 +180,10 @@ const config: Config = {
         "500": "500",
         "600": "600",
         "700": "700",
+      },
+
+      screens: {
+        xs: "475px",
       },
     },
   },

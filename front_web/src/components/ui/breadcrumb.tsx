@@ -12,7 +12,7 @@ export interface BreadcrumbProps extends HTMLAttributes<HTMLElement> {
   separator?: ReactNode;
 }
 
-export function Breadcrumb({ items, separator = '/', className, ...props }: BreadcrumbProps) {
+export function Breadcrumb({ items, separator = '>', className, ...props }: BreadcrumbProps) {
   return (
     <nav aria-label="Fil d'ariane" className={cn('flex items-center flex-wrap gap-1', className)} {...props}>
       {items.map((item, i) => {

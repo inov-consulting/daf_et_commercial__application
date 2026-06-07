@@ -3,19 +3,18 @@ import { persistReducer, persistStore } from "redux-persist";
 import storage from "redux-persist/lib/storage";
 import { TypedUseSelectorHook, useSelector, useDispatch } from "react-redux";
 import usersReducer from "./features/users/usersSlice";
+import meReducer from "./features/me/meSlice";
 
 const persistConfig = {
   key: "root",
   storage,
   version: 1,
-  whitelist: [
-    "auth",
-    "users",
-  ],
+  whitelist: ["users", "me"],
 };
 
 const rootReducer = {
   users: usersReducer,
+  me: meReducer,
 };
 
 const persistedReducer = persistReducer(persistConfig, combineReducers(rootReducer));

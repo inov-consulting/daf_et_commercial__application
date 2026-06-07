@@ -13,7 +13,7 @@ export const ApiRoutes = {
     `${process.env.NEXT_PUBLIC_KEYCLOAK_REALM}/protocol/openid-connect/userinfo`,
 
   // ── Users ────────────────────────────────────────────────────────────
-  USERS_ME:     `${BASE}/api/v1/users/me`,
+  USERS_ME:     `${BASE}/api/v1/auth/me`,
   USERS_LIST:   `${BASE}/api/v1/users`,
   USERS_DETAIL: (id: string) => `${BASE}/api/v1/users/${id}`,
   USERS_ADD:    `${BASE}/api/v1/users`,
