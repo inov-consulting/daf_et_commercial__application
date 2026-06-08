@@ -17,6 +17,15 @@ class UserRepository:
         orm = await UserOrm.get_or_none(id=user_id)
         return orm.to_domain() if orm else None
 
+    async def list_all(
+        self,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> Sequence[User]:
+        rows = await UserOrm.all().order_by("email").offset(offset).limit(limit)
+        return [r.to_domain() for r in rows]
+
     async def list_by_company(
         self,
         company_id: UUID,
