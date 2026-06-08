@@ -53,5 +53,6 @@ class CompanyOrm(BaseModel):
         self.country = company.country.value
         self.country_name = company.country_name
         self.default_currency = company.default_currency.value
-        self.parent_company_id = company.parent_company_id  # type: ignore[assignment]
+        self.erp_id = company.erp_id
+        self.parent_company_id = company.parent_company_id
         self.is_active = company.is_active
