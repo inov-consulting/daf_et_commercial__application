@@ -20,7 +20,7 @@ export default function LoginForm({ locale }: LoginFormProps) {
     const kc = getKeycloakInstance();
     if (!kc.authenticated) {
       kc.login({
-        redirectUri: window.location.origin,
+        redirectUri: window.location.origin + window.location.pathname,
       });
     }
   }, [locale]);
@@ -41,7 +41,7 @@ export default function LoginForm({ locale }: LoginFormProps) {
         className="w-full"
         onClick={() =>
           getKeycloakInstance().login({
-            redirectUri: window.location.origin,
+            redirectUri: window.location.origin + window.location.pathname,
           })
         }
       >

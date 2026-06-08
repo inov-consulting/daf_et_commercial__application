@@ -47,5 +47,7 @@ export function clearTokens(): void {
 export function logoutKeycloak(redirectUri?: string): void {
   clearTokens();
   const kc = getKeycloakInstance();
-  kc.logout({ redirectUri: redirectUri ?? window.location.origin });
+  // Sans redirectUri enregistré dans "Valid post logout redirect URIs",
+  // Keycloak affiche sa propre page de confirmation post-déconnexion.
+  kc.logout(redirectUri ? { redirectUri } : undefined);
 }
