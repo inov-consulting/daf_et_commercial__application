@@ -1,25 +1,12 @@
 import type { Metadata } from 'next';
-import { fontVariables } from '@/lib/fonts';
 import '@/styles/globals.css';
-import { ReduxProvider } from '@/redux/features/provider';
+import ClientLayout from './clientLayout';
 
 export const metadata: Metadata = {
   title: 'DAF & Commercial | INOV Consulting',
   description: 'Application web DAF et commercial – INOV Consulting',
 };
 
-type RootLayoutProps = {
-  children: React.ReactNode;
-};
-
-export default function RootLayout({ children }: Readonly<RootLayoutProps>) {
-  return (
-    <html data-theme="light" className={fontVariables}>
-      <body className="antialiased">
-        <ReduxProvider>
-          {children}
-        </ReduxProvider>
-      </body>
-    </html>
-  );
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return <ClientLayout>{children}</ClientLayout>;
 }
