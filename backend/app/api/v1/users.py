@@ -78,11 +78,9 @@ async def create_user(
 async def list_users(
     user_repo: UserRepoDep,
     company_repo: CompanyRepoDep,
-    company_id: Annotated[UUID, Query(description="Filtrer par entité")],
     params: Annotated[PageParams, Depends()],
 ) -> Page[UserOut]:
     users = await ListUsersUseCase(user_repo).execute(
-        company_id=company_id,
         limit=params.limit,
         offset=params.offset,
     )
@@ -92,6 +90,7 @@ async def list_users(
         for cid in u.company_ids:
             c = await company_repo.get_by_id(cid)
             if c:
+                company_ids.append(cid)
                 companies.append(CompanyOut.from_domain(c))
         items.append(UserOut.from_domain(u, companies=companies))
     return Page(items=items, limit=params.limit, offset=params.offset, count=len(items))

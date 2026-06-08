@@ -25,12 +25,10 @@ class UserUpdate(BaseModel):
 
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-
     id: UUID
     email: str
     first_name: str
     last_name: str
-    company_ids: list[UUID]
     companies: list[CompanyOut] = []
     is_active: bool
     created_at: datetime | None

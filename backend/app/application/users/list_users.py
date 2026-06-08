@@ -1,4 +1,4 @@
-"""Use case : lister les utilisateurs d'une entité."""
+"""Use case : lister les utilisateurs, avec filtre optionnel par entité."""
 
 from collections.abc import Sequence
 from uuid import UUID
@@ -14,12 +14,14 @@ class ListUsersUseCase:
     async def execute(
         self,
         *,
-        company_id: UUID,
+        company_id: UUID | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> Sequence[User]:
-        return await self._user_repo.list_by_company(
-            company_id,
-            limit=limit,
-            offset=offset,
-        )
+        if company_id is not None:
+            return await self._user_repo.list_by_company(
+                company_id,
+                limit=limit,
+                offset=offset,
+            )
+        return await self._user_repo.list_all(limit=limit, offset=offset)
