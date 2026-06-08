@@ -1,4 +1,3 @@
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getLocaleFromParams } from '@/lib/i18n';
@@ -17,8 +16,5 @@ type Props = { params: { locale: string } };
 
 export default function HomePage({ params }: Props) {
   const locale = getLocaleFromParams(params.locale);
-  const cookieStore = cookies();
-  const isAuthenticated = !!cookieStore.get('portalis_at')?.value;
-
-  redirect(isAuthenticated ? `/${locale}/dashboard` : `/${locale}/auth/login`);
+  redirect(`/${locale}/dashboard`);
 }

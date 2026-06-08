@@ -45,13 +45,13 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
     kc.init({
       onLoad: 'login-required',
+      redirectUri: `${window.location.origin}`,
       pkceMethod: 'S256',
-      checkLoginIframe: false,
-      redirectUri: window.location.origin,
     })
       .then(auth => {
         if (!auth) {
-          kc.login({ redirectUri: window.location.origin });
+          // Ne devrait pas arriver avec login-required, mais par sécurité
+          kc.login();
           return;
         }
 
