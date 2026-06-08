@@ -19,6 +19,9 @@ export const ApiRoutes = {
   USERS_ADD:    `${BASE}/api/v1/users`,
   USERS_UPDATE: (id: string) => `${BASE}/api/v1/users/${id}`,
 
+  // ── Company ────────────────────────────────────────────────────────
+  COMPANY_LIST:    `${BASE}/api/v1/companies`,
+
   // ── Commercial ───────────────────────────────────────────────────────
   COMMERCIAL_LEADS:         `${BASE}/api/v1/commercial/leads`,
   COMMERCIAL_LEAD_DETAIL:   (id: string) => `${BASE}/api/v1/commercial/leads/${id}`,

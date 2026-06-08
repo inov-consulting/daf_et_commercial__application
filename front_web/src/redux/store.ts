@@ -4,6 +4,7 @@ import storage from "redux-persist/lib/storage";
 import { TypedUseSelectorHook, useSelector, useDispatch } from "react-redux";
 import usersReducer from "./features/users/usersSlice";
 import meReducer from "./features/me/meSlice";
+import companiesReducer from "./features/companies/companiesSlice";
 
 const persistConfig = {
   key: "root",
@@ -15,6 +16,7 @@ const persistConfig = {
 const rootReducer = {
   users: usersReducer,
   me: meReducer,
+  companies: companiesReducer,
 };
 
 const persistedReducer = persistReducer(persistConfig, combineReducers(rootReducer));

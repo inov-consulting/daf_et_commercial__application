@@ -1,9 +1,4 @@
-// ── Type backend (shape retournée par l'API) ───────────────────────────────
-export interface ApiCompany {
-  id: string;
-  name?: string;
-  [key: string]: unknown;
-}
+import { ApiCompany } from "./company_type";
 
 export interface ApiUser {
   id: string;
@@ -85,6 +80,17 @@ export const SURFACES: AccessSurface[] = ["Mobile", "Web", "Mobile + Web"];
 export function mapApiUser(u: ApiUser): User {
   const first = u.first_name ?? "";
   const last = u.last_name ?? "";
+
+  // Gestion sécurisée des entreprises
+  let entreprises: string[] = [];
+  if (u.companies?.length) {
+    entreprises = u.companies.map((c) => c.name ?? c.id);
+  } else if (u.company_ids?.length) {
+    entreprises = u.company_ids.map((id) =>
+      id.length > 12 ? `${id.slice(0, 8)}…` : id,
+    );
+  }
+
   return {
     uid: u.id,
     initials: `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase(),
@@ -94,10 +100,7 @@ export function mapApiUser(u: ApiUser): User {
     role: "Commercial", // non exposé encore par le backend
     groupes: [], // idem
     surface: "Mobile + Web", // idem
-    // Préfère les noms des companies si l'API les expose, sinon tronque les UUIDs
-    entreprises: u.companies?.length
-      ? u.companies.map((c) => c.name ?? c.id)
-      : u.company_ids.map((id) => (id.length > 12 ? `${id.slice(0, 8)}…` : id)),
+    entreprises,
     status: u.is_active ? "active" : "inactive",
     lastLogin: u.last_login_at ?? null,
     created: u.created_at ?? null,
