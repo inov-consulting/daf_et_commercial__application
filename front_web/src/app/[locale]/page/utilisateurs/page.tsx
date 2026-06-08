@@ -18,6 +18,7 @@ import {
 import { mapApiUser, type User } from '@/types/user_type';
 import { UserTable } from '@/components/layout/user-table';
 import { UserKpiRow } from '@/components/layout/user-kpi-row';
+import type { UserFormSubmitData } from '@/components/layout/user-form-modal';
 
 export default function UtilisateursPage() {
   const dispatch = useAppDispatch();
@@ -42,6 +43,7 @@ export default function UtilisateursPage() {
 
   const selectedUser = selectedUid ? (users.find(u => u.uid === selectedUid) ?? null) : null;
   const editUser = formModal?.uid ? users.find(u => u.uid === formModal.uid) : undefined;
+  const rawEditUser = formModal?.uid ? apiUsers.find(u => u.id === formModal.uid) : undefined;
   const deleteUser = deleteUid ? (users.find(u => u.uid === deleteUid) ?? null) : null;
 
   function showToast(message: string, sub?: string) {
@@ -61,9 +63,8 @@ export default function UtilisateursPage() {
     showToast('Utilisateur supprimé', 'Le compte a été désactivé');
   }
 
-  async function handleFormSubmit(data: Partial<User>) {
+  async function handleFormSubmit(data: UserFormSubmitData) {
     if (formModal?.mode === 'edit' && formModal.uid) {
-      // Mise à jour locale des champs non encore exposés dans le PATCH backend
       dispatch(updateUserLocal({
         id: formModal.uid,
         changes: {
@@ -72,13 +73,16 @@ export default function UtilisateursPage() {
           ...(data.email !== undefined && { email: data.email }),
         },
       }));
+      if (data.company_ids.length > 0) {
+        await dispatch(updateUser({ id: formModal.uid, payload: { company_ids: data.company_ids } }));
+      }
       showToast('Modifications enregistrées', 'Profil mis à jour avec succès');
     } else {
       const result = await dispatch(createUser({
         email: data.email ?? '',
         first_name: data.prenom ?? '',
         last_name: data.nom ?? '',
-        company_ids: [], // TODO: résoudre UUIDs depuis noms d'entreprises
+        company_ids: data.company_ids,
       }));
       if (createUser.fulfilled.match(result)) {
         showToast('Invitation envoyée', "Email d'invitation envoyé avec succès");
@@ -206,6 +210,7 @@ export default function UtilisateursPage() {
         <UserFormModal
           mode={formModal.mode}
           user={editUser}
+          rawUser={rawEditUser}
           onClose={() => setFormModal(null)}
           onSubmit={handleFormSubmit}
         />
