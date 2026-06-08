@@ -32,6 +32,16 @@ class OdooCompany:
         return uuid5(ODOO_UUID_NS, f"odoo:company:{self.id}")
 
 
+def _extract_odoo_field(record: dict, field: str) -> str | int | None:
+    """Extrait la valeur d'un champ many2one Odoo (liste [id, name] ou valeur brute)."""
+    value = record.get(field)
+    if not value:
+        return None
+    if isinstance(value, list):
+        return value[1] if field != "parent_id" else value[0]
+    return int(value) if field == "parent_id" else str(value)
+
+
 class OdooClient:
     """Client XML-RPC vers un serveur Odoo."""
 
@@ -70,27 +80,13 @@ class OdooClient:
             {"fields": fields, "limit": 1000},
         )
 
-        companies: list[OdooCompany] = []
-        for r in records:
-            currency = None
-            if r.get("currency_id"):
-                currency = r["currency_id"][1] if isinstance(r["currency_id"], list) else str(r["currency_id"])
-
-            country_name = None
-            if r.get("country_id"):
-                country_name = r["country_id"][1] if isinstance(r["country_id"], list) else str(r["country_id"])
-
-            parent = None
-            if r.get("parent_id"):
-                parent = r["parent_id"][0] if isinstance(r["parent_id"], list) else int(r["parent_id"])
-
-            companies.append(
-                OdooCompany(
-                    id=r["id"],
-                    name=r["name"],
-                    currency=currency,
-                    country_name=country_name,
-                    parent_id=parent,
-                )
+        return [
+            OdooCompany(
+                id=r["id"],
+                name=r["name"],
+                currency=_extract_odoo_field(r, "currency_id"),  # type: ignore[arg-type]
+                country_name=_extract_odoo_field(r, "country_id"),  # type: ignore[arg-type]
+                parent_id=_extract_odoo_field(r, "parent_id"),  # type: ignore[arg-type]
             )
-        return companies
+            for r in records
+        ]

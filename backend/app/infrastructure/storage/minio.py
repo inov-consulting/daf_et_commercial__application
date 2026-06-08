@@ -28,6 +28,7 @@ class StorageService:
 
     def __init__(self, bucket: str | None = None) -> None:
         self._bucket = bucket or settings.minio_bucket
+        self._bucket_ready: bool = False
         self._client = boto3.client(
             "s3",
             endpoint_url=settings.minio_url,
@@ -36,10 +37,11 @@ class StorageService:
             config=Config(signature_version="s3v4"),
             region_name="us-east-1",
         )
-        self._ensure_bucket()
 
     def _ensure_bucket(self) -> None:
         """Crée le bucket s'il n'existe pas encore, et applique une policy publique si configuré."""
+        if self._bucket_ready:
+            return
         try:
             self._client.head_bucket(Bucket=self._bucket)
         except ClientError as exc:
@@ -57,6 +59,7 @@ class StorageService:
             # Bucket accessible — on applique la policy si URLs publiques activées
             if settings.minio_public_base_url:
                 self._apply_public_policy()
+        self._bucket_ready = True
 
     def _apply_public_policy(self) -> None:
         """Applique une policy S3 autorisant la lecture publique sur tous les objets du bucket."""
@@ -102,6 +105,8 @@ class StorageService:
         Returns:
             URL publique (si minio_public_base_url configuré) ou URL pré-signée 7 jours.
         """
+        self._ensure_bucket()
+
         if content_type is None:
             content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
 
@@ -130,6 +135,8 @@ class StorageService:
         Returns:
             URL publique ou pré-signée.
         """
+        self._ensure_bucket()
+
         if content_type is None:
             content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
 
