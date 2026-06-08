@@ -29,6 +29,8 @@ class UserRepository(Protocol):
 
     async def get_by_id(self, user_id: UUID) -> User | None: ...
 
+    async def list_all(self, *, limit: int = 100, offset: int = 0) -> Sequence[User]: ...
+
     async def list_by_company(
         self,
         company_id: UUID,
