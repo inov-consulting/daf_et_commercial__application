@@ -24,7 +24,7 @@ class TokenResponse(BaseModel):
     refresh_expires_in: int | None = None
 
 
-@router.post("/token", response_model=TokenResponse)
+@router.post("/token")
 async def login(payload: TokenRequest) -> TokenResponse:
     """Échange un login/mot de passe contre des tokens Keycloak (password grant)."""
     url = (
@@ -61,7 +61,7 @@ class RefreshRequest(BaseModel):
     refresh_token: str = Field(..., min_length=1)
 
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post("/refresh")
 async def refresh(payload: RefreshRequest) -> TokenResponse:
     """Rafraîchit un access_token via un refresh_token."""
     url = (
@@ -92,6 +92,6 @@ async def refresh(payload: RefreshRequest) -> TokenResponse:
     )
 
 
-@router.get("/me", response_model=UserOut)
+@router.get("/me")
 async def me(user: CurrentUser) -> UserOut:
     return UserOut.from_domain(user)

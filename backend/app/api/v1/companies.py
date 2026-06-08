@@ -83,10 +83,7 @@ async def sync_companies_from_odoo(company_repo: CompanyRepoDep) -> None:
         ) from exc
 
 
-@router.get(
-    "/{company_id}",
-    response_model=CompanyOut,
-)
+@router.get("/{company_id}")
 async def get_company(company_id: UUID, company_repo: CompanyRepoDep) -> CompanyOut:
     company = await GetCompanyUseCase(company_repo).execute(company_id)
     return CompanyOut.from_domain(company)
