@@ -1,7 +1,9 @@
 """ORM model pour Company."""
 
-from tortoise import fields
 from uuid import UUID
+
+from tortoise import fields
+
 from app.domain.shared.company import Company
 from app.domain.shared.value_objects import Country, Currency
 from app.infrastructure.db.base import BaseModel
@@ -25,9 +27,9 @@ class CompanyOrm(BaseModel):
             id=self.id,
             name=self.name,
             country=Country(self.country),
-            country_name=self.name,
+            country_name=self.country_name,
             default_currency=Currency(self.default_currency),
-            erp_id=getattr(self, "erp_id", None),
+            erp_id=self.erp_id,
             parent_company_id=self.parent_company_id,
             is_active=self.is_active,
             created_at=self.created_at,
