@@ -17,45 +17,11 @@ export function middleware(request: NextRequest) {
   );
 
   if (!pathnameHasLocale) {
-<<<<<<< Updated upstream
-    // Si le chemin ne commence pas par une locale, rediriger vers la locale par défaut
-    if (pathname === '/' || pathname === '') {
-      return NextResponse.redirect(
-        new URL(`/${i18n.defaultLocale}`, request.url)
-      );
-    }
-    return NextResponse.redirect(
-      new URL(`/${i18n.defaultLocale}${pathname}`, request.url)
-    );
-  }
-
-  // Vérifier l'authentification via le cookie d'accès
-  const isAuthenticated = !!request.cookies.get('portalis_at')?.value;
-  const pathnameWithoutLocale =
-    pathname.replace(new RegExp(`^/${activeLocale}`), '') || '/';
-  const isAuthRoute = authRoutes.some((route) =>
-    pathnameWithoutLocale.startsWith(route)
-  );
-
-  if (!isAuthenticated && !isAuthRoute) {
-    // Rediriger vers la page de login si non authentifié
-    return NextResponse.redirect(
-      new URL(`/${activeLocale}/auth/login`, request.url)
-    );
-  }
-
-  if (isAuthenticated && isAuthRoute) {
-    // Rediriger vers le dashboard si déjà connecté et accès à une route d'auth
-    return NextResponse.redirect(
-      new URL(`/${activeLocale}/dashboard`, request.url)
-    );
-=======
     // Rediriger vers la locale par défaut
     const target = pathname === '/' || pathname === ''
       ? `/${i18n.defaultLocale}`
       : `/${i18n.defaultLocale}${pathname}`;
     return NextResponse.redirect(new URL(target, request.url));
->>>>>>> Stashed changes
   }
 
   // L'authentification est gérée entièrement par Keycloak JS côté client.
