@@ -1,11 +1,11 @@
-name: Build & Deploy — Staging
+name: Build & Deploy
 
 on:
   push:
-    branches: [staging]
+    branches: [main]
     tags: ['v*']
   pull_request:
-    branches: [staging]
+    branches: [main]
 
 env:
   REGISTRY: ghcr.io
@@ -31,7 +31,7 @@ jobs:
         run: uv python install 3.12
 
       - name: Install dependencies
-        run: uv sync --group dev
+        run: uv sync --all-extras
 
       - name: Run lint
         run: uv run ruff check .
@@ -135,19 +135,19 @@ jobs:
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,scope=frontend,mode=max
 
-  # ── Deploy Staging ───────────────────────────────────────────────
+  # ── Deploy (optionnel - décommenter si serveur dédié) ────────────
   deploy:
     needs: build-push
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/staging'
+    if: github.ref == 'refs/heads/main'
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.STAGING_HOST }}
-          username: ${{ secrets.STAGING_USER }}
-          key: ${{ secrets.STAGING_KEY }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
           script: |
-            cd /opt/portalis
+            cd /opt/portalis/daf_et_commercial__application
             docker compose pull
-            docker compose up -d --remove-orphans
+            docker compose up -d
