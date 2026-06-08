@@ -163,7 +163,7 @@ async def upload_avatar(
     user_id: UUID,
     user_repo: UserRepoDep,
     company_repo: CompanyRepoDep,
-    file: UploadFile = File(...),
+    file: Annotated[UploadFile, File()],
 ) -> UserOut:
     """Upload ou remplace la photo de profil d'un utilisateur.
 
