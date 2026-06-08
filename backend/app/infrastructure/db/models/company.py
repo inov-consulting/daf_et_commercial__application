@@ -8,11 +8,13 @@ from app.infrastructure.db.base import BaseModel
 
 
 class CompanyOrm(BaseModel):
-    name = fields.CharField(max_length=255, unique=True)
-    country = fields.CharField(max_length=2)
-    default_currency = fields.CharField(max_length=3)
-    parent_company_id = fields.UUIDField(null=True)
-    is_active = fields.BooleanField(default=True)
+    name: str = fields.CharField(max_length=255, unique=True)
+    country: str = fields.CharField(max_length=2)
+    country_name: str = fields.CharField(max_length=100, default="")
+    default_currency: str = fields.CharField(max_length=3)
+    erp_id: int | None = fields.IntField(null=True)
+    parent_company_id: UUID | None = fields.UUIDField(null=True)
+    is_active: bool = fields.BooleanField(default=True)
 
     class Meta:
         table = "companies"
