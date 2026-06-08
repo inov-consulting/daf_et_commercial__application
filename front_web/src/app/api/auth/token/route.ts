@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
 
   if (!keycloakUrl || !realm || !clientId) {
     return NextResponse.json(
-      { error: "Configuration Keycloak manquante côté serveur" },
+      { error: "Veuillez verifier vos variables d'environnement" },
       { status: 500 },
     );
   }
