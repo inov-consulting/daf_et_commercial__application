@@ -1,7 +1,7 @@
 """ORM model pour Company."""
 
 from tortoise import fields
-
+from uuid import UUID
 from app.domain.shared.company import Company
 from app.domain.shared.value_objects import Country, Currency
 from app.infrastructure.db.base import BaseModel
