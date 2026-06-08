@@ -23,7 +23,7 @@ class CompanyOrm(BaseModel):
             id=self.id,
             name=self.name,
             country=Country(self.country),
-            country_name=self.country_name,
+            country_name=self.name,
             default_currency=Currency(self.default_currency),
             erp_id=getattr(self, "erp_id", None),
             parent_company_id=self.parent_company_id,
