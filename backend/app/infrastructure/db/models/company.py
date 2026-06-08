@@ -1,5 +1,7 @@
 """ORM model pour Company."""
 
+from uuid import UUID
+
 from tortoise import fields
 from uuid import UUID
 from app.domain.shared.company import Company
@@ -25,9 +27,9 @@ class CompanyOrm(BaseModel):
             id=self.id,
             name=self.name,
             country=Country(self.country),
-            country_name=self.name,
+            country_name=self.country_name,
             default_currency=Currency(self.default_currency),
-            erp_id=getattr(self, "erp_id", None),
+            erp_id=self.erp_id,
             parent_company_id=self.parent_company_id,
             is_active=self.is_active,
             created_at=self.created_at,
@@ -53,5 +55,6 @@ class CompanyOrm(BaseModel):
         self.country = company.country.value
         self.country_name = company.country_name
         self.default_currency = company.default_currency.value
-        self.parent_company_id = company.parent_company_id  # type: ignore[assignment]
+        self.erp_id = company.erp_id
+        self.parent_company_id = company.parent_company_id
         self.is_active = company.is_active
