@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { GetData } from '@/lib/ApiService';
 import { ApiRoutes } from '@/lib/ApiRoutes';
-import type { ApiCompany } from '@/types/user_type';
+import type { ApiCompany } from '@/types/company_type';
 
 const PAGE_SIZE = 20;
 
