@@ -309,6 +309,17 @@ class KeycloakAdminClient:
         user_id = location.split("/")[-1] if location else ""
         return user_id
 
+    async def get_user_by_id(self, user_id: str) -> dict | None:
+        """Récupère un utilisateur Keycloak par son ID."""
+        headers = await self._auth_header()
+        url = f"{self._base_url}/admin/realms/{self._realm}/users/{user_id}"
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get(url, headers=headers)
+            if resp.status_code == 404:
+                return None
+            resp.raise_for_status()
+            return resp.json()
+
     async def search_users(self, email: str) -> list[dict]:
         headers = await self._auth_header()
         url = f"{self._base_url}/admin/realms/{self._realm}/users"
@@ -316,6 +327,27 @@ class KeycloakAdminClient:
             resp = await client.get(url, headers=headers, params={"email": email})
             resp.raise_for_status()
             return resp.json()
+
+    async def set_user_password(self, user_id: str, password: str, temporary: bool = False) -> None:
+        """Définit le mot de passe d'un utilisateur Keycloak."""
+        headers = await self._auth_header()
+        url = f"{self._base_url}/admin/realms/{self._realm}/users/{user_id}/reset-password"
+        payload = {"type": "password", "value": password, "temporary": temporary}
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.put(url, headers=headers, json=payload)
+            if resp.status_code == 404:
+                raise RuntimeError(f"Utilisateur '{user_id}' introuvable")
+            resp.raise_for_status()
+
+    async def add_user_to_group(self, user_id: str, group_id: str) -> None:
+        """Rattache un utilisateur à un groupe Keycloak."""
+        headers = await self._auth_header()
+        url = f"{self._base_url}/admin/realms/{self._realm}/users/{user_id}/groups/{group_id}"
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.put(url, headers=headers)
+            if resp.status_code == 404:
+                raise RuntimeError(f"Utilisateur '{user_id}' ou groupe '{group_id}' introuvable")
+            resp.raise_for_status()
 
     async def send_verify_email(self, user_id: str) -> None:
         """Envoie l'email de vérification à l'utilisateur."""
