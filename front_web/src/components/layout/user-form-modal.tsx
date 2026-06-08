@@ -8,8 +8,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { GROUPES_LIST, ROLES, SURFACES, type User, type UserRole, type AccessSurface, type ApiUser, type ApiCompany } from '../../types/user_type';
+import { GROUPES_LIST, ROLES, SURFACES, type User, type UserRole, type AccessSurface, type ApiUser } from '../../types/user_type';
 import { useInfiniteCompanies } from '@/hooks/useInfiniteCompanies';
+import { ApiCompany } from '@/types/company_type';
 
 export type UserFormSubmitData = Partial<User> & { company_ids: string[] };
 
