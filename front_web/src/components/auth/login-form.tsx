@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { loginWithCredentials, storeTokens } from '@/lib/keycloak';
+import { useEffect, useState } from 'react';
+import { getKeycloakInstance } from '@/lib/keycloak';
 import { Button } from '@/components/ui/button';
+<<<<<<< Updated upstream
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -40,14 +40,17 @@ function IconEyeOff() {
 }
 
 /* ── Component ───────────────────────────────────────────────────────── */
+=======
+>>>>>>> Stashed changes
 
 interface LoginFormProps {
   locale: string;
 }
 
 export default function LoginForm({ locale }: LoginFormProps) {
-  const router = useRouter();
+  const [ready, setReady] = useState(false);
 
+<<<<<<< Updated upstream
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -68,21 +71,41 @@ export default function LoginForm({ locale }: LoginFormProps) {
       setError('Adresse email ou mot de passe incorrect.');
     } finally {
       setIsLoading(false);
+=======
+  useEffect(() => {
+    // clientLayout.tsx gère l'init Keycloak et la redirection automatique.
+    // Cette page n'est visible que si l'utilisateur y navigue manuellement
+    // ou si l'init Keycloak n'a pas encore tourné.
+    setReady(true);
+
+    const kc = getKeycloakInstance();
+    if (!kc.authenticated) {
+      kc.login({
+        redirectUri: window.location.origin,
+      });
+>>>>>>> Stashed changes
     }
-  };
+  }, [locale]);
 
   const inputState = error ? 'error' as const : 'default' as const;
 
   return (
-    <form onSubmit={handleSubmit} noValidate>
-      {/* Title */}
-      <div className="mb-7">
-        <h1 className="font-display font-bold text-[1.875rem] leading-tight text-neutral-900">
-          Connexion
-        </h1>
-        <p className="text-sm text-neutral-500 mt-1">Tableau de bord PortaLis</p>
-      </div>
+    <div className="text-center">
+      {!ready ? (
+        <>
+          <div className="w-8 h-8 border-[2.5px] border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-neutral-500">Chargement…</p>
+        </>
+      ) : (
+        <>
+          <div className="mb-7 text-left">
+            <h1 className="font-display font-bold text-[1.875rem] leading-tight text-neutral-900">
+              Connexion
+            </h1>
+            <p className="text-sm text-neutral-500 mt-1">Tableau de bord PortaLis</p>
+          </div>
 
+<<<<<<< Updated upstream
       {/* Email */}
       <div className="mb-4">
         <Input
@@ -150,5 +173,30 @@ export default function LoginForm({ locale }: LoginFormProps) {
         Session expire après 30 min d&apos;inactivité
       </p>
     </form>
+=======
+          <p className="text-sm text-neutral-500 mb-6">
+            Vous allez être redirigé vers la page de connexion sécurisée.
+          </p>
+
+          <Button
+            variant="login"
+            size="lg"
+            className="w-full"
+            onClick={() =>
+              getKeycloakInstance().login({
+                redirectUri: window.location.origin,
+              })
+            }
+          >
+            Se connecter avec Keycloak
+          </Button>
+
+          <p className="text-center text-xs text-neutral-400 mt-4">
+            Authentification sécurisée via SSO · PKCE
+          </p>
+        </>
+      )}
+    </div>
+>>>>>>> Stashed changes
   );
 }

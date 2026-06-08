@@ -1,31 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { i18n } from '@/config/i18n';
 
-const publicPatterns = ['/api', '/_next', '/favicon.ico'];
-const authRoutes = ['/auth/login'];
+const SKIP_PATTERNS = ['/api', '/_next', '/favicon.ico', '/silent-check-sso.html'];
 
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // Ignorer les ressources statiques et API
-  if (publicPatterns.some((pattern) => pathname.startsWith(pattern))) {
+  // Ignorer les ressources statiques, API et fichiers Keycloak
+  if (SKIP_PATTERNS.some(p => pathname.startsWith(p))) {
     return NextResponse.next();
   }
 
-  // Déterminer la locale active dans le chemin
-  const activeLocale =
-    i18n.locales.find(
-      (locale) =>
-        pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
-    ) || i18n.defaultLocale;
-
   // Vérifier si le chemin commence par une locale valide
   const pathnameHasLocale = i18n.locales.some(
-    (locale) =>
-      pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
+    locale => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`,
   );
 
   if (!pathnameHasLocale) {
+<<<<<<< Updated upstream
     // Si le chemin ne commence pas par une locale, rediriger vers la locale par défaut
     if (pathname === '/' || pathname === '') {
       return NextResponse.redirect(
@@ -57,11 +49,21 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(
       new URL(`/${activeLocale}/dashboard`, request.url)
     );
+=======
+    // Rediriger vers la locale par défaut
+    const target = pathname === '/' || pathname === ''
+      ? `/${i18n.defaultLocale}`
+      : `/${i18n.defaultLocale}${pathname}`;
+    return NextResponse.redirect(new URL(target, request.url));
+>>>>>>> Stashed changes
   }
 
+  // L'authentification est gérée entièrement par Keycloak JS côté client.
+  // Le middleware ne bloque plus les routes — Keycloak redirige vers son
+  // propre login si la session SSO est absente ou expirée.
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/((?!api|_next|favicon.ico).*)'],
+  matcher: ['/((?!api|_next|favicon.ico|silent-check-sso.html).*)'],
 };
