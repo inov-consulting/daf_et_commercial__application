@@ -23,7 +23,6 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.post(
     "",
-    response_model=UserOut,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("user:create"))],
 )
@@ -96,7 +95,6 @@ async def create_user(
 
 @router.get(
     "",
-    response_model=Page[UserOut],
     dependencies=[Depends(require_permission("user:read"))],
 )
 async def list_users(
@@ -132,7 +130,6 @@ async def list_users(
 
 @router.get(
     "/{user_id}",
-    response_model=UserOut,
     dependencies=[Depends(require_permission("user:read"))],
 )
 async def get_user(
@@ -160,7 +157,6 @@ async def get_user(
 
 @router.post(
     "/{user_id}/avatar",
-    response_model=UserOut,
     dependencies=[Depends(require_permission("user:update"))],
 )
 async def upload_avatar(
@@ -217,7 +213,6 @@ async def upload_avatar(
 
 @router.patch(
     "/{user_id}",
-    response_model=UserOut,
     dependencies=[Depends(require_permission("user:update"))],
 )
 async def update_user(

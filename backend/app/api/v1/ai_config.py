@@ -115,7 +115,6 @@ async def get_ai_config() -> AiConfigOut:
 
 @router.patch(
     "/config/generation",
-    response_model=AiConfigOut,
     dependencies=[Depends(require_permission("admin"))],
 )
 async def update_generation_model(payload: AiConfigUpdateGeneration) -> AiConfigOut:
@@ -132,7 +131,6 @@ async def update_generation_model(payload: AiConfigUpdateGeneration) -> AiConfig
 
 @router.patch(
     "/config/embedding",
-    response_model=AiConfigOut,
     dependencies=[Depends(require_permission("admin"))],
 )
 async def update_embedding_model(payload: AiConfigUpdateEmbedding) -> AiConfigOut:

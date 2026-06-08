@@ -29,7 +29,6 @@ router = APIRouter(prefix="/companies", tags=["companies"])
 
 @router.post(
     "",
-    response_model=CompanyOut,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("company:create"))],
 )
@@ -45,10 +44,7 @@ async def create_company(payload: CompanyCreate, company_repo: CompanyRepoDep) -
     return CompanyOut.from_domain(company)
 
 
-@router.get(
-    "",
-    response_model=Page[CompanyOut],
-)
+@router.get("")
 async def list_companies(
     company_repo: CompanyRepoDep,
     params: Annotated[PageParams, Depends()],
