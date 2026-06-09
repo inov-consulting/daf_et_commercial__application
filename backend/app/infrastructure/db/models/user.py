@@ -13,12 +13,7 @@ from app.infrastructure.db.base import BaseModel
 
 
 class UserOrm(BaseModel):
-    company_id = fields.UUIDField(index=True)
-    email = fields.CharField(max_length=255, unique=True, index=True)
-    password_hash = fields.CharField(max_length=255)
-    role = fields.CharField(max_length=32)
-    first_name = fields.CharField(max_length=128, default="")
-    last_name = fields.CharField(max_length=128, default="")
+    company_ids = fields.JSONField(default=list)
     is_active = fields.BooleanField(default=True)
 
     class Meta:

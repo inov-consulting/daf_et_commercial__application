@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.api.v1.schemas.companies import CompanyOut
 from app.domain.shared.user import User
@@ -12,8 +12,18 @@ from app.domain.shared.user import User
 class UserCreate(BaseModel):
     email: str
     company_ids: list[UUID]
+    group_ids: list[str] = Field(..., min_length=1)
     first_name: str = ""
     last_name: str = ""
+    password: str | None = Field(default=None, exclude=True)
+    temporary_password: bool = False
+
+    @field_validator("group_ids")
+    @classmethod
+    def group_ids_not_empty(cls, v: list[str]) -> list[str]:
+        if not v:
+            raise ValueError("Au moins un groupe est obligatoire")
+        return v
 
 
 class UserUpdate(BaseModel):
@@ -41,7 +51,6 @@ class UserOut(BaseModel):
             email=user.email,
             first_name=user.first_name,
             last_name=user.last_name,
-            company_ids=user.company_ids,
             companies=companies or [],
             is_active=user.is_active,
             created_at=user.created_at,
