@@ -40,13 +40,17 @@ async def create_user(
     )
     if keycloak_user is None:
         # Utilisateur absent de Keycloak → on le crée
+        required_actions = [] if payload.password else ["VERIFY_EMAIL"]
         keycloak_id_str = await kc.create_user(
             email=payload.email,
             first_name=payload.first_name,
             last_name=payload.last_name,
-            required_actions=["VERIFY_EMAIL"],
+            required_actions=required_actions,
         )
-        await kc.send_verify_email(keycloak_id_str)
+        if payload.password:
+            await kc.set_user_password(keycloak_id_str, payload.password, temporary=payload.temporary_password)
+        else:
+            await kc.send_verify_email(keycloak_id_str)
         logger.info("Utilisateur créé dans Keycloak : %s", payload.email)
     else:
         keycloak_id_str = keycloak_user["id"]
@@ -63,11 +67,23 @@ async def create_user(
             company_ids=payload.company_ids,
         )
     )
+
+    for group_id in payload.group_ids:
+        try:
+            await kc.add_user_to_group(keycloak_id_str, group_id)
+        except RuntimeError as exc:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
     # Enrichit avec l'identité connue au moment de la création
     user.email = payload.email
     user.first_name = payload.first_name
     user.last_name = payload.last_name
-    return UserOut.from_domain(user)
+    companies: list[CompanyOut] = []
+    for cid in user.company_ids:
+        c = await company_repo.get_by_id(cid)
+        if c:
+            companies.append(CompanyOut.from_domain(c))
+    return UserOut.from_domain(user, companies=companies)
 
 
 @router.get(
@@ -80,17 +96,22 @@ async def list_users(
     company_repo: CompanyRepoDep,
     params: Annotated[PageParams, Depends()],
 ) -> Page[UserOut]:
+    kc = KeycloakAdminClient()
     users = await ListUsersUseCase(user_repo).execute(
         limit=params.limit,
         offset=params.offset,
     )
     items: list[UserOut] = []
     for u in users:
+        kc_user = await kc.get_user_by_id(str(u.id))
+        if kc_user:
+            u.email = kc_user.get("email", "")
+            u.first_name = kc_user.get("firstName", "")
+            u.last_name = kc_user.get("lastName", "")
         companies: list[CompanyOut] = []
         for cid in u.company_ids:
             c = await company_repo.get_by_id(cid)
             if c:
-                company_ids.append(cid)
                 companies.append(CompanyOut.from_domain(c))
         items.append(UserOut.from_domain(u, companies=companies))
     return Page(items=items, limit=params.limit, offset=params.offset, count=len(items))
@@ -104,7 +125,13 @@ async def list_users(
 async def get_user(
     user_id: UUID, user_repo: UserRepoDep, company_repo: CompanyRepoDep
 ) -> UserOut:
+    kc = KeycloakAdminClient()
     user = await GetUserUseCase(user_repo).execute(user_id)
+    kc_user = await kc.get_user_by_id(str(user_id))
+    if kc_user:
+        user.email = kc_user.get("email", "")
+        user.first_name = kc_user.get("firstName", "")
+        user.last_name = kc_user.get("lastName", "")
     companies: list[CompanyOut] = []
     for cid in user.company_ids:
         c = await company_repo.get_by_id(cid)

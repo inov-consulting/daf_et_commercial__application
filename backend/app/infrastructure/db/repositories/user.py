@@ -23,7 +23,7 @@ class UserRepository:
         limit: int = 100,
         offset: int = 0,
     ) -> Sequence[User]:
-        rows = await UserOrm.all().order_by("email").offset(offset).limit(limit)
+        rows = await UserOrm.all().order_by("id").offset(offset).limit(limit)
         return [r.to_domain() for r in rows]
 
     async def list_by_company(
@@ -36,7 +36,7 @@ class UserRepository:
         # Tortoise JSONField filter : recherche dans la liste
         rows = (
             await UserOrm.filter(company_ids__contains=str(company_id))
-            .order_by("email")
+            .order_by("id")
             .offset(offset)
             .limit(limit)
         )
