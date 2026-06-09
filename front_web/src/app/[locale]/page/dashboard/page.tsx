@@ -65,7 +65,7 @@ const MISSIONS = [
 const ALERTS = [
   { id: 1, color: '#10B981', bgColor: 'rgba(16,185,129,0.08)', type: 'success' as const, text: 'MIS-2026-0140 livré · SITARAIL', sub: 'SITARAIL · Confirmé à Douala · 13h47' },
   { id: 2, color: '#F59E0B', bgColor: 'rgba(245,158,11,0.08)', type: 'warning' as const, text: 'Retard · MIS-2026-0142 · ETA +48h', sub: 'Blocage douanier Abidjan · ETA +48h' },
-  { id: 3, color: '#0E86E8', bgColor: 'rgba(14,134,232,0.08)', type: 'info' as const, text: 'IA · 3 éléments à valider', sub: '2 CR + 1 offre · règle R-05' },
+  { id: 3, color: '#1B6B45', bgColor: 'rgba(27,107,69,0.08)', type: 'info' as const, text: 'IA · 3 éléments à valider', sub: '2 CR + 1 offre · règle R-05' },
 ];
 
 const PIPELINE = [
@@ -120,7 +120,7 @@ function PageHeader() {
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
       <div className="min-w-0">
         <h1 className="font-display font-bold text-xl sm:text-2xl text-[var(--tx-1)]">Tableau de bord</h1>
-        <p className="text-xs sm:text-sm text-[var(--tx-3)] mt-0.5">Dashboard · Vue DG · 29 mai 2026</p>
+        {/* <p className="text-xs sm:text-sm text-[var(--tx-3)] mt-0.5">Vue DG</p> */}
       </div>
       <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
         <div className="flex items-center gap-0.5 bg-white border border-[var(--bd-def)] rounded-lg p-0.5 shadow-[var(--sh-xs)]">
@@ -324,6 +324,7 @@ function RevenueChart() {
                   className="flex-1 h-full flex items-end relative"
                   onMouseEnter={() => setHovered(d.month)}
                   onMouseLeave={() => setHovered(null)}
+                  role="button"
                 >
                   {hovered === d.month && (
                     <div

@@ -56,7 +56,7 @@ export function FilterBar({
             'text-xs border-[1.5px] border-border-strong outline-none appearance-none',
             'placeholder:text-foreground-3',
             'hover:border-primary-400 focus:border-border-focus',
-            'focus:shadow-[0_0_0_3px_rgba(14,134,232,.14)]',
+            'focus:shadow-[0_0_0_3px_rgba(27,107,69,.14)]',
             'transition-[border-color,box-shadow] duration-fast',
           )}
         />
@@ -92,9 +92,9 @@ export function FilterBar({
               key={f.key}
               className={cn(
                 'inline-flex items-center gap-[.3rem] text-xs font-medium',
-                'bg-[rgba(14,134,232,.1)] text-primary-600 border border-primary-200 rounded-full',
+                'bg-[rgba(27,107,69,.1)] text-primary-600 border border-primary-200 rounded-full',
                 'py-[.175rem] pl-[.7rem] pr-[.5rem]',
-                'dark:bg-[rgba(14,134,232,.15)] dark:text-primary-400 dark:border-[rgba(14,134,232,.3)]',
+                'dark:bg-[rgba(27,107,69,.15)] dark:text-primary-400 dark:border-[rgba(27,107,69,.3)]',
               )}
             >
               {f.label}

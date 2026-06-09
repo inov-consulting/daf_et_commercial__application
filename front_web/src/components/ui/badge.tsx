@@ -16,17 +16,17 @@ export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 const colorVariant: Record<BadgeColor, Record<BadgeVariant, string>> = {
   primary: {
     solid: 'bg-primary-500 text-white',
-    subtle: 'bg-primary-50 text-primary-700 dark:bg-[rgba(14,134,232,.15)] dark:text-primary-300',
+    subtle: 'bg-primary-50 text-primary-700 dark:bg-[rgba(27,107,69,.15)] dark:text-primary-300',
     outline: 'bg-transparent text-primary-600 border-[1.5px] border-primary-300',
   },
   secondary: {
     solid: 'bg-secondary-500 text-white',
-    subtle: 'bg-secondary-50 text-secondary-700 dark:bg-[rgba(194,37,122,.15)] dark:text-secondary-300',
+    subtle: 'bg-secondary-50 text-secondary-700 dark:bg-[rgba(139,105,20,.15)] dark:text-secondary-300',
     outline: 'bg-transparent text-secondary-600 border-[1.5px] border-secondary-300',
   },
   accent: {
     solid: 'bg-accent-500 text-white',
-    subtle: 'bg-accent-50 text-accent-700 dark:bg-[rgba(107,53,201,.15)] dark:text-accent-300',
+    subtle: 'bg-accent-50 text-accent-700 dark:bg-[rgba(139,105,20,.15)] dark:text-accent-300',
     outline: 'bg-transparent text-accent-600 border-[1.5px] border-accent-300',
   },
   success: {

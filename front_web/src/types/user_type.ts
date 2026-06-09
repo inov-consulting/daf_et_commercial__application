@@ -8,6 +8,7 @@ export interface ApiUser {
   company_ids: string[];
   companies: ApiCompany[];
   is_active: boolean;
+  avatar_url?: string;
   created_at?: string;
   updated_at?: string;
   last_login_at?: string;
@@ -15,19 +16,19 @@ export interface ApiUser {
 
 // ── Palette déterministe basée sur l'id ───────────────────────────────────
 const BG_PALETTE = [
-  "linear-gradient(135deg,#C2257A,#6B35C9)",
-  "#0E86E8",
-  "#6B35C9",
+  "linear-gradient(135deg, #1B6B45, #8B6914)",
+  "#1B6B45",
+  "#8B6914",
   "#10B981",
   "#F59E0B",
-  "#C2257A",
-  "#8B5CF6",
-  "#0891B2",
+  "#6B4E0A",
+  "#2E7D52",
+  "#166239",
 ];
 
 function hashColor(id: string): string {
   let h = 0;
-  for (let i = 0; i < id.length; i++) h = ((h << 5) - h + id.charCodeAt(i)) | 0;
+  for (let i = 0; i < id.length; i++) h = Math.trunc((h << 5) - h + (id.codePointAt(i) ?? 0));
   return BG_PALETTE[Math.abs(h) % BG_PALETTE.length];
 }
 
@@ -50,6 +51,7 @@ export interface User {
   lastLogin: string | null;
   created: string | null;
   bg: string;
+  avatar?: string;
   invitedAt?: string;
   inviteExpires?: string;
 }
@@ -75,6 +77,21 @@ export const ROLES: { value: UserRole; label: string }[] = [
 ];
 
 export const SURFACES: AccessSurface[] = ["Mobile", "Web", "Mobile + Web"];
+
+// ── Formatage date ISO → lisible FR ──────────────────────────────────────
+function formatDate(iso: string | null | undefined, withTime = false): string | null {
+  if (!iso) return null;
+  try {
+    const d = new Date(iso);
+    const datePart = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    if (!withTime) return datePart;
+    const h = String(d.getHours()).padStart(2, '0');
+    const m = String(d.getMinutes()).padStart(2, '0');
+    return `${datePart} · ${h}:${m}`;
+  } catch {
+    return iso ?? null;
+  }
+}
 
 // ── Mapper API → UI ───────────────────────────────────────────────────────
 export function mapApiUser(u: ApiUser): User {
@@ -102,9 +119,10 @@ export function mapApiUser(u: ApiUser): User {
     surface: "Mobile + Web", // idem
     entreprises,
     status: u.is_active ? "active" : "inactive",
-    lastLogin: u.last_login_at ?? null,
-    created: u.created_at ?? null,
+    lastLogin: formatDate(u.last_login_at, true),
+    created: formatDate(u.created_at),
     bg: hashColor(u.id),
+    avatar: u.avatar_url,
   };
 }
 
@@ -122,7 +140,7 @@ export const MOCK_USERS: User[] = [
     status: "active",
     lastLogin: "4 juin 2026 · 09:15",
     created: "3 mars 2025",
-    bg: "linear-gradient(135deg,#C2257A,#6B35C9)",
+    bg: "linear-gradient(135deg, #1B6B45, #8B6914)",
   },
   {
     uid: "amadou",
@@ -137,7 +155,7 @@ export const MOCK_USERS: User[] = [
     status: "active",
     lastLogin: "2 juin 2026 · 14:33",
     created: "15 mai 2025",
-    bg: "#0E86E8",
+    bg: "#1B6B45",
   },
   {
     uid: "fatou",
@@ -152,7 +170,7 @@ export const MOCK_USERS: User[] = [
     status: "active",
     lastLogin: "2 juin 2026 · 16:22",
     created: "14 janv. 2026",
-    bg: "#6B35C9",
+    bg: "#8B6914",
   },
   {
     uid: "moussa",

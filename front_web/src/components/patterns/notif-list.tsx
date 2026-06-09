@@ -20,7 +20,7 @@ export interface NotifListProps extends HTMLAttributes<HTMLDivElement> {
 
 const defaultIcon: Record<NotifType, ReactNode> = {
   info: (
-    <svg width="16" height="16" fill="none" stroke="#0E86E8" strokeWidth="2" viewBox="0 0 24 24">
+    <svg width="16" height="16" fill="none" stroke="#1B6B45" strokeWidth="2" viewBox="0 0 24 24">
       <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
     </svg>
   ),
@@ -43,7 +43,7 @@ const defaultIcon: Record<NotifType, ReactNode> = {
 };
 
 const iconBg: Record<NotifType, string> = {
-  info:    'bg-[rgba(14,134,232,.1)]',
+  info:    'bg-[rgba(27,107,69,.1)]',
   success: 'bg-[rgba(16,185,129,.1)]',
   warning: 'bg-[rgba(245,158,11,.1)]',
   error:   'bg-[rgba(239,68,68,.1)]',
@@ -61,12 +61,14 @@ export function NotifList({ notifications, onNotifClick, className, ...props }: 
           <div
             key={n.id}
             role="listitem"
+            tabIndex={0}
             onClick={() => onNotifClick?.(n.id)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onNotifClick?.(n.id); }}
             className={cn(
               'relative flex items-start gap-[.875rem] px-5 py-[.875rem]',
               'border-b border-border last:border-b-0',
               'transition-colors duration-fast cursor-pointer hover:bg-surface-mute',
-              n.unread && 'bg-[rgba(14,134,232,.04)]',
+              n.unread && 'bg-[rgba(27,107,69,.04)]',
             )}
           >
             {/* Unread indicator */}

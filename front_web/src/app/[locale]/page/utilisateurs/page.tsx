@@ -12,8 +12,8 @@ import {
   createUser,
   updateUser,
   removeUser,
-  updateUserLocal,
 } from '@/redux/features/users/usersSlice';
+import { fetchGroups } from '@/redux/features/groups/groupsSlice';
 import { mapApiUser, type User } from '@/types/user_type';
 import { UserTable } from '@/components/layout/user-table';
 import { UserKpiRow } from '@/components/layout/user-kpi-row';
@@ -22,6 +22,7 @@ import type { UserFormSubmitData } from '@/components/layout/user-form-modal';
 export default function UtilisateursPage() {
   const dispatch = useAppDispatch();
   const { list: apiUsers, loading, error: apiError } = useAppSelector(state => state.users);
+  const { list: groups } = useAppSelector(state => state.groups);
 
   // Mapping API → UI à chaque changement de la liste Redux
   const users = useMemo(() => apiUsers.map(mapApiUser), [apiUsers]);
@@ -35,6 +36,7 @@ export default function UtilisateursPage() {
   // Chargement initial
   useEffect(() => {
     dispatch(fetchUsers());
+    dispatch(fetchGroups());
   }, [dispatch]);
 
   const selectedUser = selectedUid ? (users.find(u => u.uid === selectedUid) ?? null) : null;
@@ -61,18 +63,15 @@ export default function UtilisateursPage() {
 
   async function handleFormSubmit(data: UserFormSubmitData): Promise<{ ok: boolean; error?: string }> {
     if (formModal?.mode === 'edit' && formModal.uid) {
-      dispatch(updateUserLocal({
-        id: formModal.uid,
-        changes: {
-          ...(data.prenom !== undefined && { first_name: data.prenom }),
-          ...(data.nom !== undefined && { last_name: data.nom }),
-          ...(data.email !== undefined && { email: data.email }),
-        },
-      }));
       const result = await dispatch(updateUser({
         id: formModal.uid,
         payload: {
+          ...(data.prenom !== undefined && { first_name: data.prenom }),
+          ...(data.nom !== undefined && { last_name: data.nom }),
+          ...(data.email !== undefined && { email: data.email }),
           ...(data.company_ids.length > 0 && { company_ids: data.company_ids }),
+          ...(data.group_ids && data.group_ids.length > 0 && { group_ids: data.group_ids }),
+          ...(data.avatar_url !== undefined && { avatar_url: data.avatar_url }),
         },
       }));
       if (updateUser.rejected.match(result)) {
@@ -89,7 +88,7 @@ export default function UtilisateursPage() {
         first_name: data.prenom ?? '',
         last_name: data.nom ?? '',
         company_ids: data.company_ids,
-        group_ids: [],
+        group_ids: data.group_ids,
       }));
       if (createUser.fulfilled.match(result)) {
         setFormModal(null);
@@ -154,7 +153,7 @@ export default function UtilisateursPage() {
 
       {/* Table + Detail Panel */}
       <div className="flex flex-col lg:flex-row gap-4 items-start">
-        <div className={`w-full lg:flex-1 ${mobilePanelOpen ? 'hidden lg:block' : ''}`}>
+        <div className="w-full lg:flex-1 min-w-0">
           <UserTable
             users={users}
             selectedUid={selectedUid}
@@ -177,27 +176,32 @@ export default function UtilisateursPage() {
           />
         </div>
 
-        {/* Mobile panel overlay */}
+        {/* Mobile detail modal */}
         {mobilePanelOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden">
-            <div 
+          <div className="fixed inset-0 z-50 lg:hidden flex items-center justify-center p-4">
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label="Fermer le panneau"
               className="absolute inset-0 bg-black/50 backdrop-blur-sm"
               onClick={() => setMobilePanelOpen(false)}
+              onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') setMobilePanelOpen(false); }}
             />
-            <div className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto bg-surface rounded-t-2xl animate-slide-up">
-              <div className="sticky top-0 bg-surface pt-3 pb-2 px-4 border-b border-border flex items-center justify-between">
+            <div className="relative w-full max-w-[480px] max-h-[85vh] flex flex-col bg-surface rounded-2xl border border-border shadow-[var(--sh-xl)] overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
                 <span className="font-display font-semibold text-sm text-foreground">
                   Détails utilisateur
                 </span>
                 <button
                   onClick={() => setMobilePanelOpen(false)}
-                  className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-foreground-3 hover:text-foreground"
+                  className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-foreground-3 hover:bg-surface-sink transition-colors"
                 >
                   ×
                 </button>
               </div>
-              <div className="p-4">
+              <div className="overflow-y-auto">
                 <UserDetailPanel
+                  naked
                   user={selectedUser}
                   onEdit={uid => {
                     setFormModal({ mode: 'edit', uid });
@@ -221,6 +225,7 @@ export default function UtilisateursPage() {
           mode={formModal.mode}
           user={editUser}
           rawUser={rawEditUser}
+          groups={groups}
           onClose={() => setFormModal(null)}
           onSubmit={handleFormSubmit}
         />

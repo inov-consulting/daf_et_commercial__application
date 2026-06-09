@@ -12,7 +12,11 @@ export interface BreadcrumbProps extends HTMLAttributes<HTMLElement> {
   separator?: ReactNode;
 }
 
-export function Breadcrumb({ items, separator = '>', className, ...props }: BreadcrumbProps) {
+const dateStr = new Date().toLocaleDateString('fr-FR', {
+  day: 'numeric', month: 'long', year: 'numeric',
+});
+
+export function Breadcrumb({ items, separator = '›', className, ...props }: BreadcrumbProps) {
   return (
     <nav aria-label="Fil d'ariane" className={cn('flex items-center flex-wrap gap-1', className)} {...props}>
       {items.map((item, i) => {
@@ -21,7 +25,7 @@ export function Breadcrumb({ items, separator = '>', className, ...props }: Brea
           <div key={i} className="flex items-center gap-1 text-sm">
             {isLast ? (
               <span className="text-foreground font-medium" aria-current="page">
-                {item.label}
+                {item.label} <span className="mx-1 opacity-50">·</span> {dateStr}
               </span>
             ) : (
               <>
@@ -33,7 +37,7 @@ export function Breadcrumb({ items, separator = '>', className, ...props }: Brea
                     {item.label}
                   </Link>
                 ) : (
-                  <span className="text-foreground-3">{item.label}</span>
+                  <span className="text-foreground-3">{item.label} <span className="mx-1 opacity-50">·</span> {dateStr} </span>
                 )}
                 <span className="text-foreground-muted text-xs" aria-hidden="true">
                   {separator}

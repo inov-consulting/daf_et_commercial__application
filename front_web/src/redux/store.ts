@@ -5,6 +5,7 @@ import { TypedUseSelectorHook, useSelector, useDispatch } from "react-redux";
 import usersReducer from "./features/users/usersSlice";
 import meReducer from "./features/me/meSlice";
 import companiesReducer from "./features/companies/companiesSlice";
+import groupsReducer from "./features/groups/groupsSlice";
 
 const persistConfig = {
   key: "root",
@@ -17,6 +18,7 @@ const rootReducer = {
   users: usersReducer,
   me: meReducer,
   companies: companiesReducer,
+  groups: groupsReducer,
 };
 
 const persistedReducer = persistReducer(persistConfig, combineReducers(rootReducer));

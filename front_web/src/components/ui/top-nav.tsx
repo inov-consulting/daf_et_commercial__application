@@ -57,7 +57,7 @@ export function TopNav({
                     'transition-all duration-fast',
                     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500 focus-visible:outline-offset-[3px]',
                     isActive
-                      ? 'bg-[rgba(14,134,232,.1)] text-primary-600 font-semibold dark:text-primary-400'
+                      ? 'bg-[rgba(27,107,69,.1)] text-primary-600 font-semibold dark:text-primary-400'
                       : 'text-foreground-2 hover:bg-surface-mute hover:text-foreground',
                   )}
                   aria-current={isActive ? 'page' : undefined}

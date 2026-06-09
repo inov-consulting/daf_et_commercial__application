@@ -31,5 +31,6 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next|favicon.ico|silent-check-sso.html).*)'],
+  matcher: [
+    '/((?!api|_next|favicon.ico|silent-check-sso.html|assets|.*\\.(?:png|jpg|jpeg|gif|svg|ico|webp|woff|woff2|ttf|otf|eot|mp4|pdf)).*)'],
 };
