@@ -41,6 +41,7 @@ class UserOut(BaseModel):
     last_name: str
     companies: list[CompanyOut] = []
     is_active: bool
+    avatar_url: str | None = None
     created_at: datetime | None
     updated_at: datetime | None
 
@@ -53,6 +54,7 @@ class UserOut(BaseModel):
             last_name=user.last_name,
             companies=companies or [],
             is_active=user.is_active,
+            avatar_url=user.avatar_url,
             created_at=user.created_at,
             updated_at=user.updated_at,
         )

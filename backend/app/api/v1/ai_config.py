@@ -74,7 +74,7 @@ def _model_out(m: object) -> AiModelOut:
 
 # ── Endpoints : modèles ──────────────────────────────────────────────────
 
-@router.get("/models", response_model=AiModelsByProviderOut)
+@router.get("/models")
 async def list_models() -> AiModelsByProviderOut:
     """Liste tous les modèles actifs, groupés par provider."""
     all_models = await get_model_repo().list_all()
@@ -86,7 +86,6 @@ async def list_models() -> AiModelsByProviderOut:
 
 @router.post(
     "/models",
-    response_model=AiModelOut,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("admin"))],
 )
@@ -102,7 +101,7 @@ async def add_model(payload: AiModelCreate) -> AiModelOut:
 
 # ── Endpoints : config active ─────────────────────────────────────────────
 
-@router.get("/config", response_model=AiConfigOut)
+@router.get("/config")
 async def get_ai_config() -> AiConfigOut:
     """Retourne la configuration active (modèle de génération + modèle d'embedding)."""
     config, model, embedding_model = await GetAiConfigUseCase(get_config_repo()).execute()
@@ -116,7 +115,6 @@ async def get_ai_config() -> AiConfigOut:
 
 @router.patch(
     "/config/generation",
-    response_model=AiConfigOut,
     dependencies=[Depends(require_permission("admin"))],
 )
 async def update_generation_model(payload: AiConfigUpdateGeneration) -> AiConfigOut:
@@ -133,7 +131,6 @@ async def update_generation_model(payload: AiConfigUpdateGeneration) -> AiConfig
 
 @router.patch(
     "/config/embedding",
-    response_model=AiConfigOut,
     dependencies=[Depends(require_permission("admin"))],
 )
 async def update_embedding_model(payload: AiConfigUpdateEmbedding) -> AiConfigOut:
