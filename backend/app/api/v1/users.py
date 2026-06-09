@@ -81,6 +81,10 @@ async def create_user(
         except RuntimeError as exc:
             raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
+    # Récupère les groupes de l'utilisateur depuis Keycloak
+    kc_groups = await kc.get_user_groups(keycloak_id_str)
+    user_group_ids = [g["id"] for g in kc_groups]
+
     # Enrichit avec l'identité connue au moment de la création
     user.email = payload.email
     user.first_name = payload.first_name
@@ -90,7 +94,7 @@ async def create_user(
         c = await company_repo.get_by_id(cid)
         if c:
             companies.append(CompanyOut.from_domain(c))
-    return UserOut.from_domain(user, companies=companies)
+    return UserOut.from_domain(user, companies=companies, group_ids=user_group_ids)
 
 
 @router.get(
@@ -119,7 +123,9 @@ async def list_users(
             c = await company_repo.get_by_id(cid)
             if c:
                 companies.append(CompanyOut.from_domain(c))
-        items.append(UserOut.from_domain(u, companies=companies))
+        kc_groups = await kc.get_user_groups(str(u.id))
+        user_group_ids = [g["id"] for g in kc_groups]
+        items.append(UserOut.from_domain(u, companies=companies, group_ids=user_group_ids))
     return Page(items=items, limit=params.limit, offset=params.offset, count=len(items))
 
 
@@ -142,7 +148,9 @@ async def get_user(
         c = await company_repo.get_by_id(cid)
         if c:
             companies.append(CompanyOut.from_domain(c))
-    return UserOut.from_domain(user, companies=companies)
+    kc_groups = await kc.get_user_groups(str(user_id))
+    user_group_ids = [g["id"] for g in kc_groups]
+    return UserOut.from_domain(user, companies=companies, group_ids=user_group_ids)
 
 
 @router.patch(
@@ -155,7 +163,6 @@ async def update_user(
     user_repo: UserRepoDep,
 ) -> UserOut:
     """Met à jour les données applicatives d'un utilisateur.
-
     Permet de modifier les entreprises rattachées, le statut actif/inactif.
     Les champs non fournis (null) sont ignorés.
     """
