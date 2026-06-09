@@ -43,6 +43,7 @@ type CreateUserPayload = {
   first_name: string;
   last_name: string;
   company_ids: string[];
+  group_ids: string[]; // Même si le backend ne les utilise pas encore, on les envoie pour éviter des mises à jour locales non synchronisées.
 };
 
 type UpdateUserPayload = {

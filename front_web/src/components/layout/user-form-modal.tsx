@@ -19,7 +19,7 @@ interface UserFormModalProps {
   user?: User;
   rawUser?: ApiUser;
   onClose: () => void;
-  onSubmit: (data: UserFormSubmitData) => void;
+  onSubmit: (data: UserFormSubmitData) => Promise<{ ok: boolean; error?: string }>;
 }
 
 export function UserFormModal({ mode, user, rawUser, onClose, onSubmit }: UserFormModalProps) {
@@ -31,7 +31,7 @@ export function UserFormModal({ mode, user, rawUser, onClose, onSubmit }: UserFo
   const [groupes, setGroupes] = useState<string[]>(user?.groupes ?? []);
   const [surface, setSurface] = useState<AccessSurface>(user?.surface ?? 'Mobile');
   const [ddOpen, setDdOpen] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   // Recherche entreprises avec debounce
   const [companySearch, setCompanySearch] = useState('');
@@ -84,9 +84,9 @@ export function UserFormModal({ mode, user, rawUser, onClose, onSubmit }: UserFo
     );
   }
 
-  function handleSubmit() {
-    setSaved(true);
-    onSubmit({
+  async function handleSubmit() {
+    setSubmitting(true);
+    const result = await onSubmit({
       nom, prenom, email,
       role: role as UserRole,
       entreprises: selectedCompanies.map(c => c.name ?? c.id),
@@ -94,13 +94,15 @@ export function UserFormModal({ mode, user, rawUser, onClose, onSubmit }: UserFo
       surface,
       company_ids: selectedCompanies.map(c => c.id),
     });
-    setTimeout(onClose, 900);
+    // Si ok : le parent ferme la modal → démontage naturel
+    // Si erreur : le parent affiche le toast, on relâche juste le bouton
+    if (!result.ok) setSubmitting(false);
   }
 
   return (
     <div
       className="fixed inset-0 z-[70] bg-black/40 backdrop-blur-sm flex items-center justify-center p-6"
-      onClick={onClose}
+      onClick={submitting ? undefined : onClose}
     >
       <div
         className="bg-surface rounded-2xl border border-border shadow-[var(--sh-xl)] w-full max-w-[580px] overflow-hidden"
@@ -373,15 +375,15 @@ export function UserFormModal({ mode, user, rawUser, onClose, onSubmit }: UserFo
               : '✓ Les modifications prennent effet immédiatement'}
           </p>
           <div className="flex gap-2.5">
-            <Button variant="ghost" size="sm" onClick={onClose}>Annuler</Button>
+            <Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button>
             <Button
-              variant={saved ? 'success' : 'gradient'}
+              variant="gradient"
               size="sm"
               onClick={handleSubmit}
-              disabled={saved}
+              disabled={submitting}
             >
-              {saved ? (
-                <><CheckIcon size={13} />{mode === 'invite' ? 'Invitation envoyée !' : 'Enregistré !'}</>
+              {submitting ? (
+                <><SpinnerIcon size={13} className="animate-spin" />En cours…</>
               ) : (
                 <>
                   {mode === 'invite'

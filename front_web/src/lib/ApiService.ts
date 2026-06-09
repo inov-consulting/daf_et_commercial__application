@@ -20,7 +20,8 @@ export interface ApiResponse<TData = unknown> {
 
 function getAccessToken(): string | null {
   if (typeof window === "undefined") return null;
-  return sessionStorage.getItem("portalis_at");
+  const { getKeycloakInstance } = require("./keycloak") as typeof import("./keycloak");
+  return getKeycloakInstance().token ?? null;
 }
 
 function buildHeaders(isProtected: boolean, isMultipart: boolean): HeadersInit {
