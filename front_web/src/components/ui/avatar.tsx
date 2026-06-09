@@ -18,7 +18,7 @@ const sizeClasses: Record<AvatarSize, string> = {
 
 export function Avatar({
   initials,
-  color = '#0E86E8',
+  color = '#1B6B45',
   size = 'sm',
   className,
   style,

@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useId } from 'react';
 import {
   XIcon, CheckIcon, CaretDownIcon, DeviceMobileIcon, DesktopIcon, DevicesIcon,
   UserPlusIcon, PencilSimpleIcon, PaperPlaneTiltIcon, MagnifyingGlassIcon, SpinnerIcon,
+  CameraIcon,
 } from '@phosphor-icons/react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -11,25 +12,30 @@ import { cn } from '@/lib/utils';
 import { GROUPES_LIST, ROLES, SURFACES, type User, type UserRole, type AccessSurface, type ApiUser } from '../../types/user_type';
 import { useInfiniteCompanies } from '@/hooks/useInfiniteCompanies';
 import { ApiCompany } from '@/types/company_type';
+import type { ApiGroup } from '@/redux/features/groups/groupsSlice';
 
-export type UserFormSubmitData = Partial<User> & { company_ids: string[] };
+export type UserFormSubmitData = Partial<User> & { company_ids: string[]; group_ids: string[]; avatar_url?: string };
 
 interface UserFormModalProps {
   mode: 'invite' | 'edit';
   user?: User;
   rawUser?: ApiUser;
+  groups?: ApiGroup[];
   onClose: () => void;
   onSubmit: (data: UserFormSubmitData) => Promise<{ ok: boolean; error?: string }>;
 }
 
-export function UserFormModal({ mode, user, rawUser, onClose, onSubmit }: UserFormModalProps) {
+export function UserFormModal({ mode, user, rawUser, groups, onClose, onSubmit }: UserFormModalProps) {
   const [nom, setNom] = useState(user?.nom ?? '');
   const [prenom, setPrenom] = useState(user?.prenom ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
   const [role, setRole] = useState<UserRole | ''>(user?.role ?? '');
   const [selectedCompanies, setSelectedCompanies] = useState<ApiCompany[]>(rawUser?.companies ?? []);
-  const [groupes, setGroupes] = useState<string[]>(user?.groupes ?? []);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [surface, setSurface] = useState<AccessSurface>(user?.surface ?? 'Mobile');
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(rawUser?.avatar_url ?? null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputId = useId();
   const [ddOpen, setDdOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -78,10 +84,23 @@ export function UserFormModal({ mode, user, rawUser, onClose, onSubmit }: UserFo
     );
   }, []);
 
-  function toggleGroupe(g: string) {
-    setGroupes(prev =>
-      prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g],
+  function toggleGroupe(id: string) {
+    setSelectedGroupIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id],
     );
+  }
+
+  const groupList: ApiGroup[] =
+    groups && groups.length > 0
+      ? groups
+      : GROUPES_LIST.map(name => ({ id: name, name, path: '' }));
+
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setAvatarPreview(reader.result as string);
+    reader.readAsDataURL(file);
   }
 
   async function handleSubmit() {
@@ -90,9 +109,10 @@ export function UserFormModal({ mode, user, rawUser, onClose, onSubmit }: UserFo
       nom, prenom, email,
       role: role as UserRole,
       entreprises: selectedCompanies.map(c => c.name ?? c.id),
-      groupes,
       surface,
       company_ids: selectedCompanies.map(c => c.id),
+      group_ids: selectedGroupIds,
+      avatar_url: avatarPreview ?? undefined,
     });
     // Si ok : le parent ferme la modal → démontage naturel
     // Si erreur : le parent affiche le toast, on relâche juste le bouton
@@ -132,6 +152,48 @@ export function UserFormModal({ mode, user, rawUser, onClose, onSubmit }: UserFo
 
         {/* Body */}
         <div className="px-5 py-5 max-h-[460px] overflow-y-auto sidebar-scrollbar space-y-4">
+          {/* Avatar */}
+          <div className="flex items-center gap-4">
+            <div className="relative group flex-shrink-0">
+              <div
+                className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center font-display font-bold text-white text-lg cursor-pointer select-none"
+                style={{ background: avatarPreview ? undefined : (mode === 'edit' && user ? user.bg : 'var(--grad)') }}
+                onClick={() => avatarInputRef.current?.click()}
+              >
+                {avatarPreview
+                  ? <img src={avatarPreview} alt="avatar" className="w-full h-full object-cover" />
+                  : <span>{(prenom[0] ?? '') + (nom[0] ?? '') || '?'}</span>
+                }
+              </div>
+              <div
+                className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer pointer-events-none"
+              >
+                <CameraIcon size={16} className="text-white" />
+              </div>
+              <input
+                ref={avatarInputRef}
+                id={avatarInputId}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">Photo de profil</p>
+              <p className="text-[11px] text-foreground-3 mt-0.5">JPG, PNG · Max 2 Mo</p>
+            </div>
+            {avatarPreview && (
+              <button
+                type="button"
+                onClick={() => setAvatarPreview(null)}
+                className="text-[11px] text-foreground-3 hover:text-error transition-colors flex-shrink-0"
+              >
+                Supprimer
+              </button>
+            )}
+          </div>
+
           {/* Nom + Prénom */}
           <div className="grid grid-cols-2 gap-3">
             <Input
@@ -163,7 +225,7 @@ export function UserFormModal({ mode, user, rawUser, onClose, onSubmit }: UserFo
             <select
               value={role}
               onChange={e => setRole(e.target.value as UserRole)}
-              className="w-full h-10 px-3 rounded-lg bg-surface text-sm border-[1.5px] border-border-strong outline-none cursor-pointer appearance-none transition-[border-color,box-shadow] hover:border-primary-400 focus:border-border-focus focus:shadow-[0_0_0_3px_rgba(14,134,232,.14)]"
+              className="w-full h-10 px-3 rounded-lg bg-surface text-sm border-[1.5px] border-border-strong outline-none cursor-pointer appearance-none transition-[border-color,box-shadow] hover:border-primary-400 focus:border-border-focus focus:shadow-[0_0_0_3px_rgba(27,107,69,.14)]"
               style={{
                 backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239EB0C4' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E\")",
                 backgroundRepeat: 'no-repeat',
@@ -188,7 +250,7 @@ export function UserFormModal({ mode, user, rawUser, onClose, onSubmit }: UserFo
                 className={cn(
                   'w-full h-10 flex items-center justify-between px-3 rounded-lg border-[1.5px] text-sm bg-surface transition-all',
                   ddOpen
-                    ? 'border-primary-400 shadow-[0_0_0_3px_rgba(14,134,232,.1)]'
+                    ? 'border-primary-400 shadow-[0_0_0_3px_rgba(27,107,69,.1)]'
                     : 'border-border-strong hover:border-primary-400',
                 )}
               >
@@ -313,13 +375,13 @@ export function UserFormModal({ mode, user, rawUser, onClose, onSubmit }: UserFo
           <div className="flex flex-col gap-[6px]">
             <label className="text-sm font-medium text-foreground">Groupes</label>
             <div className="grid grid-cols-2 gap-2">
-              {GROUPES_LIST.map(g => {
-                const checked = groupes.includes(g);
+              {groupList.map(g => {
+                const checked = selectedGroupIds.includes(g.id);
                 return (
                   <button
-                    key={g}
+                    key={g.id}
                     type="button"
-                    onClick={() => toggleGroupe(g)}
+                    onClick={() => toggleGroupe(g.id)}
                     className={cn(
                       'flex items-center gap-2 px-3 py-2 rounded-lg border-[1.5px] text-sm text-left transition-colors',
                       checked
@@ -333,7 +395,7 @@ export function UserFormModal({ mode, user, rawUser, onClose, onSubmit }: UserFo
                     )}>
                       {checked && <CheckIcon size={9} className="text-white" />}
                     </span>
-                    {g}
+                    {g.name}
                   </button>
                 );
               })}
@@ -343,7 +405,7 @@ export function UserFormModal({ mode, user, rawUser, onClose, onSubmit }: UserFo
           {/* Surface d'accès */}
           <div className="flex flex-col gap-[6px]">
             <label className="text-sm font-medium text-foreground">Surface d&apos;accès</label>
-            <div className="flex border-[1.5px] border-border-strong rounded-lg overflow-hidden">
+            <div role="group" aria-labelledby="surface-access-label" id="surface-access-label" className="flex border-[1.5px] border-border-strong rounded-lg overflow-hidden">
               {SURFACES.map((s, i) => (
                 <button
                   key={s}

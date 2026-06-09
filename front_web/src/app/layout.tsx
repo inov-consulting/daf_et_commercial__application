@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { fontVariables } from '@/lib/fonts';
 import '@/styles/globals.css';
 import ClientLayout from './clientLayout';
 
@@ -8,5 +9,11 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return <ClientLayout>{children}</ClientLayout>;
+  return (
+    <html data-theme="light" className={fontVariables}>
+      <body className="antialiased">
+        <ClientLayout>{children}</ClientLayout>
+      </body>
+    </html>
+  );
 }

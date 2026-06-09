@@ -22,6 +22,9 @@ export const ApiRoutes = {
   // ── Company ────────────────────────────────────────────────────────
   COMPANY_LIST:    `${BASE}/api/v1/companies`,
 
+  // ── Company ────────────────────────────────────────────────────────
+  GROUP_LIST:    `${BASE}/api/v1/groups`,
+
   // ── Commercial ───────────────────────────────────────────────────────
   COMMERCIAL_LEADS:         `${BASE}/api/v1/commercial/leads`,
   COMMERCIAL_LEAD_DETAIL:   (id: string) => `${BASE}/api/v1/commercial/leads/${id}`,

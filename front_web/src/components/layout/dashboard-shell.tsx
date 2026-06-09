@@ -9,8 +9,6 @@ import { useAppDispatch } from '@/redux/store';
 import { fetchMe, clearMe } from '@/redux/features/me/meSlice';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { AuthContext } from '@/app/clientLayout';
-import { SpinnerIcon } from '@phosphor-icons/react/dist/ssr/Spinner';
-import { fontVariables } from '@/lib/fonts';
 
 interface DashboardShellProps {
   locale: string;
@@ -51,23 +49,19 @@ export default function DashboardShell({ locale, children }: DashboardShellProps
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  if(loading) {
+  if (loading) {
     return (
-      <html data-theme="light" className={fontVariables}>
-        <body className="antialiased">
-          <div className="flex items-center justify-center h-screen bg-[var(--bg-page,#f8fafc)]">
-            <div className="text-center">
-              <div className="w-10 h-10 border-[3px] border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-sm text-gray-500">Vérification de la session…</p>
-            </div>
-          </div>
-        </body>
-      </html>
+      <div className="flex items-center justify-center h-screen bg-[var(--bg-page,#f8fafc)]">
+        <div className="text-center">
+          <div className="w-10 h-10 border-[3px] border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm text-gray-500">Chargement du profil…</p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-screen bg-[var(--bg-page)] overflow-hidden">
+    <div className="flex flex-col h-screen bg-[var(--bg-surf)] overflow-hidden">
       <TopBar 
         user={user} 
         rawUser={rawUser} 
