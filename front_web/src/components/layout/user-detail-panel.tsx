@@ -19,6 +19,7 @@ interface UserDetailPanelProps {
   onEdit: (uid: string) => void;
   onDelete: (uid: string) => void;
   onToggleActive?: (uid: string, active: boolean) => void;
+  naked?: boolean;
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -63,7 +64,7 @@ function RolePill({ role }: { role: string }) {
         'inline-flex items-center px-2.5 py-[3px] rounded-full font-display text-[11px] font-bold text-white',
         map[role] ?? '',
       )}
-      style={role === 'DG' ? { background: 'linear-gradient(135deg,#C2257A,#6B35C9)' } : undefined}
+      style={role === 'DG' ? { background: 'linear-gradient(135deg, #1B6B45, #8B6914)' } : undefined}
     >
       {role}
     </span>
@@ -146,10 +147,10 @@ function ActiveDetail({
       {/* Head */}
       <div
         className="px-5 py-5 flex flex-col items-center text-center flex-shrink-0"
-        style={{ background: 'linear-gradient(180deg,rgba(107,53,201,.04) 0%,transparent 100%)' }}
+        style={{ background: 'linear-gradient(180deg,rgba(27,107,69,.04) 0%,transparent 100%)' }}
       >
         <div
-          className="w-14 h-14 rounded-full flex items-center justify-center font-display font-bold text-white text-xl mb-2.5 shadow-[0_2px_12px_rgba(107,53,201,.28)]"
+          className="w-14 h-14 rounded-full flex items-center justify-center font-display font-bold text-white text-xl mb-2.5 shadow-[0_2px_12px_rgba(27,107,69,.28)]"
           style={{ background: user.bg }}
         >
           {user.initials}
@@ -166,6 +167,7 @@ function ActiveDetail({
           }
         </div>
       </div>
+
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto sidebar-scrollbar">
@@ -326,9 +328,14 @@ function ActiveDetail({
   );
 }
 
-export function UserDetailPanel({ user, onEdit, onDelete, onToggleActive }: UserDetailPanelProps) {
+export function UserDetailPanel({ user, onEdit, onDelete, onToggleActive, naked }: UserDetailPanelProps) {
   return (
-    <div className="w-[340px] flex-shrink-0 bg-surface rounded-2xl border border-border shadow-xs overflow-hidden flex flex-col">
+    <div className={cn(
+      'flex flex-col overflow-hidden',
+      naked
+        ? 'w-full'
+        : 'w-[340px] flex-shrink-0 bg-surface rounded-2xl border border-border shadow-xs',
+    )}>
       {!user ? (
         <div className="flex-1 flex items-center justify-center">
           <EmptyState

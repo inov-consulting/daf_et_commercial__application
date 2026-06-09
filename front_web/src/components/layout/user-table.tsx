@@ -20,7 +20,7 @@ const FILTER_TABS: { key: FilterTab; label: string }[] = [
 ];
 
 const ROLE_STYLE: Record<UserRole, { bg?: string; cls: string }> = {
-  DG: { bg: 'linear-gradient(135deg,#C2257A,#6B35C9)', cls: 'text-white' },
+  DG: { bg: 'linear-gradient(135deg, #1B6B45, #8B6914)', cls: 'text-white' },
   Commercial: { cls: 'bg-primary-500 text-white' },
   DAF: { cls: 'bg-accent-500 text-white' },
   Opérations: { cls: 'bg-success text-white' },
@@ -61,7 +61,10 @@ function MobileUserCard({
 }) {
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={() => onSelect(user.uid)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelect(user.uid); }}
       className={cn(
         'p-3 border-b border-border cursor-pointer transition-colors',
         isSelected
@@ -239,7 +242,7 @@ export function UserTable({
   });
 
   return (
-    <div className="flex-1 bg-surface rounded-2xl border border-border shadow-xs overflow-hidden">
+    <div className="w-full min-w-0 bg-surface rounded-2xl border border-border shadow-xs overflow-hidden">
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-border">
         <div className="flex items-center gap-2">
@@ -311,7 +314,9 @@ export function UserTable({
             {filtered.map(user => (
               <tr
                 key={user.uid}
+                tabIndex={0}
                 onClick={() => onSelectUser(user.uid)}
+                onKeyDown={(e) => { if (e.key === 'Enter') onSelectUser(user.uid); }}
                 className={cn(
                   'h-16 border-b border-surface-sink cursor-pointer transition-colors last:border-0',
                   selectedUid === user.uid
