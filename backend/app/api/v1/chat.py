@@ -2,6 +2,7 @@
 
 import logging
 from collections.abc import AsyncIterator
+from typing import Annotated
 from uuid import UUID
 
 import httpx
@@ -78,7 +79,7 @@ async def list_tools() -> list[ToolInfo]:
 
 @router.post("/transcribe", dependencies=_chat_deps)
 async def transcribe_audio(
-    file: UploadFile = File(...),
+    file: Annotated[UploadFile, File(...)],
 ) -> TranscribeResponse:
     """Transcrit un fichier audio en texte via OpenAI Whisper.
 
