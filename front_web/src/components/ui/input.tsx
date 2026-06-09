@@ -19,7 +19,7 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 const stateClasses: Record<InputState, string> = {
-  default: 'border-border-strong hover:border-primary-400 focus:border-border-focus focus:shadow-[0_0_0_3px_rgba(14,134,232,.14)]',
+  default: 'border-border-strong hover:border-primary-400 focus:border-border-focus focus:shadow-[0_0_0_3px_rgba(27,107,69,.14)]',
   error: 'border-error bg-error-50 focus:border-error focus:shadow-[0_0_0_3px_rgba(239,68,68,.14)] dark:bg-[rgba(239,68,68,.08)]',
   success: 'border-success focus:border-success focus:shadow-[0_0_0_3px_rgba(16,185,129,.14)]',
 };

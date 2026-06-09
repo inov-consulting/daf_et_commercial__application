@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logoutKeycloak } from '@/lib/keycloak';
 import {
-  SquaresFour, Brain, User, Truck, Funnel,
-  Files, FileText, Diamond, ChartLine, DownloadSimple,
-  Users, Gear, SignOutIcon, X,
+  SquaresFourIcon, BrainIcon, UserIcon, TruckIcon, FunnelIcon,
+  FilesIcon, FileTextIcon, DiamondIcon, ChartLineIcon, DownloadSimpleIcon,
+  UsersIcon, GearIcon, SignOutIcon, XIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { ApiUser, User as UserType } from '@/types/user_type';
@@ -30,9 +30,9 @@ function buildNav(locale: string): NavSection[] {
     {
       title: 'PRINCIPAL',
       items: [
-        { href: `/${locale}/page/dashboard`, label: 'Tableau de bord', Icon: SquaresFour },
+        { href: `/${locale}/page/dashboard`, label: 'Tableau de bord', Icon: SquaresFourIcon },
         {
-          href: `/${locale}/page/ia`, label: 'Centre IA', Icon: Brain, badge: 3,
+          href: `/${locale}/page/ia`, label: 'Centre IA', Icon: BrainIcon, badge: 3,
           customIcon: (
             <span className="flex-shrink-0 w-[18px] h-[18px] rounded-[4px] flex items-center justify-center text-white text-[9px] font-bold leading-none" style={{ background: 'var(--grad)' }}>
               IA
@@ -47,31 +47,31 @@ function buildNav(locale: string): NavSection[] {
             </span>
           ),
         },
-        { href: `/${locale}/page/prospects`, label: 'Prospects', Icon: User, badge: 47 },
-        { href: `/${locale}/page/missions`, label: 'Missions', Icon: Truck, badge: 4, badgeDanger: true },
-        { href: `/${locale}/page/pipeline`, label: 'Pipeline', Icon: Funnel },
+        { href: `/${locale}/page/prospects`, label: 'Prospects', Icon: UserIcon, badge: 47 },
+        { href: `/${locale}/page/missions`, label: 'Missions', Icon: TruckIcon, badge: 4, badgeDanger: true },
+        { href: `/${locale}/page/pipeline`, label: 'Pipeline', Icon: FunnelIcon },
       ],
     },
     {
       title: 'OPÉRATIONS',
       items: [
-        { href: `/${locale}/page/documents`, label: 'Documents', Icon: Files },
-        { href: `/${locale}/page/comptes-rendus`, label: 'Comptes-rendus', Icon: FileText },
-        { href: `/${locale}/page/offres`, label: 'Offres', Icon: Diamond },
+        { href: `/${locale}/page/documents`, label: 'Documents', Icon: FilesIcon },
+        { href: `/${locale}/page/comptes-rendus`, label: 'Comptes-rendus', Icon: FileTextIcon },
+        { href: `/${locale}/page/offres`, label: 'Offres', Icon: DiamondIcon },
       ],
     },
     {
       title: 'RAPPORTS',
       items: [
-        { href: `/${locale}/page/analytics`, label: 'Analytics', Icon: ChartLine },
-        { href: `/${locale}/page/exports`, label: 'Exports', Icon: DownloadSimple },
+        { href: `/${locale}/page/analytics`, label: 'Analytics', Icon: ChartLineIcon },
+        { href: `/${locale}/page/exports`, label: 'Exports', Icon: DownloadSimpleIcon },
       ],
     },
     {
       title: 'ADMIN',
       items: [
-        { href: `/${locale}/page/utilisateurs`, label: 'Utilisateurs', Icon: Users },
-        { href: `/${locale}/page/parametres`, label: 'Paramètres', Icon: Gear },
+        { href: `/${locale}/page/utilisateurs`, label: 'Utilisateurs', Icon: UsersIcon },
+        { href: `/${locale}/page/parametres`, label: 'Paramètres', Icon: GearIcon },
       ],
     },
   ];
@@ -146,7 +146,7 @@ export default function Sidebar({ locale, open, onClose, user, rawUser }: Sideba
         {/* Barre de couleur gradient gauche */}
         <div
           className="absolute left-0 top-0 h-full w-[3px] z-10 pointer-events-none"
-          style={{ background: 'linear-gradient(to bottom, #0E86E8 0%, #6B35C9 50%, #C2257A 100%)' }}
+          style={{ background: 'linear-gradient(to bottom, #1B6B45 0%, #2E7D52 50%, #8B6914 100%)' }}
         />
 
         {/* Bouton fermer sur mobile */}
@@ -155,7 +155,7 @@ export default function Sidebar({ locale, open, onClose, user, rawUser }: Sideba
           className="md:hidden absolute top-3 right-3 w-8 h-8 rounded-lg flex items-center justify-center text-[var(--tx-2)] hover:bg-[var(--bg-sink)] z-20"
           aria-label="Fermer le menu"
         >
-          <X size={18} />
+          <XIcon size={18} />
         </button>
 
         {/* En-tête workspace */}
@@ -210,7 +210,7 @@ export default function Sidebar({ locale, open, onClose, user, rawUser }: Sideba
                       'flex items-center rounded-lg transition-colors duration-150 mb-0.5',
                       open ? 'gap-2.5 px-2.5 py-[7px]' : 'justify-center p-[9px]',
                       active
-                        ? 'bg-[rgba(14,134,232,0.08)] text-[var(--p500)]'
+                        ? 'bg-[rgba(27,107,69,0.08)] text-[var(--p500)]'
                         : 'text-[var(--tx-2)] hover:bg-[var(--bg-sink)] hover:text-[var(--tx-1)]',
                     )}
                   >
@@ -224,7 +224,7 @@ export default function Sidebar({ locale, open, onClose, user, rawUser }: Sideba
                               'min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center',
                               badgeDanger
                                 ? 'bg-error text-white'
-                                : 'bg-[rgba(14,134,232,0.1)] text-[var(--p500)]',
+                                : 'bg-[rgba(27,107,69,0.1)] text-[var(--p500)]',
                             )}
                           >
                             {badge}
@@ -253,11 +253,6 @@ export default function Sidebar({ locale, open, onClose, user, rawUser }: Sideba
                 <p className="text-[var(--tx-1)] text-[13px] font-medium truncate">{fullName}</p>
                 {role && (
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="w-5 h-5 rounded-full bg-[var(--bg-sink)] border border-[var(--bd-def)] flex items-center justify-center flex-shrink-0">
-                      <span className="text-[9px] font-bold text-[var(--tx-3)]">
-                        {getRoleAbbreviation(role)}
-                      </span>
-                    </span>
                     <span className="text-[var(--tx-3)] text-[11px] truncate">{role}</span>
                   </div>
                 )}

@@ -47,7 +47,12 @@ type CreateUserPayload = {
 };
 
 type UpdateUserPayload = {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
   company_ids?: string[];
+  group_ids?: string[];
+  avatar_url?: string;
   is_active?: boolean;
 };
 
