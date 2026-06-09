@@ -360,3 +360,14 @@ class KeycloakAdminClient:
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.put(url, headers=headers)
             resp.raise_for_status()
+
+    async def get_user_groups(self, user_id: str) -> list[dict]:
+        """Récupère les groupes d'un utilisateur."""
+        headers = await self._auth_header()
+        url = f"{self._base_url}/admin/realms/{self._realm}/users/{user_id}/groups"
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get(url, headers=headers)
+            if resp.status_code == 404:
+                return []
+            resp.raise_for_status()
+            return resp.json()
