@@ -141,20 +141,107 @@ class KeycloakAdminClient:
             resp.raise_for_status()
 
 
-async def main() -> int:
+def _get_admin_credentials() -> tuple[str | None, str | None, str | None, str | None]:
+    """Récupère les credentials admin depuis les variables d'environnement ou settings."""
     admin_user = os.getenv("KEYCLOAK_ADMIN_USER")
     admin_password = os.getenv("KEYCLOAK_ADMIN_PASSWORD")
-
-    # Priorité aux variables d'environnement, fallback sur settings
     admin_client_id = os.getenv("KEYCLOAK_ADMIN_CLIENT_ID") or settings.keycloak_admin_client_id
     admin_client_secret = os.getenv("KEYCLOAK_ADMIN_CLIENT_SECRET") or settings.keycloak_admin_client_secret
+    return admin_user, admin_password, admin_client_id, admin_client_secret
 
-    if not ((admin_user and admin_password) or (admin_client_id and admin_client_secret)):
-        print(
-            "Erreur : définissez soit KEYCLOAK_ADMIN_USER + KEYCLOAK_ADMIN_PASSWORD\n"
-            "soit KEYCLOAK_ADMIN_CLIENT_ID + KEYCLOAK_ADMIN_CLIENT_SECRET (dans .env ou env)\n"
-            "Exemple : KEYCLOAK_ADMIN_CLIENT_ID=mon-client KEYCLOAK_ADMIN_CLIENT_SECRET=xxx python -m app.scripts.sync_keycloak_roles"
-        )
+
+def _validate_credentials(
+    admin_user: str | None,
+    admin_password: str | None,
+    admin_client_id: str | None,
+    admin_client_secret: str | None,
+) -> bool:
+    """Vérifie que les credentials sont correctement configurés."""
+    if (admin_user and admin_password) or (admin_client_id and admin_client_secret):
+        return True
+    print(
+        "Erreur : définissez soit KEYCLOAK_ADMIN_USER + KEYCLOAK_ADMIN_PASSWORD\n"
+        "soit KEYCLOAK_ADMIN_CLIENT_ID + KEYCLOAK_ADMIN_CLIENT_SECRET (dans .env ou env)\n"
+        "Exemple : KEYCLOAK_ADMIN_CLIENT_ID=mon-client KEYCLOAK_ADMIN_CLIENT_SECRET=xxx python -m app.scripts.sync_keycloak_roles"
+    )
+    return False
+
+
+def _build_desired_roles(desired: dict[str, list[str]]) -> set[str]:
+    """Aplatit les permissions en rôles 'resource:action' + rôle admin global."""
+    desired_roles: set[str] = {"admin"}
+    for resource, actions in desired.items():
+        for action in actions:
+            desired_roles.add(f"{resource}:{action}")
+    return desired_roles
+
+
+def _print_existing_roles(already: set[str]) -> None:
+    """Affiche les rôles déjà existants."""
+    if not already:
+        return
+    print(f"Déjà existants ({len(already)}) :")
+    for r in sorted(already):
+        print(f"  ✓ {r}")
+    print()
+
+
+async def _create_missing_roles(
+    kc: KeycloakAdminClient,
+    realm: str,
+    to_create: set[str],
+) -> None:
+    """Crée les rôles manquants dans Keycloak."""
+    if not to_create:
+        print("Aucun nouveau rôle à créer.\n")
+        return
+    print(f"À créer ({len(to_create)}) :")
+    for role_name in sorted(to_create):
+        print(f"  → {role_name}", end=" ")
+        is_admin = role_name == "admin"
+        await kc.create_realm_role(realm, role_name, composite=is_admin)
+        print("[OK]")
+    print()
+
+
+async def _update_admin_composites(
+    kc: KeycloakAdminClient,
+    realm: str,
+    all_roles: list[dict],
+) -> None:
+    """Met à jour le rôle admin avec tous les rôles d'action comme composites."""
+    action_roles = [r for r in all_roles if ":" in r.get("name", "")]
+    if not action_roles:
+        return
+    print(f"Mise à jour du rôle 'admin' : {len(action_roles)} composite(s)")
+    try:
+        await kc.add_role_composites(realm, "admin", action_roles)
+        print("  ✓ Composites ajoutés\n")
+    except Exception as exc:
+        print(f"  ⚠ Erreur composites : {exc}\n")
+
+
+def _print_summary(
+    realm: str,
+    desired_roles: set[str],
+    existing_names: set[str],
+    to_create: set[str],
+) -> None:
+    """Affiche le résumé JSON des opérations."""
+    summary = {
+        "realm": realm,
+        "desired": sorted(desired_roles),
+        "existing": sorted(existing_names),
+        "created": sorted(to_create),
+    }
+    print("Résumé (JSON) :")
+    print(json.dumps(summary, indent=2, ensure_ascii=False))
+
+
+async def main() -> int:
+    admin_user, admin_password, admin_client_id, admin_client_secret = _get_admin_credentials()
+
+    if not _validate_credentials(admin_user, admin_password, admin_client_id, admin_client_secret):
         return 1
 
     kc = KeycloakAdminClient(
@@ -166,13 +253,7 @@ async def main() -> int:
     )
 
     realm = settings.keycloak_realm
-    desired = extract()  # {resource: [actions]}
-
-    # Aplatir en "resource:action" + rôle admin global
-    desired_roles: set[str] = {"admin"}
-    for resource, actions in desired.items():
-        for action in actions:
-            desired_roles.add(f"{resource}:{action}")
+    desired_roles = _build_desired_roles(extract())
 
     print(f"Realm cible : {realm}")
     print(f"Permissions détectées : {len(desired_roles)}\n")
@@ -183,42 +264,11 @@ async def main() -> int:
     to_create = desired_roles - existing_names
     already = desired_roles & existing_names
 
-    if already:
-        print(f"Déjà existants ({len(already)}) :")
-        for r in sorted(already):
-            print(f"  ✓ {r}")
-        print()
+    _print_existing_roles(already)
+    await _create_missing_roles(kc, realm, to_create)
+    await _update_admin_composites(kc, realm, all_roles)
+    _print_summary(realm, desired_roles, existing_names, to_create)
 
-    if to_create:
-        print(f"À créer ({len(to_create)}) :")
-        for role_name in sorted(to_create):
-            print(f"  → {role_name}", end=" ")
-            is_admin = role_name == "admin"
-            await kc.create_realm_role(realm, role_name, composite=is_admin)
-            print("[OK]")
-        print()
-    else:
-        print("Aucun nouveau rôle à créer.\n")
-
-    # ── Rôle admin : ajouter tous les rôles d'action comme composites ──
-    action_roles = [r for r in all_roles if ":" in r.get("name", "")]
-    if action_roles:
-        print(f"Mise à jour du rôle 'admin' : {len(action_roles)} composite(s)")
-        try:
-            await kc.add_role_composites(realm, "admin", action_roles)
-            print("  ✓ Composites ajoutés\n")
-        except Exception as exc:
-            print(f"  ⚠ Erreur composites : {exc}\n")
-
-    # Résumé JSON optionnel
-    summary = {
-        "realm": realm,
-        "desired": sorted(desired_roles),
-        "existing": sorted(existing_names),
-        "created": sorted(to_create),
-    }
-    print("Résumé (JSON) :")
-    print(json.dumps(summary, indent=2, ensure_ascii=False))
     return 0
 
 

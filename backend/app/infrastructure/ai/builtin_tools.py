@@ -37,7 +37,7 @@ async def get_company_details(company_name: str) -> str:
     )
 
 
-async def get_current_date() -> str:
+def get_current_date() -> str:
     """Retourne la date et l'heure actuelles."""
     from datetime import datetime
     now = datetime.now(UTC)
@@ -45,7 +45,7 @@ async def get_current_date() -> str:
 
 
 # ── Registre ─────────────────────────────────────────────────────────────
-# Nom snake_case → fonction async
+# Nom snake_case → fonction
 
 BUILTIN_REGISTRY: dict[str, object] = {
     "search_companies": search_companies,

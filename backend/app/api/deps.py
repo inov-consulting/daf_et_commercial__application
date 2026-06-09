@@ -125,7 +125,7 @@ def require_role(*allowed: Role) -> Callable[..., Any]:
 def require_permission(permission: str) -> Callable[..., Any]:
     """Factory de dépendance : restreint l'accès via la matrice de permissions."""
 
-    async def _check(
+    def _check(
         request: Request,
         user: CurrentUser,
     ) -> User:
