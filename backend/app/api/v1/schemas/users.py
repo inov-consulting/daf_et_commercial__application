@@ -40,19 +40,28 @@ class UserOut(BaseModel):
     first_name: str
     last_name: str
     companies: list[CompanyOut] = []
+    group_ids: list[str] = []
     is_active: bool
+    avatar_url: str | None = None
     created_at: datetime | None
     updated_at: datetime | None
 
     @classmethod
-    def from_domain(cls, user: User, companies: list[CompanyOut] | None = None) -> "UserOut":
+    def from_domain(
+        cls,
+        user: User,
+        companies: list[CompanyOut] | None = None,
+        group_ids: list[str] | None = None,
+    ) -> "UserOut":
         return cls(
             id=user.id,
             email=user.email,
             first_name=user.first_name,
             last_name=user.last_name,
             companies=companies or [],
+            group_ids=group_ids or [],
             is_active=user.is_active,
+            avatar_url=user.avatar_url,
             created_at=user.created_at,
             updated_at=user.updated_at,
         )

@@ -17,6 +17,7 @@ class User:
     id: UUID
     company_ids: list[UUID]
     is_active: bool = True
+    avatar_url: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

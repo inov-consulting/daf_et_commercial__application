@@ -111,7 +111,7 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 def require_role(*allowed: Role) -> Callable[..., Any]:
     """Factory de dépendance : restreint l'accès à une liste de rôles."""
 
-    async def _check(user: CurrentUser) -> User:
+    def _check(user: CurrentUser) -> User:
         if getattr(user, "role", None) not in allowed:
             raise HTTPException(
                 status.HTTP_403_FORBIDDEN,

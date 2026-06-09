@@ -44,8 +44,41 @@ _CURRENCY_NAME_MAP: dict[str, Currency] = {
 }
 
 
+_COUNTRY_CURRENCY_FALLBACK: dict[Country, Currency] = {
+    Country.SN: Currency.XOF,
+    Country.CI: Currency.XOF,
+    Country.CM: Currency.XAF,
+    Country.MA: Currency.MAD,
+    Country.FR: Currency.EUR,
+}
+
+
 def _normalize(text: str | None) -> str:
     return (text or "").strip().lower()
+
+
+def _resolve_country(name: str | None) -> Country | None:
+    """Résout un nom de pays Odoo en Country. Retourne None si inconnu."""
+    if not name:
+        return None
+    country = _COUNTRY_NAME_MAP.get(_normalize(name))
+    if country is not None:
+        return country
+    raw = name.strip().upper()
+    if len(raw) == 2 and raw in {c.value for c in Country}:
+        return Country(raw)
+    return None
+
+
+def _resolve_currency(currency_name: str | None, country: Country) -> Currency | None:
+    """Résout un nom de devise Odoo en Currency, avec fallback par pays."""
+    currency = _CURRENCY_NAME_MAP.get(_normalize(currency_name))
+    if currency is not None:
+        return currency
+    raw = (currency_name or "").strip().upper()
+    if raw in {c.value for c in Currency}:
+        return Currency(raw)
+    return _COUNTRY_CURRENCY_FALLBACK.get(country)
 
 
 def map_odoo_company_to_domain(odoo: OdooCompany) -> Company | None:
@@ -53,35 +86,13 @@ def map_odoo_company_to_domain(odoo: OdooCompany) -> Company | None:
 
     Retourne ``None`` si le pays ou la devise ne peut pas être mappé.
     """
-    if not odoo.country_name:
+    country = _resolve_country(odoo.country_name)
+    if country is None:
         return None
 
-    country = _COUNTRY_NAME_MAP.get(_normalize(odoo.country_name))
-    if country is None:
-        # fallback : si le code ressemble déjà à un code ISO 2 lettres
-        raw = (odoo.country_name or "").strip().upper()
-        if len(raw) == 2 and raw in {c.value for c in Country}:
-            country = Country(raw)
-        else:
-            return None
-
-    currency = _CURRENCY_NAME_MAP.get(_normalize(odoo.currency))
+    currency = _resolve_currency(odoo.currency, country)
     if currency is None:
-        raw = (odoo.currency or "").strip().upper()
-        if raw in {c.value for c in Currency}:
-            currency = Currency(raw)
-        else:
-            # fallback XOF pour la zone UEMOA
-            if country in (Country.SN, Country.CI):
-                currency = Currency.XOF
-            elif country == Country.CM:
-                currency = Currency.XAF
-            elif country == Country.MA:
-                currency = Currency.MAD
-            elif country == Country.FR:
-                currency = Currency.EUR
-            else:
-                return None
+        return None
 
     return Company(
         id=odoo.uuid,
