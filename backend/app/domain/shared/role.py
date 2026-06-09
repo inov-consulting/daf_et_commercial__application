@@ -28,6 +28,11 @@ class Role(StrEnum):
     """Accès comptable limité (lecture)."""
 
 
+# Permissions communes réutilisées dans plusieurs rôles
+_PERM_TRANSPORT_READ_ALL = "transport_file:read_all"
+_PERM_REPORT_READ_ALL = "report:read_all"
+_PERM_INVOICE_READ_ALL = "invoice:read_all"
+
 # Permissions agrégées par rôle. Évite de disperser des `if role == ...` dans le code.
 # À étendre quand de nouvelles actions sensibles apparaissent.
 _PERMISSIONS: dict[Role, frozenset[str]] = {
@@ -49,17 +54,17 @@ _PERMISSIONS: dict[Role, frozenset[str]] = {
         "meeting_report:read_all",
         "offer:read_all",
         "opportunity:read_all",
-        "transport_file:read_all",
+        _PERM_TRANSPORT_READ_ALL,
         "kpi:read_all",
-        "report:read_all",
+        _PERM_REPORT_READ_ALL,
     }),
     Role.FINANCE: frozenset({
-        "transport_file:read_all", "transport_file:update_all",
+        _PERM_TRANSPORT_READ_ALL, "transport_file:update_all",
         "cost_line:create", "cost_line:read_all", "cost_line:update_all",
         "revenue_line:create", "revenue_line:read_all", "revenue_line:update_all",
-        "invoice:read_all",
+        _PERM_INVOICE_READ_ALL,
         "treasury:read_all",
-        "report:read_all",
+        _PERM_REPORT_READ_ALL,
     }),
     Role.ADMIN_INOV: frozenset({
         "user:create", "user:read", "user:update", "user:delete",
@@ -68,9 +73,9 @@ _PERMISSIONS: dict[Role, frozenset[str]] = {
         "system:read_logs", "system:configure",
     }),
     Role.CABINET_COMPTABLE: frozenset({
-        "invoice:read_all",
-        "transport_file:read_all",
-        "report:read_all",
+        _PERM_INVOICE_READ_ALL,
+        _PERM_TRANSPORT_READ_ALL,
+        _PERM_REPORT_READ_ALL,
     }),
 }
 

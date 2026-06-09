@@ -4,7 +4,7 @@ import logging
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 
 from app.api.deps import CompanyRepoDep, UserRepoDep, require_permission
 from app.api.v1.schemas.companies import CompanyOut
@@ -15,6 +15,7 @@ from app.application.users.get_user import GetUserUseCase
 from app.application.users.list_users import ListUsersUseCase
 from app.application.users.update_user import UpdateUserInput, UpdateUserUseCase
 from app.infrastructure.auth.keycloak import KeycloakAdminClient
+from app.infrastructure.storage.minio import StorageService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/users", tags=["users"])
@@ -22,7 +23,6 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.post(
     "",
-    response_model=UserOut,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("user:create"))],
 )
@@ -31,6 +31,13 @@ async def create_user(
     user_repo: UserRepoDep,
     company_repo: CompanyRepoDep,
 ) -> UserOut:
+    """Crée un utilisateur dans Keycloak et en base locale.
+
+    Si l'utilisateur n'existe pas encore dans Keycloak, il est créé et
+    rattaché aux groupes fournis. Si un mot de passe est fourni, il est
+    défini directement (temporaire ou non) ; sinon un email de vérification
+    est envoyé. L'utilisateur est ensuite associé aux entreprises indiquées.
+    """
     # Résolution du keycloak_id depuis l'email via l'admin Keycloak
     kc = KeycloakAdminClient()
     users_kc = await kc.search_users(payload.email)
@@ -74,6 +81,10 @@ async def create_user(
         except RuntimeError as exc:
             raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
+    # Récupère les groupes de l'utilisateur depuis Keycloak
+    kc_groups = await kc.get_user_groups(keycloak_id_str)
+    user_group_ids = [g["id"] for g in kc_groups]
+
     # Enrichit avec l'identité connue au moment de la création
     user.email = payload.email
     user.first_name = payload.first_name
@@ -83,12 +94,11 @@ async def create_user(
         c = await company_repo.get_by_id(cid)
         if c:
             companies.append(CompanyOut.from_domain(c))
-    return UserOut.from_domain(user, companies=companies)
+    return UserOut.from_domain(user, companies=companies, group_ids=user_group_ids)
 
 
 @router.get(
     "",
-    response_model=Page[UserOut],
     dependencies=[Depends(require_permission("user:read"))],
 )
 async def list_users(
@@ -113,13 +123,14 @@ async def list_users(
             c = await company_repo.get_by_id(cid)
             if c:
                 companies.append(CompanyOut.from_domain(c))
-        items.append(UserOut.from_domain(u, companies=companies))
+        kc_groups = await kc.get_user_groups(str(u.id))
+        user_group_ids = [g["id"] for g in kc_groups]
+        items.append(UserOut.from_domain(u, companies=companies, group_ids=user_group_ids))
     return Page(items=items, limit=params.limit, offset=params.offset, count=len(items))
 
 
 @router.get(
     "/{user_id}",
-    response_model=UserOut,
     dependencies=[Depends(require_permission("user:read"))],
 )
 async def get_user(
@@ -137,19 +148,26 @@ async def get_user(
         c = await company_repo.get_by_id(cid)
         if c:
             companies.append(CompanyOut.from_domain(c))
-    return UserOut.from_domain(user, companies=companies)
+    kc_groups = await kc.get_user_groups(str(user_id))
+    user_group_ids = [g["id"] for g in kc_groups]
+    return UserOut.from_domain(user, companies=companies, group_ids=user_group_ids)
 
 
 @router.patch(
     "/{user_id}",
-    response_model=UserOut,
     dependencies=[Depends(require_permission("user:update"))],
 )
 async def update_user(
     user_id: UUID,
     payload: UserUpdate,
     user_repo: UserRepoDep,
+    company_repo: CompanyRepoDep,
 ) -> UserOut:
+    """Met à jour les données applicatives d'un utilisateur.
+
+    Permet de modifier les entreprises rattachées, le statut actif/inactif.
+    Les champs non fournis (null) sont ignorés.
+    """
     user = await UpdateUserUseCase(user_repo).execute(
         user_id,
         UpdateUserInput(
@@ -159,4 +177,22 @@ async def update_user(
             is_active=payload.is_active,
         ),
     )
-    return UserOut.from_domain(user)
+
+    # Récupère les données enrichies depuis Keycloak
+    kc = KeycloakAdminClient()
+    kc_user = await kc.get_user_by_id(str(user_id))
+    if kc_user:
+        user.email = kc_user.get("email", "")
+        user.first_name = kc_user.get("firstName", "")
+        user.last_name = kc_user.get("lastName", "")
+
+    companies: list[CompanyOut] = []
+    for cid in user.company_ids:
+        c = await company_repo.get_by_id(cid)
+        if c:
+            companies.append(CompanyOut.from_domain(c))
+
+    kc_groups = await kc.get_user_groups(str(user_id))
+    user_group_ids = [g["id"] for g in kc_groups]
+
+    return UserOut.from_domain(user, companies=companies, group_ids=user_group_ids)

@@ -29,7 +29,6 @@ router = APIRouter(prefix="/companies", tags=["companies"])
 
 @router.post(
     "",
-    response_model=CompanyOut,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("company:create"))],
 )
@@ -45,10 +44,7 @@ async def create_company(payload: CompanyCreate, company_repo: CompanyRepoDep) -
     return CompanyOut.from_domain(company)
 
 
-@router.get(
-    "",
-    response_model=Page[CompanyOut],
-)
+@router.get("")
 async def list_companies(
     company_repo: CompanyRepoDep,
     params: Annotated[PageParams, Depends()],
@@ -83,10 +79,7 @@ async def sync_companies_from_odoo(company_repo: CompanyRepoDep) -> None:
         ) from exc
 
 
-@router.get(
-    "/{company_id}",
-    response_model=CompanyOut,
-)
+@router.get("/{company_id}")
 async def get_company(company_id: UUID, company_repo: CompanyRepoDep) -> CompanyOut:
     company = await GetCompanyUseCase(company_repo).execute(company_id)
     return CompanyOut.from_domain(company)
