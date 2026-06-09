@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 
 export type BadgeColor =
   | 'primary' | 'secondary' | 'accent'
-  | 'success' | 'warning' | 'error' | 'neutral';
+  | 'success' | 'warning' | 'error' | 'neutral' | 'white';
 
 export type BadgeVariant = 'solid' | 'subtle' | 'outline';
 
@@ -49,6 +49,11 @@ const colorVariant: Record<BadgeColor, Record<BadgeVariant, string>> = {
     subtle: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300',
     outline: 'bg-transparent text-neutral-600 border-[1.5px] border-neutral-300',
   },
+  white: {
+    solid: 'bg-white text-[var(--tx-1)]',
+    subtle: 'bg-white/80 text-[var(--tx-1)]',
+    outline: 'bg-transparent text-white border-[1.5px] border-white',
+  },
 };
 
 const dotColor: Record<BadgeColor, string> = {
@@ -59,6 +64,7 @@ const dotColor: Record<BadgeColor, string> = {
   warning: 'bg-warning',
   error: 'bg-error',
   neutral: 'bg-neutral-400',
+  white: 'bg-white',
 };
 
 export function Badge({
@@ -72,8 +78,8 @@ export function Badge({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-[.3rem] text-xs font-semibold',
-        'px-[.625rem] py-[.2rem] rounded-full whitespace-nowrap',
+        'inline-flex items-center gap-[.3rem] text-xs font-medium leading-none',
+        'px-[.625rem] py-[.4rem] rounded-full whitespace-nowrap',
         colorVariant[color][variant],
         className,
       )}

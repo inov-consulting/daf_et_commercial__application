@@ -1,7 +1,7 @@
 import { HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
-export type ProgressColor = 'primary' | 'success' | 'warning' | 'error';
+export type ProgressColor = 'primary' | 'accent' | 'secondary' | 'success' | 'warning' | 'error';
 
 export interface ProgressProps extends HTMLAttributes<HTMLDivElement> {
   value: number;
@@ -14,7 +14,9 @@ export interface ProgressProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const colorClasses: Record<ProgressColor, string> = {
-  primary: 'bg-[var(--grad)]',
+  primary: 'bg-primary',
+  accent: 'bg-accent',
+  secondary: 'bg-secondary',
   success: 'bg-success',
   warning: 'bg-warning',
   error: 'bg-error',
@@ -22,6 +24,8 @@ const colorClasses: Record<ProgressColor, string> = {
 
 const valueColorClasses: Record<ProgressColor, string> = {
   primary: 'text-primary-500',
+  accent: 'text-[var(--s600)]',
+  secondary: 'text-[var(--s600)]',
   success: 'text-success',
   warning: 'text-warning',
   error: 'text-error',
@@ -65,7 +69,7 @@ export function Progress({
         aria-valuemin={0}
         aria-label={label}
         className={cn(
-          'w-full rounded-full overflow-hidden bg-surface-sink',
+          'w-full rounded-full overflow-hidden bg-[var(--bg-sink)]',
           sizeClasses[size],
         )}
       >
@@ -75,7 +79,9 @@ export function Progress({
             colorClasses[color],
             shimmer && color === 'primary' && 'progress-shimmer',
           )}
-          style={{ width: `${pct}%` }}
+          style={{
+            width: `${pct}%`,
+          }}
         />
       </div>
     </div>

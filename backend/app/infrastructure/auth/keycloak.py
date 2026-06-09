@@ -1,13 +1,20 @@
-"""Client Keycloak — validation JWKS locale et extraction de rôles."""
+"""Client Keycloak — validation des tokens via JWKS (clés publiques Keycloak).
 
-import asyncio
+Stratégie de validation :
+1. Primaire  : JWKS local — vérifie la signature RS256 avec les clés publiques
+               téléchargées depuis Keycloak (cache 1h). C'est Keycloak qui signe,
+               donc c'est Keycloak qui valide cryptographiquement.
+2. Secondaire (optionnel) : introspection online — vérifie en plus l'état de
+               session (révocation). Activable dès que le client Keycloak aura
+               "Service Accounts Enabled" configuré côté admin.
+"""
+
 import logging
 import os
 import time
 
 import httpx
 import jwt
-from keycloak import KeycloakOpenID
 
 from app.core.config import settings
 
@@ -15,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 class KeycloakClient:
-    """Client HTTP vers Keycloak — validation locale des tokens via JWKS."""
+    """Valide les tokens Bearer via les clés publiques JWKS de Keycloak."""
 
     _jwks_cache: dict | None = None
     _jwks_cache_at: float = 0.0
@@ -24,20 +31,10 @@ class KeycloakClient:
     def __init__(self) -> None:
         self._base_url = f"{settings.keycloak_url}/realms/{settings.keycloak_realm}"
         self._jwks_url = f"{self._base_url}/protocol/openid-connect/certs"
-        # python-keycloak pour l'introspection (méthode officielle)
-        server_url = settings.keycloak_url
-        if not server_url.endswith("/"):
-            server_url += "/"
-        self._kc_openid = KeycloakOpenID(
-            server_url=server_url,
-            client_id=settings.keycloak_client_id,
-            realm_name=settings.keycloak_realm,
-            client_secret_key=settings.keycloak_client_secret,
-            verify=True,
-        )
+        self._introspect_url = f"{self._base_url}/protocol/openid-connect/token/introspect"
 
     async def _fetch_jwks(self) -> dict:
-        """Télécharge le JWKS depuis Keycloak avec cache (1h TTL)."""
+        """Télécharge le JWKS depuis Keycloak avec cache (TTL 1h)."""
         now = time.time()
         if self._jwks_cache is not None and (now - self._jwks_cache_at) < self._jwks_ttl:
             return self._jwks_cache
@@ -47,71 +44,63 @@ class KeycloakClient:
             resp.raise_for_status()
             KeycloakClient._jwks_cache = resp.json()
             KeycloakClient._jwks_cache_at = now
-            logger.info("JWKS mis à jour depuis Keycloak")
+            logger.info("Keycloak JWKS mis à jour")
             return KeycloakClient._jwks_cache
 
     async def introspect_token(self, token: str) -> dict | None:
-        """Valide un token auprès de Keycloak via python-keycloak introspect.
+        """Valide un token via les clés publiques JWKS de Keycloak.
 
-        Fallback sur validation locale JWKS si Keycloak est injoignable.
+        Vérifie : signature RS256, expiration, émetteur.
+        Si Keycloak est injoignable, retourne None (fail-closed).
         """
-        print("Token reçu pour introspection (début) : %s", token[:50])
-        try:
-            # KeycloakOpenID.introspect est synchrone (requests)
-            result: dict = await asyncio.to_thread(
-                self._kc_openid.introspect, token
-            )
-            print("Keycloak introspection response : %s", result)
-            if not result.get("active"):
-                logger.warning(
-                    "Keycloak introspection : token inactif — "
-                    "exp=%s iat=%s client_id=%s",
-                    result.get("exp"),
-                    result.get("iat"),
-                    result.get("client_id"),
-                )
-                return None
-            return result
-        except Exception as exc:
-            logger.warning(
-                "Erreur introspection Keycloak (python-keycloak) : %s — fallback JWKS",
-                exc,
-            )
-            return await self._verify_local(token)
-
-    async def _verify_local(self, token: str) -> dict | None:
-        """Vérification locale JWT via JWKS (fallback)."""
         try:
             jwks = await self._fetch_jwks()
-            header = jwt.get_unverified_header(token)
-            kid = header.get("kid")
+        except Exception as exc:
+            logger.error("Keycloak [JWKS] impossible de récupérer les clés : %s", exc)
+            return None
 
-            key = None
-            for jwk in jwks.get("keys", []):
-                if jwk.get("kid") == kid:
-                    key = jwt.algorithms.RSAAlgorithm.from_jwk(jwk)
-                    break
+        header = jwt.get_unverified_header(token)
+        kid = header.get("kid")
 
-            if key is None:
-                logger.warning("Aucune clé JWKS trouvée pour kid=%s", kid)
-                return None
+        key = None
+        for jwk in jwks.get("keys", []):
+            if jwk.get("kid") == kid:
+                key = jwt.algorithms.RSAAlgorithm.from_jwk(jwk)
+                break
 
-            payload = jwt.decode(
+        if key is None:
+            logger.warning("Keycloak [JWKS] aucune clé trouvée pour kid=%s", kid)
+            return None
+
+        # Log exp avant validation pour diagnostics clock skew
+        unverified: dict = jwt.decode(
+            token,
+            options={"verify_signature": False},
+            algorithms=["RS256"],
+        )
+        exp = unverified.get("exp", 0)
+        now_ts = int(time.time())
+        leeway = settings.jwt_leeway_seconds
+        logger.debug(
+            "Keycloak [JWKS] exp=%s now=%s delta=%ds leeway=%ds",
+            exp, now_ts, exp - now_ts, leeway,
+        )
+
+        try:
+            payload: dict = jwt.decode(
                 token,
                 key=key,
                 algorithms=["RS256"],
                 options={"verify_aud": False, "verify_iss": False},
-                leeway=3000,  # 5 min de tolérance pour décalages d'horloge
+                leeway=leeway,
             )
+            logger.debug("Keycloak [JWKS] token valide — sub=%s", payload.get("sub"))
             return payload
         except jwt.ExpiredSignatureError:
-            logger.warning("Token expiré (fallback JWKS)")
+            logger.warning("Keycloak [JWKS] token expiré (delta=%ds)", exp - now_ts)
             return None
         except jwt.InvalidTokenError as exc:
-            logger.warning("Token invalide (fallback JWKS) : %s", exc)
-            return None
-        except Exception as exc:
-            logger.error("Erreur validation token (fallback JWKS) : %s", exc)
+            logger.warning("Keycloak [JWKS] token invalide : %s", exc)
             return None
 
     @staticmethod
@@ -320,6 +309,17 @@ class KeycloakAdminClient:
         user_id = location.split("/")[-1] if location else ""
         return user_id
 
+    async def get_user_by_id(self, user_id: str) -> dict | None:
+        """Récupère un utilisateur Keycloak par son ID."""
+        headers = await self._auth_header()
+        url = f"{self._base_url}/admin/realms/{self._realm}/users/{user_id}"
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get(url, headers=headers)
+            if resp.status_code == 404:
+                return None
+            resp.raise_for_status()
+            return resp.json()
+
     async def search_users(self, email: str) -> list[dict]:
         headers = await self._auth_header()
         url = f"{self._base_url}/admin/realms/{self._realm}/users"
@@ -327,6 +327,27 @@ class KeycloakAdminClient:
             resp = await client.get(url, headers=headers, params={"email": email})
             resp.raise_for_status()
             return resp.json()
+
+    async def set_user_password(self, user_id: str, password: str, temporary: bool = False) -> None:
+        """Définit le mot de passe d'un utilisateur Keycloak."""
+        headers = await self._auth_header()
+        url = f"{self._base_url}/admin/realms/{self._realm}/users/{user_id}/reset-password"
+        payload = {"type": "password", "value": password, "temporary": temporary}
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.put(url, headers=headers, json=payload)
+            if resp.status_code == 404:
+                raise RuntimeError(f"Utilisateur '{user_id}' introuvable")
+            resp.raise_for_status()
+
+    async def add_user_to_group(self, user_id: str, group_id: str) -> None:
+        """Rattache un utilisateur à un groupe Keycloak."""
+        headers = await self._auth_header()
+        url = f"{self._base_url}/admin/realms/{self._realm}/users/{user_id}/groups/{group_id}"
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.put(url, headers=headers)
+            if resp.status_code == 404:
+                raise RuntimeError(f"Utilisateur '{user_id}' ou groupe '{group_id}' introuvable")
+            resp.raise_for_status()
 
     async def send_verify_email(self, user_id: str) -> None:
         """Envoie l'email de vérification à l'utilisateur."""

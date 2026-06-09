@@ -1,9 +1,10 @@
 """Router /companies : CRUD entités juridiques.
 
-La liste des entreprises est principalement alimentée par Odoo.
-Si la connexion Odoo n'est pas configurée, on fallback sur la base locale.
+La liste des entreprises est lue depuis la base locale.
+La synchronisation depuis Odoo est déclenchée explicitement via POST /companies/sync.
 """
 
+import logging
 from typing import Annotated
 from uuid import UUID
 
@@ -20,7 +21,8 @@ from app.application.companies.get_company import GetCompanyUseCase
 from app.application.companies.list_companies import ListCompaniesUseCase
 from app.application.companies.sync_from_odoo import SyncCompaniesFromOdooUseCase
 from app.core.config import settings
-from app.infrastructure.odoo.client import OdooClient
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/companies", tags=["companies"])
 
@@ -51,22 +53,34 @@ async def list_companies(
     company_repo: CompanyRepoDep,
     params: Annotated[PageParams, Depends()],
 ) -> Page[CompanyOut]:
-    # Si Odoo est configuré, on sync d'abord en local puis on lit la DB
-    if settings.odoo_url and settings.odoo_db:
-        try:
-            await SyncCompaniesFromOdooUseCase(company_repo).execute()
-        except Exception as exc:
-            raise HTTPException(
-                status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Odoo indisponible : {exc}",
-            ) from exc
-
     companies = await ListCompaniesUseCase(company_repo).execute(
         limit=params.limit,
         offset=params.offset,
     )
     items = [CompanyOut.from_domain(c) for c in companies]
     return Page(items=items, limit=params.limit, offset=params.offset, count=len(items))
+
+
+@router.post(
+    "/sync",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permission("company:create"))],
+)
+async def sync_companies_from_odoo(company_repo: CompanyRepoDep) -> None:
+    """Déclenche la synchronisation des entreprises depuis Odoo."""
+    if not (settings.odoo_url and settings.odoo_db):
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Odoo non configuré",
+        )
+    try:
+        await SyncCompaniesFromOdooUseCase(company_repo).execute()
+    except Exception as exc:
+        logger.warning("Échec sync Odoo : %s", exc)
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Odoo indisponible : {exc}",
+        ) from exc
 
 
 @router.get(

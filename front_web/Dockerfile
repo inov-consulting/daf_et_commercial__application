@@ -16,7 +16,7 @@ FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-RUN yarn build
+RUN mkdir -p public && yarn build
 
 # ───── Runner ───────────────────────────────────────────────────────────
 FROM base AS runner

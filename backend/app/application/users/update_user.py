@@ -28,9 +28,9 @@ class UpdateUserUseCase:
         if data.company_ids is not None:
             user.company_ids = list(data.company_ids)
         if data.first_name is not None:
-            user.first_name = data.first_name.strip()
+            user.first_name = data.first_name
         if data.last_name is not None:
-            user.last_name = data.last_name.strip()
+            user.last_name = data.last_name
         if data.is_active is False:
             user.deactivate()
         elif data.is_active is True:

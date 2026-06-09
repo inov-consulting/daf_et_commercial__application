@@ -3,35 +3,43 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.api.v1.schemas.companies import CompanyOut
 from app.domain.shared.user import User
 
 
 class UserCreate(BaseModel):
+    email: str
     company_ids: list[UUID]
-    email: EmailStr
-    first_name: str = Field("", max_length=128)
-    last_name: str = Field("", max_length=128)
+    group_ids: list[str] = Field(..., min_length=1)
+    first_name: str = ""
+    last_name: str = ""
+    password: str | None = Field(default=None, exclude=True)
+    temporary_password: bool = False
+
+    @field_validator("group_ids")
+    @classmethod
+    def group_ids_not_empty(cls, v: list[str]) -> list[str]:
+        if not v:
+            raise ValueError("Au moins un groupe est obligatoire")
+        return v
 
 
 class UserUpdate(BaseModel):
     company_ids: list[UUID] | None = None
-    first_name: str | None = Field(None, max_length=128)
-    last_name: str | None = Field(None, max_length=128)
+    first_name: str | None = None
+    last_name: str | None = None
     is_active: bool | None = None
 
 
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-
     id: UUID
-    company_ids: list[UUID]
-    companies: list[CompanyOut] = []
-    email: EmailStr
+    email: str
     first_name: str
     last_name: str
+    companies: list[CompanyOut] = []
     is_active: bool
     created_at: datetime | None
     updated_at: datetime | None
@@ -40,11 +48,10 @@ class UserOut(BaseModel):
     def from_domain(cls, user: User, companies: list[CompanyOut] | None = None) -> "UserOut":
         return cls(
             id=user.id,
-            company_ids=user.company_ids,
-            companies=companies or [],
             email=user.email,
             first_name=user.first_name,
             last_name=user.last_name,
+            companies=companies or [],
             is_active=user.is_active,
             created_at=user.created_at,
             updated_at=user.updated_at,
