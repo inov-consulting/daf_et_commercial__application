@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { ExportIcon, UserPlusIcon, WarningIcon, TrashIcon, CheckIcon } from '@phosphor-icons/react';
-import { useAuthError } from '@/hooks/useAuthError';
 import { Button } from '@/components/ui/button';
 import { UserDetailPanel } from '@/components/layout/user-detail-panel';
 import { UserFormModal } from '@/components/layout/user-form-modal';
@@ -30,7 +29,7 @@ export default function UtilisateursPage() {
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [formModal, setFormModal] = useState<{ mode: 'invite' | 'edit'; uid?: string } | null>(null);
   const [deleteUid, setDeleteUid] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ message: string; sub?: string } | null>(null);
+  const [toast, setToast] = useState<{ message: string; sub?: string; type?: 'success' | 'error' } | null>(null);
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
 
   // Chargement initial
@@ -38,17 +37,14 @@ export default function UtilisateursPage() {
     dispatch(fetchUsers());
   }, [dispatch]);
 
-  // Redirection automatique vers le login si session expirée
-  useAuthError(apiError);
-
   const selectedUser = selectedUid ? (users.find(u => u.uid === selectedUid) ?? null) : null;
   const editUser = formModal?.uid ? users.find(u => u.uid === formModal.uid) : undefined;
   const rawEditUser = formModal?.uid ? apiUsers.find(u => u.id === formModal.uid) : undefined;
   const deleteUser = deleteUid ? (users.find(u => u.uid === deleteUid) ?? null) : null;
 
-  function showToast(message: string, sub?: string) {
-    setToast({ message, sub });
-    setTimeout(() => setToast(null), 4000);
+  function showToast(message: string, sub?: string, type: 'success' | 'error' = 'success') {
+    setToast({ message, sub, type });
+    setTimeout(() => setToast(null), 5000);
   }
 
   async function handleDelete() {
@@ -63,7 +59,7 @@ export default function UtilisateursPage() {
     showToast('Utilisateur supprimé', 'Le compte a été désactivé');
   }
 
-  async function handleFormSubmit(data: UserFormSubmitData) {
+  async function handleFormSubmit(data: UserFormSubmitData): Promise<{ ok: boolean; error?: string }> {
     if (formModal?.mode === 'edit' && formModal.uid) {
       dispatch(updateUserLocal({
         id: formModal.uid,
@@ -73,22 +69,36 @@ export default function UtilisateursPage() {
           ...(data.email !== undefined && { email: data.email }),
         },
       }));
-      if (data.company_ids.length > 0) {
-        await dispatch(updateUser({ id: formModal.uid, payload: { company_ids: data.company_ids } }));
+      const result = await dispatch(updateUser({
+        id: formModal.uid,
+        payload: {
+          ...(data.company_ids.length > 0 && { company_ids: data.company_ids }),
+        },
+      }));
+      if (updateUser.rejected.match(result)) {
+        const error = result.payload as string;
+        showToast(error, undefined, 'error');
+        return { ok: false, error };
       }
+      setFormModal(null);
       showToast('Modifications enregistrées', 'Profil mis à jour avec succès');
+      return { ok: true };
     } else {
       const result = await dispatch(createUser({
         email: data.email ?? '',
         first_name: data.prenom ?? '',
         last_name: data.nom ?? '',
         company_ids: data.company_ids,
+        group_ids: [],
       }));
       if (createUser.fulfilled.match(result)) {
+        setFormModal(null);
         showToast('Invitation envoyée', "Email d'invitation envoyé avec succès");
-      } else {
-        showToast('Erreur', "Impossible de créer l'utilisateur");
+        return { ok: true };
       }
+      const error = result.payload as string;
+      showToast(error, undefined, 'error');
+      return { ok: false, error };
     }
   }
 
@@ -259,9 +269,20 @@ export default function UtilisateursPage() {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed top-4 sm:top-20 right-4 sm:right-6 z-[80] bg-surface border border-success rounded-xl p-3 flex items-start gap-2.5 shadow-[0_4px_20px_rgba(16,185,129,.18)] max-w-[calc(100vw-2rem)] sm:max-w-[280px]">
-          <div className="w-[30px] h-[30px] rounded-lg bg-success-50 flex items-center justify-center text-success flex-shrink-0">
-            <CheckIcon size={14} weight="bold" />
+        <div
+          className={`fixed top-4 sm:top-20 right-4 sm:right-6 z-[80] bg-surface rounded-xl p-3 flex items-start gap-2.5 max-w-[calc(100vw-2rem)] sm:max-w-[320px] border ${
+            toast.type === 'error'
+              ? 'border-error shadow-[0_4px_20px_rgba(239,68,68,.18)]'
+              : 'border-success shadow-[0_4px_20px_rgba(16,185,129,.18)]'
+          }`}
+        >
+          <div className={`w-[30px] h-[30px] rounded-lg flex items-center justify-center flex-shrink-0 ${
+            toast.type === 'error' ? 'bg-error/10 text-error' : 'bg-success-50 text-success'
+          }`}>
+            {toast.type === 'error'
+              ? <WarningIcon size={14} weight="fill" />
+              : <CheckIcon size={14} weight="bold" />
+            }
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-display font-bold text-foreground text-xs">{toast.message}</p>

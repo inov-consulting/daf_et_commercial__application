@@ -1,14 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import Sidebar from './sidebar';
 import TopBar from './top-bar';
 import FloatingChat from './floating-chat';
 import { BreadcrumbBar } from './breadcrumb-bar';
 import { useAppDispatch } from '@/redux/store';
-import { fetchMe } from '@/redux/features/me/meSlice';
+import { fetchMe, clearMe } from '@/redux/features/me/meSlice';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { AuthContext } from '@/app/clientLayout';
 import { SpinnerIcon } from '@phosphor-icons/react/dist/ssr/Spinner';
+import { fontVariables } from '@/lib/fonts';
 
 interface DashboardShellProps {
   locale: string;
@@ -17,13 +19,19 @@ interface DashboardShellProps {
 
 export default function DashboardShell({ locale, children }: DashboardShellProps) {
   const dispatch = useAppDispatch();
-  const [sidebarOpen, setSidebarOpen] = useState(false); // Fermé par défaut sur mobile
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const { user, rawUser, loading } = useCurrentUser();
+  const auth = useContext(AuthContext);
+  const authenticated = auth?.authenticated ?? false;
 
+  // Charge le profil uniquement quand Keycloak a confirmé l'authentification
+  // et que le token est disponible dans kc.token (lu par ApiService).
   useEffect(() => {
+    if (!authenticated) return;
+    dispatch(clearMe());
     dispatch(fetchMe());
-  }, [dispatch]);
+  }, [dispatch, authenticated]);
 
   // Détecter le mobile et ajuster la sidebar
   useEffect(() => {
@@ -45,12 +53,16 @@ export default function DashboardShell({ locale, children }: DashboardShellProps
 
   if(loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-[var(--bg-page)]">
-        <div className="text-center">
-          <SpinnerIcon className="animate-spin mx-auto mb-4" size={48} />
-          <p className="text-lg text-[var(--tx-2)]">Chargement...</p>
-        </div>
-      </div>
+      <html data-theme="light" className={fontVariables}>
+        <body className="antialiased">
+          <div className="flex items-center justify-center h-screen bg-[var(--bg-page,#f8fafc)]">
+            <div className="text-center">
+              <div className="w-10 h-10 border-[3px] border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-sm text-gray-500">Vérification de la session…</p>
+            </div>
+          </div>
+        </body>
+      </html>
     );
   }
 

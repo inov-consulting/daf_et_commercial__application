@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { ListIcon, MagnifyingGlassIcon, BellIcon, CaretDownIcon, UserIcon, GearIcon, SignOutIcon, XIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
+import { logoutKeycloak } from '@/lib/keycloak';
 import type { ApiUser, User } from '@/types/user_type';
 import { getRoleAbbreviation } from '@/lib/roleAbbreviation';
 
@@ -149,6 +150,7 @@ export default function TopBar({ onToggleSidebar, user, rawUser }: TopBarProps) 
           {MENU_ITEMS.map(({ Icon, label, danger }) => (
             <button
               key={label}
+              onClick={label === 'Déconnexion' ? () => logoutKeycloak() : undefined}
               className={cn(
                 'w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm transition-colors hover:bg-[var(--bg-sink)]',
                 danger ? 'text-error' : 'text-[var(--tx-1)]',

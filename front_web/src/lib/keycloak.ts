@@ -1,12 +1,3 @@
-/**
- * Keycloak OAuth 2.0 utilities — PKCE / SSO redirect flow.
- *
- * Env vars (NEXT_PUBLIC_* → disponibles côté client ET serveur) :
- *   NEXT_PUBLIC_KEYCLOAK_URL         – ex. https://auth.portalis.io
- *   NEXT_PUBLIC_KEYCLOAK_REALM       – ex. portalis
- *   NEXT_PUBLIC_KEYCLOAK_CLIENT_ID   – ex. portalis-web
- */
-
 import Keycloak from 'keycloak-js';
 
 let _instance: Keycloak | null = null;
@@ -23,31 +14,15 @@ export function getKeycloakInstance(): Keycloak {
   return _instance;
 }
 
-/**
- * Synchronise le token Keycloak dans :
- *  - sessionStorage['portalis_at']  (disponible dans la session courante)
- *  - cookie 'portalis_at'           (lu par ApiService + middleware)
- */
-export function syncTokenToCookie(token: string | undefined): void {
-  if (!token) return;
-  sessionStorage.setItem('portalis_at', token);
-  document.cookie = `portalis_at=${token}; path=/; SameSite=Strict`;
-}
-
-/** Efface le token de sessionStorage et du cookie. */
-export function clearTokens(): void {
-  sessionStorage.removeItem('portalis_at');
-  document.cookie = 'portalis_at=; path=/; max-age=0';
-}
-
-/**
- * Déconnexion complète : efface les tokens locaux et termine la session
- * SSO côté Keycloak (redirige vers Keycloak logout endpoint).
- */
-export function logoutKeycloak(redirectUri?: string): void {
-  clearTokens();
-  const kc = getKeycloakInstance();
-  // Sans redirectUri enregistré dans "Valid post logout redirect URIs",
-  // Keycloak affiche sa propre page de confirmation post-déconnexion.
-  kc.logout(redirectUri ? { redirectUri } : undefined);
-}
+export const logoutKeycloak = async () => {
+  const keycloak = getKeycloakInstance();
+  try {
+    // Clear local state before initiating redirect to prevent loops
+    await keycloak.logout({
+      // Ensure the redirect matches exactly what is in Keycloak Admin
+      redirectUri: window.location.origin 
+    });
+  } catch (error) {
+    console.error("Logout failed", error);
+  }
+};

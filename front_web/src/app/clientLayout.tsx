@@ -1,96 +1,61 @@
 'use client';
 
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useEffect, useRef, useState } from 'react';
 import { fontVariables } from '@/lib/fonts';
 import '@/styles/globals.css';
 import { ReduxProvider } from '@/redux/features/provider';
-import { getKeycloakInstance, syncTokenToCookie, clearTokens } from '@/lib/keycloak';
+import { getKeycloakInstance } from '@/lib/keycloak';
 import type Keycloak from 'keycloak-js';
 
-// ── Auth Context ───────────────────────────────────────────────────────────
-
-interface AuthContextValue {
+export const AuthContext = createContext<{
   keycloak: Keycloak;
   authenticated: boolean;
-  /** Raccourci vers keycloak.token (chaîne JWT courante). */
-  token: string | undefined;
-}
-
-export const AuthContext = createContext<AuthContextValue | null>(null);
-
-/**
- * Hook pour consommer l'instance Keycloak n'importe où dans l'arbre.
- * Fournit : keycloak, authenticated, token.
- */
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth doit être utilisé dans ClientLayout');
-  return ctx;
-}
-
-// ── Layout ─────────────────────────────────────────────────────────────────
+} | null>(null);
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const [authenticated, setAuthenticated] = useState(false);
-  const [token, setToken] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(true);
   const initialized = useRef(false);
 
   useEffect(() => {
-    // Evite la double-init en React StrictMode
     if (initialized.current) return;
     initialized.current = true;
 
     const kc = getKeycloakInstance();
 
+    // On utilise le pathname complet pour éviter les redirections serveur en chaîne.
+    // Les pages /auth/* redirigent vers le dashboard après connexion.
+    const pathParts = window.location.pathname.split('/').filter(Boolean);
+    const locale = pathParts[0] || 'fr';
+    const isAuthPage = pathParts[1] === 'auth';
+    const redirectUri = isAuthPage
+      ? `${window.location.origin}/${locale}/page/dashboard`
+      : `${window.location.origin}${window.location.pathname}`;
+
     kc.init({
       onLoad: 'login-required',
       pkceMethod: 'S256',
-      checkLoginIframe: false,
-      redirectUri: window.location.origin,
+      // query : le code arrive en ?code=… et survit aux redirects serveur
+      // fragment : le code arrive en #code=… et se perd si Next.js redirige
+      responseMode: 'query',
+      redirectUri,
     })
       .then(auth => {
-        if (!auth) {
-          kc.login({ redirectUri: window.location.origin });
-          return;
+        setAuthenticated(auth);
+        if (auth) {
+          if (isAuthPage) {
+            window.location.replace(`${window.location.origin}/${locale}/page/dashboard`);
+            return;
+          }
+          kc.onTokenExpired = () => {
+            kc.updateToken(60).catch(() => kc.login({ redirectUri }));
+          };
         }
-
-        syncTokenToCookie(kc.token);
-        setToken(kc.token);
-        setAuthenticated(true);
-
-        // Rafraîchit le token 60s avant expiration
-        kc.onTokenExpired = () => {
-          kc.updateToken(60)
-            .then(refreshed => {
-              if (refreshed) {
-                syncTokenToCookie(kc.token);
-                setToken(kc.token);
-              }
-            })
-            .catch(() => {
-              // Refresh échoué (session expirée côté Keycloak)
-              clearTokens();
-              kc.login({ redirectUri: window.location.origin });
-            });
-        };
-
-        // Synchronise le cookie à chaque renouvellement réussi
-        kc.onAuthRefreshSuccess = () => {
-          syncTokenToCookie(kc.token);
-          setToken(kc.token);
-        };
       })
-      .catch(err => {
-        console.error('Keycloak init failed', err);
-        kc.login({ redirectUri: window.location.origin });
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+      .catch(err => console.error('Keycloak init failed', err))
+      .finally(() => setIsLoading(false));
   }, []);
 
-  // ── Écran de chargement pendant l'init Keycloak ────────────────────────
   if (isLoading) {
     return (
       <html data-theme="light" className={fontVariables}>
@@ -111,7 +76,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   return (
     <html data-theme="light" className={fontVariables}>
       <body className="antialiased">
-        <AuthContext.Provider value={{ keycloak: kc, authenticated, token }}>
+        <AuthContext.Provider value={{ keycloak: kc, authenticated }}>
           <ReduxProvider>
             {children}
           </ReduxProvider>

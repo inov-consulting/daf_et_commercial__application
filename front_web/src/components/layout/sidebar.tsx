@@ -1,12 +1,13 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { logoutKeycloak } from '@/lib/keycloak';
 import {
   SquaresFour, Brain, User, Truck, Funnel,
   Files, FileText, Diamond, ChartLine, DownloadSimple,
-  Users, Gear, SignOut, X,
+  Users, Gear, SignOutIcon, X,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { ApiUser, User as UserType } from '@/types/user_type';
@@ -261,8 +262,11 @@ export default function Sidebar({ locale, open, onClose, user, rawUser }: Sideba
                   </div>
                 )}
               </div>
-              <button className="text-[var(--tx-3)] hover:text-[var(--tx-1)] transition-colors p-1 rounded flex-shrink-0">
-                <SignOut size={15} />
+              <button
+                onClick={() => logoutKeycloak()}
+                className="text-[var(--tx-3)] hover:text-[var(--tx-1)] transition-colors p-1 rounded flex-shrink-0"
+              >
+                <SignOutIcon size={15} />
               </button>
             </div>
           ) : (
