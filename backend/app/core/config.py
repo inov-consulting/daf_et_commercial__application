@@ -64,8 +64,11 @@ class Settings(BaseSettings):
     celery_result_backend: str
 
     # ── MinIO / S3 ─────────────────────────────────────────────────────
-    minio_root_user: str = "minioadmin"
-    minio_root_password: str = "minioadmin"
+    minio_url: str = "http://localhost:9000"
+    minio_access_key: str = "minioadmin"
+    minio_secret_key: str = "minioadmin"
+    minio_bucket: str = "portalis"
+    minio_public_base_url: str = ""
 
     # ── Keycloak ───────────────────────────────────────────────────────
     keycloak_url: str = ""

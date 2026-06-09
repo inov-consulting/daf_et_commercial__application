@@ -9,6 +9,8 @@ Stratégie de validation :
                "Service Accounts Enabled" configuré côté admin.
 """
 
+import base64
+import json as _json
 import logging
 import os
 import time
@@ -73,12 +75,14 @@ class KeycloakClient:
             return None
 
         # Log exp avant validation pour diagnostics clock skew
-        unverified: dict = jwt.decode(
-            token,
-            options={"verify_signature": False},
-            algorithms=["RS256"],
-        )
-        exp = unverified.get("exp", 0)
+        # Décodage base64 du payload uniquement (pas de vérification de signature)
+        try:
+            _payload_b64 = token.split(".")[1]
+            _padding = "=" * (4 - len(_payload_b64) % 4)
+            _raw = base64.urlsafe_b64decode(_payload_b64 + _padding)
+            exp: int = _json.loads(_raw).get("exp", 0)
+        except Exception:
+            exp = 0
         now_ts = int(time.time())
         leeway = settings.jwt_leeway_seconds
         logger.debug(
