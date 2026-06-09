@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import {
-  PencilSimple, ToggleLeft, ToggleRight, LockKey, Trash,
-  PaperPlaneTilt, XCircle, Check, EnvelopeSimple, CursorClick,
-  DeviceMobile, Desktop, Devices,
+  PencilSimpleIcon, ToggleLeftIcon, ToggleRightIcon, LockKeyIcon, TrashIcon,
+  PaperPlaneTiltIcon, XCircleIcon, CheckIcon, EnvelopeSimpleIcon, CursorClickIcon,
+  DeviceMobileIcon, DesktopIcon, DevicesIcon,
 } from '@phosphor-icons/react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ interface UserDetailPanelProps {
   user: User | null;
   onEdit: (uid: string) => void;
   onDelete: (uid: string) => void;
+  onToggleActive?: (uid: string, active: boolean) => void;
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -79,7 +80,7 @@ function PendingDetail({ user }: { user: User }) {
         style={{ background: 'linear-gradient(180deg,rgba(245,158,11,.06) 0%,transparent 100%)' }}
       >
         <div className="w-14 h-14 rounded-full border-2 border-dashed border-warning bg-warning-50 flex items-center justify-center text-warning mb-3">
-          <EnvelopeSimple size={22} />
+          <EnvelopeSimpleIcon size={22} />
         </div>
         <p className="font-mono text-sm font-semibold text-foreground mb-0.5 truncate w-full">
           {user.email}
@@ -113,13 +114,13 @@ function PendingDetail({ user }: { user: User }) {
           disabled={sent}
         >
           {sent ? (
-            <><Check size={14} weight="bold" />Invitation renvoyée</>
+            <><CheckIcon size={14} weight="bold" />Invitation renvoyée</>
           ) : (
-            <><PaperPlaneTilt size={14} weight="fill" />Renvoyer l&apos;invitation</>
+            <><PaperPlaneTiltIcon size={14} weight="fill" />Renvoyer l&apos;invitation</>
           )}
         </Button>
         <Button variant="danger" size="sm" className="w-full">
-          <XCircle size={14} />
+          <XCircleIcon size={14} />
           Révoquer l&apos;invitation
         </Button>
       </div>
@@ -128,11 +129,12 @@ function PendingDetail({ user }: { user: User }) {
 }
 
 function ActiveDetail({
-  user, onEdit, onDelete,
+  user, onEdit, onDelete, onToggleActive,
 }: {
   user: User;
   onEdit: () => void;
   onDelete: () => void;
+  onToggleActive?: (active: boolean) => void;
 }) {
   const [mode, setMode] = useState<PanelMode>('info');
   const [resetSent, setResetSent] = useState(false);
@@ -208,9 +210,9 @@ function ActiveDetail({
             <div className="flex items-start justify-between gap-2 text-xs mb-1.5">
               <span className="text-foreground-3 font-medium flex-shrink-0">Surface</span>
               <span className="flex items-center gap-1.5 font-semibold text-foreground">
-                {user.surface === 'Mobile' && <DeviceMobile size={12} />}
-                {user.surface === 'Web' && <Desktop size={12} />}
-                {user.surface === 'Mobile + Web' && <Devices size={12} />}
+                {user.surface === 'Mobile' && <DeviceMobileIcon size={12} />}
+                {user.surface === 'Web' && <DesktopIcon size={12} />}
+                {user.surface === 'Mobile + Web' && <DevicesIcon size={12} />}
                 {user.surface}
               </span>
             </div>
@@ -235,7 +237,7 @@ function ActiveDetail({
                   Annuler
                 </button>
                 <button
-                  onClick={() => setMode('disabled')}
+                  onClick={() => { setMode('disabled'); onToggleActive?.(false); }}
                   className="flex-1 h-7 rounded-md border border-warning bg-warning-50 text-[11px] font-semibold text-warning-600 hover:bg-[#FEF3C7] transition-colors"
                 >
                   Désactiver
@@ -253,10 +255,10 @@ function ActiveDetail({
                 {user.prenom} n&apos;a plus accès à PortaLis.
               </p>
               <button
-                onClick={() => setMode('info')}
+                onClick={() => { setMode('info'); onToggleActive?.(true); }}
                 className="flex items-center gap-1 text-[11px] font-semibold text-success hover:underline"
               >
-                <ToggleRight size={12} />
+                <ToggleRightIcon size={12} />
                 Réactiver le compte
               </button>
             </div>
@@ -265,7 +267,7 @@ function ActiveDetail({
           {mode === 'reset' && (
             <div className="rounded-xl bg-success-50 border border-[#A7F3D0] p-3">
               <div className="flex items-start gap-2">
-                <Check size={13} className="text-success mt-0.5 flex-shrink-0" weight="bold" />
+                <CheckIcon size={13} className="text-success mt-0.5 flex-shrink-0" weight="bold" />
                 <div className="flex-1 min-w-0">
                   <p className="text-[12px] font-display font-bold text-foreground mb-0.5">
                     Email de réinitialisation envoyé
@@ -290,7 +292,7 @@ function ActiveDetail({
       {/* Actions footer */}
       <div className="flex-shrink-0 p-4 border-t border-border space-y-2">
         <Button variant="gradient" size="sm" className="w-full" onClick={onEdit}>
-          <PencilSimple size={14} />
+          <PencilSimpleIcon size={14} />
           Modifier les informations
         </Button>
 
@@ -299,7 +301,7 @@ function ActiveDetail({
             onClick={() => setMode('disable')}
             className="w-full h-[34px] rounded-lg border border-warning bg-surface text-[12px] font-display font-semibold text-warning-600 flex items-center justify-center gap-1.5 hover:bg-warning-50 transition-colors"
           >
-            <ToggleLeft size={14} />
+            <ToggleLeftIcon size={14} />
             Désactiver le compte
           </button>
         )}
@@ -308,7 +310,7 @@ function ActiveDetail({
           onClick={() => { setMode('reset'); setResetSent(false); }}
           className="w-full h-[34px] rounded-lg border border-border bg-surface text-[12px] font-display font-semibold text-foreground-2 flex items-center justify-center gap-1.5 hover:bg-surface-sink transition-colors"
         >
-          <LockKey size={14} />
+          <LockKeyIcon size={14} />
           Réinitialiser le mot de passe
         </button>
 
@@ -316,7 +318,7 @@ function ActiveDetail({
           onClick={onDelete}
           className="w-full h-[34px] rounded-lg border border-error bg-surface text-[12px] font-display font-semibold text-error flex items-center justify-center gap-1.5 hover:bg-error-50 transition-colors"
         >
-          <Trash size={14} />
+          <TrashIcon size={14} />
           Supprimer l&apos;utilisateur
         </button>
       </div>
@@ -324,13 +326,13 @@ function ActiveDetail({
   );
 }
 
-export function UserDetailPanel({ user, onEdit, onDelete }: UserDetailPanelProps) {
+export function UserDetailPanel({ user, onEdit, onDelete, onToggleActive }: UserDetailPanelProps) {
   return (
     <div className="w-[340px] flex-shrink-0 bg-surface rounded-2xl border border-border shadow-xs overflow-hidden flex flex-col">
       {!user ? (
         <div className="flex-1 flex items-center justify-center">
           <EmptyState
-            icon={<CursorClick size={24} />}
+            icon={<CursorClickIcon size={24} />}
             title="Sélectionnez un utilisateur"
             description="Cliquez sur une ligne pour afficher la fiche détaillée"
           />
@@ -342,6 +344,7 @@ export function UserDetailPanel({ user, onEdit, onDelete }: UserDetailPanelProps
           user={user}
           onEdit={() => onEdit(user.uid)}
           onDelete={() => onDelete(user.uid)}
+          onToggleActive={(active) => onToggleActive?.(user.uid, active)}
         />
       )}
     </div>

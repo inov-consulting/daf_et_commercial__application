@@ -35,7 +35,7 @@ class ToolInfo(BaseModel):
     description: str
 
 
-@router.post("", response_model=ChatResponse, dependencies=_chat_deps)
+@router.post("", dependencies=_chat_deps)
 async def chat(payload: ChatRequest) -> ChatResponse:
     """Envoie un message à l'agent et retourne la réponse complète.
 
@@ -79,7 +79,7 @@ async def chat_stream(payload: ChatRequest) -> StreamingResponse:
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
-@router.get("/tools", response_model=list[ToolInfo], dependencies=_chat_deps)
+@router.get("/tools", dependencies=_chat_deps)
 async def list_tools() -> list[ToolInfo]:
     """Liste tous les tools disponibles pour l'agent (locaux + MCP externes)."""
     tools = await list_available_tools()

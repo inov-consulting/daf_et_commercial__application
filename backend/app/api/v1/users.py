@@ -4,7 +4,7 @@ import logging
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 
 from app.api.deps import CompanyRepoDep, UserRepoDep, require_permission
 from app.api.v1.schemas.companies import CompanyOut
@@ -15,6 +15,7 @@ from app.application.users.get_user import GetUserUseCase
 from app.application.users.list_users import ListUsersUseCase
 from app.application.users.update_user import UpdateUserInput, UpdateUserUseCase
 from app.infrastructure.auth.keycloak import KeycloakAdminClient
+from app.infrastructure.storage.minio import StorageService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/users", tags=["users"])
@@ -22,7 +23,6 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.post(
     "",
-    response_model=UserOut,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("user:create"))],
 )
@@ -31,6 +31,13 @@ async def create_user(
     user_repo: UserRepoDep,
     company_repo: CompanyRepoDep,
 ) -> UserOut:
+    """Crée un utilisateur dans Keycloak et en base locale.
+
+    Si l'utilisateur n'existe pas encore dans Keycloak, il est créé et
+    rattaché aux groupes fournis. Si un mot de passe est fourni, il est
+    défini directement (temporaire ou non) ; sinon un email de vérification
+    est envoyé. L'utilisateur est ensuite associé aux entreprises indiquées.
+    """
     # Résolution du keycloak_id depuis l'email via l'admin Keycloak
     kc = KeycloakAdminClient()
     users_kc = await kc.search_users(payload.email)
@@ -88,7 +95,6 @@ async def create_user(
 
 @router.get(
     "",
-    response_model=Page[UserOut],
     dependencies=[Depends(require_permission("user:read"))],
 )
 async def list_users(
@@ -119,7 +125,6 @@ async def list_users(
 
 @router.get(
     "/{user_id}",
-    response_model=UserOut,
     dependencies=[Depends(require_permission("user:read"))],
 )
 async def get_user(
@@ -142,7 +147,6 @@ async def get_user(
 
 @router.patch(
     "/{user_id}",
-    response_model=UserOut,
     dependencies=[Depends(require_permission("user:update"))],
 )
 async def update_user(
@@ -150,6 +154,11 @@ async def update_user(
     payload: UserUpdate,
     user_repo: UserRepoDep,
 ) -> UserOut:
+    """Met à jour les données applicatives d'un utilisateur.
+
+    Permet de modifier les entreprises rattachées, le statut actif/inactif.
+    Les champs non fournis (null) sont ignorés.
+    """
     user = await UpdateUserUseCase(user_repo).execute(
         user_id,
         UpdateUserInput(

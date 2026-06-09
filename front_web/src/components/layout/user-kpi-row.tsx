@@ -1,4 +1,4 @@
-import { Users, Crown, Briefcase, ShieldCheck } from '@phosphor-icons/react';
+import { UsersIcon, CrownIcon, BriefcaseIcon, ShieldCheckIcon, HourglassIcon } from '@phosphor-icons/react';
 import { KpiCard } from '@/components/ui/kpi-card';
 import { Badge } from '@/components/ui/badge';
 import type { User } from '../../types/user_type';
@@ -15,43 +15,74 @@ export function UserKpiRow({ users }: UserKpiRowProps) {
   const lastActive = active[0];
 
   return (
-    <div className="grid grid-cols-4 gap-4 mb-5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-5">
       <KpiCard
         label="Membres actifs"
         value={active.length}
         accent="primary"
-        icon={<Users size={17} weight="fill" />}
-        sparkline={<Badge color="success" variant="subtle" dot>Tous connectés</Badge>}
+        icon={<UsersIcon size={17} weight="fill" />}
+        sparkline={
+          <Badge color="success" variant="subtle" className="text-[10px] sm:text-xs border border-success-600" dot>
+            <span className="hidden sm:inline">Tous connectés</span>
+            <span className="sm:hidden">Connectés</span>
+          </Badge>
+        }
+        layout="horizontal"
       />
       <KpiCard
         label="Administrateurs"
         value={admins.length}
         accent="secondary"
-        icon={<Crown size={17} weight="fill" />}
-        sparkline={<p className="text-xs text-foreground-3">DG · DAF</p>}
+        showTopBar={false}
+        icon={<CrownIcon size={17} weight="fill" />}
+        sparkline={
+          <p className="text-[10px] sm:text-xs text-foreground-3">
+            <span className="hidden sm:inline">DG · DAF</span>
+            <span className="sm:hidden">Dirigeants</span>
+          </p>
+        }
+        layout="horizontal"
       />
       <KpiCard
         label="Commerciaux terrain"
         value={commercials.length}
         accent="primary"
-        icon={<Briefcase size={17} weight="fill" />}
+        icon={<BriefcaseIcon size={17} weight="fill" />}
         sparkline={
-          pending.length > 0
-            ? <Badge color="warning" variant="subtle">{pending.length} invitation{pending.length > 1 ? 's' : ''}</Badge>
-            : <p className="text-xs text-foreground-3">Aucune invitation</p>
+          pending.length > 0 ? (
+            <Badge color="warning" variant="subtle" className="text-[10px] sm:text-xs border border-warning-600">
+              <HourglassIcon size={12} className="sm:hidden" />
+              <HourglassIcon size={14} className="hidden sm:block" />
+              <span className="ml-0.5">
+                {pending.length} invitation{pending.length > 1 ? 's' : ''}
+              </span>
+            </Badge>
+          ) : (
+            <p className="text-[10px] sm:text-xs text-foreground-3">
+              <span className="hidden sm:inline">Aucune invitation</span>
+              <span className="sm:hidden">0 invitation</span>
+            </p>
+          )
         }
+        layout="horizontal"
       />
       <KpiCard
         label="Dernière connexion"
         value="Aujourd'hui"
-        styleValue="!text-xl font-mono text-primary-500"
+        styleValue="!text-lg sm:!text-xl font-mono text-primary-500"
         accent="primary"
-        icon={<ShieldCheck size={17} />}
+        icon={<ShieldCheckIcon size={17} />}
         sparkline={
-          lastActive?.lastLogin
-            ? <p className="text-xs text-foreground-3">{lastActive.prenom} · {lastActive.lastLogin.split(' · ')[1]}</p>
-            : undefined
+          lastActive?.lastLogin ? (
+            <p className="text-[10px] sm:text-xs text-foreground-3 truncate">
+              <span className="hidden sm:inline">{lastActive.prenom} · {lastActive.lastLogin.split(' · ')[1]}</span>
+              <span className="sm:hidden">{lastActive.prenom}</span>
+            </p>
+          ) : (
+            <p className="text-[10px] sm:text-xs text-foreground-3">—</p>
+          )
         }
+        layout="horizontal"
       />
     </div>
   );
