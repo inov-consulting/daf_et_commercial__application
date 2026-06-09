@@ -4,8 +4,10 @@ import httpx
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 
-from app.api.deps import CurrentUser
+from app.api.deps import CompanyRepoDep, CurrentUser
+from app.api.v1.schemas.companies import CompanyOut
 from app.api.v1.schemas.users import UserOut
+from app.infrastructure.auth.keycloak import KeycloakAdminClient
 from app.core.config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -93,5 +95,26 @@ async def refresh(payload: RefreshRequest) -> TokenResponse:
 
 
 @router.get("/me")
-async def me(user: CurrentUser) -> UserOut:
-    return UserOut.from_domain(user)
+async def me(user: CurrentUser, company_repo: CompanyRepoDep) -> UserOut:
+    """Retourne le profil de l'utilisateur connecté avec entreprises et groupes."""
+    kc = KeycloakAdminClient()
+
+    # Récupère les données Keycloak
+    kc_user = await kc.get_user_by_id(str(user.id))
+    if kc_user:
+        user.email = kc_user.get("email", "")
+        user.first_name = kc_user.get("firstName", "")
+        user.last_name = kc_user.get("lastName", "")
+
+    # Récupère les entreprises
+    companies: list[CompanyOut] = []
+    for cid in user.company_ids:
+        c = await company_repo.get_by_id(cid)
+        if c:
+            companies.append(CompanyOut.from_domain(c))
+
+    # Récupère les groupes
+    kc_groups = await kc.get_user_groups(str(user.id))
+    user_group_ids = [g["id"] for g in kc_groups]
+
+    return UserOut.from_domain(user, companies=companies, group_ids=user_group_ids)
