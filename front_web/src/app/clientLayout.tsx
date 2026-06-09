@@ -34,9 +34,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
     kc.init({
       onLoad: 'login-required',
+      redirectUri: `${window.location.origin}`,
       pkceMethod: 'S256',
-      // query : le code arrive en ?code=… et survit aux redirects serveur
-      // fragment : le code arrive en #code=… et se perd si Next.js redirige
       responseMode: 'query',
       redirectUri,
     })
