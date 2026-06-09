@@ -161,8 +161,10 @@ async def update_user(
     user_id: UUID,
     payload: UserUpdate,
     user_repo: UserRepoDep,
+    company_repo: CompanyRepoDep,
 ) -> UserOut:
     """Met à jour les données applicatives d'un utilisateur.
+
     Permet de modifier les entreprises rattachées, le statut actif/inactif.
     Les champs non fournis (null) sont ignorés.
     """
@@ -175,4 +177,22 @@ async def update_user(
             is_active=payload.is_active,
         ),
     )
-    return UserOut.from_domain(user)
+
+    # Récupère les données enrichies depuis Keycloak
+    kc = KeycloakAdminClient()
+    kc_user = await kc.get_user_by_id(str(user_id))
+    if kc_user:
+        user.email = kc_user.get("email", "")
+        user.first_name = kc_user.get("firstName", "")
+        user.last_name = kc_user.get("lastName", "")
+
+    companies: list[CompanyOut] = []
+    for cid in user.company_ids:
+        c = await company_repo.get_by_id(cid)
+        if c:
+            companies.append(CompanyOut.from_domain(c))
+
+    kc_groups = await kc.get_user_groups(str(user_id))
+    user_group_ids = [g["id"] for g in kc_groups]
+
+    return UserOut.from_domain(user, companies=companies, group_ids=user_group_ids)
