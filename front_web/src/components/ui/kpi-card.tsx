@@ -27,10 +27,10 @@ const accentBar: Record<KpiAccent, string> = {
 };
 
 const iconBg: Record<KpiAccent, string> = {
-  primary: 'bg-[rgba(14,134,232,.1)] text-primary-500',
+  primary: 'bg-[rgba(27,107,69,.1)] text-primary-500',
   success: 'bg-[rgba(16,185,129,.1)] text-success',
   warning: 'bg-[rgba(245,158,11,.1)] text-warning',
-  secondary: 'bg-[rgba(194,37,122,.1)] text-secondary-500',
+  secondary: 'bg-[rgba(139,105,20,.1)] text-secondary-500',
 };
 
 export function KpiCard({

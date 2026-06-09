@@ -38,14 +38,14 @@ const variantClasses: Record<ButtonVariant, string> = {
   primary: [
     'bg-primary-500 text-white border-primary-500',
     '[&:not(:disabled)]:hover:bg-primary-600 [&:not(:disabled)]:hover:border-primary-600',
-    '[&:not(:disabled)]:hover:-translate-y-px [&:not(:disabled)]:hover:shadow-[0_4px_14px_rgba(14,134,232,.38)]',
+    '[&:not(:disabled)]:hover:-translate-y-px [&:not(:disabled)]:hover:shadow-[0_4px_14px_rgba(27,107,69,.38)]',
     '[&:not(:disabled)]:active:bg-primary-700 [&:not(:disabled)]:active:translate-y-0 [&:not(:disabled)]:active:shadow-none',
   ].join(' '),
   secondary: [
-    'bg-[rgba(14,134,232,.08)] text-primary-600 border-primary-300',
-    '[&:not(:disabled)]:hover:bg-[rgba(14,134,232,.15)] [&:not(:disabled)]:hover:border-primary-400',
+    'bg-[rgba(27,107,69,.08)] text-primary-600 border-primary-300',
+    '[&:not(:disabled)]:hover:bg-[rgba(27,107,69,.15)] [&:not(:disabled)]:hover:border-primary-400',
     '[&:not(:disabled)]:hover:-translate-y-px',
-    'dark:text-primary-400 dark:border-primary-800 dark:bg-[rgba(14,134,232,.12)]',
+    'dark:text-primary-400 dark:border-primary-800 dark:bg-[rgba(27,107,69,.12)]',
   ].join(' '),
   ghost: [
     'bg-transparent text-foreground-2 border-border',
@@ -64,7 +64,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   ].join(' '),
   gradient: [
     'text-white border-transparent',
-    '[&:not(:disabled)]:hover:-translate-y-px [&:not(:disabled)]:hover:shadow-[0_4px_16px_rgba(107,53,201,.42)]',
+    '[&:not(:disabled)]:hover:-translate-y-px [&:not(:disabled)]:hover:shadow-[0_4px_16px_rgba(27,107,69,.42)]',
   ].join(' '),
   'outline-gradient': 'btn-outline-grad text-primary-600 border-transparent',
   login: [

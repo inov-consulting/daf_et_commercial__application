@@ -7,11 +7,12 @@ import { cn } from '@/lib/utils';
 import { logoutKeycloak } from '@/lib/keycloak';
 import type { ApiUser, User } from '@/types/user_type';
 import { getRoleAbbreviation } from '@/lib/roleAbbreviation';
+import Image from 'next/image';
 
 const NOTIFICATIONS = [
   { id: 1, color: '#10B981', label: 'MIS-2026-0140 livré · SITARAIL', time: '13h47' },
   { id: 2, color: '#F59E0B', label: 'Retard · MIS-2026-0142 · ETA +48h', time: '10h22' },
-  { id: 3, color: '#0E86E8', label: 'IA · 3 éléments à valider (R-05)', time: '09h14' },
+  { id: 3, color: '#1B6B45', label: 'IA · 3 éléments à valider (R-05)', time: '09h14' },
 ] as const;
 
 const MENU_ITEMS = [
@@ -105,7 +106,7 @@ export default function TopBar({ onToggleSidebar, user, rawUser }: TopBarProps) 
     <>
       {/* Backdrop global — ferme tous les menus */}
       {mounted && (showNotifs || showUserMenu) && createPortal(
-        <div className="fixed inset-0 z-[198]" onClick={closeAll} aria-hidden="true" />,
+        <div className="fixed inset-0 z-[198]" onClick={closeAll} onKeyDown={(e) => { if (e.key === 'Escape') closeAll(); }} aria-hidden="true" />,
         document.body,
       )}
 
@@ -178,9 +179,15 @@ export default function TopBar({ onToggleSidebar, user, rawUser }: TopBarProps) 
             </button>
 
             <div className="flex items-center gap-2 min-w-0">
-              <span className="font-display font-bold text-lg sm:text-xl md:text-2xl text-gradient flex-shrink-0">
-                PortaLis
-              </span>
+              <Image
+                src="/assets/images/logo_portalis.png"
+                alt="Portalis"
+                width={400}
+                height={200}
+                unoptimized
+                style={{ height: '55px', width: 'auto' }}
+                className="flex-shrink-0"
+              />
               <div className="hidden sm:flex items-center gap-1.5 bg-primary/5 border border-primary/40 text-primary rounded-full px-2 sm:px-2.5 py-1 text-[10px] sm:text-[11px] font-medium flex-shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse flex-shrink-0" />
                 <span className="hidden lg:inline">IA active · 1 en cours</span>

@@ -33,7 +33,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             'leading-relaxed transition-[border-color,box-shadow] duration-fast',
             'placeholder:text-foreground-3',
             'hover:border-primary-400',
-            'focus:border-border-focus focus:shadow-[0_0_0_3px_rgba(14,134,232,.14)]',
+            'focus:border-border-focus focus:shadow-[0_0_0_3px_rgba(27,107,69,.14)]',
             'disabled:bg-surface-sink disabled:cursor-not-allowed disabled:opacity-60',
             className,
           )}

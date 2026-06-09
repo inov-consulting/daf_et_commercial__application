@@ -18,8 +18,10 @@ export default function FloatingChat() {
       {/* Backdrop */}
       {open && (
         <div
+          aria-hidden="true"
           className="fixed inset-0 z-[59] bg-black/20"
           onClick={() => setOpen(false)}
+          onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}
         />
       )}
 
@@ -100,8 +102,8 @@ export default function FloatingChat() {
           style={{
             background: 'var(--grad)',
             boxShadow: open
-              ? '0 8px 24px rgba(107,53,201,.5)'
-              : '0 4px 16px rgba(107,53,201,.35)',
+              ? '0 8px 24px rgba(27,107,69,.5)'
+              : '0 4px 16px rgba(27,107,69,.35)',
           }}
         >
           <Sparkle size={20} weight="fill" className="text-white" />
