@@ -3,6 +3,7 @@
 # AiModelOrm doit être importé avant AiConfigOrm (FK dependency)
 from app.infrastructure.db.models.ai_config import AiConfigOrm, AiModelOrm
 from app.infrastructure.db.models.company import CompanyOrm
+from app.infrastructure.db.models.prospect import ProspectActivityOrm, ProspectOrm
 from app.infrastructure.db.models.user import UserOrm
 
-__all__ = ["AiConfigOrm", "AiModelOrm", "CompanyOrm", "UserOrm"]
+__all__ = ["AiConfigOrm", "AiModelOrm", "CompanyOrm", "ProspectActivityOrm", "ProspectOrm", "UserOrm"]
