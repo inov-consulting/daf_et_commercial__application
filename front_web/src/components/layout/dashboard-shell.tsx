@@ -10,7 +10,7 @@ import type { ApiUser, User } from '@/types/user_type';
 interface DashboardShellProps {
   locale: string;
   children: React.ReactNode;
-  user: User;
+  user: User | null;
   rawUser: ApiUser | null;
 }
 
