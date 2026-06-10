@@ -3,13 +3,25 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   XIcon, PaperPlaneTiltIcon, SparkleIcon, MicrophoneIcon, StopCircleIcon,
-  TrashIcon, FilePdfIcon, FileTextIcon, CheckCircleIcon, WarningIcon,
+  TrashIcon, WarningIcon,
 } from '@phosphor-icons/react';
 import { PostData } from '@/lib/ApiService';
 import { ApiRoutes } from '@/lib/ApiRoutes';
-import { ApiUser, User } from '@/types/user_type';
+import type { ApiUser, User } from '@/types/user_type';
 
-type ChatView = 'idle' | 'recording' | 'processing' | 'transcribed' | 'validated';
+type InputState = 'idle' | 'recording' | 'processing' | 'sending';
+
+interface Message {
+  id: number;
+  role: 'ai' | 'user';
+  text: string;
+  time: string;
+}
+
+interface FloatingChatProps {
+  user: User | null;
+  rawUser: ApiUser | null;
+}
 
 const WAVE_BARS = 22;
 
@@ -19,27 +31,41 @@ function formatDuration(seconds: number) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-function countWords(text: string) {
-  return text.trim() ? text.trim().split(/\s+/).length : 0;
+function formatTime() {
+  const now = new Date();
+  return `${now.getHours().toString().padStart(2, '0')}h${now.getMinutes().toString().padStart(2, '0')}`;
 }
 
-interface FloatingChatProps {
-  user: User;
-  rawUser: ApiUser | null;
+function renderText(text: string) {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith('**') && part.endsWith('**')
+      ? <strong key={i}>{part.slice(2, -2)}</strong>
+      : part,
+  );
 }
 
-export default function FloatingChat({user, rawUser}: FloatingChatProps) {
+export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
+  const firstName = user?.prenom || rawUser?.first_name || 'vous';
+
   const [open, setOpen] = useState(false);
-  const [view, setView] = useState<ChatView>('idle');
+  const [inputState, setInputState] = useState<InputState>('idle');
+  const [messages, setMessages] = useState<Message[]>(() => [
+    {
+      id: 0,
+      role: 'ai',
+      text: `Bonjour ${firstName} ! J'ai **3 éléments** en attente de validation. Voulez-vous que je vous résume les priorités du jour ?`,
+      time: '09h14',
+    },
+  ]);
+  const [inputText, setInputText] = useState('');
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [recSeconds, setRecSeconds] = useState(0);
-  const [recDuration, setRecDuration] = useState('');
   const [progress, setProgress] = useState(0);
-  const [transcriptText, setTranscriptText] = useState('');
-  const [showRejectConfirm, setShowRejectConfirm] = useState(false);
   const [waveHeights, setWaveHeights] = useState(() =>
     Array.from({ length: WAVE_BARS }, () => 4),
   );
   const [apiError, setApiError] = useState<string | null>(null);
+  const [aiThinking, setAiThinking] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -47,10 +73,13 @@ export default function FloatingChat({user, rawUser}: FloatingChatProps) {
   const waveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recSecondsRef = useRef(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (open) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [open, view]);
+    if (open) {
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+    }
+  }, [open, messages, aiThinking, inputState]);
 
   useEffect(() => {
     return () => {
@@ -66,7 +95,6 @@ export default function FloatingChat({user, rawUser}: FloatingChatProps) {
     setApiError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // audio/ogg not accepted by the backend — keep only webm and mp4
       const mimeType = ['audio/webm', 'audio/mp4'].find(t =>
         MediaRecorder.isTypeSupported(t),
       ) ?? '';
@@ -81,7 +109,7 @@ export default function FloatingChat({user, rawUser}: FloatingChatProps) {
       mediaRecorder.start(100);
       recSecondsRef.current = 0;
       setRecSeconds(0);
-      setView('recording');
+      setInputState('recording');
 
       timerRef.current = setInterval(() => {
         recSecondsRef.current += 1;
@@ -99,22 +127,18 @@ export default function FloatingChat({user, rawUser}: FloatingChatProps) {
   const stopRecording = useCallback(() => {
     if (!mediaRecorderRef.current) return;
 
-    const duration = formatDuration(recSecondsRef.current);
-    setRecDuration(duration);
-
     if (timerRef.current) clearInterval(timerRef.current);
     if (waveTimerRef.current) clearInterval(waveTimerRef.current);
 
     mediaRecorderRef.current.onstop = async () => {
-      // Strip codec info (e.g. "audio/webm;codecs=opus" → "audio/webm") so the
-      // backend's exact-match validation against its allowed types list succeeds.
+      // Strip codec suffix (e.g. "audio/webm;codecs=opus" → "audio/webm")
       const rawMime = audioChunksRef.current[0]?.type ?? 'audio/webm';
       const mimeType = rawMime.split(';')[0];
       const ext = mimeType.includes('mp4') ? 'm4a' : 'webm';
       const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
       mediaRecorderRef.current?.stream.getTracks().forEach(t => t.stop());
 
-      setView('processing');
+      setInputState('processing');
       setProgress(0);
 
       const progressInterval = setInterval(() => {
@@ -131,18 +155,16 @@ export default function FloatingChat({user, rawUser}: FloatingChatProps) {
       });
 
       clearInterval(progressInterval);
+      setInputState('idle');
 
       if (!res.ok || !res.data) {
         setApiError(res.error ?? 'Erreur lors de la transcription.');
-        setView('idle');
         return;
       }
 
-      setProgress(100);
-      setTimeout(() => {
-        setTranscriptText(res.data!.text);
-        setView('transcribed');
-      }, 380);
+      // Put transcribed text into the input field for review/editing before send
+      setInputText(res.data.text);
+      setTimeout(() => inputRef.current?.focus(), 80);
     };
 
     mediaRecorderRef.current.stop();
@@ -155,22 +177,53 @@ export default function FloatingChat({user, rawUser}: FloatingChatProps) {
       mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
       mediaRecorderRef.current.stop();
     }
-    setView('idle');
+    setInputState('idle');
     setRecSeconds(0);
   }, []);
 
-  const handleReject = useCallback(() => {
-    setShowRejectConfirm(false);
-    setView('idle');
-    setTranscriptText('');
-    setRecDuration('');
-  }, []);
+  const handleSend = useCallback(async () => {
+    const text = inputText.trim();
+    if (!text || inputState !== 'idle') return;
 
-  const wordCount = countWords(transcriptText);
+    setInputText('');
+    setApiError(null);
 
-  const fullName = (user?.prenom || user?.nom)
-    ? `${user.prenom} ${user.nom}`.trim()
-    : rawUser?.email?.split('@')[0] ?? 'Utilisateur';
+    setMessages(prev => [
+      ...prev,
+      { id: Date.now(), role: 'user', text, time: formatTime() },
+    ]);
+    setInputState('sending');
+    setAiThinking(true);
+
+    const res = await PostData<{ session_id: string; response: string; tool_used: string; turn: number }>({
+      url: ApiRoutes.CHAT_MESSAGE,
+      data: sessionId ? { session_id: sessionId, message: text } : { message: text },
+      protected: true,
+    });
+
+    setAiThinking(false);
+    setInputState('idle');
+
+    if (!res.ok || !res.data) {
+      setApiError(res.error ?? 'Erreur lors de l\'envoi du message.');
+      return;
+    }
+
+    setSessionId(res.data.session_id);
+    setMessages(prev => [
+      ...prev,
+      { id: Date.now() + 1, role: 'ai', text: res.data!.response, time: formatTime() },
+    ]);
+  }, [inputText, inputState, sessionId]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  }, [handleSend]);
+
+  const initials = user?.initials ?? '?';
 
   return (
     <>
@@ -213,33 +266,51 @@ export default function FloatingChat({user, rawUser}: FloatingChatProps) {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4 overflow-auto">
-          {/* Welcome message */}
-          <div className="flex items-start gap-3">
-            <div
-              className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5"
-              style={{ background: 'var(--grad)' }}
-            >
-              <span className="text-white text-xs leading-none">✦</span>
-            </div>
-            <div className="flex-1">
-              <div className="bg-[var(--bg-sink)] rounded-2xl rounded-tl-sm px-4 py-3">
-                <p className="text-sm text-[var(--tx-1)] leading-relaxed">
-                  Bonjour {fullName} ! J&apos;ai <strong>3 éléments</strong> en attente de
-                  validation. Voulez-vous que je vous résume les priorités du jour ?
-                </p>
+        <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
+          {messages.map(msg => msg.role === 'ai' ? (
+            <div key={msg.id} className="flex items-start gap-3">
+              <div
+                className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5"
+                style={{ background: 'var(--grad)' }}
+              >
+                <span className="text-white text-xs leading-none">✦</span>
               </div>
-              <p className="text-[10px] text-[var(--tx-3)] mt-1 ml-1">09h14</p>
+              <div className="flex-1">
+                <div className="bg-[var(--bg-sink)] rounded-2xl rounded-tl-sm px-4 py-3">
+                  <p className="text-sm text-[var(--tx-1)] leading-relaxed">
+                    {renderText(msg.text)}
+                  </p>
+                </div>
+                <p className="text-[10px] text-[var(--tx-3)] mt-1 ml-1">{msg.time}</p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div key={msg.id} className="flex items-start gap-3 flex-row-reverse">
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-white text-[10px] font-bold leading-none"
+                style={{ background: 'var(--grad)' }}
+              >
+                {initials}
+              </div>
+              <div className="flex-1">
+                <div
+                  className="rounded-2xl rounded-tr-sm px-4 py-3"
+                  style={{ background: 'var(--grad)' }}
+                >
+                  <p className="text-sm text-white leading-relaxed">{msg.text}</p>
+                </div>
+                <p className="text-[10px] text-[var(--tx-3)] mt-1 mr-1 text-right">{msg.time}</p>
+              </div>
+            </div>
+          ))}
 
-          {/* Processing card */}
-          {view === 'processing' && (
+          {/* Transcription progress */}
+          {inputState === 'processing' && (
             <div className="rounded-2xl bg-violet-50 border border-violet-100 px-4 py-3">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className="w-3.5 h-3.5 border-[2px] border-violet-400 border-t-transparent rounded-full animate-spin" />
-                  <span className="text-[10px] font-bold tracking-widest text-violet-600">ENREGISTREMENT REÇU</span>
+                  <span className="text-[10px] font-bold tracking-widest text-violet-600">TRANSCRIPTION EN COURS</span>
                 </div>
                 <span className="text-[11px] font-bold text-success">{Math.round(progress)}&nbsp;%</span>
               </div>
@@ -252,98 +323,20 @@ export default function FloatingChat({user, rawUser}: FloatingChatProps) {
             </div>
           )}
 
-          {/* CR Vocal card */}
-          {(view === 'transcribed' || view === 'validated') && (
-            <div className="rounded-2xl bg-violet-50 border border-violet-100 overflow-auto">
-              {/* Card top row */}
-              <div className="flex items-center justify-between px-4 py-2.5">
-                {view === 'transcribed' ? (
-                  <span className="text-[10px] font-bold text-violet-700 bg-violet-200/60 px-2.5 py-[3px] rounded-full">
-                    CR VOCAL — À CORRIGER
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-[3px] rounded-full">
-                    CR VOCAL — VALIDÉ
-                  </span>
-                )}
-                {view === 'transcribed' && (
-                  <span className="text-[10px] text-[var(--tx-3)] font-medium">
-                    {wordCount} MOTS · {recDuration}
-                  </span>
-                )}
+          {/* AI thinking indicator */}
+          {aiThinking && (
+            <div className="flex items-start gap-3">
+              <div
+                className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5"
+                style={{ background: 'var(--grad)' }}
+              >
+                <span className="text-white text-xs leading-none">✦</span>
               </div>
-
-              {view === 'transcribed' ? (
-                <div className="px-4 pb-4 flex flex-col gap-3">
-                  {/* Editable transcript */}
-                  <textarea
-                    value={transcriptText}
-                    onChange={(e) => setTranscriptText(e.target.value)}
-                    rows={5}
-                    className="w-full text-sm text-[var(--tx-1)] leading-relaxed bg-white rounded-xl border border-violet-100 px-3 py-2.5 resize-none outline-none focus:border-violet-300 transition-colors"
-                  />
-
-                  {/* Export */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold tracking-widest text-[var(--tx-3)]">EXPORTER :</span>
-                    <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--bd-def)] bg-white text-[11px] font-medium text-[var(--tx-2)] hover:border-violet-200 transition-colors">
-                      <FilePdfIcon size={12} />
-                      PDF
-                    </button>
-                    <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--bd-def)] bg-white text-[11px] font-medium text-[var(--tx-2)] hover:border-violet-200 transition-colors">
-                      <FileTextIcon size={12} />
-                      Word
-                    </button>
-                  </div>
-
-                  {/* Actions */}
-                  {showRejectConfirm ? (
-                    <div className="rounded-xl bg-[#16152b] p-4">
-                      <p className="text-[13px] font-semibold text-white mb-3">
-                        Rejeter ce compte-rendu ?
-                      </p>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setShowRejectConfirm(false)}
-                          className="flex-1 h-8 rounded-lg border border-white/20 text-[11px] font-semibold text-white/60 hover:bg-white/10 transition-colors"
-                        >
-                          Annuler
-                        </button>
-                        <button
-                          onClick={handleReject}
-                          className="flex-1 h-8 rounded-lg border border-red-500/40 bg-red-500/10 text-[11px] font-semibold text-red-400 hover:bg-red-500/20 transition-colors flex items-center justify-center gap-1.5"
-                        >
-                          <TrashIcon size={12} />
-                          Rejeter
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setView('validated')}
-                        className="flex-1 h-9 rounded-xl text-[12px] font-semibold text-white flex items-center justify-center gap-1.5 hover:opacity-90 active:scale-[.98] transition-all"
-                        style={{ background: 'var(--grad)' }}
-                      >
-                        <CheckCircleIcon size={14} weight="fill" />
-                        Valider et enregistrer
-                      </button>
-                      <button
-                        onClick={() => setShowRejectConfirm(true)}
-                        className="text-[12px] font-medium text-[var(--tx-3)] hover:text-[var(--tx-1)] transition-colors px-2 flex-shrink-0"
-                      >
-                        Rejeter
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                /* Validated */
-                <div className="px-4 pb-4 flex items-center gap-2 text-emerald-600">
-                  <CheckCircleIcon size={16} weight="fill" />
-                  <span className="text-sm font-semibold">Enregistré dans DOS-2026-0142</span>
-                </div>
-              )}
+              <div className="bg-[var(--bg-sink)] rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--tx-3)] animate-bounce [animation-delay:0ms]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--tx-3)] animate-bounce [animation-delay:150ms]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--tx-3)] animate-bounce [animation-delay:300ms]" />
+              </div>
             </div>
           )}
 
@@ -359,9 +352,8 @@ export default function FloatingChat({user, rawUser}: FloatingChatProps) {
         </div>
 
         {/* Input / Recording area */}
-        {view === 'recording' ? (
+        {inputState === 'recording' ? (
           <div className="px-4 pt-3 pb-5 border-t border-[var(--bd-def)] flex-shrink-0">
-            {/* Timer + REC + trash */}
             <div className="flex items-center justify-between mb-0.5">
               <span className="font-mono text-[32px] font-bold text-[var(--tx-1)] leading-none">
                 {formatDuration(recSeconds)}
@@ -384,7 +376,6 @@ export default function FloatingChat({user, rawUser}: FloatingChatProps) {
               VISEZ 1 À 2 MINUTES POUR UN CR COMPLET
             </p>
 
-            {/* Waveform */}
             <div className="flex items-center justify-center gap-[2.5px] h-9 mb-4 px-1">
               {waveHeights.map((h, i) => (
                 <div
@@ -402,7 +393,6 @@ export default function FloatingChat({user, rawUser}: FloatingChatProps) {
               ))}
             </div>
 
-            {/* Stop / Cancel */}
             <div className="flex gap-2">
               <button
                 onClick={stopRecording}
@@ -423,20 +413,28 @@ export default function FloatingChat({user, rawUser}: FloatingChatProps) {
           <div className="px-4 py-4 border-t border-[var(--bd-def)] flex-shrink-0">
             <div className="flex items-center gap-2 bg-[var(--bg-sink)] rounded-xl px-3 py-2 border border-transparent focus-within:border-[var(--bd-focus)] focus-within:bg-white transition-colors">
               <input
+                ref={inputRef}
                 type="text"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder="Posez une question à l'IA..."
-                className="flex-1 bg-transparent text-sm text-[var(--tx-1)] placeholder:text-[var(--tx-3)] outline-none"
+                disabled={inputState !== 'idle'}
+                className="flex-1 bg-transparent text-sm text-[var(--tx-1)] placeholder:text-[var(--tx-3)] outline-none disabled:opacity-50"
               />
               <button
                 onClick={startRecording}
-                title="Dicter un compte-rendu vocal"
-                className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 hover:-translate-y-px transition-all"
+                disabled={inputState !== 'idle'}
+                title="Dicter un message vocal"
+                className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all hover:-translate-y-px disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ background: 'linear-gradient(135deg, #6366f1, #818cf8)' }}
               >
                 <MicrophoneIcon size={13} weight="fill" className="text-white" />
               </button>
               <button
-                className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 hover:-translate-y-px transition-all"
+                onClick={handleSend}
+                disabled={!inputText.trim() || inputState !== 'idle'}
+                className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all hover:-translate-y-px disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ background: 'var(--grad)' }}
               >
                 <PaperPlaneTiltIcon size={13} weight="fill" className="text-white" />

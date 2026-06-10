@@ -5,7 +5,7 @@ import Sidebar from './sidebar';
 import TopBar from './top-bar';
 import FloatingChat from './floating-chat';
 import { BreadcrumbBar } from './breadcrumb-bar';
-import { User } from '@/types/user_type';
+import type { ApiUser, User } from '@/types/user_type';
 
 interface DashboardShellProps {
   locale: string;
