@@ -1,17 +1,229 @@
 'use client';
 
-import { useState } from 'react';
-import { X, PaperPlaneTilt, Sparkle } from '@phosphor-icons/react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  XIcon, PaperPlaneTiltIcon, SparkleIcon, MicrophoneIcon, StopCircleIcon,
+  TrashIcon, WarningIcon,
+} from '@phosphor-icons/react';
+import { PostData } from '@/lib/ApiService';
+import { ApiRoutes } from '@/lib/ApiRoutes';
+import type { ApiUser, User } from '@/types/user_type';
 
-const INITIAL_MESSAGES = [
-  {
-    id: 1,
-    time: '09h14',
-  },
-];
+type InputState = 'idle' | 'recording' | 'processing' | 'sending';
 
-export default function FloatingChat() {
+interface Message {
+  id: number;
+  role: 'ai' | 'user';
+  text: string;
+  time: string;
+}
+
+interface FloatingChatProps {
+  user: User | null;
+  rawUser: ApiUser | null;
+}
+
+const WAVE_BARS = 22;
+
+function formatDuration(seconds: number) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function formatTime() {
+  const now = new Date();
+  return `${now.getHours().toString().padStart(2, '0')}h${now.getMinutes().toString().padStart(2, '0')}`;
+}
+
+function renderText(text: string) {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith('**') && part.endsWith('**')
+      ? <strong key={i}>{part.slice(2, -2)}</strong>
+      : part,
+  );
+}
+
+export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
+  const firstName = user?.prenom || rawUser?.first_name || 'vous';
+
   const [open, setOpen] = useState(false);
+  const [inputState, setInputState] = useState<InputState>('idle');
+  const [messages, setMessages] = useState<Message[]>(() => [
+    {
+      id: 0,
+      role: 'ai',
+      text: `Bonjour ${firstName} ! J'ai **3 éléments** en attente de validation. Voulez-vous que je vous résume les priorités du jour ?`,
+      time: '09h14',
+    },
+  ]);
+  const [inputText, setInputText] = useState('');
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [recSeconds, setRecSeconds] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [waveHeights, setWaveHeights] = useState(() =>
+    Array.from({ length: WAVE_BARS }, () => 4),
+  );
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [aiThinking, setAiThinking] = useState(false);
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const waveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recSecondsRef = useRef(0);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+    }
+  }, [open, messages, aiThinking, inputState]);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (waveTimerRef.current) clearInterval(waveTimerRef.current);
+      if (mediaRecorderRef.current?.state !== 'inactive') {
+        mediaRecorderRef.current?.stream.getTracks().forEach(t => t.stop());
+      }
+    };
+  }, []);
+
+  const startRecording = useCallback(async () => {
+    setApiError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = ['audio/webm', 'audio/mp4'].find(t =>
+        MediaRecorder.isTypeSupported(t),
+      ) ?? '';
+      const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.start(100);
+      recSecondsRef.current = 0;
+      setRecSeconds(0);
+      setInputState('recording');
+
+      timerRef.current = setInterval(() => {
+        recSecondsRef.current += 1;
+        setRecSeconds(s => s + 1);
+      }, 1000);
+
+      waveTimerRef.current = setInterval(() => {
+        setWaveHeights(Array.from({ length: WAVE_BARS }, () => Math.floor(Math.random() * 22) + 3));
+      }, 80);
+    } catch {
+      setApiError('Microphone non disponible ou accès refusé.');
+    }
+  }, []);
+
+  const stopRecording = useCallback(() => {
+    if (!mediaRecorderRef.current) return;
+
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (waveTimerRef.current) clearInterval(waveTimerRef.current);
+
+    mediaRecorderRef.current.onstop = async () => {
+      // Strip codec suffix (e.g. "audio/webm;codecs=opus" → "audio/webm")
+      const rawMime = audioChunksRef.current[0]?.type ?? 'audio/webm';
+      const mimeType = rawMime.split(';')[0];
+      const ext = mimeType.includes('mp4') ? 'm4a' : 'webm';
+      const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+      mediaRecorderRef.current?.stream.getTracks().forEach(t => t.stop());
+
+      setInputState('processing');
+      setProgress(0);
+
+      const progressInterval = setInterval(() => {
+        setProgress(p => (p >= 90 ? p : p + Math.random() * 12));
+      }, 280);
+
+      const audioFile = new File([audioBlob], `recording.${ext}`, { type: mimeType });
+
+      const res = await PostData<{ text: string }>({
+        url: ApiRoutes.VOCAL_TRANSCRIBE,
+        data: { file: audioFile } as unknown as Record<string, unknown>,
+        isMultipart: true,
+        protected: true,
+      });
+
+      clearInterval(progressInterval);
+      setInputState('idle');
+
+      if (!res.ok || !res.data) {
+        setApiError(res.error ?? 'Erreur lors de la transcription.');
+        return;
+      }
+
+      // Put transcribed text into the input field for review/editing before send
+      setInputText(res.data.text);
+      setTimeout(() => inputRef.current?.focus(), 80);
+    };
+
+    mediaRecorderRef.current.stop();
+  }, []);
+
+  const cancelRecording = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (waveTimerRef.current) clearInterval(waveTimerRef.current);
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
+      mediaRecorderRef.current.stop();
+    }
+    setInputState('idle');
+    setRecSeconds(0);
+  }, []);
+
+  const handleSend = useCallback(async () => {
+    const text = inputText.trim();
+    if (!text || inputState !== 'idle') return;
+
+    setInputText('');
+    setApiError(null);
+
+    setMessages(prev => [
+      ...prev,
+      { id: Date.now(), role: 'user', text, time: formatTime() },
+    ]);
+    setInputState('sending');
+    setAiThinking(true);
+
+    const res = await PostData<{ session_id: string; response: string; tool_used: string; turn: number }>({
+      url: ApiRoutes.CHAT_MESSAGE,
+      data: sessionId ? { session_id: sessionId, message: text } : { message: text },
+      protected: true,
+    });
+
+    setAiThinking(false);
+    setInputState('idle');
+
+    if (!res.ok || !res.data) {
+      setApiError(res.error ?? 'Erreur lors de l\'envoi du message.');
+      return;
+    }
+
+    setSessionId(res.data.session_id);
+    setMessages(prev => [
+      ...prev,
+      { id: Date.now() + 1, role: 'ai', text: res.data!.response, time: formatTime() },
+    ]);
+  }, [inputText, inputState, sessionId]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  }, [handleSend]);
+
+  const initials = user?.initials ?? '?';
 
   return (
     <>
@@ -49,13 +261,13 @@ export default function FloatingChat() {
             onClick={() => setOpen(false)}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--tx-3)] hover:bg-[var(--bg-sink)] transition-colors"
           >
-            <X size={15} />
+            <XIcon size={15} />
           </button>
         </div>
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
-          {INITIAL_MESSAGES.map(msg => (
+          {messages.map(msg => msg.role === 'ai' ? (
             <div key={msg.id} className="flex items-start gap-3">
               <div
                 className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5"
@@ -66,32 +278,170 @@ export default function FloatingChat() {
               <div className="flex-1">
                 <div className="bg-[var(--bg-sink)] rounded-2xl rounded-tl-sm px-4 py-3">
                   <p className="text-sm text-[var(--tx-1)] leading-relaxed">
-                    Bonjour Hawa ! J&apos;ai <strong>3 éléments</strong> en attente de
-                    validation. Voulez-vous que je vous résume les priorités du jour ?
+                    {renderText(msg.text)}
                   </p>
                 </div>
                 <p className="text-[10px] text-[var(--tx-3)] mt-1 ml-1">{msg.time}</p>
               </div>
             </div>
+          ) : (
+            <div key={msg.id} className="flex items-start gap-3 flex-row-reverse">
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-white text-[10px] font-bold leading-none"
+                style={{ background: 'var(--grad)' }}
+              >
+                {initials}
+              </div>
+              <div className="flex-1">
+                <div
+                  className="rounded-2xl rounded-tr-sm px-4 py-3"
+                  style={{ background: 'var(--grad)' }}
+                >
+                  <p className="text-sm text-white leading-relaxed">{msg.text}</p>
+                </div>
+                <p className="text-[10px] text-[var(--tx-3)] mt-1 mr-1 text-right">{msg.time}</p>
+              </div>
+            </div>
           ))}
+
+          {/* Transcription progress */}
+          {inputState === 'processing' && (
+            <div className="rounded-2xl bg-violet-50 border border-violet-100 px-4 py-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 border-[2px] border-violet-400 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-[10px] font-bold tracking-widest text-violet-600">TRANSCRIPTION EN COURS</span>
+                </div>
+                <span className="text-[11px] font-bold text-success">{Math.round(progress)}&nbsp;%</span>
+              </div>
+              <div className="h-1.5 bg-violet-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-violet-500 transition-all duration-300"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* AI thinking indicator */}
+          {aiThinking && (
+            <div className="flex items-start gap-3">
+              <div
+                className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5"
+                style={{ background: 'var(--grad)' }}
+              >
+                <span className="text-white text-xs leading-none">✦</span>
+              </div>
+              <div className="bg-[var(--bg-sink)] rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--tx-3)] animate-bounce [animation-delay:0ms]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--tx-3)] animate-bounce [animation-delay:150ms]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--tx-3)] animate-bounce [animation-delay:300ms]" />
+              </div>
+            </div>
+          )}
+
+          {/* Error */}
+          {apiError && (
+            <div className="flex items-center gap-2 text-error text-xs px-1">
+              <WarningIcon size={13} />
+              {apiError}
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
         </div>
 
-        {/* Input */}
-        <div className="px-4 py-4 border-t border-[var(--bd-def)] flex-shrink-0">
-          <div className="flex items-center gap-2 bg-[var(--bg-sink)] rounded-xl px-4 py-2.5 border border-transparent focus-within:border-[var(--bd-focus)] focus-within:bg-white transition-colors">
-            <input
-              type="text"
-              placeholder="Posez une question à l'IA..."
-              className="flex-1 bg-transparent text-sm text-[var(--tx-1)] placeholder:text-[var(--tx-3)] outline-none"
-            />
-            <button
-              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all hover:-translate-y-px"
-              style={{ background: 'var(--grad)' }}
-            >
-              <PaperPlaneTilt size={13} weight="fill" className="text-white" />
-            </button>
+        {/* Input / Recording area */}
+        {inputState === 'recording' ? (
+          <div className="px-4 pt-3 pb-5 border-t border-[var(--bd-def)] flex-shrink-0">
+            <div className="flex items-center justify-between mb-0.5">
+              <span className="font-mono text-[32px] font-bold text-[var(--tx-1)] leading-none">
+                {formatDuration(recSeconds)}
+              </span>
+              <div className="flex items-center gap-2.5">
+                <span className="flex items-center gap-1.5 text-[10px] font-bold text-error bg-error/10 px-2.5 py-1 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse" />
+                  REC
+                </span>
+                <button
+                  onClick={cancelRecording}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--tx-3)] hover:text-error hover:bg-error/10 transition-colors"
+                >
+                  <TrashIcon size={15} />
+                </button>
+              </div>
+            </div>
+
+            <p className="text-[10px] font-semibold tracking-widest text-[var(--tx-3)] mb-3">
+              VISEZ 1 À 2 MINUTES POUR UN CR COMPLET
+            </p>
+
+            <div className="flex items-center justify-center gap-[2.5px] h-9 mb-4 px-1">
+              {waveHeights.map((h, i) => (
+                <div
+                  key={i}
+                  className="w-[3px] rounded-full transition-all duration-75"
+                  style={{
+                    height: `${h}px`,
+                    background: h < 8
+                      ? '#c4b5fd'
+                      : i % 3 === 0
+                        ? 'linear-gradient(to top, #6366f1, #a78bfa)'
+                        : 'linear-gradient(to top, #818cf8, #c4b5fd)',
+                  }}
+                />
+              ))}
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={stopRecording}
+                className="flex-1 h-10 rounded-xl bg-error text-white text-[13px] font-semibold flex items-center justify-center gap-2 hover:bg-error/90 transition-colors"
+              >
+                <StopCircleIcon size={15} weight="fill" />
+                Arrêter
+              </button>
+              <button
+                onClick={cancelRecording}
+                className="h-10 px-4 rounded-xl border border-[var(--bd-def)] text-[13px] font-medium text-[var(--tx-2)] hover:bg-[var(--bg-sink)] transition-colors"
+              >
+                Annuler
+              </button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="px-4 py-4 border-t border-[var(--bd-def)] flex-shrink-0">
+            <div className="flex items-center gap-2 bg-[var(--bg-sink)] rounded-xl px-3 py-2 border border-transparent focus-within:border-[var(--bd-focus)] focus-within:bg-white transition-colors">
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Posez une question à l'IA..."
+                disabled={inputState !== 'idle'}
+                className="flex-1 bg-transparent text-sm text-[var(--tx-1)] placeholder:text-[var(--tx-3)] outline-none disabled:opacity-50"
+              />
+              <button
+                onClick={startRecording}
+                disabled={inputState !== 'idle'}
+                title="Dicter un message vocal"
+                className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all hover:-translate-y-px disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ background: 'linear-gradient(135deg, #6366f1, #818cf8)' }}
+              >
+                <MicrophoneIcon size={13} weight="fill" className="text-white" />
+              </button>
+              <button
+                onClick={handleSend}
+                disabled={!inputText.trim() || inputState !== 'idle'}
+                className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all hover:-translate-y-px disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ background: 'var(--grad)' }}
+              >
+                <PaperPlaneTiltIcon size={13} weight="fill" className="text-white" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Floating button */}
@@ -101,12 +451,10 @@ export default function FloatingChat() {
           className="fixed bottom-6 right-6 w-12 h-12 rounded-xl flex items-center justify-center z-[61] transition-all duration-200 hover:-translate-y-1"
           style={{
             background: 'var(--grad)',
-            boxShadow: open
-              ? '0 8px 24px rgba(27,107,69,.5)'
-              : '0 4px 16px rgba(27,107,69,.35)',
+            boxShadow: '0 4px 16px rgba(27,107,69,.35)',
           }}
         >
-          <Sparkle size={20} weight="fill" className="text-white" />
+          <SparkleIcon size={20} weight="fill" className="text-white" />
           <span className="absolute -top-1 -right-1 w-5 h-5 bg-error rounded-full text-white text-[9px] font-bold flex items-center justify-center border-2 border-white leading-none">
             3
           </span>
