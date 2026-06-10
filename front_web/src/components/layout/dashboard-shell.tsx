@@ -1,35 +1,22 @@
 'use client';
 
-import { useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Sidebar from './sidebar';
 import TopBar from './top-bar';
 import FloatingChat from './floating-chat';
 import { BreadcrumbBar } from './breadcrumb-bar';
-import { useAppDispatch } from '@/redux/store';
-import { fetchMe, clearMe } from '@/redux/features/me/meSlice';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { AuthContext } from '@/app/clientLayout';
+import type { ApiUser, User } from '@/types/user_type';
 
 interface DashboardShellProps {
   locale: string;
   children: React.ReactNode;
+  user: User;
+  rawUser: ApiUser | null;
 }
 
-export default function DashboardShell({ locale, children }: DashboardShellProps) {
-  const dispatch = useAppDispatch();
+export default function DashboardShell({ user, rawUser, locale, children }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const { user, rawUser, loading } = useCurrentUser();
-  const auth = useContext(AuthContext);
-  const authenticated = auth?.authenticated ?? false;
-
-  // Charge le profil uniquement quand Keycloak a confirmé l'authentification
-  // et que le token est disponible dans kc.token (lu par ApiService).
-  useEffect(() => {
-    if (!authenticated) return;
-    dispatch(clearMe());
-    dispatch(fetchMe());
-  }, [dispatch, authenticated]);
 
   // Détecter le mobile et ajuster la sidebar
   useEffect(() => {
@@ -48,17 +35,6 @@ export default function DashboardShell({ locale, children }: DashboardShellProps
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-[var(--bg-page,#f8fafc)]">
-        <div className="text-center">
-          <div className="w-10 h-10 border-[3px] border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-sm text-gray-500">Chargement du profil…</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col h-screen bg-[var(--bg-surf)] overflow-hidden">
@@ -82,7 +58,7 @@ export default function DashboardShell({ locale, children }: DashboardShellProps
           </div>
         </main>
       </div>
-      <FloatingChat />
+      <FloatingChat user={user} rawUser={rawUser} />
     </div>
   );
 }

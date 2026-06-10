@@ -22,35 +22,10 @@ export const ApiRoutes = {
   // ── Company ────────────────────────────────────────────────────────
   COMPANY_LIST:    `${BASE}/api/v1/companies`,
 
-  // ── Company ────────────────────────────────────────────────────────
+  // ── Group ────────────────────────────────────────────────────────
   GROUP_LIST:    `${BASE}/api/v1/groups`,
 
-  // ── Commercial ───────────────────────────────────────────────────────
-  COMMERCIAL_LEADS:         `${BASE}/api/v1/commercial/leads`,
-  COMMERCIAL_LEAD_DETAIL:   (id: string) => `${BASE}/api/v1/commercial/leads/${id}`,
-  COMMERCIAL_PIPELINE:      `${BASE}/api/v1/commercial/pipeline`,
-  COMMERCIAL_CLIENTS:       `${BASE}/api/v1/commercial/clients`,
-  COMMERCIAL_CLIENT_DETAIL: (id: string) => `${BASE}/api/v1/commercial/clients/${id}`,
-
-  // ── Transport ────────────────────────────────────────────────────────
-  TRANSPORT_DOSSIERS:       `${BASE}/api/v1/transport/dossiers`,
-  TRANSPORT_DOSSIER_DETAIL: (id: string) => `${BASE}/api/v1/transport/dossiers/${id}`,
-  TRANSPORT_VEHICLES:       `${BASE}/api/v1/transport/vehicles`,
-  TRANSPORT_DRIVERS:        `${BASE}/api/v1/transport/drivers`,
-
-  // ── Finance (DAF) ────────────────────────────────────────────────────
-  FINANCE_INVOICES:        `${BASE}/api/v1/finance/invoices`,
-  FINANCE_INVOICE_DETAIL:  (id: string) => `${BASE}/api/v1/finance/invoices/${id}`,
-  FINANCE_PAYMENTS:        `${BASE}/api/v1/finance/payments`,
-  FINANCE_REPORTS:         `${BASE}/api/v1/finance/reports`,
-  FINANCE_DASHBOARD:       `${BASE}/api/v1/finance/dashboard`,
-
-  // ── Agents IA ────────────────────────────────────────────────────────
-  AI_DAF_QUERY:         `${BASE}/api/v1/ai/daf/query`,
-  AI_COMMERCIAL_QUERY:  `${BASE}/api/v1/ai/commercial/query`,
-  AI_TRANSPORT_QUERY:   `${BASE}/api/v1/ai/transport/query`,
-
-  // ── Dashboard ────────────────────────────────────────────────────────
-  DASHBOARD_STATS:    `${BASE}/api/v1/dashboard/stats`,
-  DASHBOARD_ACTIVITY: `${BASE}/api/v1/dashboard/activity`,
+  // ── Chat & Vocal ─────────────────────────────────────────────────
+  CHAT_MESSAGE:   `${BASE}/api/v1/chat`,
+  VOCAL_TRANSCRIBE: `${BASE}/api/v1/chat/transcribe`
 } as const;
