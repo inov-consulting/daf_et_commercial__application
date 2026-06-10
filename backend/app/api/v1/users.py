@@ -47,17 +47,17 @@ async def create_user(
     )
     if keycloak_user is None:
         # Utilisateur absent de Keycloak → on le crée
-        required_actions = [] if payload.password else ["VERIFY_EMAIL"]
         keycloak_id_str = await kc.create_user(
             email=payload.email,
             first_name=payload.first_name,
             last_name=payload.last_name,
-            required_actions=required_actions,
         )
         if payload.password:
+            # Mot de passe fourni → on le définit directement
             await kc.set_user_password(keycloak_id_str, payload.password, temporary=payload.temporary_password)
         else:
-            await kc.send_verify_email(keycloak_id_str)
+            # Pas de mot de passe → email avec lien de vérification + définition du mot de passe
+            await kc.send_required_actions_email(keycloak_id_str, actions=["VERIFY_EMAIL", "UPDATE_PASSWORD"])
         logger.info("Utilisateur créé dans Keycloak : %s", payload.email)
     else:
         keycloak_id_str = keycloak_user["id"]

@@ -361,6 +361,35 @@ class KeycloakAdminClient:
             resp = await client.put(url, headers=headers)
             resp.raise_for_status()
 
+    async def send_required_actions_email(
+        self,
+        user_id: str,
+        actions: list[str] | None = None,
+        lifespan: int = 43200,  # 12 heures en minutes
+    ) -> None:
+        """Envoie un email avec lien pour exécuter des actions requises.
+
+        Par défaut envoie VERIFY_EMAIL + UPDATE_PASSWORD pour permettre
+        à l'utilisateur de vérifier son email et définir son mot de passe.
+
+        Args:
+            user_id: ID Keycloak de l'utilisateur
+            actions: Liste des actions requises (ex: ["VERIFY_EMAIL", "UPDATE_PASSWORD"])
+            lifespan: Durée de validité du lien en minutes (défaut: 12h)
+        """
+        if actions is None:
+            actions = ["VERIFY_EMAIL", "UPDATE_PASSWORD"]
+
+        headers = await self._auth_header()
+        url = f"{self._base_url}/admin/realms/{self._realm}/users/{user_id}/execute-actions-email"
+        params = {"lifespan": lifespan}
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.put(url, headers=headers, json=actions, params=params)
+            if resp.status_code == 404:
+                raise RuntimeError(f"Utilisateur '{user_id}' introuvable")
+            resp.raise_for_status()
+
     async def get_user_groups(self, user_id: str) -> list[dict]:
         """Récupère les groupes d'un utilisateur."""
         headers = await self._auth_header()
