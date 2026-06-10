@@ -10,7 +10,6 @@ from datetime import datetime
 from celery import shared_task
 
 from app.core.logging import get_logger
-from app.infrastructure.db.session import async_session
 from app.services.prospect_sync import run_periodic_sync
 
 logger = get_logger(__name__)
@@ -35,8 +34,7 @@ def sync_prospects_periodic(self, full_sync: bool = False) -> dict:
     logger.info("[Celery Task] Démarrage sync prospects", extra={"full_sync": full_sync})
 
     async def _run():
-        async with async_session() as db:
-            return await run_periodic_sync(db)
+        return await run_periodic_sync()
 
     try:
         import asyncio
@@ -71,24 +69,19 @@ def sync_single_prospect_task(self, prospect_id: str) -> dict:
     """
     from uuid import UUID
 
-    from app.infrastructure.db.models.prospect import Prospect
+    from app.infrastructure.db.models.prospect import ProspectOrm
     from app.services.prospect_sync import ProspectSyncService
 
     logger.info("[Celery Task] Sync single prospect", extra={"prospect_id": prospect_id})
 
     async def _run():
-        async with async_session() as db:
-            from sqlalchemy import select
+        prospect = await ProspectOrm.get_or_none(id=UUID(prospect_id))
 
-            stmt = select(Prospect).where(Prospect.id == UUID(prospect_id))
-            result = await db.execute(stmt)
-            prospect = result.scalar_one_or_none()
+        if not prospect:
+            return {"error": "Prospect non trouvé"}
 
-            if not prospect:
-                return {"error": "Prospect non trouvé"}
-
-            service = ProspectSyncService(db)
-            return await service.sync_single_prospect(prospect)
+        service = ProspectSyncService()
+        return await service.sync_single_prospect(prospect)
 
     try:
         import asyncio
