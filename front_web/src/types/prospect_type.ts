@@ -100,6 +100,123 @@ export function pipelineAgeInfo(days: number | null): {
   return { label: `J+${days}`, prefix: '', color: 'var(--tx-2)', severity: 'normal' };
 }
 
+/* ─── API Types ──────────────────────────────────────────────────────────── */
+
+export interface ApiProspect {
+  id: string;
+  odoo_lead_id: number;
+  status: ProspectStatus;
+  status_label: string;
+  portalis_sector: string;
+  portalis_notes: string;
+  status_changed_at: string;
+  pipeline_age_days: number;
+  company_name: string;
+  contact_name: string;
+  email: string;
+  phone: string;
+  assigned_to_id: number;
+  assigned_to_name: string;
+  team_id: number;
+  team_name: string;
+  expected_revenue: number;
+  probability: number;
+  priority: string;
+  odoo_tags: string[];
+  created_at: string;
+  updated_at: string;
+  last_sync_at: string;
+  activities?: unknown[];
+}
+
+export interface ProspectsListResponse {
+  items: ApiProspect[];
+  total: number;
+  limit: number;
+  offset: number;
+  by_status: Record<ProspectStatus, number>;
+  total_pipeline_value: number;
+}
+
+export interface CreateProspectBody {
+  company_name: string;
+  contact_name?: string;
+  email?: string;
+  phone?: string;
+  user_id?: number;
+  team_id?: number;
+  portalis_sector?: string;
+  expected_revenue?: number;
+}
+
+export interface UpdateProspectBody extends CreateProspectBody {
+  portalis_notes?: string;
+}
+
+export type ExecuteActionBody =
+  | { action: 'contact' | 'qualify' | 'convert'; lost_reason_id?: never; custom_reason?: never }
+  | { action: 'lose'; lost_reason_id?: number; custom_reason?: string };
+
+export const STATUS_TO_ACTION: Partial<Record<ProspectStatus, 'contact' | 'qualify' | 'convert' | 'lose'>> = {
+  contacte: 'contact',
+  qualifie: 'qualify',
+  converti: 'convert',
+  perdu:    'lose',
+};
+
+/* ─── API → UI Mapper ────────────────────────────────────────────────────── */
+
+const AVATAR_COLORS = [
+  '#0EA5E9','#22C55E','#14B8A6','#10B981','#1E3A5F',
+  '#EF4444','#F59E0B','#8B5CF6','#EC4899','#6366F1','#84CC16','#F97316',
+];
+
+function hashColor(str: string): string {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h);
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+
+function toInitials(name: string): string {
+  const words = name.trim().split(/\s+/);
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+}
+
+function timeAgo(iso: string): string {
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1)  return "à l'instant";
+  if (mins < 60) return `il y a ${mins}min`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)  return `il y a ${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7)  return `il y a ${days}j`;
+  const wks = Math.floor(days / 7);
+  if (wks < 4)   return `il y a ${wks} sem`;
+  return `il y a ${Math.floor(days / 30)} mois`;
+}
+
+export function apiProspectToUi(p: ApiProspect): Prospect {
+  return {
+    id:          p.id,
+    company:     p.company_name,
+    initials:    toInitials(p.company_name),
+    color:       hashColor(p.id),
+    flag:        '',
+    contact:     p.contact_name || '–',
+    contactRole: p.email || '',
+    sector:      p.portalis_sector || '–',
+    status:      p.status,
+    city:        p.team_name || '',
+    dossiers:    null,
+    pipeline:    p.expected_revenue > 0 ? p.expected_revenue : null,
+    pipelineAge: p.pipeline_age_days > 0 ? p.pipeline_age_days : null,
+    lastActivity: timeAgo(p.updated_at),
+  };
+}
+
+/* ─── Mock data (kept for reference) ────────────────────────────────────── */
+
 export const MOCK_PROSPECTS: Prospect[] = [
   // Nouveau (3)
   {
