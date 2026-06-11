@@ -12,6 +12,7 @@ import {
 import { cn } from '@/lib/utils';
 import type { ApiUser, User as UserType } from '@/types/user_type';
 import { getRoleAbbreviation } from '@/lib/roleAbbreviation';
+import Image from 'next/image';
 
 type NavItem = {
   href: string;
@@ -167,11 +168,11 @@ export default function Sidebar({ locale, open, onClose, user, rawUser }: Sideba
                 <div className="flex items-center gap-1 text-[var(--tx-3)] text-[11px] min-w-0">
                   <span>Sénégal</span>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="https://flagcdn.com/16x12/sn.png" width={16} height={12} alt="" className="rounded-[2px] flex-shrink-0" />
+                  <Image src="https://flagcdn.com/16x12/sn.png" width={16} height={12} alt="" className="rounded-[2px] flex-shrink-0" />
                   <span>·</span>
                   <span className="truncate">Côte d&apos;Ivoire</span>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="https://flagcdn.com/16x12/ci.png" width={16} height={12} alt="" className="rounded-[2px] flex-shrink-0" />
+                  <Image src="https://flagcdn.com/16x12/ci.png" width={16} height={12} alt="" className="rounded-[2px] flex-shrink-0" />
                 </div>
               </div>
             </div>

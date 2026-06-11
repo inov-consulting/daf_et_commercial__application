@@ -13,6 +13,7 @@ import { GROUPES_LIST, ROLES, SURFACES, type User, type UserRole, type AccessSur
 import { useInfiniteCompanies } from '@/hooks/useInfiniteCompanies';
 import { ApiCompany } from '@/types/company_type';
 import type { ApiGroup } from '@/redux/features/groups/groupsSlice';
+import Image from 'next/image';
 
 export type UserFormSubmitData = Partial<User> & { company_ids: string[]; group_ids: string[]; avatar_url?: string };
 
@@ -161,7 +162,7 @@ export function UserFormModal({ mode, user, rawUser, groups, onClose, onSubmit }
                 onClick={() => avatarInputRef.current?.click()}
               >
                 {avatarPreview
-                  ? <img src={avatarPreview} alt="avatar" className="w-full h-full object-cover" />
+                  ? <Image src={avatarPreview} alt="avatar" width={56} height={56} className="w-full h-full object-cover" />
                   : <span>{(prenom[0] ?? '') + (nom[0] ?? '') || '?'}</span>
                 }
               </div>
