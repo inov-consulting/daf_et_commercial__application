@@ -36,4 +36,4 @@ export const ApiRoutes = {
   PROSPECTS_UPDATE: (id: string) => `${BASE}/api/v1/commercial/prospects/${id}`,
   PROSPECTS_ACTION: (id: string) => `${BASE}/api/v1/commercial/prospects/${id}/actions`,
   PROSPECTS_SYNC:   `${BASE}/api/v1/commercial/prospects/sync`,
-} as const;
+} as const; 
