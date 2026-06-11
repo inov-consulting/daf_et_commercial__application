@@ -108,16 +108,12 @@ class ChatResult:
     turn: int               # numéro du tour dans la session (commence à 1)
 
 
-<<<<<<< HEAD
-def _get_llm(provider: str, model: str):  # type: ignore[return]
-=======
 async def _get_llm(provider: str, model: str, reasoning: bool = False):  # type: ignore[return]
     """Récupère le LLM configuré.
     
     Args:
         reasoning: Si True et provider=anthropic, active le mode thinking.
     """
->>>>>>> 21ded3a (fix: chat streaming)
     if provider == "anthropic":
         from langchain_anthropic import ChatAnthropic
         # Si reasoning activé et modèle supporte thinking (claude-3-7-sonnet+)
@@ -222,7 +218,7 @@ async def run_chat_session(
 
     config_repo = AiConfigRepository()
     _, model_domain, _ = await config_repo.get()
-    llm = _get_llm(model_domain.provider, model_domain.name)
+    llm = await _get_llm(model_domain.provider, model_domain.name)
     tools = await _get_all_tools()
 
     agent = create_react_agent(
@@ -259,13 +255,9 @@ async def stream_chat_session(
 
     config_repo = AiConfigRepository()
     _, model_domain, _ = await config_repo.get()
-<<<<<<< HEAD
-    llm = _get_llm(model_domain.provider, model_domain.name)
-=======
     
     # Si reasoning activé, on peut utiliser un modèle spécifique ou modifier le prompt
     llm = await _get_llm(model_domain.provider, model_domain.name, reasoning=reasoning)
->>>>>>> 21ded3a (fix: chat streaming)
     tools = await _get_all_tools()
     
     # Prompt modifié pour le raisonnement si demandé
@@ -283,7 +275,9 @@ async def stream_chat_session(
     config = {"configurable": {"thread_id": str(session_id)}}
     
     # Stream en utilisant astream_events pour vrai streaming token par token
-    thinking_parts = []
+    collected_thinking = ""
+    collected_response = ""
+    thinking_yielded = False
     
     async for event in agent.astream_events(
         {"messages": [("human", message)]},
@@ -292,26 +286,32 @@ async def stream_chat_session(
     ):
         event_type = event.get("event")
         
+        # Gestion du raisonnement pour Claude (thinking blocks)
+        if reasoning and event_type == "on_chat_model_stream":
+            data = event.get("data", {})
+            chunk = data.get("chunk", {})
+            # Vérifier s'il y a du thinking dans additional_kwargs
+            if hasattr(chunk, 'additional_kwargs') and chunk.additional_kwargs:
+                thinking = chunk.additional_kwargs.get('thinking')
+                if thinking:
+                    collected_thinking += thinking
+                    continue  # Ne pas afficher le thinking comme texte normal
+        
+        # Streaming des tokens de réponse
         if event_type == "on_chat_model_stream":
             data = event.get("data", {})
-            chunk = data.get("chunk")
-            if not chunk:
-                continue
-            
-            # Gestion du raisonnement pour Claude
-            if reasoning and hasattr(chunk, 'additional_kwargs') and chunk.additional_kwargs:
-                thinking = chunk.additional_kwargs.get('thinking')
-                if thinking and thinking not in thinking_parts:
-                    thinking_parts.append(thinking)
-            
-            # Yield chaque chunk de contenu directement
+            chunk = data.get("chunk", {})
             if hasattr(chunk, "content") and chunk.content:
-                yield str(chunk.content)
+                content = str(chunk.content)
+                # Yield seulement les nouveaux caractères (delta)
+                if len(content) > len(collected_response):
+                    delta = content[len(collected_response):]
+                    yield delta
+                    collected_response = content
     
     # Afficher le raisonnement à la fin s'il existe
-    if reasoning and thinking_parts:
-        thinking_text = "".join(thinking_parts)
-        yield f"\n\n🤔 **Raisonnement:**\n{thinking_text}\n"
+    if reasoning and collected_thinking and not thinking_yielded:
+        yield f"\n\n🤔 **Raisonnement:**\n{collected_thinking}\n"
     
     yield f"[SESSION:{session_id}]"
 
