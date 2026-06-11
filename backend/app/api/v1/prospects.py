@@ -4,6 +4,7 @@ Architecture: Table prospects locale dans FastAPI + sync avec Odoo crm.lead.
 Aucune modification Odoo requise.
 """
 
+from decimal import Decimal
 from typing import Annotated
 from uuid import UUID
 
@@ -22,6 +23,7 @@ from app.api.v1.schemas.prospects import (
     ProspectOut,
     ProspectStatus,
     ProspectStatusOut,
+    ProspectStatusValueOut,
     ProspectStatusUpdate,
     ProspectUpdate,
     SyncStatusOut,
@@ -187,7 +189,7 @@ async def list_prospects(
 
     # Total pipeline value (nécessite sync avec Odoo pour données fraîches)
     # Pour l'instant on retourne 0, calcul côté client ou endpoint dédié
-    total_pipeline = 0
+    total_pipeline = Decimal("0")
 
     # Pagination avec filtres
     query = ProspectOrm.all()
@@ -202,7 +204,18 @@ async def list_prospects(
     for p in prospects:
         enriched = await _enrich_prospect(p)
         items.append(ProspectOut(**enriched))
-        total_pipeline += enriched.get("expected_revenue", 0)
+        revenue = enriched.get("expected_revenue", 0) or 0
+        total_pipeline += Decimal(str(revenue))
+
+    # Calcul des totaux par statut en valeur (basé sur les données enrichies)
+    # TODO: optimiser avec agrégation côté Odoo pour les grandes listes
+    status_values = {
+        "nouveau": Decimal("0"),
+        "contacte": Decimal("0"),
+        "qualifie": Decimal("0"),
+        "converti": Decimal("0"),
+        "perdu": Decimal("0"),
+    }
 
     return ProspectListOut(
         items=items,
@@ -210,6 +223,7 @@ async def list_prospects(
         limit=filters.limit,
         offset=filters.offset,
         by_status=ProspectStatusOut(**status_counts),
+        by_status_value=ProspectStatusValueOut(**status_values),
         total_pipeline_value=total_pipeline,
     )
 
