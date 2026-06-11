@@ -44,43 +44,60 @@ Réponds toujours en français sauf si l'utilisateur s'exprime dans une autre la
 Sois précis, concis et professionnel.
 
 OUTILS DISPONIBLES - UTILISE-LES SPONTANÉMENT:
-1. PortaLis: search_companies(nom), get_company_details(nom_exact)
-2. Prospects (CRM commercial - INterne à PortaLis):
-   - list_prospects(status, search, limit): Liste les prospects avec filtres
-   - get_prospect_details(prospect_id): Détails d'un prospect par ID
-   - create_prospect(company_name, contact_name, email, phone, sector, notes): Crée un prospect
-3. ERP (utilise DÈS QU'on parle de données chiffrées, clients, factures, ventes):
-   - search_records(table,filters,fields,limit): RECHERCHE PRINCIPALE pour listes/filtres
-   - aggregate_records(table,groupby,aggregates,filters): STATS/AGRÉGATIONS (CA, totaux) - groupby OBLIGATOIRE
-   - get_record(table,id): détail par ID
-   - list_models(): tables accessibles
-   - create/update/delete_record(table,id,values): modifications
-4. get_current_date(): date actuelle
 
-MAPPING TABLE ERP:
-- Chiffre d'affaires/ventes → sale.order (commandes)
-- Clients/fournisseurs → res.partner
-- Factures → account.move (type=out_invoice)
-- Paiements/encaissements → account.payment
-- Articles/produits → product.product
-- Opportunités → crm.lead
+1. PortaLis (interne):
+   - search_companies(nom): Recherche entreprise dans la base PortaLis
+   - get_company_details(nom): Détails d'une entreprise
+
+2. Prospects (CRM - synchronisé avec l'ERP):
+   - list_prospects(status, search, limit): Liste les prospects Portalis
+   - get_prospect_details(prospect_id): Détails d'un prospect
+   - create_prospect(company_name, contact, email, phone, sector, notes, expected_revenue): 
+     ➤ CRÉE d'abord dans l'ERP Odoo, puis dans Portalis avec le lien
+
+3. ERP Odoo (via MCP - outils "odoo__*"):
+   - odoo__search_records(table, filters, fields, limit): RECHERCHE dans l'ERP
+   - odoo__create_record(table, values): CRÉE dans l'ERP
+   - odoo__get_record(table, id): DÉTAIL par ID
+   - odoo__update_record(table, id, values): MODIFIE
+   
+   MAPPING TABLE ERP:
+   - Clients/entreprises → "res.partner"
+   - Opportunités/prospects → "crm.lead"
+   - Commandes/ventes → "sale.order"
+   - Factures → "account.move" (type=out_invoice)
+   - Produits → "product.product"
+
+4. get_current_date(): date actuelle    
+
+WORKFLOW CRÉATION PROSPECT AVEC CLIENT (multi-étapes):
+1. L'utilisateur demande: "Crée une opportunité pour [Client]"
+2. Cherche le client dans l'ERP: odoo__search_records("res.partner", [["name","ilike","Client"]], ["id","name","email"], 5)
+3. Si client TROUVÉ (récupère l'ID):
+   - Demande: "Client trouvé: [Nom] (ID: X). Créer l'opportunité ?"
+   - Si oui → create_prospect(company_name="Opportunité X", ...) ou odoo__create_record("crm.lead", {...})
+4. Si client NON TROUVÉ:
+   - Demande: "Client inexistant. Créer ? Donnez email et téléphone."
+   - Récupère les infos → odoo__create_record("res.partner", {"name":"Client", "is_company":True, ...})
+   - Récupère le partner_id → odoo__create_record("crm.lead", {"name":"Opport X", "partner_id":partner_id, ...})
+   - Puis crée le lien dans Portalis si besoin
 
 RÈGLES ABSOLUES:
-1. DÈS que l'utilisateur demande un CHIFFRE (CA, montant, total, nombre), utilise IMMÉDIATEMENT aggregate_records ou search_records
-2. DÈS qu'on parle de "prospects" ou "pipeline commercial", utilise list_prospects ou create_prospect
-3. Ne dis JAMAIS "je ne trouve pas" sans AVOIR D'ABORD essayé les outils ERP ou Prospects
-4. Pour "donne les clients de X" → utilise search_records("res.partner", [["country_id.name","=","X"]], ["name","email"], 50)
-5. Pour "chiffre d'affaires" → utilise aggregate_records("sale.order", ["date_order:year"], {"amount_total":"sum"})
-6. Parle de "l'ERP"/"système", jamais le nom du logiciel
+1. DÈS qu'il y a un chiffre (CA, montant, total) → utilise odoo__aggregate_records ou odoo__search_records
+2. Pour "prospects" ou "opportunités":
+   - Si création → utilise create_prospect (crée dans Odoo + Portalis)
+   - Si recherche → utilise odoo__search_records("crm.lead", ...)
+3. Pour les clients → utilise odoo__search_records("res.partner", ...) avant toute création
+4. Ne dis JAMAIS "je ne trouve pas" sans avoir essayé les outils MCP
+5. Parle de "l'ERP"/"système", jamais le nom du logiciel
 
-FORMATAGE DES RÉPONSES:
-- Utilise TOUJOURS le Markdown pour structurer tes réponses
-- Utilise des emojis pertinents (📊, ✅, 💰, 📈, ⚠️, etc.)
-- Pour les listes: utilise des tableaux Markdown quand c'est pertinent
-- Pour les résultats: utilise des sections avec titres (##, ###)
-- Pour les montants: formate avec espaces (15 000 €) et symboles monétaires
-- Pour les statuts/progressions: utilise des indicateurs visuels (🟢🟡🔴)
-- Sois concis mais informatif"""
+FORMATAGE:
+- Markdown TOUJOURS
+- Emojis (📊, ✅, 💰, 📈, ⚠️, 🏢, 👤)
+- Tableaux pour les listes
+- Titres (##, ###)
+- Montants: 15 000 €
+- Concis mais informatif"""
 
 
 @dataclass
@@ -91,9 +108,26 @@ class ChatResult:
     turn: int               # numéro du tour dans la session (commence à 1)
 
 
+<<<<<<< HEAD
 def _get_llm(provider: str, model: str):  # type: ignore[return]
+=======
+async def _get_llm(provider: str, model: str, reasoning: bool = False):  # type: ignore[return]
+    """Récupère le LLM configuré.
+    
+    Args:
+        reasoning: Si True et provider=anthropic, active le mode thinking.
+    """
+>>>>>>> 21ded3a (fix: chat streaming)
     if provider == "anthropic":
         from langchain_anthropic import ChatAnthropic
+        # Si reasoning activé et modèle supporte thinking (claude-3-7-sonnet+)
+        if reasoning and "claude-3" in model:
+            return ChatAnthropic(
+                model=model, 
+                api_key=settings.anthropic_api_key, 
+                max_tokens=4096,
+                thinking={"type": "enabled", "budget_tokens": 2000},
+            )
         return ChatAnthropic(model=model, api_key=settings.anthropic_api_key, max_tokens=4096)
     elif provider == "openai":
         from langchain_openai import ChatOpenAI
@@ -121,8 +155,17 @@ def _get_local_tools() -> list[BaseTool]:
     return tools
 
 
+# Cache global du client MCP et des tools
+_mcp_client: MultiServerMCPClient | None = None
+_mcp_tools_cache: list[BaseTool] | None = None
+
+
 async def _get_all_tools() -> list[BaseTool]:
-    """Retourne les tools locaux + tools des serveurs MCP externes."""
+    """Retourne les tools locaux + tools des serveurs MCP externes.
+    
+    Les tools MCP sont mis en cache après la première récupération pour éviter
+    de redémarrer le serveur MCP à chaque appel.
+    """
     from app.infrastructure.ai.mcp_servers import MCP_SERVERS
 
     local_tools = _get_local_tools()
@@ -130,13 +173,28 @@ async def _get_all_tools() -> list[BaseTool]:
     if not MCP_SERVERS:
         return local_tools
 
+    global _mcp_client, _mcp_tools_cache
+    
+    # Si les tools sont déjà en cache, les retourner directement
+    if _mcp_tools_cache is not None:
+        logger.debug("[MCP] ♻️ Tools MCP depuis le cache")
+        return local_tools + _mcp_tools_cache
+    
     try:
-        client = MultiServerMCPClient(MCP_SERVERS)
-        mcp_tools = await client.get_tools()
-        logger.debug("Tools MCP chargés : %d", len(mcp_tools))
-        return local_tools + mcp_tools
+        if _mcp_client is None:
+            logger.info("[MCP] 🆕 Initialisation du client MCP...")
+            _mcp_client = MultiServerMCPClient(MCP_SERVERS)
+            logger.info("[MCP] ✅ Client MCP initialisé")
+        
+        # Récupérer et cacher les tools
+        _mcp_tools_cache = await _mcp_client.get_tools()
+        logger.info("[MCP] 📦 Tools MCP chargés et mis en cache : %d", len(_mcp_tools_cache))
+        return local_tools + _mcp_tools_cache
     except Exception as exc:
-        logger.warning("Impossible de charger les tools MCP : %s", exc)
+        logger.warning("[MCP] Impossible de charger les tools MCP : %s", exc)
+        # Reset le client en cas d'erreur pour retry au prochain appel
+        _mcp_client = None
+        _mcp_tools_cache = None
         return local_tools
 
 
@@ -187,33 +245,74 @@ async def run_chat_session(
 async def stream_chat_session(
     message: str,
     session_id: UUID | None = None,
+    reasoning: bool = False,
 ) -> AsyncIterator[str]:
-    """Stream les tokens d'une session. Le dernier token est [SESSION:{uuid}]."""
+    """Stream les tokens d'une session. Le dernier token est [SESSION:{uuid}].
+    
+    Args:
+        reasoning: Si True, active le mode raisonnement (chain-of-thought).
+                   Pour Claude: utilise thinking mode. Pour OpenAI: ajoute instruction au prompt.
+    """
+    reasoning = True
     if session_id is None:
         session_id = uuid4()
 
     config_repo = AiConfigRepository()
     _, model_domain, _ = await config_repo.get()
+<<<<<<< HEAD
     llm = _get_llm(model_domain.provider, model_domain.name)
+=======
+    
+    # Si reasoning activé, on peut utiliser un modèle spécifique ou modifier le prompt
+    llm = await _get_llm(model_domain.provider, model_domain.name, reasoning=reasoning)
+>>>>>>> 21ded3a (fix: chat streaming)
     tools = await _get_all_tools()
+    
+    # Prompt modifié pour le raisonnement si demandé
+    prompt = SYSTEM_PROMPT
+    if reasoning:
+        prompt = f"{SYSTEM_PROMPT}\n\nRAISONNEMENT: Pense étape par étape. Montre ton raisonnement avant de répondre."
 
     agent = create_react_agent(
         model=llm,
         tools=tools,
-        prompt=SYSTEM_PROMPT,
+        prompt=prompt,
         checkpointer=_checkpointer,
         pre_model_hook=_trim_hook,
     )
     config = {"configurable": {"thread_id": str(session_id)}}
-    async for chunk in agent.astream(
+    
+    # Stream en utilisant astream_events pour vrai streaming token par token
+    thinking_parts = []
+    
+    async for event in agent.astream_events(
         {"messages": [("human", message)]},
         config=config,
-        stream_mode="messages",
+        version="v2",
     ):
-        if isinstance(chunk, tuple):
-            msg, _ = chunk
-            if hasattr(msg, "content") and msg.content:
-                yield str(msg.content)
+        event_type = event.get("event")
+        
+        if event_type == "on_chat_model_stream":
+            data = event.get("data", {})
+            chunk = data.get("chunk")
+            if not chunk:
+                continue
+            
+            # Gestion du raisonnement pour Claude
+            if reasoning and hasattr(chunk, 'additional_kwargs') and chunk.additional_kwargs:
+                thinking = chunk.additional_kwargs.get('thinking')
+                if thinking and thinking not in thinking_parts:
+                    thinking_parts.append(thinking)
+            
+            # Yield chaque chunk de contenu directement
+            if hasattr(chunk, "content") and chunk.content:
+                yield str(chunk.content)
+    
+    # Afficher le raisonnement à la fin s'il existe
+    if reasoning and thinking_parts:
+        thinking_text = "".join(thinking_parts)
+        yield f"\n\n🤔 **Raisonnement:**\n{thinking_text}\n"
+    
     yield f"[SESSION:{session_id}]"
 
 

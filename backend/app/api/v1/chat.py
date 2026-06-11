@@ -82,6 +82,7 @@ async def chat_stream(payload: ChatRequest) -> StreamingResponse:
         async for token in stream_chat_session(
             message=payload.message,
             session_id=payload.session_id,
+            reasoning=payload.reasoning,
         ):
             yield f"data: {token}\n\n".encode()
         yield b"data: [DONE]\n\n"
