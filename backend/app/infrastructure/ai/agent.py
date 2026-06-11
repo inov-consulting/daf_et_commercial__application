@@ -91,7 +91,7 @@ class ChatResult:
     turn: int               # numéro du tour dans la session (commence à 1)
 
 
-async def _get_llm(provider: str, model: str):  # type: ignore[return]
+def _get_llm(provider: str, model: str):  # type: ignore[return]
     if provider == "anthropic":
         from langchain_anthropic import ChatAnthropic
         return ChatAnthropic(model=model, api_key=settings.anthropic_api_key, max_tokens=4096)
@@ -164,7 +164,7 @@ async def run_chat_session(
 
     config_repo = AiConfigRepository()
     _, model_domain, _ = await config_repo.get()
-    llm = await _get_llm(model_domain.provider, model_domain.name)
+    llm = _get_llm(model_domain.provider, model_domain.name)
     tools = await _get_all_tools()
 
     agent = create_react_agent(
@@ -194,7 +194,7 @@ async def stream_chat_session(
 
     config_repo = AiConfigRepository()
     _, model_domain, _ = await config_repo.get()
-    llm = await _get_llm(model_domain.provider, model_domain.name)
+    llm = _get_llm(model_domain.provider, model_domain.name)
     tools = await _get_all_tools()
 
     agent = create_react_agent(
