@@ -73,7 +73,7 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
   const waveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recSecondsRef = useRef(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -90,6 +90,15 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
       }
     };
   }, []);
+
+  // Auto-resize
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`; // max 200px
+    }
+  }, [inputText]);
 
   const startRecording = useCallback(async () => {
     setApiError(null);
@@ -164,7 +173,7 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
 
       // Put transcribed text into the input field for review/editing before send
       setInputText(res.data.text);
-      setTimeout(() => inputRef.current?.focus(), 80);
+      setTimeout(() => textareaRef.current?.focus(), 80);
     };
 
     mediaRecorderRef.current.stop();
@@ -216,7 +225,7 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
     ]);
   }, [inputText, inputState, sessionId]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -305,7 +314,7 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
           ))}
 
           {/* Transcription progress */}
-          {inputState === 'processing' && (
+          {/* {inputState === 'processing' && (
             <div className="rounded-2xl bg-violet-50 border border-violet-100 px-4 py-3">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
@@ -321,7 +330,7 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
                 />
               </div>
             </div>
-          )}
+          )} */}
 
           {/* AI thinking indicator */}
           {aiThinking && (
@@ -410,35 +419,77 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
             </div>
           </div>
         ) : (
-          <div className="px-4 py-4 border-t border-[var(--bd-def)] flex-shrink-0">
-            <div className="flex items-center gap-2 bg-[var(--bg-sink)] rounded-xl px-3 py-2 border border-transparent focus-within:border-[var(--bd-focus)] focus-within:bg-white transition-colors">
-              <input
-                ref={inputRef}
-                type="text"
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Posez une question à l'IA..."
-                disabled={inputState !== 'idle'}
-                className="flex-1 bg-transparent text-sm text-[var(--tx-1)] placeholder:text-[var(--tx-3)] outline-none disabled:opacity-50"
-              />
-              <button
-                onClick={startRecording}
-                disabled={inputState !== 'idle'}
-                title="Dicter un message vocal"
-                className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all hover:-translate-y-px disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ background: 'linear-gradient(135deg, #6366f1, #818cf8)' }}
-              >
-                <MicrophoneIcon size={13} weight="fill" className="text-white" />
-              </button>
-              <button
-                onClick={handleSend}
-                disabled={!inputText.trim() || inputState !== 'idle'}
-                className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all hover:-translate-y-px disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ background: 'var(--grad)' }}
-              >
-                <PaperPlaneTiltIcon size={13} weight="fill" className="text-white" />
-              </button>
+          <div className="px-4 py-3 border-t border-[var(--bd-def)] flex-shrink-0">
+            <div
+              className={`rounded-2xl border transition-all duration-300 ${
+                inputState === 'processing'
+                  ? 'bg-violet-50/50 border-violet-200/60 shadow-sm shadow-violet-100/80'
+                  : 'bg-[var(--bg-sink)] border-transparent focus-within:border-[var(--bd-focus)] focus-within:bg-white focus-within:shadow-sm'
+              }`}
+            >
+              {/* Status bar – processing / sending */}
+              {inputState !== 'idle' && (
+                <div className="flex items-center gap-2 px-4 pt-2.5 pb-0.5">
+                  {inputState === 'processing' ? (
+                    <>
+                      <span className="flex gap-[3px] items-end h-3">
+                        {[0, 120, 240].map((d) => (
+                          <span
+                            key={d}
+                            className="w-[3px] h-[3px] rounded-full bg-violet-400 animate-bounce"
+                            style={{ animationDelay: `${d}ms` }}
+                          />
+                        ))}
+                      </span>
+                      <span className="text-[11px] font-medium text-violet-500 tracking-wide">
+                        Transcription en cours…
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="w-2.5 h-2.5 border-[1.5px] border-[var(--tx-3)] border-t-transparent rounded-full animate-spin" />
+                      <span className="text-[11px] font-medium text-[var(--tx-3)] tracking-wide">Envoi…</span>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Input row */}
+              <div className="flex items-end gap-2 px-3 py-2">
+                <textarea
+                  ref={textareaRef}
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={inputState === 'processing' ? '' : "Posez une question à l'IA…"}
+                  disabled={inputState !== 'idle'}
+                  rows={1}
+                  className="flex-1 bg-transparent text-sm leading-relaxed text-[var(--tx-1)] placeholder:text-[var(--tx-3)] outline-none border-none resize-none overflow-hidden disabled:opacity-40 transition-opacity duration-300 py-0 px-0"
+                />
+
+                <button
+                  onClick={startRecording}
+                  disabled={inputState !== 'idle'}
+                  title="Dicter un message vocal"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-200 hover:-translate-y-px disabled:opacity-30 disabled:cursor-not-allowed disabled:pointer-events-none"
+                  style={{ background: 'linear-gradient(135deg, #6366f1, #818cf8)' }}
+                >
+                  <MicrophoneIcon size={13} weight="fill" className="text-white" />
+                </button>
+
+                <button
+                  onClick={handleSend}
+                  disabled={!inputText.trim() || inputState !== 'idle'}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-200 hover:-translate-y-px disabled:opacity-30 disabled:cursor-not-allowed disabled:pointer-events-none"
+                  style={{ background: 'var(--grad)' }}
+                >
+                  {inputState === 'sending' ? (
+                    <span className="w-3 h-3 border-[1.5px] border-white/80 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <PaperPlaneTiltIcon size={13} weight="fill" className="text-white" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         )}
