@@ -1,6 +1,7 @@
 """Schémas Pydantic pour l'API Prospects."""
 
 from datetime import datetime
+from decimal import Decimal
 from enum import Enum
 from uuid import UUID
 
@@ -25,6 +26,16 @@ class ProspectStatusOut(BaseModel):
     qualifie: int = 0
     converti: int = 0
     perdu: int = 0
+
+
+class ProspectStatusValueOut(BaseModel):
+    """Pour les montants totaux par statut."""
+
+    nouveau: Decimal = Decimal("0")
+    contacte: Decimal = Decimal("0")
+    qualifie: Decimal = Decimal("0")
+    converti: Decimal = Decimal("0")
+    perdu: Decimal = Decimal("0")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -188,8 +199,9 @@ class ProspectListOut(BaseModel):
     offset: int
 
     # Agrégations pour les filtres UI
-    by_status: ProspectStatusOut
-    total_pipeline_value: int  # Somme FCFA
+    by_status: ProspectStatusOut  # Compteurs par statut
+    by_status_value: ProspectStatusValueOut  # Montants par statut
+    total_pipeline_value: Decimal  # Montant total
 
 
 class ProspectFilters(BaseModel):
