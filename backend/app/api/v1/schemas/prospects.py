@@ -61,8 +61,14 @@ class ProspectCreate(BaseModel):
     Crée à la fois dans Odoo (crm.lead) et Portalis (prospects).
     """
 
-    # Entreprise/Contact (va dans crm.lead Odoo)
-    company_name: str = Field(..., min_length=1, description="Nom entreprise")
+    # Lead/Opportunité (crm.lead.name)
+    opportunity_name: str = Field(..., min_length=1, description="Nom du lead ou de l'opportunité")
+    
+    # Entreprise/Client (lien via company Portalis → erp_id Odoo)
+    company_id: UUID | None = Field(None, description="ID company Portalis - récupère erp_id Odoo auto ou crée le partner si inexistant")
+    partner_name: str | None = Field(None, description="Nom entreprise à créer dans Odoo (si company_id non fourni)")
+    
+    # Contact
     contact_name: str | None = Field(None, description="Nom du contact")
     email: str | None = Field(None, description="Email contact")
     phone: str | None = Field(None, description="Téléphone")
@@ -74,6 +80,11 @@ class ProspectCreate(BaseModel):
     # Classification Portalis
     portalis_sector: str | None = Field(None, description="Secteur d'activité")
     expected_revenue: int = Field(0, description="Montant pipeline estimé FCFA")
+    
+    # Type et opportunité (crm.lead.type = 'lead' ou 'opportunity')
+    lead_type: str = Field(default="lead", pattern="^(lead|opportunity)$", description="Type: lead ou opportunity")
+    probability: float | None = Field(None, ge=0, le=100, description="Probabilité conversion % (opportunités)")
+    date_deadline: str | None = Field(None, description="Date butoir YYYY-MM-DD (opportunités)")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -124,14 +135,14 @@ class ProspectOut(BaseModel):
 
     # Identifiants
     id: UUID
-    odoo_lead_id: int
+    odoo_lead_id: int | None  # Nullable si pas encore sync avec Odoo
 
     # ── Données Portalis (stockées localement) ─────────────────────────────────
     status: ProspectStatus
     status_label: str  # "Nouveau", "Contacté"...
     portalis_sector: str | None
     portalis_notes: str | None
-    status_changed_at: datetime
+    status_changed_at: datetime | None  # Nullable si jamais changé de statut
     pipeline_age_days: int  # Calculé: now - status_changed_at
 
     # ── Données Odoo (lues via sync ou temps réel) ─────────────────────────────

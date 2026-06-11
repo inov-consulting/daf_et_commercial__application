@@ -23,7 +23,7 @@ ODOO_LEAD_FIELDS = [
     "contact_name",
     "email_from",
     "phone",
-    "mobile",
+    # "mobile",  # Champ non présent dans cette version Odoo
     "partner_id",  # res.partner lié
     "user_id",  # Commercial assigné
     "team_id",  # Équipe
@@ -39,6 +39,16 @@ ODOO_LEAD_FIELDS = [
 
 class ProspectSyncService:
     """Service de sync Celery pour les prospects."""
+    
+    # Cache d'instance OdooClient pour éviter de se réauthentifier à chaque appel
+    _odoo_client: OdooClient | None = None
+    
+    def _get_odoo_client(self) -> OdooClient:
+        """Récupère ou crée une instance OdooClient (avec cache)."""
+        if ProspectSyncService._odoo_client is None:
+            ProspectSyncService._odoo_client = OdooClient()
+            logger.info("[Sync] Nouveau client Odoo créé (authentification cache)")
+        return ProspectSyncService._odoo_client
 
     async def sync_all_prospects(self, full_sync: bool = False) -> dict[str, Any]:
         """Synchronise tous les prospects avec Odoo.
@@ -63,7 +73,7 @@ class ProspectSyncService:
 
         # Query Odoo pour les leads correspondants
         try:
-            oc = OdooClient()
+            oc = self._get_odoo_client()
             # Récupération via XML-RPC (synchrone, wrap dans asyncio.to_thread si besoin)
             import asyncio
             odoo_leads = await asyncio.to_thread(
@@ -106,6 +116,39 @@ class ProspectSyncService:
 
         return result
 
+    async def get_odoo_leads_batch(self, lead_ids: list[int]) -> dict[int, dict[str, Any]]:
+        """Récupère plusieurs leads Odoo en une seule requête.
+        
+        Args:
+            lead_ids: Liste des IDs de leads à récupérer.
+            
+        Returns:
+            Dict mapping lead_id -> données Odoo.
+        """
+        if not lead_ids:
+            return {}
+        
+        try:
+            import asyncio
+            oc = self._get_odoo_client()
+            leads = await asyncio.to_thread(
+                oc._object_proxy().execute_kw,
+                oc._db,
+                oc._authenticate(),
+                oc._password,
+                "crm.lead",
+                "search_read",
+                [[("id", "in", lead_ids)]],
+                {"fields": ODOO_LEAD_FIELDS, "limit": len(lead_ids)},
+            )
+            
+            # Mapper par ID pour accès rapide
+            return {lead["id"]: lead for lead in leads}
+            
+        except Exception as exc:
+            logger.exception(f"[Sync] Erreur batch fetch leads: {lead_ids}")
+            return {}
+
     async def sync_single_prospect(self, prospect: ProspectOrm) -> dict[str, Any]:
         """Synchronise un prospect spécifique avec Odoo.
 
@@ -117,7 +160,7 @@ class ProspectSyncService:
         """
         try:
             import asyncio
-            oc = OdooClient()
+            oc = self._get_odoo_client()
             leads = await asyncio.to_thread(
                 oc._object_proxy().execute_kw,
                 oc._db,
@@ -142,6 +185,34 @@ class ProspectSyncService:
             logger.exception(f"[Sync] Erreur sync prospect {prospect.id}")
             return {"success": False, "error": str(exc)}
 
+    async def search_lead_by_name(self, name: str) -> list[dict[str, Any]]:
+        """Recherche des leads Odoo par nom (approximatif).
+        
+        Args:
+            name: Nom/pattern à rechercher.
+            
+        Returns:
+            Liste des leads correspondants avec leurs champs.
+        """
+        try:
+            import asyncio
+            oc = self._get_odoo_client()
+            leads = await asyncio.to_thread(
+                oc._object_proxy().execute_kw,
+                oc._db,
+                oc._authenticate(),
+                oc._password,
+                "crm.lead",
+                "search_read",
+                [[("name", "ilike", name)]],
+                {"fields": ODOO_LEAD_FIELDS, "limit": 10},
+            )
+            logger.info(f"[Sync] Recherche leads Odoo par '{name}': {len(leads)} trouvé(s)")
+            return leads
+        except Exception as exc:
+            logger.exception(f"[Sync] Erreur recherche leads Odoo pour '{name}'")
+            return []
+
     async def create_in_odoo(
         self,
         name: str,
@@ -152,29 +223,55 @@ class ProspectSyncService:
         team_id: int | None,
         expected_revenue: int,
         tag_ids: list[int] | None = None,
+        partner_id: int | None = None,
+        lead_type: str = "lead",
+        probability: float | None = None,
+        date_deadline: str | None = None,
     ) -> int:
-        """Crée un lead dans Odoo et retourne son ID.
+        """Crée un lead ou opportunité dans Odoo et retourne son ID.
+        
+        Args:
+            partner_id: ID du client/entreprise existant (res.partner) à lier.
+            lead_type: 'lead' ou 'opportunity'.
+            probability: Probabilité de conversion (0-100) pour opportunités.
+            date_deadline: Date butoir (format YYYY-MM-DD).
 
         Returns:
-            ID Odoo du lead créé.
+            ID Odoo du lead/opportunité créé(e).
         """
-        values = {
+        # Ne pas envoyer les valeurs None à XML-RPC (allow_none non activé)
+        values: dict[str, Any] = {
             "name": name,
-            "contact_name": contact_name or name,
-            "email_from": email,
-            "phone": phone,
-            "user_id": user_id,
-            "team_id": team_id,
-            "expected_revenue": expected_revenue,
-            "type": "lead",
+            "type": lead_type,
         }
-
+        
+        if contact_name:
+            values["contact_name"] = contact_name
+        if email:
+            values["email_from"] = email
+        if phone:
+            values["phone"] = phone
+        if user_id:
+            values["user_id"] = user_id
+        if team_id:
+            values["team_id"] = team_id
+        if expected_revenue:
+            values["expected_revenue"] = expected_revenue
         if tag_ids:
             values["tag_ids"] = [(6, 0, tag_ids)]
+        if partner_id:
+            values["partner_id"] = partner_id
+        if probability is not None:
+            values["probability"] = probability
+        if date_deadline:
+            values["date_deadline"] = date_deadline
 
         try:
             import asyncio
-            oc = OdooClient()
+            oc = self._get_odoo_client()
+            
+            logger.info(f"[Sync] Création {lead_type} dans Odoo avec values: {values}")
+            
             lead_id = await asyncio.to_thread(
                 oc._object_proxy().execute_kw,
                 oc._db,
@@ -184,11 +281,65 @@ class ProspectSyncService:
                 "create",
                 [values],
             )
-            logger.info(f"[Sync] Lead Odoo créé: {lead_id}")
+            
+            type_label = "Opportunité" if lead_type == "opportunity" else "Lead"
+            logger.info(f"[Sync] {type_label} Odoo créé(e) avec ID: {lead_id}")
             return lead_id
 
         except Exception as exc:
-            logger.exception("[Sync] Erreur création lead Odoo")
+            type_label = "opportunité" if lead_type == "opportunity" else "lead"
+            logger.exception(f"[Sync] Erreur création {type_label} Odoo")
+            raise
+
+    async def create_partner_in_odoo(
+        self,
+        name: str,
+        email: str | None = None,
+        phone: str | None = None,
+        is_company: bool = True,
+    ) -> int:
+        """Crée un client/entreprise (res.partner) dans Odoo.
+
+        Args:
+            name: Nom du client/entreprise.
+            email: Email.
+            phone: Téléphone.
+            is_company: True si c'est une entreprise, False pour un particulier.
+
+        Returns:
+            ID du partner créé.
+        """
+        values: dict[str, Any] = {
+            "name": name,
+            "is_company": is_company,
+            "company_type": "company" if is_company else "person",
+        }
+        if email:
+            values["email"] = email
+        if phone:
+            values["phone"] = phone
+
+        try:
+            import asyncio
+            oc = self._get_odoo_client()
+            
+            logger.info(f"[Sync] Création partner dans Odoo: {values}")
+            
+            partner_id = await asyncio.to_thread(
+                oc._object_proxy().execute_kw,
+                oc._db,
+                oc._authenticate(),
+                oc._password,
+                "res.partner",
+                "create",
+                [values],
+            )
+            
+            logger.info(f"[Sync] Partner Odoo créé: {partner_id} ({name})")
+            return partner_id
+
+        except Exception as exc:
+            logger.exception(f"[Sync] Erreur création partner Odoo pour {name}")
             raise
 
     async def update_in_odoo(self, odoo_lead_id: int, values: dict) -> bool:
@@ -203,7 +354,7 @@ class ProspectSyncService:
         """
         try:
             import asyncio
-            oc = OdooClient()
+            oc = self._get_odoo_client()
             await asyncio.to_thread(
                 oc._object_proxy().execute_kw,
                 oc._db,
@@ -231,7 +382,7 @@ class ProspectSyncService:
         try:
             # Appel action Odoo de conversion
             import asyncio
-            oc = OdooClient()
+            oc = self._get_odoo_client()
             await asyncio.to_thread(
                 oc._object_proxy().execute_kw,
                 oc._db,
@@ -244,7 +395,7 @@ class ProspectSyncService:
 
             # Relecture pour récupérer les IDs créés
             import asyncio
-            oc = OdooClient()
+            oc = self._get_odoo_client()
             lead_data = await asyncio.to_thread(
                 oc._object_proxy().execute_kw,
                 oc._db,
@@ -287,7 +438,7 @@ class ProspectSyncService:
                 values["lost_reason_id"] = lost_reason_id
 
             import asyncio
-            oc = OdooClient()
+            oc = self._get_odoo_client()
             await asyncio.to_thread(
                 oc._object_proxy().execute_kw,
                 oc._db,

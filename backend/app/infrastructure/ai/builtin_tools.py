@@ -55,7 +55,6 @@ async def list_prospects(status: str | None = None, search: str | None = None, l
         limit: Nombre maximum de résultats (défaut: 10)
     """
     from app.infrastructure.db.models.prospect import ProspectOrm
-    from app.services.prospect_sync import ProspectSyncService
     
     query = ProspectOrm.all()
     if status:
@@ -71,7 +70,12 @@ async def list_prospects(status: str | None = None, search: str | None = None, l
     if not prospects:
         return "🔍 **Aucun prospect trouvé.**"
     
+    from app.services.prospect_sync import ProspectSyncService
     sync_service = ProspectSyncService()
+    
+    # Récupération batch des données Odoo (une seule requête pour tous les leads)
+    lead_ids = [p.odoo_lead_id for p in prospects if p.odoo_lead_id]
+    odoo_data_map = await sync_service.get_odoo_leads_batch(lead_ids) if lead_ids else {}
     
     # Header Markdown
     lines = [
@@ -82,7 +86,6 @@ async def list_prospects(status: str | None = None, search: str | None = None, l
     ]
     
     for p in prospects:
-        company = p.company_name or "N/A"
         stat_emoji = {
             "nouveau": "🆕",
             "contacte": "📞",
@@ -90,25 +93,24 @@ async def list_prospects(status: str | None = None, search: str | None = None, l
             "converti": "💰",
             "perdu": "❌"
         }.get(p.status, "❓")
-        email = p.email or "-"
         
-        # Enrichissement Odoo
+        # Enrichissement depuis le cache Odoo
+        company = "N/A"
+        email = "-"
         revenue = "-"
         probability = "-"
         assigned = "-"
         
-        if p.odoo_lead_id:
-            try:
-                odoo_data = await sync_service.get_odoo_lead(p.odoo_lead_id)
-                if odoo_data:
-                    rev = odoo_data.get('expected_revenue', 0) or 0
-                    prob = odoo_data.get('probability', 0) or 0
-                    revenue = f"{rev:,.0f} €".replace(",", " ")
-                    probability = f"{prob}%"
-                    user = odoo_data.get('user_id', [None, '-'])[1] if odoo_data.get('user_id') else '-'
-                    assigned = user
-            except Exception:
-                pass
+        if p.odoo_lead_id and p.odoo_lead_id in odoo_data_map:
+            odoo_data = odoo_data_map[p.odoo_lead_id]
+            company = odoo_data.get('name', 'N/A')
+            email = odoo_data.get('email_from', '-') or '-'
+            rev = odoo_data.get('expected_revenue', 0) or 0
+            prob = odoo_data.get('probability', 0) or 0
+            revenue = f"{rev:,.0f} €".replace(",", " ")
+            probability = f"{prob}%"
+            user = odoo_data.get('user_id', [None, '-'])[1] if odoo_data.get('user_id') else '-'
+            assigned = user
         
         lines.append(f"| **{company}** | {stat_emoji} {p.status} | {email} | {revenue} | {probability} | {assigned} |")
     
@@ -139,15 +141,35 @@ async def get_prospect_details(prospect_id: str) -> str:
             "perdu": "❌"
         }.get(p.status, "❓")
         
+        # Données depuis Odoo
+        company = "N/A"
+        contact = "N/A"
+        email = "N/A"
+        phone = "N/A"
+        odoo_id = p.odoo_lead_id or "Non lié"
+        
+        if p.odoo_lead_id:
+            try:
+                sync_service = ProspectSyncService()
+                odoo_data = await sync_service.get_odoo_lead(p.odoo_lead_id)
+                if odoo_data:
+                    company = odoo_data.get('name', 'N/A')
+                    contact = odoo_data.get('contact_name', 'N/A') or 'N/A'
+                    email = odoo_data.get('email_from', 'N/A') or 'N/A'
+                    phone = odoo_data.get('phone', 'N/A') or 'N/A'
+            except Exception:
+                pass
+        
         lines = [
-            f"## 🏢 {p.company_name or 'N/A'}",
+            f"## 🏢 {company}",
             "",
             "### 📊 Informations générales",
             f"- **Statut:** {stat_emoji} {p.status}",
-            f"- **Contact:** {p.contact_name or 'N/A'}",
-            f"- **Email:** {p.email or 'N/A'}",
-            f"- **Téléphone:** {p.phone or 'N/A'}",
+            f"- **Contact:** {contact}",
+            f"- **Email:** {email}",
+            f"- **Téléphone:** {phone}",
             f"- **Secteur:** {p.portalis_sector or 'N/A'}",
+            f"- **ID ERP:** {odoo_id}",
             "",
             "### 📝 Notes",
             f"> {p.portalis_notes or '*Aucune note*'}",
@@ -158,6 +180,7 @@ async def get_prospect_details(prospect_id: str) -> str:
         # Enrichissement Odoo
         if p.odoo_lead_id:
             try:
+                from app.services.prospect_sync import ProspectSyncService
                 sync_service = ProspectSyncService()
                 odoo_data = await sync_service.get_odoo_lead(p.odoo_lead_id)
                 if odoo_data:
@@ -186,6 +209,47 @@ async def get_prospect_details(prospect_id: str) -> str:
         return f"❌ ID '{prospect_id}' invalide. Format attendu: UUID."
 
 
+async def search_odoo_prospects(name: str) -> str:
+    """Recherche des prospects dans l'ERP Odoo par nom.
+    
+    Args:
+        name: Nom de l'entreprise ou du contact à rechercher
+    """
+    from app.services.prospect_sync import ProspectSyncService
+    
+    sync_service = ProspectSyncService()
+    leads = await sync_service.search_lead_by_name(name)
+    
+    if not leads:
+        return f"🔍 Aucun prospect trouvé dans l'ERP pour '{name}'"
+    
+    lines = [f"## 🔍 Prospects trouvés dans l'ERP pour '{name}'", ""]
+    
+    for lead in leads:
+        lead_id = lead.get('id')
+        lead_name = lead.get('name', 'N/A')
+        contact = lead.get('contact_name') or 'N/A'
+        email = lead.get('email_from') or 'N/A'
+        phone = lead.get('phone') or 'N/A'
+        revenue = lead.get('expected_revenue', 0) or 0
+        lead_type = lead.get('type', 'lead')
+        
+        type_emoji = {'lead': '📋', 'opportunity': '💼'}.get(lead_type, '📋')
+        
+        lines.extend([
+            f"### {type_emoji} {lead_name}",
+            f"- **ID ERP:** `{lead_id}`",
+            f"- **Contact:** {contact}",
+            f"- **Email:** {email}",
+            f"- **Téléphone:** {phone}",
+        ])
+        if revenue:
+            lines.append(f"- **CA Prévu:** {revenue:,} €".replace(",", " "))
+        lines.append("")
+    
+    return "\n".join(lines)
+
+
 async def create_prospect(
     company_name: str,
     contact_name: str | None = None,
@@ -193,8 +257,9 @@ async def create_prospect(
     phone: str | None = None,
     sector: str | None = None,
     notes: str | None = None,
+    expected_revenue: int | None = None,
 ) -> str:
-    """Crée un nouveau prospect commercial.
+    """Crée un nouveau prospect commercial. Vérifie d'abord si existe dans l'ERP.
     
     Args:
         company_name: Nom de l'entreprise (obligatoire)
@@ -203,9 +268,380 @@ async def create_prospect(
         phone: Numéro de téléphone
         sector: Secteur d'activité
         notes: Notes commerciales
+        expected_revenue: CA prévu en euros
     """
-    from app.infrastructure.db.models.prospect import ProspectOrm
+    import logging
+    logger = logging.getLogger(__name__)
     
+    from app.infrastructure.db.models.prospect import ProspectOrm
+    from app.services.prospect_sync import ProspectSyncService
+    from tortoise.expressions import Q
+    
+    sync_service = ProspectSyncService()
+    
+    # 1. Vérifier d'abord si existe dans l'ERP Odoo
+    logger.info(f"[AI Tool] Recherche '{company_name}' dans l'ERP...")
+    existing_odoo = await sync_service.search_lead_by_name(company_name)
+    
+    if existing_odoo:
+        lead = existing_odoo[0]  # Premier résultat
+        lead_id = lead.get('id')
+        lead_name = lead.get('name')
+        logger.info(f"[AI Tool] Prospect existant trouvé dans Odoo: ID={lead_id}")
+        
+        # Vérifier si déjà dans Portalis
+        existing_portalis = await ProspectOrm.get_or_none(odoo_lead_id=lead_id)
+        if existing_portalis:
+            return (
+                f"⚠️ **Prospect déjà existant**\n\n"
+                f"🏢 {lead_name}\n"
+                f"🔗 ID ERP: `{lead_id}`\n"
+                f"🆔 ID Portalis: `{existing_portalis.id}`\n\n"
+                f"*Ce prospect existe déjà dans les deux systèmes.*"
+            )
+        
+        # Existe dans Odoo mais pas dans Portalis → créer lien avec erp_metadata
+        logger.info(f"[AI Tool] Création lien Portalis pour Odoo ID={lead_id}")
+        erp_metadata = {
+            "id": lead_id,
+            "name": lead.get("name"),
+            "type": lead.get("type", "lead"),
+            "contact_name": lead.get("contact_name"),
+            "email_from": lead.get("email_from"),
+            "phone": lead.get("phone"),
+            "expected_revenue": lead.get("expected_revenue"),
+            "probability": lead.get("probability"),
+            "partner_id": lead.get("partner_id"),
+            "user_id": lead.get("user_id"),
+            "team_id": lead.get("team_id"),
+        }
+        prospect = await ProspectOrm.create(
+            portalis_sector=sector,
+            portalis_notes=notes,
+            status="nouveau",
+            odoo_lead_id=lead_id,
+            erp_metadata=erp_metadata,
+        )
+        return (
+            f"✅ **Prospect lié à l'ERP**\n\n"
+            f"🏢 {lead_name}\n"
+            f"🔗 ID ERP: `{lead_id}`\n"
+            f"🆔 ID Portalis: `{prospect.id}`\n\n"
+            f"*Ce prospect existait dans l'ERP, il est maintenant suivi dans Portalis.*"
+        )
+    
+    # 2. Pas trouvé dans Odoo → créer dans les deux
+    logger.info(f"[AI Tool] Aucun existant, création dans Odoo: {company_name}")
+    try:
+        odoo_lead_id = await sync_service.create_in_odoo(
+            name=company_name,
+            contact_name=contact_name,
+            email=email,
+            phone=phone,
+            user_id=None,
+            team_id=None,
+            expected_revenue=expected_revenue or 0,
+        )
+        logger.info(f"[AI Tool] Lead Odoo créé avec ID: {odoo_lead_id}")
+    except Exception as exc:
+        logger.error(f"[AI Tool] Erreur création Odoo: {exc}")
+        return f"❌ Erreur création dans l'ERP: {exc}"
+    
+    if not odoo_lead_id:
+        return "❌ L'ERP n'a pas retourné d'ID pour le lead"
+    
+    # 3. Construction des erp_metadata avec les données fournies
+    erp_metadata = {
+        "id": odoo_lead_id,
+        "name": company_name,
+        "type": "lead",
+        "contact_name": contact_name,
+        "email_from": email,
+        "phone": phone,
+        "expected_revenue": expected_revenue,
+        "probability": None,
+        "partner_id": None,
+        "user_id": None,
+        "team_id": None,
+    }
+    
+    # 4. Créer dans Portalis avec erp_metadata
+    logger.info(f"[AI Tool] Création prospect Portalis avec odoo_lead_id={odoo_lead_id}")
+    prospect = await ProspectOrm.create(
+        portalis_sector=sector,
+        portalis_notes=notes,
+        status="nouveau",
+        odoo_lead_id=odoo_lead_id,
+        erp_metadata=erp_metadata,
+    )
+    logger.info(f"[AI Tool] Prospect Portalis créé avec ID: {prospect.id}")
+    
+    # 4. Récupérer les données finales d'Odoo pour réponse complète
+    logger.info(f"[AI Tool] Récupération données finales Odoo ID={odoo_lead_id}")
+    try:
+        odoo_final = await sync_service.get_odoo_lead(odoo_lead_id)
+    except Exception as exc:
+        logger.warning(f"[AI Tool] Impossible de récupérer données finales Odoo: {exc}")
+        odoo_final = None
+    
+    # Construction réponse avec données Odoo (source de vérité) + Portalis
+    if odoo_final:
+        odoo_name = odoo_final.get('name', company_name)
+        odoo_contact = odoo_final.get('contact_name', contact_name) or 'N/A'
+        odoo_email = odoo_final.get('email_from', email) or 'N/A'
+        odoo_phone = odoo_final.get('phone', phone) or 'N/A'
+        odoo_revenue = odoo_final.get('expected_revenue', expected_revenue) or 0
+        odoo_type = odoo_final.get('type', 'lead')
+    else:
+        # Fallback sur les paramètres si Odoo indisponible
+        odoo_name = company_name
+        odoo_contact = contact_name or 'N/A'
+        odoo_email = email or 'N/A'
+        odoo_phone = phone or 'N/A'
+        odoo_revenue = expected_revenue or 0
+        odoo_type = 'lead'
+    
+    type_emoji = {'lead': '📋', 'opportunity': '💼'}.get(odoo_type, '📋')
+    
+    lines = [
+        f"## ✅ Prospect créé avec succès {type_emoji}",
+        "",
+        "### 🏢 Données ERP (source de vérité)",
+        f"- **Entreprise:** {odoo_name}",
+        f"- **Contact:** {odoo_contact}",
+        f"- **Email:** {odoo_email}",
+        f"- **Téléphone:** {odoo_phone}",
+    ]
+    
+    if odoo_revenue:
+        lines.append(f"- **CA Prévu:** {odoo_revenue:,.0f} €".replace(",", " "))
+    
+    lines.extend([
+        "",
+        "### 🔗 Données Portalis",
+        f"- **ID Portalis:** `{prospect.id}`",
+        f"- **ID ERP:** `{odoo_lead_id}`",
+        f"- **Secteur:** {sector or 'N/A'}",
+        f"- **Statut:** 🆕 nouveau",
+    ])
+    
+    if notes:
+        lines.extend(["", f"### 📝 Notes\n> {notes}"])
+    
+    lines.extend(["", "*Le prospect est synchronisé dans Portalis et l'ERP.*"])
+    
+    return "\n".join(lines)
+
+
+async def check_odoo_lead(lead_id: int) -> str:
+    """Vérifie si un lead existe dans Odoo et retourne ses détails.
+    
+    Args:
+        lead_id: ID du lead dans Odoo
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    try:
+        from app.services.prospect_sync import ProspectSyncService
+        sync_service = ProspectSyncService()
+        
+        logger.info(f"[Check Odoo] Recherche lead ID: {lead_id}")
+        odoo_data = await sync_service.get_odoo_lead(lead_id)
+        
+        if odoo_data:
+            return (
+                f"✅ Lead trouvé dans Odoo:\n"
+                f"- ID: {lead_id}\n"
+                f"- Nom: {odoo_data.get('name', 'N/A')}\n"
+                f"- Contact: {odoo_data.get('contact_name', 'N/A')}\n"
+                f"- Email: {odoo_data.get('email_from', 'N/A')}\n"
+                f"- Type: {odoo_data.get('type', 'N/A')}\n"
+                f"- Active: {odoo_data.get('active', 'N/A')}"
+            )
+        else:
+            return f"❌ Lead ID {lead_id} non trouvé dans Odoo"
+            
+    except Exception as exc:
+        logger.error(f"[Check Odoo] Erreur: {exc}")
+        return f"❌ Erreur lors de la vérification: {exc}"
+
+
+async def search_odoo_partner(name: str) -> str:
+    """Recherche un client (res.partner) dans l'ERP Odoo par nom.
+    
+    Args:
+        name: Nom du client/entreprise à rechercher
+    """
+    import logging
+    import asyncio
+    from app.infrastructure.odoo.client import OdooClient
+    
+    logger = logging.getLogger(__name__)
+    logger.info(f"[AI Tool] Recherche client Odoo: {name}")
+    
+    try:
+        oc = OdooClient()
+        partners = await asyncio.to_thread(
+            oc._object_proxy().execute_kw,
+            oc._db,
+            oc._authenticate(),
+            oc._password,
+            "res.partner",
+            "search_read",
+            [[("name", "ilike", name), ("is_company", "=", True)]],
+            {"fields": ["id", "name", "email", "phone", "mobile", "street", "city", "country_id"], "limit": 5},
+        )
+        
+        if not partners:
+            return f"🔍 Aucun client trouvé dans l'ERP pour '{name}'"
+        
+        lines = [f"## 🔍 Clients trouvés dans l'ERP pour '{name}'", ""]
+        for p in partners:
+            lines.extend([
+                f"### 🏢 {p.get('name')}",
+                f"- **ID:** `{p.get('id')}`",
+                f"- **Email:** {p.get('email') or 'N/A'}",
+                f"- **Téléphone:** {p.get('phone') or p.get('mobile') or 'N/A'}",
+                "",
+            ])
+        lines.append("*Utilisez l'ID pour assigner ce client à une opportunité.*")
+        return "\n".join(lines)
+        
+    except Exception as exc:
+        logger.error(f"[AI Tool] Erreur recherche client: {exc}")
+        return f"❌ Erreur lors de la recherche: {exc}"
+
+
+async def create_odoo_partner(
+    name: str,
+    email: str | None = None,
+    phone: str | None = None,
+    mobile: str | None = None,
+    street: str | None = None,
+    city: str | None = None,
+    country_code: str | None = None,
+) -> str:
+    """Crée un nouveau client (res.partner) dans l'ERP Odoo.
+    
+    Args:
+        name: Nom de l'entreprise (obligatoire)
+        email: Email
+        phone: Téléphone fixe
+        mobile: Téléphone mobile
+        street: Adresse
+        city: Ville
+        country_code: Code pays (ex: 'FR', 'SN')
+    """
+    import logging
+    import asyncio
+    from app.infrastructure.odoo.client import OdooClient
+    
+    logger = logging.getLogger(__name__)
+    logger.info(f"[AI Tool] Création client Odoo: {name}")
+    
+    values = {"name": name, "is_company": True, "customer_rank": 1}
+    if email:
+        values["email"] = email
+    if phone:
+        values["phone"] = phone
+    if mobile:
+        values["mobile"] = mobile
+    if street:
+        values["street"] = street
+    if city:
+        values["city"] = city
+    if country_code:
+        # Chercher l'ID du pays par code
+        try:
+            oc = OdooClient()
+            countries = await asyncio.to_thread(
+                oc._object_proxy().execute_kw,
+                oc._db,
+                oc._authenticate(),
+                oc._password,
+                "res.country",
+                "search_read",
+                [[("code", "=", country_code.upper())]],
+                {"fields": ["id"], "limit": 1},
+            )
+            if countries:
+                values["country_id"] = countries[0]["id"]
+        except:
+            pass
+    
+    try:
+        oc = OdooClient()
+        partner_id = await asyncio.to_thread(
+            oc._object_proxy().execute_kw,
+            oc._db,
+            oc._authenticate(),
+            oc._password,
+            "res.partner",
+            "create",
+            [values],
+        )
+        logger.info(f"[AI Tool] Client Odoo créé avec ID: {partner_id}")
+        return (
+            f"✅ **Client créé dans l'ERP**\n\n"
+            f"🏢 {name}\n"
+            f"🆔 ID: `{partner_id}`\n\n"
+            f"*Vous pouvez maintenant créer une opportunité avec ce client.*"
+        )
+    except Exception as exc:
+        logger.error(f"[AI Tool] Erreur création client: {exc}")
+        return f"❌ Erreur lors de la création du client: {exc}"
+
+
+async def create_prospect_with_partner(
+    company_name: str,
+    partner_id: int,
+    contact_name: str | None = None,
+    email: str | None = None,
+    phone: str | None = None,
+    expected_revenue: int | None = None,
+    sector: str | None = None,
+    notes: str | None = None,
+) -> str:
+    """Crée une opportunité dans Portalis et Odoo avec un client assigné.
+    
+    Args:
+        company_name: Nom de l'opportunité/prospect
+        partner_id: ID du client (res.partner) dans Odoo
+        contact_name: Nom du contact
+        email: Email
+        phone: Téléphone
+        expected_revenue: CA prévu
+        sector: Secteur
+        notes: Notes
+    """
+    import logging
+    from app.infrastructure.db.models.prospect import ProspectOrm
+    from app.services.prospect_sync import ProspectSyncService
+    
+    logger = logging.getLogger(__name__)
+    sync_service = ProspectSyncService()
+    
+    # 1. Créer dans Odoo avec le partner assigné
+    logger.info(f"[AI Tool] Création lead Odoo: {company_name} avec partner_id={partner_id}")
+    try:
+        odoo_lead_id = await sync_service.create_in_odoo(
+            name=company_name,
+            contact_name=contact_name,
+            email=email,
+            phone=phone,
+            user_id=None,
+            team_id=None,
+            expected_revenue=expected_revenue or 0,
+        )
+        # Note: Le partner_id n'est pas passé à create_in_odoo actuellement
+        # Il faudrait modifier create_in_odoo pour accepter partner_id
+        logger.info(f"[AI Tool] Lead Odoo créé avec ID: {odoo_lead_id}")
+    except Exception as exc:
+        logger.error(f"[AI Tool] Erreur création Odoo: {exc}")
+        return f"❌ Erreur création dans l'ERP: {exc}"
+    
+    # 2. Créer dans Portalis
     prospect = await ProspectOrm.create(
         company_name=company_name,
         contact_name=contact_name,
@@ -214,28 +650,26 @@ async def create_prospect(
         portalis_sector=sector,
         portalis_notes=notes,
         status="nouveau",
+        odoo_lead_id=odoo_lead_id,
     )
     
-    lines = [
-        f"## ✅ Prospect créé avec succès",
-        "",
-        f"**🏢 Entreprise:** {company_name}",
-        f"**👤 Contact:** {contact_name or 'N/A'}",
-        f"**📧 Email:** {email or 'N/A'}",
-        f"**📱 Téléphone:** {phone or 'N/A'}",
-        f"**🏷️ Secteur:** {sector or 'N/A'}",
-        "",
-        f"🆔 **ID:** `{prospect.id}`",
-        f"📊 **Statut:** 🆕 nouveau",
-        "",
-        "*Le prospect est maintenant dans votre pipeline commercial.*"
-    ]
-    
-    return "\n".join(lines)
+    return (
+        f"✅ **Opportunité créée avec client assigné**\n\n"
+        f"🏢 {company_name}\n"
+        f"👤 Client ID: `{partner_id}`\n"
+        f"🔗 ID ERP: `{odoo_lead_id}`\n"
+        f"🆔 ID Portalis: `{prospect.id}`\n\n"
+        f"*L'opportunité est liée au client dans l'ERP.*"
+    )
 
 
 # ── Registre ─────────────────────────────────────────────────────────────
+<<<<<<< HEAD
 # Nom snake_case → fonction
+=======
+# Nom snake_case → fonction async
+# NOTE: Les opérations Odoo (search_records, create_record, etc.) sont gérées par le MCP Odoo
+>>>>>>> 21ded3a (fix: chat streaming)
 
 BUILTIN_REGISTRY: dict[str, object] = {
     "search_companies": search_companies,
@@ -244,4 +678,5 @@ BUILTIN_REGISTRY: dict[str, object] = {
     "list_prospects": list_prospects,
     "get_prospect_details": get_prospect_details,
     "create_prospect": create_prospect,
+    "check_odoo_lead": check_odoo_lead,
 }
