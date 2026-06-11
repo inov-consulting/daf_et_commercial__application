@@ -26,6 +26,14 @@ export const ApiRoutes = {
   GROUP_LIST:    `${BASE}/api/v1/groups`,
 
   // ── Chat & Vocal ─────────────────────────────────────────────────
-  CHAT_MESSAGE:   `${BASE}/api/v1/chat`,
-  VOCAL_TRANSCRIBE: `${BASE}/api/v1/chat/transcribe`
+  CHAT_MESSAGE:     `${BASE}/api/v1/chat`,
+  VOCAL_TRANSCRIBE: `${BASE}/api/v1/chat/transcribe`,
+
+  // ── Prospects ────────────────────────────────────────────────────
+  PROSPECTS_LIST:   `${BASE}/api/v1/commercial/prospects`,
+  PROSPECTS_CREATE: `${BASE}/api/v1/commercial/prospects`,
+  PROSPECTS_GET:    (id: string) => `${BASE}/api/v1/commercial/prospects/${id}`,
+  PROSPECTS_UPDATE: (id: string) => `${BASE}/api/v1/commercial/prospects/${id}`,
+  PROSPECTS_ACTION: (id: string) => `${BASE}/api/v1/commercial/prospects/${id}/actions`,
+  PROSPECTS_SYNC:   `${BASE}/api/v1/commercial/prospects/sync`,
 } as const;

@@ -9,23 +9,35 @@ import {
 } from '@/types/prospect_type';
 import { cn } from '@/lib/utils';
 
-type SortKey = 'company' | 'pipeline' | 'age';
+export type SortKey = 'company' | 'pipeline' | 'age';
 
 interface ProspectListProps {
   prospects: Prospect[];
+  total: number;
+  page: number;
+  pageSize: number;
+  sortBy: SortKey | null;
+  sortOrder: 'asc' | 'desc';
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
+  onSort: (col: SortKey) => void;
+  onEdit?: (id: string) => void;
 }
 
-export function ProspectList({ prospects }: ProspectListProps) {
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(12);
-  const [sortKey, setSortKey] = useState<SortKey | null>(null);
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+export function ProspectList({
+  prospects,
+  total,
+  page,
+  pageSize,
+  sortBy,
+  sortOrder,
+  onPageChange,
+  onPageSizeChange,
+  onSort,
+  onEdit,
+}: ProspectListProps) {
   const [actionOpen, setActionOpen] = useState<string | null>(null);
 
-  // Reset page when prospects change (e.g. tab/search filter)
-  useEffect(() => { setPage(1); }, [prospects]);
-
-  // Close action dropdown on outside click
   useEffect(() => {
     if (!actionOpen) return;
     function close() { setActionOpen(null); }
@@ -33,50 +45,8 @@ export function ProspectList({ prospects }: ProspectListProps) {
     return () => document.removeEventListener('click', close);
   }, [actionOpen]);
 
-  function toggleSort(key: SortKey) {
-    if (sortKey === key) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortKey(key);
-      setSortDir('asc');
-    }
-    setPage(1);
-  }
-
-  const sorted = [...prospects].sort((a, b) => {
-    if (!sortKey) return 0;
-    let va: number | string;
-    let vb: number | string;
-    if (sortKey === 'pipeline') { va = a.pipeline ?? -1; vb = b.pipeline ?? -1; }
-    else if (sortKey === 'age') { va = a.pipelineAge ?? -1; vb = b.pipelineAge ?? -1; }
-    else { va = a.company.toLowerCase(); vb = b.company.toLowerCase(); }
-    if (va < vb) return sortDir === 'asc' ? -1 : 1;
-    if (va > vb) return sortDir === 'asc' ? 1 : -1;
-    return 0;
-  });
-
-  const total = sorted.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const startIdx = (page - 1) * pageSize;
-  const paginated = sorted.slice(startIdx, startIdx + pageSize);
-
-  function SortBtn({ col, label }: { col: SortKey; label: string }) {
-    const active = sortKey === col;
-    return (
-      <button
-        onClick={() => toggleSort(col)}
-        className={cn(
-          'flex items-center gap-0.5 text-[10px] font-bold tracking-wider uppercase transition-colors whitespace-nowrap',
-          active ? 'text-primary-500' : 'text-[var(--tx-3)] hover:text-[var(--tx-1)]',
-        )}
-      >
-        {label}
-        {!active && <CaretUpDown size={10} className="ml-0.5 opacity-60" />}
-        {active && sortDir === 'asc' && <CaretUp size={10} className="ml-0.5" />}
-        {active && sortDir === 'desc' && <CaretDown size={10} className="ml-0.5" />}
-      </button>
-    );
-  }
+  const startIdx   = (page - 1) * pageSize;
 
   // Page number list with ellipsis
   const pageNumbers: (number | '…')[] = [];
@@ -86,6 +56,24 @@ export function ProspectList({ prospects }: ProspectListProps) {
     } else if (pageNumbers[pageNumbers.length - 1] !== '…') {
       pageNumbers.push('…');
     }
+  }
+
+  function SortBtn({ col, label }: { col: SortKey; label: string }) {
+    const active = sortBy === col;
+    return (
+      <button
+        onClick={() => onSort(col)}
+        className={cn(
+          'flex items-center gap-0.5 text-[10px] font-bold tracking-wider uppercase transition-colors whitespace-nowrap',
+          active ? 'text-primary-500' : 'text-[var(--tx-3)] hover:text-[var(--tx-1)]',
+        )}
+      >
+        {label}
+        {!active && <CaretUpDown size={10} className="ml-0.5 opacity-60" />}
+        {active && sortOrder === 'asc'  && <CaretUp   size={10} className="ml-0.5" />}
+        {active && sortOrder === 'desc' && <CaretDown size={10} className="ml-0.5" />}
+      </button>
+    );
   }
 
   return (
@@ -112,7 +100,7 @@ export function ProspectList({ prospects }: ProspectListProps) {
                   Statut
                 </th>
                 <th className="py-3 pr-4 text-[10px] font-bold tracking-wider text-[var(--tx-3)] uppercase whitespace-nowrap">
-                  Ville
+                  Équipe
                 </th>
                 <th className="py-3 pr-4 text-[10px] font-bold tracking-wider text-[var(--tx-3)] uppercase whitespace-nowrap">
                   Dossiers
@@ -132,20 +120,20 @@ export function ProspectList({ prospects }: ProspectListProps) {
               </tr>
             </thead>
             <tbody>
-              {paginated.length === 0 && (
+              {prospects.length === 0 && (
                 <tr>
                   <td colSpan={11} className="py-12 text-center text-sm text-[var(--tx-3)]">
                     Aucun prospect trouvé
                   </td>
                 </tr>
               )}
-              {paginated.map((p, i) => {
+              {prospects.map((p, i) => {
                 const statusCfg = STATUS_CONFIG[p.status];
                 const sectorStyle = SECTOR_STYLES[p.sector] ?? {
                   bg: 'rgba(118,145,168,0.10)', text: '#5A738A', border: 'rgba(118,145,168,0.22)',
                 };
-                const age = pipelineAgeInfo(p.pipelineAge);
-                const isLast = i === paginated.length - 1;
+                const age    = pipelineAgeInfo(p.pipelineAge);
+                const isLast = i === prospects.length - 1;
 
                 return (
                   <tr
@@ -169,12 +157,9 @@ export function ProspectList({ prospects }: ProspectListProps) {
                         >
                           {p.initials}
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[var(--tx-1)] text-[13px] font-semibold font-display whitespace-nowrap">
-                            {p.company}
-                          </span>
-                          <span className="text-[12px]">{p.flag}</span>
-                        </div>
+                        <span className="text-[var(--tx-1)] text-[13px] font-semibold font-display whitespace-nowrap">
+                          {p.company}
+                        </span>
                       </div>
                     </td>
 
@@ -188,11 +173,7 @@ export function ProspectList({ prospects }: ProspectListProps) {
                     <td className="py-3.5 pr-4">
                       <span
                         className="inline-flex items-center px-2.5 py-[3px] rounded-full text-[11px] font-semibold border whitespace-nowrap"
-                        style={{
-                          background: sectorStyle.bg,
-                          color: sectorStyle.text,
-                          borderColor: sectorStyle.border,
-                        }}
+                        style={{ background: sectorStyle.bg, color: sectorStyle.text, borderColor: sectorStyle.border }}
                       >
                         {p.sector}
                       </span>
@@ -202,22 +183,17 @@ export function ProspectList({ prospects }: ProspectListProps) {
                     <td className="py-3.5 pr-4">
                       <span
                         className="inline-flex items-center gap-1.5 px-2.5 py-[3px] rounded-full text-[11px] font-semibold border whitespace-nowrap"
-                        style={{
-                          background: statusCfg.tagBg,
-                          color: statusCfg.tagText,
-                          borderColor: statusCfg.tagBorder,
-                        }}
+                        style={{ background: statusCfg.tagBg, color: statusCfg.tagText, borderColor: statusCfg.tagBorder }}
                       >
-                        <span
-                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                          style={{ background: statusCfg.dotColor }}
-                        />
+                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: statusCfg.dotColor }} />
                         {statusCfg.label}
                       </span>
                     </td>
 
-                    {/* Ville */}
-                    <td className="py-3.5 pr-4 text-[var(--tx-2)] text-[13px] whitespace-nowrap">{p.city}</td>
+                    {/* Équipe / Ville */}
+                    <td className="py-3.5 pr-4 text-[var(--tx-2)] text-[13px] whitespace-nowrap">
+                      {p.city || '–'}
+                    </td>
 
                     {/* Dossiers */}
                     <td className="py-3.5 pr-4">
@@ -239,10 +215,7 @@ export function ProspectList({ prospects }: ProspectListProps) {
                     {/* Âge pipeline */}
                     <td className="py-3.5 pr-4 whitespace-nowrap">
                       {p.pipelineAge !== null ? (
-                        <span
-                          className="text-[13px] font-semibold tabular-nums"
-                          style={{ color: age.color }}
-                        >
+                        <span className="text-[13px] font-semibold tabular-nums" style={{ color: age.color }}>
                           {age.prefix && <span className="mr-0.5">{age.prefix}</span>}
                           {age.label}
                         </span>
@@ -276,15 +249,17 @@ export function ProspectList({ prospects }: ProspectListProps) {
 
                         {actionOpen === p.id && (
                           <div className="absolute right-0 top-8 z-50 bg-white border border-[var(--bd-def)] rounded-xl shadow-lg py-1 min-w-[152px]">
-                            <button className="w-full px-3.5 py-2 text-left text-[13px] text-[var(--tx-2)] hover:bg-[var(--bg-sink)] hover:text-[var(--tx-1)] transition-colors">
+                            <button
+                              onClick={() => { setActionOpen(null); onEdit?.(p.id); }}
+                              className="w-full px-3.5 py-2 text-left text-[13px] text-[var(--tx-2)] hover:bg-[var(--bg-sink)] hover:text-[var(--tx-1)] transition-colors"
+                            >
                               Voir le détail
                             </button>
-                            <button className="w-full px-3.5 py-2 text-left text-[13px] text-[var(--tx-2)] hover:bg-[var(--bg-sink)] hover:text-[var(--tx-1)] transition-colors">
+                            <button
+                              onClick={() => { setActionOpen(null); onEdit?.(p.id); }}
+                              className="w-full px-3.5 py-2 text-left text-[13px] text-[var(--tx-2)] hover:bg-[var(--bg-sink)] hover:text-[var(--tx-1)] transition-colors"
+                            >
                               Modifier
-                            </button>
-                            <div className="border-t border-[var(--bd-def)] my-1" />
-                            <button className="w-full px-3.5 py-2 text-left text-[13px] text-error hover:bg-error/5 transition-colors">
-                              Supprimer
                             </button>
                           </div>
                         )}
@@ -298,9 +273,8 @@ export function ProspectList({ prospects }: ProspectListProps) {
         </div>
       </div>
 
-      {/* Pagination + legend row */}
+      {/* Pagination + legend */}
       <div className="mt-3 px-1 space-y-3">
-        {/* Pagination controls */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <p className="text-xs text-[var(--tx-3)]">
             Affichage{' '}
@@ -316,7 +290,7 @@ export function ProspectList({ prospects }: ProspectListProps) {
             <div className="flex items-center gap-1">
               <button
                 disabled={page === 1}
-                onClick={() => setPage((n) => n - 1)}
+                onClick={() => onPageChange(page - 1)}
                 className="h-7 px-2.5 rounded-lg text-xs text-[var(--tx-2)] border border-[var(--bd-def)] bg-white disabled:opacity-40 hover:bg-[var(--bg-sink)] transition-colors"
               >
                 ← Préc.
@@ -329,7 +303,7 @@ export function ProspectList({ prospects }: ProspectListProps) {
                 ) : (
                   <button
                     key={n}
-                    onClick={() => setPage(n)}
+                    onClick={() => onPageChange(n)}
                     className={cn(
                       'h-7 w-7 rounded-lg text-xs font-medium transition-colors',
                       page === n
@@ -343,7 +317,7 @@ export function ProspectList({ prospects }: ProspectListProps) {
               )}
               <button
                 disabled={page === totalPages}
-                onClick={() => setPage((n) => n + 1)}
+                onClick={() => onPageChange(page + 1)}
                 className="h-7 px-2.5 rounded-lg text-xs text-[var(--tx-2)] border border-[var(--bd-def)] bg-white disabled:opacity-40 hover:bg-[var(--bg-sink)] transition-colors"
               >
                 Suiv. →
@@ -355,10 +329,10 @@ export function ProspectList({ prospects }: ProspectListProps) {
             <span>Afficher</span>
             <select
               value={pageSize}
-              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+              onChange={(e) => { onPageSizeChange(Number(e.target.value)); }}
               className="h-7 px-2 pr-6 rounded-lg border border-[var(--bd-def)] text-xs text-[var(--tx-1)] bg-white cursor-pointer focus:outline-none focus:border-primary-500"
             >
-              {[10, 12, 25, 50].map((s) => (
+              {[10, 20, 50, 100].map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
