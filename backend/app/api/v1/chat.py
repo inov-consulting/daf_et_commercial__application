@@ -3,7 +3,7 @@
 import logging
 from collections.abc import AsyncIterator
 from typing import Annotated
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import httpx
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
@@ -33,16 +33,35 @@ async def chat(payload: ChatRequest) -> ChatResponse:
     Si `session_id` est absent, une nouvelle session est créée et son UUID est retourné.
     Les appels suivants avec le même `session_id` maintiennent l'historique de conversation.
     """
-    result = await run_chat_session(
-        message=payload.message,
-        session_id=payload.session_id,
-    )
-    return ChatResponse(
-        session_id=result.session_id,
-        response=result.response,
-        tool_used=result.tool_used,
-        turn=result.turn,
-    )
+    try:
+        result = await run_chat_session(
+            message=payload.message,
+            session_id=payload.session_id,
+        )
+        return ChatResponse(
+            session_id=result.session_id,
+            response=result.response,
+            tool_used=result.tool_used,
+            turn=result.turn,
+        )
+    except PermissionError as exc:
+        logger.warning("Permission ERP refusée: %s", exc)
+        return ChatResponse(
+            session_id=payload.session_id or uuid4(),
+            response="Je n'ai pas accès à cette donnée dans le système. Veuillez contacter votre administrateur pour vérifier vos permissions.",
+            tool_used=None,
+            turn=1,
+        )
+    except RuntimeError as exc:
+        if "permission" in str(exc).lower() or "access" in str(exc).lower():
+            logger.warning("Erreur de permission ERP: %s", exc)
+            return ChatResponse(
+                session_id=payload.session_id or uuid4(),
+                response="Je n'ai pas accès à cette donnée dans le système. Veuillez contacter votre administrateur pour vérifier vos permissions.",
+                tool_used=None,
+                turn=1,
+            )
+        raise
 
 
 @router.post("/stream", dependencies=_chat_deps)
