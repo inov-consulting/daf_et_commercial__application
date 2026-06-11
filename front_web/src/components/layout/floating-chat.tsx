@@ -96,7 +96,7 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
     const textarea = textareaRef.current;
     if (textarea) {
       textarea.style.height = 'auto';
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`; // max 200px
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
     }
   }, [inputText]);
 
@@ -140,7 +140,6 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
     if (waveTimerRef.current) clearInterval(waveTimerRef.current);
 
     mediaRecorderRef.current.onstop = async () => {
-      // Strip codec suffix (e.g. "audio/webm;codecs=opus" → "audio/webm")
       const rawMime = audioChunksRef.current[0]?.type ?? 'audio/webm';
       const mimeType = rawMime.split(';')[0];
       const ext = mimeType.includes('mp4') ? 'm4a' : 'webm';
@@ -171,7 +170,6 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
         return;
       }
 
-      // Put transcribed text into the input field for review/editing before send
       setInputText(res.data.text);
       setTimeout(() => textareaRef.current?.focus(), 80);
     };
@@ -248,22 +246,22 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
 
       {/* Drawer */}
       <div
-        className="fixed top-0 right-0 h-screen w-[400px] bg-white border-l border-[var(--bd-def)] shadow-[var(--sh-xl)] z-[60] flex flex-col transition-transform duration-300 ease-in-out"
+        className="fixed top-0 right-0 h-screen w-full sm:w-[400px] bg-white border-l border-[var(--bd-def)] shadow-[var(--sh-xl)] z-[60] flex flex-col transition-transform duration-300 ease-in-out"
         style={{ transform: open ? 'translateX(0)' : 'translateX(100%)' }}
       >
         {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-[var(--bd-def)] flex-shrink-0">
+        <div className="flex items-center gap-3 px-4 sm:px-5 py-3 sm:py-4 border-b border-[var(--bd-def)] flex-shrink-0">
           <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ background: 'var(--grad)' }}
           >
-            <span className="text-white text-lg leading-none">✦</span>
+            <span className="text-white text-base sm:text-lg leading-none">✦</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-[var(--tx-1)] text-sm">Assistant IA PortaLis</p>
+            <p className="font-semibold text-[var(--tx-1)] text-xs sm:text-sm">Assistant IA PortaLis</p>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-              <span className="text-[11px] text-success">En ligne · Claude Sonnet 4.5</span>
+              <span className="text-[10px] sm:text-[11px] text-success">En ligne · Claude Sonnet 4.5</span>
             </div>
           </div>
           <button
@@ -275,73 +273,54 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-4 sm:py-5 flex flex-col gap-3 sm:gap-4">
           {messages.map(msg => msg.role === 'ai' ? (
-            <div key={msg.id} className="flex items-start gap-3">
+            <div key={msg.id} className="flex items-start gap-2 sm:gap-3">
               <div
-                className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5"
+                className="w-6 h-6 sm:w-7 sm:h-7 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5"
                 style={{ background: 'var(--grad)' }}
               >
-                <span className="text-white text-xs leading-none">✦</span>
+                <span className="text-white text-[10px] sm:text-xs leading-none">✦</span>
               </div>
-              <div className="flex-1">
-                <div className="bg-[var(--bg-sink)] rounded-2xl rounded-tl-sm px-4 py-3">
-                  <p className="text-sm text-[var(--tx-1)] leading-relaxed">
+              <div className="flex-1 min-w-0">
+                <div className="bg-[var(--bg-sink)] rounded-2xl rounded-tl-sm px-3 sm:px-4 py-2.5 sm:py-3">
+                  <p className="text-xs sm:text-sm text-[var(--tx-1)] leading-relaxed break-words">
                     {renderText(msg.text)}
                   </p>
                 </div>
-                <p className="text-[10px] text-[var(--tx-3)] mt-1 ml-1">{msg.time}</p>
+                <p className="text-[9px] sm:text-[10px] text-[var(--tx-3)] mt-1 ml-1">{msg.time}</p>
               </div>
             </div>
           ) : (
-            <div key={msg.id} className="flex items-start gap-3 flex-row-reverse">
+            <div key={msg.id} className="flex items-start gap-2 sm:gap-3 flex-row-reverse">
               <div
-                className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-white text-[10px] font-bold leading-none"
+                className="w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-white text-[9px] sm:text-[10px] font-bold leading-none"
                 style={{ background: 'var(--grad)' }}
               >
                 {initials}
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <div
-                  className="rounded-2xl rounded-tr-sm px-4 py-3"
+                  className="rounded-2xl rounded-tr-sm px-3 sm:px-4 py-2.5 sm:py-3"
                   style={{ background: 'var(--grad)' }}
                 >
-                  <p className="text-sm text-white leading-relaxed">{msg.text}</p>
+                  <p className="text-xs sm:text-sm text-white leading-relaxed break-words">{msg.text}</p>
                 </div>
-                <p className="text-[10px] text-[var(--tx-3)] mt-1 mr-1 text-right">{msg.time}</p>
+                <p className="text-[9px] sm:text-[10px] text-[var(--tx-3)] mt-1 mr-1 text-right">{msg.time}</p>
               </div>
             </div>
           ))}
 
-          {/* Transcription progress */}
-          {/* {inputState === 'processing' && (
-            <div className="rounded-2xl bg-violet-50 border border-violet-100 px-4 py-3">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="w-3.5 h-3.5 border-[2px] border-violet-400 border-t-transparent rounded-full animate-spin" />
-                  <span className="text-[10px] font-bold tracking-widest text-violet-600">TRANSCRIPTION EN COURS</span>
-                </div>
-                <span className="text-[11px] font-bold text-success">{Math.round(progress)}&nbsp;%</span>
-              </div>
-              <div className="h-1.5 bg-violet-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-violet-500 transition-all duration-300"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            </div>
-          )} */}
-
           {/* AI thinking indicator */}
           {aiThinking && (
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-2 sm:gap-3">
               <div
-                className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5"
+                className="w-6 h-6 sm:w-7 sm:h-7 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5"
                 style={{ background: 'var(--grad)' }}
               >
-                <span className="text-white text-xs leading-none">✦</span>
+                <span className="text-white text-[10px] sm:text-xs leading-none">✦</span>
               </div>
-              <div className="bg-[var(--bg-sink)] rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1.5">
+              <div className="bg-[var(--bg-sink)] rounded-2xl rounded-tl-sm px-3 sm:px-4 py-2.5 sm:py-3 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--tx-3)] animate-bounce [animation-delay:0ms]" />
                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--tx-3)] animate-bounce [animation-delay:150ms]" />
                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--tx-3)] animate-bounce [animation-delay:300ms]" />
@@ -351,9 +330,9 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
 
           {/* Error */}
           {apiError && (
-            <div className="flex items-center gap-2 text-error text-xs px-1">
+            <div className="flex items-center gap-2 text-error text-[10px] sm:text-xs px-1">
               <WarningIcon size={13} />
-              {apiError}
+              <span className="break-words">{apiError}</span>
             </div>
           )}
 
@@ -362,13 +341,13 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
 
         {/* Input / Recording area */}
         {inputState === 'recording' ? (
-          <div className="px-4 pt-3 pb-5 border-t border-[var(--bd-def)] flex-shrink-0">
+          <div className="px-3 sm:px-4 pt-3 pb-4 sm:pb-5 border-t border-[var(--bd-def)] flex-shrink-0">
             <div className="flex items-center justify-between mb-0.5">
-              <span className="font-mono text-[32px] font-bold text-[var(--tx-1)] leading-none">
+              <span className="font-mono text-2xl sm:text-[32px] font-bold text-[var(--tx-1)] leading-none">
                 {formatDuration(recSeconds)}
               </span>
-              <div className="flex items-center gap-2.5">
-                <span className="flex items-center gap-1.5 text-[10px] font-bold text-error bg-error/10 px-2.5 py-1 rounded-full">
+              <div className="flex items-center gap-2 sm:gap-2.5">
+                <span className="flex items-center gap-1 sm:gap-1.5 text-[9px] sm:text-[10px] font-bold text-error bg-error/10 px-2 sm:px-2.5 py-1 rounded-full">
                   <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse" />
                   REC
                 </span>
@@ -381,15 +360,15 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
               </div>
             </div>
 
-            <p className="text-[10px] font-semibold tracking-widest text-[var(--tx-3)] mb-3">
+            <p className="text-[9px] sm:text-[10px] font-semibold tracking-widest text-[var(--tx-3)] mb-2 sm:mb-3">
               VISEZ 1 À 2 MINUTES POUR UN CR COMPLET
             </p>
 
-            <div className="flex items-center justify-center gap-[2.5px] h-9 mb-4 px-1">
+            <div className="flex items-center justify-center gap-[2px] sm:gap-[2.5px] h-8 sm:h-9 mb-3 sm:mb-4 px-1">
               {waveHeights.map((h, i) => (
                 <div
                   key={i}
-                  className="w-[3px] rounded-full transition-all duration-75"
+                  className="w-[2.5px] sm:w-[3px] rounded-full transition-all duration-75"
                   style={{
                     height: `${h}px`,
                     background: h < 8
@@ -405,21 +384,21 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
             <div className="flex gap-2">
               <button
                 onClick={stopRecording}
-                className="flex-1 h-10 rounded-xl bg-error text-white text-[13px] font-semibold flex items-center justify-center gap-2 hover:bg-error/90 transition-colors"
+                className="flex-1 h-10 rounded-xl bg-error text-white text-xs sm:text-[13px] font-semibold flex items-center justify-center gap-2 hover:bg-error/90 transition-colors"
               >
                 <StopCircleIcon size={15} weight="fill" />
                 Arrêter
               </button>
               <button
                 onClick={cancelRecording}
-                className="h-10 px-4 rounded-xl border border-[var(--bd-def)] text-[13px] font-medium text-[var(--tx-2)] hover:bg-[var(--bg-sink)] transition-colors"
+                className="h-10 px-3 sm:px-4 rounded-xl border border-[var(--bd-def)] text-xs sm:text-[13px] font-medium text-[var(--tx-2)] hover:bg-[var(--bg-sink)] transition-colors"
               >
                 Annuler
               </button>
             </div>
           </div>
         ) : (
-          <div className="px-4 py-3 border-t border-[var(--bd-def)] flex-shrink-0">
+          <div className="px-3 sm:px-4 py-2 sm:py-3 border-t border-[var(--bd-def)] flex-shrink-0">
             <div
               className={`rounded-2xl border transition-all duration-300 ${
                 inputState === 'processing'
@@ -429,7 +408,7 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
             >
               {/* Status bar – processing / sending */}
               {inputState !== 'idle' && (
-                <div className="flex items-center gap-2 px-4 pt-2.5 pb-0.5">
+                <div className="flex items-center gap-2 px-3 sm:px-4 pt-2 sm:pt-2.5 pb-0.5">
                   {inputState === 'processing' ? (
                     <>
                       <span className="flex gap-[3px] items-end h-3">
@@ -441,21 +420,21 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
                           />
                         ))}
                       </span>
-                      <span className="text-[11px] font-medium text-violet-500 tracking-wide">
+                      <span className="text-[10px] sm:text-[11px] font-medium text-violet-500 tracking-wide">
                         Transcription en cours…
                       </span>
                     </>
                   ) : (
                     <>
                       <span className="w-2.5 h-2.5 border-[1.5px] border-[var(--tx-3)] border-t-transparent rounded-full animate-spin" />
-                      <span className="text-[11px] font-medium text-[var(--tx-3)] tracking-wide">Envoi…</span>
+                      <span className="text-[10px] sm:text-[11px] font-medium text-[var(--tx-3)] tracking-wide">Envoi…</span>
                     </>
                   )}
                 </div>
               )}
 
               {/* Input row */}
-              <div className="flex items-end gap-2 px-3 py-2">
+              <div className="flex items-end gap-1.5 sm:gap-2 px-2 sm:px-3 py-2">
                 <textarea
                   ref={textareaRef}
                   value={inputText}
@@ -464,7 +443,7 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
                   placeholder={inputState === 'processing' ? '' : "Posez une question à l'IA…"}
                   disabled={inputState !== 'idle'}
                   rows={1}
-                  className="flex-1 bg-transparent text-sm leading-relaxed text-[var(--tx-1)] placeholder:text-[var(--tx-3)] outline-none border-none resize-none overflow-hidden disabled:opacity-40 transition-opacity duration-300 py-0 px-0"
+                  className="flex-1 bg-transparent text-xs sm:text-sm leading-relaxed text-[var(--tx-1)] placeholder:text-[var(--tx-3)] outline-none border-none resize-none overflow-hidden disabled:opacity-40 transition-opacity duration-300 py-0 px-0"
                 />
 
                 <button
@@ -499,14 +478,15 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
       {!open && (
         <button
           onClick={() => setOpen(v => !v)}
-          className="fixed bottom-6 right-6 w-12 h-12 rounded-xl flex items-center justify-center z-[61] transition-all duration-200 hover:-translate-y-1"
+          className="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center z-[61] transition-all duration-200 hover:-translate-y-1"
           style={{
             background: 'var(--grad)',
             boxShadow: '0 4px 16px rgba(27,107,69,.35)',
           }}
         >
-          <SparkleIcon size={20} weight="fill" className="text-white" />
-          <span className="absolute -top-1 -right-1 w-5 h-5 bg-error rounded-full text-white text-[9px] font-bold flex items-center justify-center border-2 border-white leading-none">
+          <SparkleIcon size={18} weight="fill" className="text-white sm:hidden" />
+          <SparkleIcon size={20} weight="fill" className="text-white hidden sm:block" />
+          <span className="absolute -top-1 -right-1 w-4.5 h-4.5 sm:w-5 sm:h-5 bg-error rounded-full text-white text-[8px] sm:text-[9px] font-bold flex items-center justify-center border-2 border-white leading-none">
             3
           </span>
         </button>
