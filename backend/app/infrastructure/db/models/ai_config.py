@@ -34,6 +34,8 @@ class AiConfigOrm(BaseModel):
     default_embedding_model: fields.ForeignKeyRelation["AiModelOrm"] = fields.ForeignKeyField(
         "models.AiModelOrm", related_name="configs_embedding"
     )
+    # Template pour la génération de compte-rendus (prompt Claude)
+    compte_rendu_template: str | None = fields.TextField(null=True)
 
     class Meta:
         table = "ai_config"
@@ -43,6 +45,7 @@ class AiConfigOrm(BaseModel):
             id=self.id,
             default_model_id=self.default_model_id,  # type: ignore[attr-defined]
             default_embedding_model_id=self.default_embedding_model_id,  # type: ignore[attr-defined]
+            compte_rendu_template=self.compte_rendu_template,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )

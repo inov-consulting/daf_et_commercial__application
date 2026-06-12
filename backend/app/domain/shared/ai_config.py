@@ -28,6 +28,7 @@ class AiConfig:
     id: UUID
     default_model_id: UUID           # modèle de génération (ex: claude-opus-4-7)
     default_embedding_model_id: UUID  # modèle d'embedding (ex: text-embedding-3-large)
+    compte_rendu_template: str | None = None  # Template Claude pour génération CR
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

@@ -43,11 +43,15 @@ def _extract_odoo_field(record: dict, field: str) -> str | int | None:
 
 
 class OdooClient:
-    """Client XML-RPC vers un serveur Odoo."""
+    """Client XML-RPC vers un serveur Odoo.
+    
+    Supporte l'authentification par API key (prioritaire) ou username/password.
+    """
 
     def __init__(self) -> None:
         self._url = settings.odoo_url.rstrip("/")
         self._db = settings.odoo_db
+        self._api_key = settings.odoo_api_key
         self._username = settings.odoo_username
         self._password = settings.odoo_password
         self._uid: int | None = None

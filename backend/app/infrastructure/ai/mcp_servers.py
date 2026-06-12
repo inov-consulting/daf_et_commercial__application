@@ -24,7 +24,7 @@ if settings.odoo_url and settings.odoo_api_key:
 
     MCP_SERVERS["odoo"] = {
         "command": "uvx",
-        "args": ["mcp-server-odoo", "--transport", "stdio"],
+        "args": ["--no-reinstall", "mcp-server-odoo", "--transport", "stdio"],
         "env": _odoo_env,
         "transport": "stdio",
     }
