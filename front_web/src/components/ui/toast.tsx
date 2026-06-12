@@ -50,6 +50,33 @@ const defaultIcons: Record<ToastType, ReactNode> = {
   ),
 }; 
 
+/* ─── FloatingToast ─────────────────────────────────────────────────── */
+
+export interface FloatingToastProps {
+  message: string | null;
+}
+
+export function FloatingToast({ message }: FloatingToastProps) {
+  return (
+    <div
+      className={cn(
+        'fixed bottom-7 left-1/2 -translate-x-1/2 z-50',
+        'flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-[13px] font-medium whitespace-nowrap',
+        'transition-all duration-200',
+        message ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3 pointer-events-none',
+      )}
+      style={{ background: '#1B2633', boxShadow: '0 4px 24px rgba(0,0,0,0.18)' }}
+    >
+      <svg width="14" height="14" viewBox="0 0 256 256" fill="#10B981" aria-hidden="true">
+        <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm45.66,85.66-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32Z"/>
+      </svg>
+      {message}
+    </div>
+  );
+}
+
+/* ─── Toast (card) ──────────────────────────────────────────────────── */
+
 export function Toast({ type = 'info', title, message, icon, onDismiss, className, ...props }: ToastProps) {
   return (
     <div
