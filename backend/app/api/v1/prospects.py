@@ -12,6 +12,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.deps import CurrentUser, require_permission
 from app.api.v1.schemas.prospects import (
+    CompteRenduGenerate,
+    CompteRenduListOut,
+    CompteRenduOut,
+    NoteCreate,
+    NoteListOut,
+    NoteOut,
     ProspectAction,
     ProspectActionRequest,
     ProspectActivityOut,
@@ -29,7 +35,8 @@ from app.api.v1.schemas.prospects import (
     SyncStatusOut,
 )
 from app.core.logging import get_logger
-from app.infrastructure.db.models.prospect import ProspectOrm, ProspectActivityOrm
+from app.infrastructure.db.models.note import CompteRenduOrm, NoteOrm
+from app.infrastructure.db.models.prospect import ProspectActivityOrm, ProspectOrm
 from app.infrastructure.odoo.client import OdooClient
 from app.services.prospect_sync import ProspectSyncService
 
@@ -622,3 +629,198 @@ async def trigger_sync(
         pending_sync_count=0,
         errors=result.get("errors", []),
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Notes (textuelles sur un prospect)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.post("/{prospect_id}/notes", dependencies=_prospect_write_deps)
+async def create_note(
+    prospect_id: UUID,
+    data: NoteCreate,
+    current_user: CurrentUser,
+) -> NoteOut:
+    """Ajouter une note sur un prospect."""
+
+    prospect = await ProspectOrm.get_or_none(id=prospect_id)
+    if not prospect:
+        raise HTTPException(status_code=404, detail="Prospect non trouvé")
+
+    note = await NoteOrm.create(
+        prospect_id=prospect_id,
+        author_id=current_user.id,
+        content=data.content,
+    )
+
+    return NoteOut(
+        id=note.id,
+        prospect_id=note.prospect_id,
+        author_id=note.author_id,
+        content=note.content,
+        created_at=note.created_at,
+        updated_at=note.updated_at,
+    )
+
+
+@router.get("/{prospect_id}/notes", dependencies=_prospect_deps)
+async def list_notes(
+    prospect_id: UUID,
+    limit: int = 50,
+    offset: int = 0,
+) -> NoteListOut:
+    """Lister les notes d'un prospect (ordre chronologique inverse)."""
+
+    prospect = await ProspectOrm.get_or_none(id=prospect_id)
+    if not prospect:
+        raise HTTPException(status_code=404, detail="Prospect non trouvé")
+
+    notes = await NoteOrm.filter(prospect_id=prospect_id).offset(offset).limit(limit).order_by("-created_at")
+    total = await NoteOrm.filter(prospect_id=prospect_id).count()
+
+    items = [
+        NoteOut(
+            id=n.id,
+            prospect_id=n.prospect_id,
+            author_id=n.author_id,
+            content=n.content,
+            created_at=n.created_at,
+            updated_at=n.updated_at,
+        )
+        for n in notes
+    ]
+
+    return NoteListOut(items=items, total=total)
+
+
+@router.delete("/{prospect_id}/notes/{note_id}", dependencies=_prospect_write_deps)
+async def delete_note(
+    prospect_id: UUID,
+    note_id: UUID,
+) -> None:
+    """Supprimer une note d'un prospect."""
+
+    deleted = await NoteOrm.filter(id=note_id, prospect_id=prospect_id).delete()
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Note non trouvée")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Compte-Rendus (PDF générés)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.post("/{prospect_id}/compte-rendus", dependencies=_prospect_write_deps)
+async def generate_compte_rendu(
+    prospect_id: UUID,
+    data: CompteRenduGenerate,
+    current_user: CurrentUser,
+) -> CompteRenduOut:
+    """Générer un compte-rendu PDF pour un prospect (via Claude + MinIO)."""
+    from app.services.compte_rendu import CompteRenduService
+
+    prospect = await ProspectOrm.get_or_none(id=prospect_id)
+    if not prospect:
+        raise HTTPException(status_code=404, detail="Prospect non trouvé")
+
+    try:
+        service = CompteRenduService()
+        cr = await service.generate(
+            prospect_id=prospect_id,
+            note_ids=data.note_ids,
+            author_id=current_user.id,
+            template=data.template,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    # Générer URL de download
+    from app.infrastructure.storage.minio import StorageService
+
+    storage = StorageService()
+    download_url = storage.get_url(cr.minio_path, expires_in=3600)
+
+    return CompteRenduOut(
+        id=cr.id,
+        parent_type=cr.parent_type,
+        parent_id=cr.parent_id,
+        version=cr.version,
+        status=cr.status,
+        file_size=cr.file_size,
+        download_url=download_url,
+        generated_by=cr.generated_by,
+        note_ids=cr.note_ids,
+        created_at=cr.created_at,
+        created_by=cr.created_by,
+    )
+
+
+@router.get("/{prospect_id}/compte-rendus", dependencies=_prospect_deps)
+async def list_compte_rendus(
+    prospect_id: UUID,
+    limit: int = 10,
+    offset: int = 0,
+) -> CompteRenduListOut:
+    """Lister les compte-rendus d'un prospect."""
+
+    prospect = await ProspectOrm.get_or_none(id=prospect_id)
+    if not prospect:
+        raise HTTPException(status_code=404, detail="Prospect non trouvé")
+
+    crs = (
+        await CompteRenduOrm.filter(
+            parent_type="prospect",
+            parent_id=prospect_id,
+        )
+        .offset(offset)
+        .limit(limit)
+        .order_by("-created_at")
+    )
+    total = await CompteRenduOrm.filter(
+        parent_type="prospect",
+        parent_id=prospect_id,
+    ).count()
+
+    items = [
+        CompteRenduOut(
+            id=cr.id,
+            parent_type=cr.parent_type,
+            parent_id=cr.parent_id,
+            version=cr.version,
+            status=cr.status,
+            file_size=cr.file_size,
+            download_url=None,  # À générer avec URL signée
+            generated_by=cr.generated_by,
+            note_ids=cr.note_ids,
+            created_at=cr.created_at,
+            created_by=cr.created_by,
+        )
+        for cr in crs
+    ]
+
+    return CompteRenduListOut(items=items, total=total)
+
+
+@router.get("/{prospect_id}/compte-rendus/{cr_id}/download", dependencies=_prospect_deps)
+async def download_compte_rendu(
+    prospect_id: UUID,
+    cr_id: UUID,
+) -> dict:
+    """Obtenir l'URL de téléchargement d'un compte-rendu."""
+
+    cr = await CompteRenduOrm.get_or_none(
+        id=cr_id,
+        parent_type="prospect",
+        parent_id=prospect_id,
+    )
+    if not cr:
+        raise HTTPException(status_code=404, detail="Compte-rendu non trouvé")
+
+    # Générer URL signée MinIO
+    from app.infrastructure.storage.minio import StorageService
+
+    storage = StorageService()
+    download_url = storage.get_url(cr.minio_path, expires_in=3600)  # 1h
+
+    return {"download_url": download_url, "filename": f"CR_{cr.parent_id}_v{cr.version}.pdf"}
