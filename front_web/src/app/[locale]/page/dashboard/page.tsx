@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 
 /* ── Mock data ───────────────────────────────────────────────────────── */
 
@@ -137,7 +138,7 @@ function PageHeader() {
             >
               {flag && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={`https://flagcdn.com/16x12/${flag}.png`}
                   width={16}
                   height={12}
