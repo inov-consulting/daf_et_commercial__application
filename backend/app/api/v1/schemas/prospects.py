@@ -276,3 +276,85 @@ class SyncStatusOut(BaseModel):
     synced_count: int
     pending_sync_count: int
     errors: list[str] = []
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Notes (textuelles sur un prospect)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class NoteCreate(BaseModel):
+    """Créer une note sur un prospect."""
+
+    content: str = Field(..., min_length=1, description="Contenu Markdown de la note")
+
+
+class NoteOut(BaseModel):
+    """Note retournée par l'API."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    prospect_id: UUID
+    author_id: UUID | None
+    content: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class NoteListOut(BaseModel):
+    """Liste de notes."""
+
+    items: list[NoteOut]
+    total: int
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Compte-Rendus (PDF générés)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class ParentType(str, Enum):
+    """Type de parent pour un compte-rendu."""
+
+    PROSPECT = "prospect"
+    SERVICE = "service"
+
+
+class CompteRenduStatus(str, Enum):
+    """Statut d'un compte-rendu."""
+
+    DRAFT = "draft"
+    FINAL = "final"
+
+
+class CompteRenduGenerate(BaseModel):
+    """Demande de génération d'un compte-rendu."""
+
+    note_ids: list[UUID] | None = Field(None, description="IDs des notes à inclure (toutes si null)")
+    template: str | None = Field(None, description="Template de génération (défaut: standard)")
+
+
+class CompteRenduOut(BaseModel):
+    """Compte-rendu retourné par l'API."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    parent_type: ParentType
+    parent_id: UUID
+    version: int
+    status: CompteRenduStatus
+    file_size: int | None
+    download_url: str | None = None  # URL signée MinIO
+    generated_by: str  # "ai" | "user"
+    note_ids: list[str] | None
+    created_at: datetime
+    created_by: UUID | None
+
+
+class CompteRenduListOut(BaseModel):
+    """Liste de compte-rendus."""
+
+    items: list[CompteRenduOut]
+    total: int

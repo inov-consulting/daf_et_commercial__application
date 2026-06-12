@@ -1,11 +1,15 @@
 """Modèle Tortoise ORM pour les Prospects (table Portalis locale)."""
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from tortoise import fields
 
 from app.infrastructure.db.base import BaseModel
+
+if TYPE_CHECKING:
+    from app.infrastructure.db.models.note import NoteOrm
 
 
 class ProspectOrm(BaseModel):
@@ -32,6 +36,9 @@ class ProspectOrm(BaseModel):
     
     # Cache local des données Odoo (JSON) - évite d'appeler Odoo à chaque get
     erp_metadata: dict | None = fields.JSONField(null=True, default=None)
+
+    # Relations
+    notes: fields.ReverseRelation["NoteOrm"]
 
     class Meta:
         table = "prospects"
