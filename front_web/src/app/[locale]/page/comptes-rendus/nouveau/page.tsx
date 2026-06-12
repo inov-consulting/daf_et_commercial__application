@@ -13,10 +13,10 @@ import {
 } from '@phosphor-icons/react';
 import { FloatingToast } from '@/components/ui/toast';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { Blocknote } from '@/components/ui/blocknote';
 import RightPanel from '@/components/layout/rightPanel';
 import WaveformBars from '@/components/layout/waveformBars';
-import FolderModal from '@/components/layout/FolderModal';
+import FolderModal from '@/components/layout/folderModal';
 
 /* ─── Types ────────────────────────────────────────────────────── */
 type AppState = 'idle' | 'recording' | 'transcript' | 'processing' | 'draft' | 'validated' | 'error';
@@ -412,13 +412,16 @@ export default function NouveauCRPage() {
                     </span>
                   </div>
 
-                  <Textarea
-                    className="min-h-[180px] !rounded-xl bg-[var(--bg-sink)] text-[13px] mb-1.5"
-                    value={transcriptText}
-                    onChange={e => setTranscriptText(e.target.value)}
-                    spellCheck={false}
+                  <Blocknote
+                    initialContent={transcriptText}
+                    onChange={setTranscriptText}
+                    placeholder="Corrigez les erreurs — chiffres, noms propres, ponctuation…"
+                    className="mb-4"
                   />
-                  <div className="text-right text-[10px] text-[var(--tx-3)] font-mono mb-5">{wordCount} mots</div>
+                  <div className="flex items-center justify-between mb-5 px-1">
+                    <span className="text-[10px] text-[var(--tx-3)] font-mono">{wordCount} mots</span>
+                    <span className="text-[10px] text-[var(--tx-3)]">Cliquez pour modifier</span>
+                  </div>
 
                   <Button
                     variant="gradient"
