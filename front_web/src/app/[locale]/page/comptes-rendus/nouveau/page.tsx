@@ -1,0 +1,762 @@
+'use client';
+
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { cn } from '@/lib/utils';
+import { PostData } from '@/lib/ApiService';
+import { ApiRoutes } from '@/lib/ApiRoutes';
+import {
+  MicrophoneIcon, SquareIcon, ArrowLeftIcon, CheckIcon, XIcon,
+  ArrowClockwiseIcon, WarningIcon, DownloadSimpleIcon, FolderSimpleIcon,
+  CaretRightIcon, CaretDownIcon, SparkleIcon, CheckCircleIcon,
+  FileTextIcon, PencilSimpleIcon, CircleNotchIcon, InfoIcon,
+} from '@phosphor-icons/react';
+import { FloatingToast } from '@/components/ui/toast';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import RightPanel from '@/components/layout/rightPanel';
+import WaveformBars from '@/components/layout/waveformBars';
+import FolderModal from '@/components/layout/FolderModal';
+
+/* ─── Types ────────────────────────────────────────────────────── */
+type AppState = 'idle' | 'recording' | 'transcript' | 'processing' | 'draft' | 'validated' | 'error';
+type ProcStep = 'pending' | 'active' | 'done';
+
+/* ─── Constants ────────────────────────────────────────────────── */
+
+const DRAFT_FIELDS: { label: string; value: string; confidence: 'high' | 'low' }[] = [
+  { label: 'Société', value: 'Sonatrans SA', confidence: 'high' },
+  { label: 'Contact', value: 'Ibrahima Traoré · DSI', confidence: 'high' },
+  { label: 'Objet', value: 'Transport frigorifique 40T/mois', confidence: 'high' },
+  { label: 'Points discutés', value: 'DKR–ABJ · Budget ~18M FCFA/mois · délai juillet 2026', confidence: 'low' },
+  { label: 'Actions', value: 'Envoyer devis avant le 10 juin 2026', confidence: 'high' },
+  { label: 'Prochaine étape', value: 'Décision client · 15 juin 2026', confidence: 'high' },
+];
+
+/* ─── Main Page ────────────────────────────────────────────────── */
+export default function NouveauCRPage() {
+  const router = useRouter();
+  const params = useParams();
+  const locale = (params?.locale as string) || 'fr';
+
+  const [state, setState] = useState<AppState>('idle');
+
+  /* Recording */
+  const [timerSec, setTimerSec]         = useState(0);
+  const [isLowAudio, setIsLowAudio]     = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
+  const timerRef         = useRef<NodeJS.Timeout | null>(null);
+  const savedDuration    = useRef('0:00');
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef   = useRef<Blob[]>([]);
+
+  /* Transcript */
+  const [transcriptText, setTranscriptText] = useState('');
+
+  /* Processing */
+  const [procSteps, setProcSteps] = useState<[ProcStep, ProcStep, ProcStep]>(['pending', 'pending', 'pending']);
+  const [procPct, setProcPct]     = useState(0);
+  const [procEta, setProcEta]     = useState('');
+  const procTimeouts = useRef<NodeJS.Timeout[]>([]);
+
+  /* Draft */
+  const [draftValues, setDraftValues] = useState<Record<string, string>>(
+    Object.fromEntries(DRAFT_FIELDS.map(f => [f.label, f.value])),
+  );
+  const [accordOpen, setAccordOpen] = useState(false);
+
+  /* UI */
+  const [folderModal, setFolderModal] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<NodeJS.Timeout | null>(null);
+
+  /* Computed */
+  const wordCount = transcriptText.trim() ? transcriptText.trim().split(/\s+/).length : 0;
+
+  /* ── Helpers ──────────────────────────────────────────────── */
+  function fmtTime(sec: number) {
+    return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+  }
+
+  function showToast(msg: string) {
+    setToast(msg);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 3000);
+  }
+
+  function clearProcTimeouts() {
+    procTimeouts.current.forEach(clearTimeout);
+    procTimeouts.current = [];
+  }
+
+  /* ── Recording ──────────────────────────────────────────────── */
+  async function startRecording() {
+    setTranscriptionError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = ['audio/webm', 'audio/mp4'].find(t => MediaRecorder.isTypeSupported(t)) ?? '';
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+      recorder.start(100);
+
+      setTimerSec(0);
+      setIsLowAudio(false);
+      setState('recording');
+      timerRef.current = setInterval(() => setTimerSec(s => s + 1), 1000);
+    } catch {
+      setTranscriptionError('Microphone non disponible ou accès refusé.');
+    }
+  }
+
+  function stopRecording() {
+    if (!mediaRecorderRef.current) return;
+    if (timerRef.current) clearInterval(timerRef.current);
+    savedDuration.current = fmtTime(timerSec);
+    setIsTranscribing(true);
+
+    mediaRecorderRef.current.onstop = async () => {
+      const rawMime = audioChunksRef.current[0]?.type ?? 'audio/webm';
+      const mimeType = rawMime.split(';')[0];
+      const ext = mimeType.includes('mp4') ? 'm4a' : 'webm';
+      const blob = new Blob(audioChunksRef.current, { type: mimeType });
+      mediaRecorderRef.current?.stream.getTracks().forEach(t => t.stop());
+
+      const audioFile = new File([blob], `recording.${ext}`, { type: mimeType });
+      const res = await PostData<{ text: string }>({
+        url: ApiRoutes.VOCAL_TRANSCRIBE,
+        data: { file: audioFile } as unknown as Record<string, unknown>,
+        isMultipart: true,
+        protected: true,
+      });
+
+      setIsTranscribing(false);
+      if (!res.ok || !res.data) {
+        setTranscriptionError(res.error ?? 'Erreur lors de la transcription.');
+        setState('error');
+        return;
+      }
+      setTranscriptText(res.data.text);
+      setState('transcript');
+    };
+
+    mediaRecorderRef.current.stop();
+  }
+
+  function cancelRecording() {
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
+      mediaRecorderRef.current.stop();
+    }
+    setIsTranscribing(false);
+    setState('idle');
+  }
+
+  /* ── Processing ─────────────────────────────────────────────── */
+  const startProcessing = useCallback(() => {
+    clearProcTimeouts();
+    setProcSteps(['pending', 'pending', 'pending']);
+    setProcPct(0);
+    setProcEta('');
+    setState('processing');
+
+    const add = (ms: number, fn: () => void) => {
+      const t = setTimeout(fn, ms);
+      procTimeouts.current.push(t);
+    };
+
+    add(100,  () => { setProcSteps(['active', 'pending', 'pending']); setProcPct(5);  setProcEta('~8s restantes'); });
+    add(2000, () => { setProcSteps(['done',   'active', 'pending']); setProcPct(45); setProcEta('~5s restantes'); });
+    add(5000, () => { setProcSteps(['done',   'done',   'active']); setProcPct(75); setProcEta('~2s restantes'); });
+    add(7400, () => { setProcSteps(['done',   'done',   'done']);   setProcPct(100); setProcEta('Terminé'); });
+    add(7700, () => setState('draft'));
+  }, []);
+
+  /* ── Cleanup ─────────────────────────────────────────────────── */
+  useEffect(() => () => {
+    if (timerRef.current)   clearInterval(timerRef.current);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
+    }
+    clearProcTimeouts();
+  }, []);
+
+  /* ── State-machine steps labels ──────────────────────────────── */
+  const STEP_LABELS = [
+    { pending: 'Enregistrement reçu…', active: 'Réception en cours…', done: 'Enregistrement reçu' },
+    { pending: 'Transcription',        active: 'Transcription en cours…', done: 'Transcription complète' },
+    { pending: 'Structuration CR',     active: 'Structuration CR…',    done: 'Structuration terminée' },
+  ];
+
+  const dateStr = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  /* ─────────────────── Render ────────────────────────────────── */
+  return (
+    <>
+      {/* CSS for subtle animations */}
+      <style>{`
+        @keyframes cr-blink { 0%,100%{opacity:1} 50%{opacity:.15} }
+        @keyframes cr-pulse  { 0%,100%{transform:scale(1)} 50%{transform:scale(1.07)} }
+        .cr-ring { animation: cr-pulse 2s ease-in-out infinite; }
+        .cr-rec-dot { animation: cr-blink 1s ease-in-out infinite; }
+        .cr-cursor { display:inline-block;width:2px;height:14px;background:#0E86E8;vertical-align:middle;margin-left:2px;animation:cr-blink 1s ease-in-out infinite; }
+      `}</style>
+
+      <div className="p-4 sm:p-7 pb-16">
+
+        {/* ── Page header ──────────────────────────────────────── */}
+        <div className="flex items-start justify-between mb-6 gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Button
+                variant="link"
+                size="xs"
+                onClick={() => router.push(`/${locale}/page/comptes-rendus`)}
+                className="gap-1.5 !text-[12px]"
+              >
+                <ArrowLeftIcon size={12} />
+                Comptes-rendus
+              </Button>
+              <CaretRightIcon size={10} className="text-[var(--tx-3)]" />
+              <span className="text-[12px] text-[var(--tx-3)]">Nouveau CR vocal</span>
+            </div>
+            <h1 className="font-display text-[22px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight">
+              Dictée vocale
+            </h1>
+            <p className="text-[var(--tx-3)] text-[12px] mt-0.5">
+              M-08 · Compte-rendu de visite · Claude Sonnet 4.5 · {dateStr}
+            </p>
+          </div>
+        </div>
+
+        {/* ── Two-column layout ────────────────────────────────── */}
+        <div className="flex gap-6 items-start">
+
+          {/* ── Main card ────────────────────────────────────── */}
+          <div className="flex-1 min-w-0">
+
+            {/* ── IDLE ─────────────────────────────────────── */}
+            {state === 'idle' && (
+              <div className="bg-white border border-[var(--bd-def)] rounded-2xl overflow-hidden shadow-sm">
+                <div className="h-[3px]" style={{ background: 'var(--grad)' }} />
+                <div className="p-7">
+                  {/* DOS chip */}
+                  <button className="flex items-center gap-2.5 w-full bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-xl px-3 py-2.5 mb-6 hover:border-[rgba(14,134,232,0.4)] hover:bg-[rgba(14,134,232,0.04)] transition-colors text-left">
+                    <span className="text-[10px] text-[var(--tx-3)] font-mono">DOS-2026-0142</span>
+                    <span className="w-px h-3.5 bg-[var(--bd-def)]" />
+                    <span className="text-[13px] font-bold text-[var(--tx-1)] flex-1">Sonatrans SA</span>
+                    <span className="text-[13px]">🇸🇳</span>
+                    <CaretRightIcon size={12} className="text-[var(--tx-3)]" />
+                  </button>
+
+                  {/* Prompt box */}
+                  <div className="bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-xl p-4 mb-7">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-3)] mb-3 font-mono">Dites dans votre CR</div>
+                    <div className="space-y-2">
+                      {[
+                        'La société et le contact rencontré',
+                        "L'objet de la réunion",
+                        'Les points discutés et le budget évoqué',
+                        'Les actions convenues et les délais',
+                        'La prochaine étape et la date de décision',
+                      ].map((item, i) => (
+                        <div key={i} className="flex items-start gap-2 text-[13px] text-[var(--tx-2)]">
+                          <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-[6px]" style={{ background: 'rgba(14,134,232,0.35)' }} />
+                          {item}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Mic button */}
+                  <div className="flex flex-col items-center gap-3">
+                    <Button
+                      variant="gradient"
+                      iconOnly
+                      onClick={startRecording}
+                      className="!w-[72px] !h-[72px] !rounded-[20px] hover:scale-105 active:scale-95"
+                      style={{ boxShadow: '0 4px 24px rgba(107,53,201,0.35)' }}
+                      aria-label="Démarrer l'enregistrement"
+                    >
+                      <MicrophoneIcon size={28} />
+                    </Button>
+                    <span className="text-[13px] text-[var(--tx-3)]">Appuyer pour enregistrer</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── RECORDING ────────────────────────────────── */}
+            {state === 'recording' && (
+              <div className="bg-white border border-[var(--bd-def)] rounded-2xl overflow-hidden shadow-sm">
+                <div className="h-[3px]" style={{ background: isLowAudio ? '#F59E0B' : '#EF4444' }} />
+                <div className="p-7">
+                  {/* Timer + REC badge */}
+                  <div className="flex items-center justify-between mb-6">
+                    <span className="font-display text-[38px] font-bold text-[var(--tx-1)] leading-none tracking-tight">
+                      {fmtTime(timerSec)}
+                    </span>
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                      <span className="w-[7px] h-[7px] rounded-full cr-rec-dot" style={{ background: '#EF4444' }} />
+                      <span className="text-[11px] font-bold" style={{ color: '#DC2626' }}>REC</span>
+                    </div>
+                  </div>
+
+                  {/* Pulse rings + stop button */}
+                  <div className="flex justify-center mb-5">
+                    <div className="relative w-[120px] h-[120px] flex items-center justify-center">
+                      {[120, 96, 74].map((size, i) => (
+                        <div
+                          key={i}
+                          className="cr-ring absolute rounded-full border-2"
+                          style={{
+                            width: size, height: size,
+                            borderColor: isLowAudio ? '#F59E0B' : '#EF4444',
+                            opacity: [0.12, 0.28, 0.50][i],
+                            animationDelay: `${i * 0.25}s`,
+                          }}
+                        />
+                      ))}
+                      <Button
+                        variant="danger"
+                        iconOnly
+                        onClick={stopRecording}
+                        className="relative z-10 !w-[58px] !h-[58px] !rounded-2xl !border-0 hover:scale-105"
+                        style={{
+                          background: isLowAudio ? '#F59E0B' : '#EF4444',
+                          boxShadow: `0 4px 20px ${isLowAudio ? 'rgba(245,158,11,0.4)' : 'rgba(239,68,68,0.4)'}`,
+                        }}
+                        aria-label="Arrêter"
+                      >
+                        <SquareIcon size={22} weight="fill" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Waveform */}
+                  <WaveformBars active={state === 'recording'} low={isLowAudio} />
+
+                  {/* Low audio warning */}
+                  {isLowAudio && (
+                    <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-3 text-[12px] font-medium"
+                      style={{ background: '#FFFBEB', border: '1px solid #FCD34D', color: '#92400E' }}>
+                      <WarningIcon size={14} style={{ flexShrink: 0 }} />
+                      Parlez plus près du micro — signal trop faible
+                    </div>
+                  )}
+
+                  {/* Transcription status zone */}
+                  <div className="bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-xl p-3.5 mb-4 min-h-[88px] flex flex-col justify-center">
+                    {isTranscribing ? (
+                      <div className="flex flex-col items-center gap-2 py-2">
+                        <CircleNotchIcon size={20} className="animate-spin" style={{ color: '#6B35C9' }} />
+                        <span className="text-[12px] text-[var(--tx-3)]">Transcription en cours…</span>
+                      </div>
+                    ) : transcriptionError ? (
+                      <div className="flex items-start gap-2 text-[12px]" style={{ color: '#DC2626' }}>
+                        <WarningIcon size={13} style={{ flexShrink: 0, marginTop: 1 }} />
+                        {transcriptionError}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="w-[5px] h-[5px] rounded-full cr-rec-dot" style={{ background: '#10B981' }} />
+                        <span className="text-[12px] text-[var(--tx-3)]">
+                          Enregistrement en cours — la transcription sera générée à l'arrêt
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Cancel */}
+                  <div className="flex justify-center pt-2 border-t border-[var(--bd-def)]">
+                    <Button
+                      variant="danger-ghost"
+                      size="sm"
+                      onClick={cancelRecording}
+                    >
+                      <XIcon size={12} />
+                      Annuler l'enregistrement
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── TRANSCRIPT ───────────────────────────────── */}
+            {state === 'transcript' && (
+              <div className="bg-white border border-[var(--bd-def)] rounded-2xl overflow-hidden shadow-sm">
+                <div className="h-[3px]" style={{ background: 'var(--grad)' }} />
+                <div className="p-7">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h2 className="text-[16px] font-bold text-[var(--tx-1)] font-display">Transcription brute</h2>
+                      <p className="text-[10px] text-[var(--tx-3)] font-mono mt-1">
+                        {wordCount} mots · {savedDuration.current} · Vérifiez avant structuration IA
+                      </p>
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold"
+                      style={{ background: '#FFFBEB', border: '1px solid #FCD34D', color: '#92400E' }}>
+                      ASR · à vérifier
+                    </span>
+                  </div>
+
+                  <div className="flex items-start gap-2.5 rounded-xl p-3 mb-4 text-[12px] leading-relaxed"
+                    style={{ background: 'rgba(107,53,201,0.05)', border: '1px solid rgba(107,53,201,0.18)', color: '#5829A8' }}>
+                    <InfoIcon size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                    <span>
+                      Corrigez les erreurs <strong>avant</strong> d'envoyer à Claude Sonnet 4.5 — chiffres, noms propres, ponctuation.
+                    </span>
+                  </div>
+
+                  <Textarea
+                    className="min-h-[180px] !rounded-xl bg-[var(--bg-sink)] text-[13px] mb-1.5"
+                    value={transcriptText}
+                    onChange={e => setTranscriptText(e.target.value)}
+                    spellCheck={false}
+                  />
+                  <div className="text-right text-[10px] text-[var(--tx-3)] font-mono mb-5">{wordCount} mots</div>
+
+                  <Button
+                    variant="gradient"
+                    size="lg"
+                    onClick={startProcessing}
+                    className="w-full mb-3"
+                    style={{ boxShadow: '0 2px 12px rgba(107,53,201,0.3)' }}
+                  >
+                    <SparkleIcon size={16} />
+                    Analyser et structurer avec Claude Sonnet 4.5
+                  </Button>
+
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="md" onClick={startRecording} className="flex-1">
+                      <MicrophoneIcon size={13} /> Ré-enregistrer
+                    </Button>
+                    <Button variant="danger-ghost" size="md" onClick={() => setState('idle')} className="flex-1">
+                      <XIcon size={13} /> Annuler
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── PROCESSING ───────────────────────────────── */}
+            {state === 'processing' && (
+              <div className="bg-white border border-[var(--bd-def)] rounded-2xl overflow-hidden shadow-sm">
+                <div className="h-[3px]" style={{ background: 'var(--grad)' }} />
+                <div className="p-7">
+                  <div className="rounded-2xl p-5" style={{ background: 'rgba(107,53,201,0.05)' }}>
+                    {/* Agent */}
+                    <div className="flex items-center gap-3 mb-5">
+                      <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white text-xl flex-shrink-0"
+                        style={{ background: 'var(--grad)', boxShadow: '0 2px 10px rgba(107,53,201,0.3)' }}>
+                        ✦
+                      </div>
+                      <div>
+                        <div className="text-[14px] font-bold text-[var(--tx-1)]">Agent CR Vocal</div>
+                        <div className="text-[10px] text-[var(--tx-3)] font-mono mt-0.5">Claude Sonnet 4.5 · M-08</div>
+                        <div className="flex items-center gap-1 mt-1 text-[10px]" style={{ color: '#059669' }}>
+                          <CheckIcon size={9} />
+                          Transcription validée par vous
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Steps */}
+                    <div className="space-y-3 mb-5">
+                      {procSteps.map((step, i) => (
+                        <div key={i} className="flex items-center gap-3">
+                          <div className={cn('w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 border-[1.5px]',
+                            step === 'done'   && 'border-[#10B981] bg-[rgba(16,185,129,0.1)]',
+                            step === 'active' && 'border-[#6B35C9] bg-[rgba(107,53,201,0.1)]',
+                            step === 'pending' && 'border-[var(--bd-def)] bg-[var(--bg-sink)]',
+                          )}>
+                            {step === 'done'   && <CheckIcon size={10} style={{ color: '#10B981' }} />}
+                            {step === 'active' && <CircleNotchIcon size={11} style={{ color: '#6B35C9' }} className="animate-spin" />}
+                            {step === 'pending' && <span className="text-[var(--tx-3)] text-[9px]">—</span>}
+                          </div>
+                          <span className={cn('text-[13px] font-medium',
+                            step === 'done'    && 'text-[#059669]',
+                            step === 'active'  && 'text-[#5829A8] font-semibold',
+                            step === 'pending' && 'text-[var(--tx-3)]',
+                          )}>
+                            {STEP_LABELS[i][step]}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="h-1.5 rounded-full overflow-hidden mb-2" style={{ background: 'rgba(107,53,201,0.15)' }}>
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${procPct}%`, background: 'linear-gradient(90deg,#0E86E8,#6B35C9)' }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold font-mono" style={{ color: '#6B35C9' }}>{procPct}%</span>
+                      <span className="text-[11px] text-[var(--tx-3)]">{procEta}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── DRAFT ────────────────────────────────────── */}
+            {state === 'draft' && (
+              <div className="bg-white border border-[var(--bd-def)] rounded-2xl overflow-hidden shadow-sm">
+                <div className="h-[3px]" style={{ background: 'var(--grad)' }} />
+                <div className="p-7">
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-base flex-shrink-0"
+                        style={{ background: 'var(--grad)' }}>✦</div>
+                      <div>
+                        <div className="text-[13px] font-bold text-[var(--tx-1)]">Brouillon CR · Sonnet 4.5</div>
+                        <div className="text-[10px] text-[var(--tx-3)] font-mono mt-0.5">
+                          Généré en 7s · {wordCount} mots structurés
+                        </div>
+                      </div>
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold text-white"
+                      style={{ background: 'var(--grad)' }}>
+                      ✦ Généré par IA
+                    </span>
+                  </div>
+
+                  {/* Fields */}
+                  <div className="border border-[var(--bd-def)] rounded-xl overflow-hidden mb-4 divide-y divide-[var(--bd-def)]">
+                    {DRAFT_FIELDS.map(f => {
+                      const isLow = f.confidence === 'low';
+                      return (
+                        <div
+                          key={f.label}
+                          className="flex items-stretch"
+                          style={isLow ? { borderColor: '#FCD34D' } : {}}
+                        >
+                          <div
+                            className="w-[120px] flex-shrink-0 px-3 py-2.5 text-[11px] font-semibold flex items-center border-r"
+                            style={isLow
+                              ? { background: '#FEF9C3', borderColor: '#FCD34D', color: '#92400E' }
+                              : { background: 'var(--bg-sink)', borderColor: 'var(--bd-def)', color: 'var(--tx-3)' }}
+                          >
+                            {f.label}
+                          </div>
+                          <div className="flex-1 px-3 py-2.5 text-[13px]"
+                            style={isLow ? { background: '#FFFBEB', color: '#92400E' } : { color: 'var(--tx-1)' }}>
+                            {f.label === 'Points discutés' ? (
+                              <input
+                                className="w-full bg-transparent outline-none text-[13px]"
+                                style={{ color: '#92400E' }}
+                                value={draftValues[f.label]}
+                                onChange={e => setDraftValues(v => ({ ...v, [f.label]: e.target.value }))}
+                              />
+                            ) : (
+                              draftValues[f.label]
+                            )}
+                          </div>
+                          <div className="w-9 flex-shrink-0 flex items-center justify-center"
+                            style={isLow ? { background: '#FFFBEB' } : { background: 'white' }}>
+                            {isLow ? (
+                              <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold cursor-pointer"
+                                style={{ background: 'rgba(245,158,11,0.1)', border: '1.5px solid #F59E0B', color: '#92400E' }}
+                                title="Vérifier — confiance faible">?</span>
+                            ) : (
+                              <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                                style={{ background: 'rgba(16,185,129,0.1)', border: '1.5px solid #10B981', color: '#065F46' }}>✓</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Transcript accordion */}
+                  <div className="border border-[var(--bd-def)] rounded-xl mb-5 overflow-hidden">
+                    <Button
+                      variant="ghost"
+                      onClick={() => setAccordOpen(o => !o)}
+                      className="w-full !h-auto justify-between !rounded-none !px-4 !py-3 !bg-[var(--bg-sink)] hover:!bg-[var(--bd-def)] text-[12px] font-semibold"
+                    >
+                      <span className="flex items-center gap-2">
+                        <MicrophoneIcon size={12} />
+                        Voir la transcription source
+                      </span>
+                      <CaretDownIcon size={13} className={cn('text-[var(--tx-3)] transition-transform', accordOpen && 'rotate-180')} />
+                    </Button>
+                    {accordOpen && (
+                      <div className="px-4 py-3 text-[12px] text-[var(--tx-2)] leading-relaxed border-t border-[var(--bd-def)] bg-white">
+                        {transcriptText}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* CTAs */}
+                  <Button
+                    variant="gradient"
+                    size="lg"
+                    onClick={() => setState('validated')}
+                    className="w-full mb-2.5"
+                    style={{ boxShadow: '0 2px 12px rgba(107,53,201,0.3)' }}
+                  >
+                    <CheckIcon size={16} weight="bold" />
+                    Valider et envoyer
+                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="md" onClick={() => setState('transcript')} className="flex-1">
+                      <PencilSimpleIcon size={12} /> Modifier la transcription
+                    </Button>
+                    <Button variant="danger-ghost" size="md" onClick={() => setState('error')} className="flex-1">
+                      <XIcon size={12} /> Rejeter
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── VALIDATED ────────────────────────────────── */}
+            {state === 'validated' && (
+              <div className="bg-white border border-[var(--bd-def)] rounded-2xl overflow-hidden shadow-sm">
+                <div className="h-[3px]" style={{ background: '#10B981' }} />
+                <div className="p-7 text-center">
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+                    style={{ background: 'rgba(16,185,129,0.1)', border: '3px solid #10B981' }}>
+                    <CheckIcon size={30} style={{ color: '#10B981' }} weight="bold" />
+                  </div>
+                  <h2 className="text-[18px] font-bold text-[var(--tx-1)] font-display mb-2">CR validé et envoyé</h2>
+                  <p className="text-[13px] text-[var(--tx-3)] leading-relaxed mb-4">
+                    Sonatrans SA · Ibrahima Traoré<br />
+                    CR transmis par email · archivé dans DOS-2026-0142
+                  </p>
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[12px] font-semibold mb-6"
+                    style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10B981', color: '#065F46' }}>
+                    <CheckCircleIcon size={13} />
+                    Validé · Vous · 14h32
+                  </div>
+
+                  {/* Paradigm box */}
+                  <div className="bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-xl p-4 text-left mb-6">
+                    <div className="text-[12px] font-bold text-[var(--tx-1)] mb-2">Résumé de l'action — Paradigme 70 / 30</div>
+                    <div className="text-[12px] text-[var(--tx-3)] leading-relaxed">
+                      IA (70 %) : transcription + structuration + rédaction des 6 champs<br />
+                      Vous (30 %) : relecture · correction champ « Points discutés » · envoi
+                    </div>
+                  </div>
+
+                  {/* Export */}
+                  <div className="border-t border-[var(--bd-def)] pt-5 mb-5 text-left">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-3)] font-mono mb-3">Exporter le CR</div>
+                    <div className="grid grid-cols-2 gap-2 mb-2">
+                      {[
+                        { icon: <FileTextIcon size={18} className="text-primary-500" />, label: 'Exporter PDF', sub: 'Format A4 · impression' },
+                        { icon: <FileTextIcon size={18} className="text-primary-500" />, label: 'Exporter Word', sub: '.doc · éditable' },
+                      ].map((btn, i) => (
+                        <Button
+                          key={i}
+                          variant="ghost"
+                          onClick={() => showToast(`Export ${btn.label.split(' ')[1]} généré`)}
+                          className="flex-col !h-[60px] gap-1 w-full hover:!border-primary-500 hover:!bg-[rgba(14,134,232,0.04)]"
+                        >
+                          {btn.icon}
+                          <span className="text-[12px] font-semibold text-[var(--tx-1)]">{btn.label}</span>
+                          <span className="text-[10px] text-[var(--tx-3)]">{btn.sub}</span>
+                        </Button>
+                      ))}
+                    </div>
+                    <Button
+                      variant="dashed"
+                      size="md"
+                      onClick={() => setFolderModal(true)}
+                      className="w-full"
+                    >
+                      <FolderSimpleIcon size={14} />
+                      Enregistrer dans un dossier PortaLis
+                    </Button>
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    onClick={() => { setState('idle'); setTimerSec(0); setTranscriptText(''); }}
+                    className="w-full"
+                  >
+                    <MicrophoneIcon size={14} /> Nouveau CR vocal
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* ── ERROR ────────────────────────────────────── */}
+            {state === 'error' && (
+              <div className="bg-white border border-[var(--bd-def)] rounded-2xl overflow-hidden shadow-sm">
+                <div className="h-[3px] bg-[#EF4444]" />
+                <div className="p-7 text-center">
+                  <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
+                    style={{ background: 'rgba(239,68,68,0.1)', border: '2px solid rgba(239,68,68,0.3)' }}>
+                    <WarningIcon size={26} style={{ color: '#EF4444' }} />
+                  </div>
+                  <h2 className="text-[17px] font-bold text-[var(--tx-1)] font-display mb-2">Traitement interrompu</h2>
+                  <p className="text-[13px] text-[var(--tx-3)] leading-relaxed mb-4">
+                    La connexion a été perdue pendant le traitement par Claude Sonnet 4.5.
+                  </p>
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[12px] font-semibold mb-6"
+                    style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10B981', color: '#065F46' }}>
+                    <CheckCircleIcon size={12} />
+                    Enregistrement conservé · {savedDuration.current}
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      variant="gradient"
+                      size="lg"
+                      onClick={startProcessing}
+                      className="w-full"
+                      style={{ boxShadow: '0 2px 12px rgba(107,53,201,0.3)' }}
+                    >
+                      <ArrowClockwiseIcon size={16} /> Réessayer l'envoi
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="md"
+                      onClick={() => setState('transcript')}
+                      className="w-full"
+                    >
+                      Réécouter l'enregistrement
+                    </Button>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => setState('idle')}
+                      className="w-full underline underline-offset-2"
+                    >
+                      Saisir manuellement le CR
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── Right panel ──────────────────────────────────── */}
+          <div className="sticky top-6 w-[260px] flex-shrink-0 hidden lg:block">
+            <RightPanel state={state} wordCount={wordCount} />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Folder modal ─────────────────────────────────────── */}
+      <FolderModal
+        open={folderModal}
+        onClose={() => setFolderModal(false)}
+        onSave={name => { setFolderModal(false); showToast(`CR enregistré dans ${name}`); }}
+      />
+
+      {/* ── Toast ────────────────────────────────────────────── */}
+      <FloatingToast message={toast} />
+    </>
+  );
+}
