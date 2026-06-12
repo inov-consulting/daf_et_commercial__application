@@ -44,7 +44,7 @@ function ProspectFormModal({
   onSave: (body: UpdateProspectBody) => void;
 }) {
   const [form, setForm] = useState<UpdateProspectBody>({
-    company_name: '', contact_name: '', email: '', phone: '',
+    company_name: '', opportunity_name: '', contact_name: '', email: '', phone: '',
     portalis_sector: '', expected_revenue: undefined, portalis_notes: '',
   });
   const [localError, setLocalError] = useState<string | null>(null);
@@ -52,13 +52,14 @@ function ProspectFormModal({
   useEffect(() => {
     if (open) {
       setForm({
-        company_name:     initial?.company_name    ?? '',
-        contact_name:     initial?.contact_name    ?? '',
-        email:            initial?.email           ?? '',
-        phone:            initial?.phone           ?? '',
-        portalis_sector:  initial?.portalis_sector ?? '',
+        company_name:     initial?.company_name     ?? '',
+        opportunity_name: initial?.opportunity_name ?? '',
+        contact_name:     initial?.contact_name     ?? '',
+        email:            initial?.email            ?? '',
+        phone:            initial?.phone            ?? '',
+        portalis_sector:  initial?.portalis_sector  ?? '',
         expected_revenue: initial?.expected_revenue || undefined,
-        portalis_notes:   initial?.portalis_notes  ?? '',
+        portalis_notes:   initial?.portalis_notes   ?? '',
       });
       setLocalError(null);
     }
@@ -108,9 +109,15 @@ function ProspectFormModal({
             </div>
           )}
 
-          <div>
-            <label className={lbl}>Entreprise <span className="text-red-500">*</span></label>
-            <input value={form.company_name} onChange={e => set('company_name', e.target.value)} placeholder="Nom de l'entreprise" className={inp} />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={lbl}>Entreprise <span className="text-red-500">*</span></label>
+              <input value={form.company_name} onChange={e => set('company_name', e.target.value)} placeholder="Nom de l'entreprise" className={inp} />
+            </div>
+            <div>
+              <label className={lbl}>Nom de l&apos;opportunité</label>
+              <input value={form.opportunity_name ?? ''} onChange={e => set('opportunity_name', e.target.value)} placeholder="Ex : Audit DAF Q3" className={inp} />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

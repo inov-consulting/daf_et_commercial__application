@@ -109,6 +109,7 @@ export interface ApiProspect {
   status_label: string;
   portalis_sector: string;
   portalis_notes: string;
+  opportunity_name?: string;
   status_changed_at: string;
   pipeline_age_days: number;
   company_name: string;
@@ -140,6 +141,7 @@ export interface ProspectsListResponse {
 
 export interface CreateProspectBody {
   company_name: string;
+  opportunity_name?: string;
   contact_name?: string;
   email?: string;
   phone?: string;
