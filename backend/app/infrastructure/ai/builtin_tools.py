@@ -664,12 +664,8 @@ async def create_prospect_with_partner(
 
 
 # ── Registre ─────────────────────────────────────────────────────────────
-<<<<<<< HEAD
-# Nom snake_case → fonction
-=======
 # Nom snake_case → fonction async
 # NOTE: Les opérations Odoo (search_records, create_record, etc.) sont gérées par le MCP Odoo
->>>>>>> 21ded3a (fix: chat streaming)
 
 BUILTIN_REGISTRY: dict[str, object] = {
     "search_companies": search_companies,
