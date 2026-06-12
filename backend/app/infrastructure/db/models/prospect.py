@@ -1,11 +1,15 @@
 """Modèle Tortoise ORM pour les Prospects (table Portalis locale)."""
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from tortoise import fields
 
 from app.infrastructure.db.base import BaseModel
+
+if TYPE_CHECKING:
+    from app.infrastructure.db.models.note import NoteOrm
 
 
 class ProspectOrm(BaseModel):
@@ -15,8 +19,8 @@ class ProspectOrm(BaseModel):
     Fait référence à crm.lead via odoo_lead_id.
     """
 
-    # Lien vers Odoo crm.lead
-    odoo_lead_id: int = fields.IntField(unique=True, index=True)
+    # Lien vers Odoo crm.lead (nullable car prospect peut être créé avant sync Odoo)
+    odoo_lead_id: int | None = fields.IntField(unique=True, index=True, null=True)
 
     # Champs métier Portalis (non dans Odoo)
     status: str = fields.CharField(max_length=20, default="nouveau")
@@ -29,6 +33,12 @@ class ProspectOrm(BaseModel):
 
     # Métadonnées
     last_sync_at: datetime | None = fields.DatetimeField(null=True)
+    
+    # Cache local des données Odoo (JSON) - évite d'appeler Odoo à chaque get
+    erp_metadata: dict | None = fields.JSONField(null=True, default=None)
+
+    # Relations
+    notes: fields.ReverseRelation["NoteOrm"]
 
     class Meta:
         table = "prospects"
