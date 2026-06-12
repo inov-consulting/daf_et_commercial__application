@@ -249,7 +249,6 @@ async def stream_chat_session(
         reasoning: Si True, active le mode raisonnement (chain-of-thought).
                    Pour Claude: utilise thinking mode. Pour OpenAI: ajoute instruction au prompt.
     """
-    reasoning = True
     if session_id is None:
         session_id = uuid4()
 
