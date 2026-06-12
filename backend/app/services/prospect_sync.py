@@ -76,13 +76,11 @@ class ProspectSyncService:
             oc = self._get_odoo_client()
             # Récupération via XML-RPC (synchrone, wrap dans asyncio.to_thread si besoin)
             import asyncio
-            odoo_leads = await asyncio.to_thread(
-                oc._object_proxy().execute_kw,
-                oc._db,
-                oc._authenticate(),
-                oc._password,
-                "crm.lead",
-                "search_read",
+            def _fetch_all():
+                uid = oc._authenticate()
+                pwd = oc._api_key or oc._password
+                return oc._object_proxy().execute_kw(
+                    oc._db, uid, pwd, "crm.lead", "search_read",
                 [[("id", "in", odoo_ids)]],
                 {"fields": ODOO_LEAD_FIELDS, "limit": len(odoo_ids)},
             )
