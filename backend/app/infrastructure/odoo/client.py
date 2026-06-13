@@ -72,6 +72,18 @@ class OdooClient:
         self._uid = uid
         return uid
 
+    def execute(self, model: str, method: str, args: list, kwargs: dict | None = None) -> object:
+        """Exécute un appel XML-RPC Odoo de manière synchrone.
+        
+        À utiliser dans asyncio.to_thread() pour les appels async.
+        Exemple: await asyncio.to_thread(oc.execute, "crm.lead", "search_read", [...], {...})
+        """
+        uid = self._authenticate()
+        pwd = self._api_key or self._password
+        return self._object_proxy().execute_kw(
+            self._db, uid, pwd, model, method, args, kwargs or {},
+        )
+
     def list_companies(self) -> list[OdooCompany]:
         """Récupère toutes les entreprises actives depuis Odoo."""
         uid = self._authenticate()

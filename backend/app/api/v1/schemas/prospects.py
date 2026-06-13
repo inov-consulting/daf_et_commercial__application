@@ -146,8 +146,10 @@ class ProspectOut(BaseModel):
     pipeline_age_days: int  # Calculé: now - status_changed_at
 
     # ── Données Odoo (lues via sync ou temps réel) ─────────────────────────────
+    # Opportunité/Lead
+    lead_name: str | None = None  # Nom de l'opportunité (crm.lead.name)
     # Entreprise/Contact (crm.lead / res.partner)
-    company_name: str
+    company_name: str | None
     contact_name: str | None
     email: str | None
     phone: str | None
@@ -159,8 +161,8 @@ class ProspectOut(BaseModel):
     team_name: str | None
 
     # KPIs (crm.lead)
-    expected_revenue: int  # FCFA
-    probability: int  # %
+    expected_revenue: int | None  # FCFA
+    probability: int | None  # %
     priority: str | None  # "0", "1", "2", "3"
 
     # Classification Odoo (crm.lead.tag_ids)

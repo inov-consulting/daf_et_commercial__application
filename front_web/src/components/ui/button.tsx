@@ -5,7 +5,8 @@ import { cn } from '@/lib/utils';
 
 export type ButtonVariant =
   | 'primary' | 'secondary' | 'ghost'
-  | 'danger' | 'success' | 'gradient' | 'outline-gradient' | 'login';
+  | 'danger' | 'success' | 'gradient' | 'outline-gradient' | 'login'
+  | 'danger-ghost' | 'dashed' | 'link';
 
 export type ButtonSize = '2xs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
@@ -71,6 +72,18 @@ const variantClasses: Record<ButtonVariant, string> = {
     'btn-login text-white border-transparent',
     '[&:not(:disabled)]:hover:-translate-y-px',
   ].join(' '),
+  'danger-ghost': [
+    'bg-transparent text-[#DC2626] border-[rgba(239,68,68,0.3)]',
+    '[&:not(:disabled)]:hover:bg-red-50 [&:not(:disabled)]:hover:border-error',
+  ].join(' '),
+  dashed: [
+    'bg-transparent text-foreground-2 border-dashed border-[var(--bd-def)]',
+    '[&:not(:disabled)]:hover:border-[#6B35C9] [&:not(:disabled)]:hover:text-[#6B35C9] [&:not(:disabled)]:hover:bg-[rgba(107,53,201,0.03)]',
+  ].join(' '),
+  link: [
+    'bg-transparent text-foreground-3 border-transparent',
+    '[&:not(:disabled)]:hover:text-foreground',
+  ].join(' '),
 };
 
 const spinnerClasses: Record<ButtonVariant, string> = {
@@ -82,6 +95,9 @@ const spinnerClasses: Record<ButtonVariant, string> = {
   ghost: 'border-primary-500/25 border-t-primary-500',
   'outline-gradient': 'border-primary-500/25 border-t-primary-500',
   login: 'border-white/30 border-t-white',
+  'danger-ghost': 'border-error/25 border-t-error',
+  dashed: 'border-foreground-2/25 border-t-foreground-2',
+  link: 'border-foreground-3/25 border-t-foreground-3',
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(

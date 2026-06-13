@@ -7,7 +7,7 @@ import { logoutKeycloak } from '@/lib/keycloak';
 import {
   SquaresFourIcon, BrainIcon, UserIcon, TruckIcon, FunnelIcon,
   FilesIcon, FileTextIcon, DiamondIcon, ChartLineIcon, DownloadSimpleIcon,
-  UsersIcon, GearIcon, SignOutIcon, XIcon,
+  UsersIcon, GearIcon, SignOutIcon, XIcon, ClockCounterClockwiseIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { ApiUser, User as UserType } from '@/types/user_type';
@@ -72,6 +72,7 @@ function buildNav(locale: string): NavSection[] {
       title: 'ADMIN',
       items: [
         { href: `/${locale}/page/utilisateurs`, label: 'Utilisateurs', Icon: UsersIcon },
+        { href: `/${locale}/page/historique`, label: 'Historique des activités', Icon: ClockCounterClockwiseIcon },
         { href: `/${locale}/page/parametres`, label: 'Paramètres', Icon: GearIcon },
       ],
     },
