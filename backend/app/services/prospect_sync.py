@@ -19,7 +19,8 @@ logger = get_logger(__name__)
 # Champs Odoo crm.lead qu'on synchronise
 ODOO_LEAD_FIELDS = [
     "id",
-    "name",  # Nom entreprise/sujet
+    "name",  # Nom de l'opportunité/lead
+    "partner_name",  # Nom de l'entreprise/client
     "contact_name",
     "email_from",
     "phone",

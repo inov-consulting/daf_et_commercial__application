@@ -127,12 +127,7 @@ async def _enrich_prospect(prospect: ProspectOrm, force_refresh: bool = False) -
             try:
                 import asyncio
                 users = await asyncio.to_thread(
-                    oc._object_proxy().execute_kw,
-                    oc._db,
-                    oc._authenticate(),
-                    oc._password,
-                    "res.users",
-                    "search_read",
+                    oc.execute, "res.users", "search_read",
                     [[("id", "=", odoo_data["user_id"][0])]],
                     {"fields": ["name"], "limit": 1},
                 )
@@ -145,12 +140,7 @@ async def _enrich_prospect(prospect: ProspectOrm, force_refresh: bool = False) -
             try:
                 import asyncio
                 teams = await asyncio.to_thread(
-                    oc._object_proxy().execute_kw,
-                    oc._db,
-                    oc._authenticate(),
-                    oc._password,
-                    "crm.team",
-                    "search_read",
+                    oc.execute, "crm.team", "search_read",
                     [[("id", "=", odoo_data["team_id"][0])]],
                     {"fields": ["name"], "limit": 1},
                 )
@@ -164,12 +154,7 @@ async def _enrich_prospect(prospect: ProspectOrm, force_refresh: bool = False) -
             try:
                 import asyncio
                 tags = await asyncio.to_thread(
-                    oc._object_proxy().execute_kw,
-                    oc._db,
-                    oc._authenticate(),
-                    oc._password,
-                    "crm.tag",
-                    "search_read",
+                    oc.execute, "crm.tag", "search_read",
                     [[("id", "in", odoo_data["tag_ids"])]],
                     {"fields": ["name"], "limit": len(odoo_data["tag_ids"])},
                 )
@@ -195,7 +180,8 @@ async def _enrich_prospect(prospect: ProspectOrm, force_refresh: bool = False) -
         "status_changed_at": prospect.status_changed_at,
         "pipeline_age_days": _compute_pipeline_age_days(prospect),
         # Odoo
-        "company_name": odoo_data.get("name") or "N/A",
+        "lead_name": odoo_data.get("name"),
+        "company_name": _clean(odoo_data.get("partner_name")) or _clean(odoo_data.get("contact_name")),
         "contact_name": _clean(odoo_data.get("contact_name")),
         "email": _clean(odoo_data.get("email_from")),
         "phone": _clean(odoo_data.get("phone")),
@@ -264,7 +250,8 @@ async def list_prospects(
             items.append(ProspectOut(**enriched))
             revenue = enriched.get("expected_revenue", 0) or 0
         else:
-            # Sans enrichissement - données basiques uniquement
+            # Sans enrichissement live - on utilise le cache erp_metadata si disponible
+            meta = p.erp_metadata or {}
             items.append(ProspectOut(
                 id=p.id,
                 odoo_lead_id=p.odoo_lead_id,
@@ -272,24 +259,25 @@ async def list_prospects(
                 status_label=_format_prospect_status(p.status),
                 portalis_sector=p.portalis_sector,
                 portalis_notes=p.portalis_notes,
-                expected_revenue=0,
+                expected_revenue=meta.get("expected_revenue") or 0,
                 created_at=p.created_at,
                 updated_at=p.updated_at,
                 status_changed_at=p.status_changed_at,
                 pipeline_age_days=_compute_pipeline_age_days(p),
-                company_name=None,
-                contact_name=None,
-                email=None,
-                phone=None,
-                assigned_to_id=None,
-                assigned_to_name=None,
-                team_id=None,
-                team_name=None,
-                probability=None,
-                priority=None,
-                last_sync_at=None,
+                lead_name=meta.get("name"),
+                company_name=meta.get("partner_name") or meta.get("contact_name"),
+                contact_name=meta.get("contact_name"),
+                email=meta.get("email_from"),
+                phone=meta.get("phone"),
+                assigned_to_id=meta.get("user_id", [None, None])[0] if isinstance(meta.get("user_id"), list) else meta.get("user_id"),
+                assigned_to_name=meta.get("user_id", [None, None])[1] if isinstance(meta.get("user_id"), list) else None,
+                team_id=meta.get("team_id", [None, None])[0] if isinstance(meta.get("team_id"), list) else meta.get("team_id"),
+                team_name=meta.get("team_id", [None, None])[1] if isinstance(meta.get("team_id"), list) else None,
+                probability=meta.get("probability"),
+                priority=meta.get("priority"),
+                last_sync_at=p.last_sync_at,
             ))
-            revenue = 0
+            revenue = meta.get("expected_revenue") or 0
         
         total_pipeline += Decimal(str(revenue))
         status_values[p.status] += Decimal(str(revenue))
@@ -752,7 +740,7 @@ async def generate_compte_rendu(
         generated_by=cr.generated_by,
         note_ids=cr.note_ids,
         created_at=cr.created_at,
-        created_by=cr.created_by,
+        created_by=cr.created_by_id,
     )
 
 
@@ -794,7 +782,7 @@ async def list_compte_rendus(
             generated_by=cr.generated_by,
             note_ids=cr.note_ids,
             created_at=cr.created_at,
-            created_by=cr.created_by,
+            created_by=cr.created_by_id,
         )
         for cr in crs
     ]
