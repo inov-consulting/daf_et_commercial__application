@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Sidebar from './sidebar';
 import TopBar from './top-bar';
 import FloatingChat from './floating-chat';
@@ -16,40 +16,50 @@ interface DashboardShellProps {
 
 export default function DashboardShell({ user, rawUser, locale, children }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
 
-  // Détecter le mobile et ajuster la sidebar
+  const handleClose = useCallback(() => setSidebarOpen(false), []);
+  const handleToggle = useCallback(() => setSidebarOpen(v => !v), []);
+
   useEffect(() => {
-    const checkMobile = () => {
-      const mobile = window.innerWidth < 768; // md breakpoint
-      setIsMobile(mobile);
-      // Sur desktop, ouvrir la sidebar par défaut
-      if (!mobile) {
-        setSidebarOpen(true);
-      } else {
+    // État initial : ouverte sur desktop, fermée sur mobile
+    const isMobile = window.innerWidth < 768;
+    setSidebarOpen(!isMobile);
+
+    // Sur resize, on gère uniquement la transition mobile ↔ desktop
+    let wasMobile = isMobile;
+    const handleResize = () => {
+      const nowMobile = window.innerWidth < 768;
+
+      // Transition desktop → mobile : fermer la sidebar
+      if (nowMobile && !wasMobile) {
         setSidebarOpen(false);
       }
+      // Transition mobile → desktop : ouvrir la sidebar
+      if (!nowMobile && wasMobile) {
+        setSidebarOpen(true);
+      }
+
+      wasMobile = nowMobile;
     };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   return (
     <div className="flex flex-col h-screen bg-[var(--bg-surf)] overflow-hidden">
-      <TopBar 
-        user={user} 
-        rawUser={rawUser} 
-        onToggleSidebar={() => setSidebarOpen(v => !v)} 
+      <TopBar
+        user={user}
+        rawUser={rawUser}
+        onToggleSidebar={handleToggle}
       />
       <div className="flex flex-1 min-h-0 overflow-hidden relative">
-        <Sidebar 
-          user={user} 
-          rawUser={rawUser} 
-          locale={locale} 
-          open={sidebarOpen} 
-          onClose={() => setSidebarOpen(false)} 
+        <Sidebar
+          user={user}
+          rawUser={rawUser}
+          locale={locale}
+          open={sidebarOpen}
+          onClose={handleClose}
         />
         <main className="flex-1 overflow-y-auto flex flex-col min-w-0">
           <BreadcrumbBar />
