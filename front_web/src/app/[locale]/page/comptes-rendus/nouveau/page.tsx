@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { PostData } from '@/lib/ApiService';
 import { ApiRoutes } from '@/lib/ApiRoutes';
@@ -37,7 +37,12 @@ const DRAFT_FIELDS: { label: string; value: string; confidence: 'high' | 'low' }
 export default function NouveauCRPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const locale = (params?.locale as string) || 'fr';
+
+  const prospectCompany = searchParams?.get('company') ?? '';
+  const prospectContact = searchParams?.get('contact') ?? '';
+  const prospectId      = searchParams?.get('prospect_id') ?? '';
 
   const [state, setState] = useState<AppState>('idle');
 
@@ -61,9 +66,12 @@ export default function NouveauCRPage() {
   const procTimeouts = useRef<NodeJS.Timeout[]>([]);
 
   /* Draft */
-  const [draftValues, setDraftValues] = useState<Record<string, string>>(
-    Object.fromEntries(DRAFT_FIELDS.map(f => [f.label, f.value])),
-  );
+  const [draftValues, setDraftValues] = useState<Record<string, string>>(() => {
+    const base = Object.fromEntries(DRAFT_FIELDS.map(f => [f.label, f.value]));
+    if (prospectCompany) base['Société'] = prospectCompany;
+    if (prospectContact) base['Contact'] = prospectContact;
+    return base;
+  });
   const [accordOpen, setAccordOpen] = useState(false);
 
   /* UI */
@@ -632,8 +640,8 @@ export default function NouveauCRPage() {
                   </div>
                   <h2 className="text-[18px] font-bold text-[var(--tx-1)] font-display mb-2">CR validé et envoyé</h2>
                   <p className="text-[13px] text-[var(--tx-3)] leading-relaxed mb-4">
-                    Sonatrans SA · Ibrahima Traoré<br />
-                    CR transmis par email · archivé dans DOS-2026-0142
+                    {prospectCompany || 'Prospect'}{prospectContact ? ` · ${prospectContact}` : ''}<br />
+                    CR généré par IA{prospectId ? ` · lié au prospect #${prospectId.slice(0, 8)}` : ' · archivé dans PortaLis'}
                   </p>
                   <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[12px] font-semibold mb-6"
                     style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10B981', color: '#065F46' }}>

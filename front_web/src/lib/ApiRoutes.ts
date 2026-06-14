@@ -36,4 +36,12 @@ export const ApiRoutes = {
   PROSPECTS_UPDATE: (id: string) => `${BASE}/api/v1/commercial/prospects/${id}`,
   PROSPECTS_ACTION: (id: string) => `${BASE}/api/v1/commercial/prospects/${id}/actions`,
   PROSPECTS_SYNC:   `${BASE}/api/v1/commercial/prospects/sync`,
-} as const; 
+
+  // ── Prospect Notes ───────────────────────────────────────────────
+  PROSPECT_NOTES:       (id: string) => `${BASE}/api/v1/commercial/prospects/${id}/notes`,
+  PROSPECT_NOTE_DELETE: (prospectId: string, noteId: string) => `${BASE}/api/v1/commercial/prospects/${prospectId}/notes/${noteId}`,
+
+  // ── Prospect Comptes-rendus ──────────────────────────────────────
+  PROSPECT_CRS:         (id: string) => `${BASE}/api/v1/commercial/prospects/${id}/compte-rendus`,
+  PROSPECT_CR_DOWNLOAD: (prospectId: string, crId: string) => `${BASE}/api/v1/commercial/prospects/${prospectId}/compte-rendus/${crId}/download`,
+} as const;
