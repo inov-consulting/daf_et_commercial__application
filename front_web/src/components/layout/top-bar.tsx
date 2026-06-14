@@ -185,6 +185,7 @@ export default function TopBar({ onToggleSidebar, user, rawUser }: TopBarProps) 
                 width={400}
                 height={200}
                 unoptimized
+                priority
                 style={{ height: '75px', width: 'auto' }}
                 className="flex-shrink-0"
               />
