@@ -22,6 +22,7 @@ interface ProspectListProps {
   onPageSizeChange: (size: number) => void;
   onSort: (col: SortKey) => void;
   onEdit?: (id: string) => void;
+  onDetail?: (id: string) => void;
 }
 
 export function ProspectList({
@@ -35,6 +36,7 @@ export function ProspectList({
   onPageSizeChange,
   onSort,
   onEdit,
+  onDetail,
 }: ProspectListProps) {
   const [actionOpen, setActionOpen] = useState<string | null>(null);
 
@@ -250,7 +252,7 @@ export function ProspectList({
                         {actionOpen === p.id && (
                           <div className="absolute right-0 top-8 z-50 bg-white border border-[var(--bd-def)] rounded-xl shadow-lg py-1 min-w-[152px]">
                             <button
-                              onClick={() => { setActionOpen(null); onEdit?.(p.id); }}
+                              onClick={() => { setActionOpen(null); onDetail?.(p.id); }}
                               className="w-full px-3.5 py-2 text-left text-[13px] text-[var(--tx-2)] hover:bg-[var(--bg-sink)] hover:text-[var(--tx-1)] transition-colors"
                             >
                               Voir le détail
