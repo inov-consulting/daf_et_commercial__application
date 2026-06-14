@@ -91,9 +91,15 @@ export default function Sidebar({ locale, open, onClose, user, rawUser }: Sideba
   const pathname = usePathname();
   const sections = buildNav(locale);
   const sidebarRef = useRef<HTMLElement>(null);
+const isFirstRender = useRef(true);
 
   // Ferme la sidebar mobile à chaque changement de route
+  // APRÈS — ignorer le premier render, réagir seulement aux navigations suivantes
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     const isMobile = window.innerWidth < 768;
     if (isMobile) {
       onClose();
