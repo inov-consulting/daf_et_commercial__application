@@ -8,9 +8,7 @@ from __future__ import annotations
 from datetime import datetime, UTC
 from uuid import UUID
 
-import markdown
 from app.core.config import settings
-from app.infrastructure.ai.anthropic_client import anthropic_client
 from app.infrastructure.db.models.note import CompteRenduOrm, NoteOrm
 from app.infrastructure.storage.minio import StorageService
 
@@ -189,15 +187,16 @@ class CompteRenduService:
         version = existing_crs + 1
 
         # 6. Upload sur MinIO
-        filename = f"CR_prospect_{prospect_id}_v{version}.pdf"
-        minio_path = f"cr/prospect/{prospect_id}/v{version}.pdf"
+        filename = f"v{version}.pdf"
+        folder = f"cr/prospect/{prospect_id}"
+        minio_path = f"{folder}/{filename}"
         
         await self._storage.upload(
             pdf_bytes,
             filename=filename,
             content_type="application/pdf",
-            folder=f"cr/prospect/{prospect_id}",
-            unique=False,  # On gère l'unicité via le path
+            folder=folder,
+            unique=False,
         )
 
         # 7. Créer l'enregistrement en DB
@@ -212,7 +211,7 @@ class CompteRenduService:
             generated_by="ai",
             prompt_used=prompt,
             note_ids=[str(n.id) for n in notes],
-            created_by=author_id,
+            created_by_id=author_id,
         )
 
         return cr
@@ -237,7 +236,7 @@ class CompteRenduService:
             from anthropic import Anthropic
             client = Anthropic(api_key=settings.anthropic_api_key)
             response = client.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model=settings.ai_default_model if "claude" in settings.ai_default_model else "claude-sonnet-4-5",
                 max_tokens=4000,
                 messages=[{"role": "user", "content": prompt}],
             )
@@ -246,31 +245,90 @@ class CompteRenduService:
         return await asyncio.to_thread(_sync_call)
 
     async def _generate_pdf(self, md_content: str, prospect_id: UUID) -> bytes:
-        """Convertit le Markdown en PDF."""
-        # Convertir MD en HTML
-        html_body = markdown.markdown(
-            md_content,
-            extensions=[
-                "markdown.extensions.tables",
-                "markdown.extensions.fenced_code",
-            ],
-        )
-
-        # Construire le HTML complet
-        title = f"Compte-Rendu Prospect {prospect_id}"
-        date_str = datetime.now(UTC).strftime("%d/%m/%Y")
-        
-        html = HTML_TEMPLATE.format(
-            title=title,
-            date=date_str,
-            content=html_body,
-        )
-
-        # Convertir en PDF avec WeasyPrint
+        """Convertit le Markdown en PDF avec reportlab (Unicode natif, mise en page auto)."""
         import asyncio
-        
-        def _sync_pdf():
-            from weasyprint import HTML
-            return HTML(string=html).write_pdf()
+        import io
+        import re
+
+        date_str = datetime.now(UTC).strftime("%d/%m/%Y")
+
+        def _strip_inline(text: str) -> str:
+            """Supprime les marqueurs Markdown inline (*bold*, _italic_)."""
+            text = re.sub(r"\*{1,3}([^*]+)\*{1,3}", r"\1", text)
+            text = re.sub(r"_{1,2}([^_]+)_{1,2}", r"\1", text)
+            return text.strip()
+
+        def _sync_pdf() -> bytes:
+            from reportlab.lib import colors
+            from reportlab.lib.pagesizes import A4
+            from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+            from reportlab.lib.units import mm
+            from reportlab.platypus import (
+                HRFlowable,
+                ListFlowable,
+                ListItem,
+                Paragraph,
+                SimpleDocTemplate,
+                Spacer,
+            )
+
+            buf = io.BytesIO()
+            doc = SimpleDocTemplate(
+                buf,
+                pagesize=A4,
+                leftMargin=20 * mm,
+                rightMargin=20 * mm,
+                topMargin=20 * mm,
+                bottomMargin=20 * mm,
+            )
+
+            styles = getSampleStyleSheet()
+            style_h1 = ParagraphStyle("H1", parent=styles["Heading1"], fontSize=16, textColor=colors.HexColor("#1a365d"), spaceAfter=6)
+            style_h2 = ParagraphStyle("H2", parent=styles["Heading2"], fontSize=13, textColor=colors.HexColor("#2c5282"), spaceAfter=4)
+            style_h3 = ParagraphStyle("H3", parent=styles["Heading3"], fontSize=11, textColor=colors.HexColor("#2d3748"), spaceAfter=3)
+            style_body = ParagraphStyle("Body", parent=styles["Normal"], fontSize=10, leading=14, spaceAfter=4)
+            style_meta = ParagraphStyle("Meta", parent=styles["Normal"], fontSize=9, textColor=colors.HexColor("#666666"), alignment=2)
+
+            story = []
+
+            # En-tête date
+            story.append(Paragraph(date_str, style_meta))
+            story.append(Spacer(1, 4 * mm))
+            story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#1a365d")))
+            story.append(Spacer(1, 6 * mm))
+
+            # Parsing Markdown ligne par ligne
+            bullet_buffer: list[str] = []
+
+            def _flush_bullets():
+                if bullet_buffer:
+                    items = [ListItem(Paragraph(_strip_inline(b), style_body), leftIndent=12) for b in bullet_buffer]
+                    story.append(ListFlowable(items, bulletType="bullet", start="\u2022"))
+                    story.append(Spacer(1, 2 * mm))
+                    bullet_buffer.clear()
+
+            for line in md_content.splitlines():
+                if line.startswith("# "):
+                    _flush_bullets()
+                    story.append(Paragraph(_strip_inline(line[2:]), style_h1))
+                elif line.startswith("## "):
+                    _flush_bullets()
+                    story.append(Paragraph(_strip_inline(line[3:]), style_h2))
+                elif line.startswith("### "):
+                    _flush_bullets()
+                    story.append(Paragraph(_strip_inline(line[4:]), style_h3))
+                elif line.startswith("- ") or line.startswith("* "):
+                    bullet_buffer.append(line[2:])
+                elif line.strip() == "":
+                    _flush_bullets()
+                    story.append(Spacer(1, 3 * mm))
+                else:
+                    _flush_bullets()
+                    story.append(Paragraph(_strip_inline(line), style_body))
+
+            _flush_bullets()
+
+            doc.build(story)
+            return buf.getvalue()
 
         return await asyncio.to_thread(_sync_pdf)

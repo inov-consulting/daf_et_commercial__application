@@ -19,7 +19,8 @@ logger = get_logger(__name__)
 # Champs Odoo crm.lead qu'on synchronise
 ODOO_LEAD_FIELDS = [
     "id",
-    "name",  # Nom entreprise/sujet
+    "name",  # Nom de l'opportunité/lead
+    "partner_name",  # Nom de l'entreprise/client
     "contact_name",
     "email_from",
     "phone",
@@ -130,12 +131,7 @@ class ProspectSyncService:
             import asyncio
             oc = self._get_odoo_client()
             leads = await asyncio.to_thread(
-                oc._object_proxy().execute_kw,
-                oc._db,
-                oc._authenticate(),
-                oc._password,
-                "crm.lead",
-                "search_read",
+                oc.execute, "crm.lead", "search_read",
                 [[("id", "in", lead_ids)]],
                 {"fields": ODOO_LEAD_FIELDS, "limit": len(lead_ids)},
             )
@@ -160,12 +156,7 @@ class ProspectSyncService:
             import asyncio
             oc = self._get_odoo_client()
             leads = await asyncio.to_thread(
-                oc._object_proxy().execute_kw,
-                oc._db,
-                oc._authenticate(),
-                oc._password,
-                "crm.lead",
-                "search_read",
+                oc.execute, "crm.lead", "search_read",
                 [[("id", "=", prospect.odoo_lead_id)]],
                 {"fields": ODOO_LEAD_FIELDS, "limit": 1},
             )
@@ -196,12 +187,7 @@ class ProspectSyncService:
             import asyncio
             oc = self._get_odoo_client()
             leads = await asyncio.to_thread(
-                oc._object_proxy().execute_kw,
-                oc._db,
-                oc._authenticate(),
-                oc._password,
-                "crm.lead",
-                "search_read",
+                oc.execute, "crm.lead", "search_read",
                 [[("name", "ilike", name)]],
                 {"fields": ODOO_LEAD_FIELDS, "limit": 10},
             )
@@ -270,15 +256,13 @@ class ProspectSyncService:
             
             logger.info(f"[Sync] Création {lead_type} dans Odoo avec values: {values}")
             
-            lead_id = await asyncio.to_thread(
-                oc._object_proxy().execute_kw,
-                oc._db,
-                oc._authenticate(),
-                oc._password,
-                "crm.lead",
-                "create",
-                [values],
-            )
+            def _create_lead():
+                uid = oc._authenticate()
+                pwd = oc._api_key or oc._password
+                return oc._object_proxy().execute_kw(
+                    oc._db, uid, pwd, "crm.lead", "create", [values],
+                )
+            lead_id = await asyncio.to_thread(_create_lead)
             
             type_label = "Opportunité" if lead_type == "opportunity" else "Lead"
             logger.info(f"[Sync] {type_label} Odoo créé(e) avec ID: {lead_id}")
@@ -324,13 +308,7 @@ class ProspectSyncService:
             logger.info(f"[Sync] Création partner dans Odoo: {values}")
             
             partner_id = await asyncio.to_thread(
-                oc._object_proxy().execute_kw,
-                oc._db,
-                oc._authenticate(),
-                oc._password,
-                "res.partner",
-                "create",
-                [values],
+                oc.execute, "res.partner", "create", [values],
             )
             
             logger.info(f"[Sync] Partner Odoo créé: {partner_id} ({name})")
@@ -354,13 +332,7 @@ class ProspectSyncService:
             import asyncio
             oc = self._get_odoo_client()
             await asyncio.to_thread(
-                oc._object_proxy().execute_kw,
-                oc._db,
-                oc._authenticate(),
-                oc._password,
-                "crm.lead",
-                "write",
-                [[odoo_lead_id], values],
+                oc.execute, "crm.lead", "write", [[odoo_lead_id], values],
             )
             logger.info(f"[Sync] Lead Odoo {odoo_lead_id} mis à jour")
             return True
@@ -382,25 +354,12 @@ class ProspectSyncService:
             import asyncio
             oc = self._get_odoo_client()
             await asyncio.to_thread(
-                oc._object_proxy().execute_kw,
-                oc._db,
-                oc._authenticate(),
-                oc._password,
-                "crm.lead",
-                "action_set_won",
-                [[odoo_lead_id]],
+                oc.execute, "crm.lead", "action_set_won", [[odoo_lead_id]],
             )
 
             # Relecture pour récupérer les IDs créés
-            import asyncio
-            oc = self._get_odoo_client()
             lead_data = await asyncio.to_thread(
-                oc._object_proxy().execute_kw,
-                oc._db,
-                oc._authenticate(),
-                oc._password,
-                "crm.lead",
-                "search_read",
+                oc.execute, "crm.lead", "search_read",
                 [[("id", "=", odoo_lead_id)]],
                 {"fields": ["partner_id", "type"], "limit": 1},
             )
@@ -438,13 +397,7 @@ class ProspectSyncService:
             import asyncio
             oc = self._get_odoo_client()
             await asyncio.to_thread(
-                oc._object_proxy().execute_kw,
-                oc._db,
-                oc._authenticate(),
-                oc._password,
-                "crm.lead",
-                "write",
-                [[odoo_lead_id], values],
+                oc.execute, "crm.lead", "write", [[odoo_lead_id], values],
             )
             logger.info(f"[Sync] Lead Odoo {odoo_lead_id} marqué perdu")
             return True
