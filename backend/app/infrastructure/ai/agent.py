@@ -65,7 +65,7 @@ OUTILS DISPONIBLES - UTILISE-LES SPONTANÉMENT:
    - Clients/entreprises → "res.partner"
    - Opportunités/prospects → "crm.lead"
    - Commandes/ventes → "sale.order"
-   - Factures → "account.move" (type=out_invoice)
+   - Factures → "account.move" (move_type=out_invoice)
    - Produits → "product.product"
 
 4. get_current_date(): date actuelle    

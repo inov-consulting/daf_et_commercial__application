@@ -140,7 +140,7 @@ const RightPanel = ({ state, wordCount }: { state: AppState; wordCount: number }
           <div className="rounded-xl p-3 border mt-3" style={{ background: 'rgba(107,53,201,0.05)', borderColor: 'rgba(107,53,201,0.2)' }}>
             <div className="text-[12px] font-semibold mb-1" style={{ color: '#5829A8' }}>Paradigme 70 / 30</div>
             <div className="text-[11px] leading-relaxed" style={{ color: '#6B35C9' }}>
-              L'IA a produit 100% du contenu. Votre rôle : valider les 5 champs sûrs + corriger le champ ambigu.
+              L&apos;IA a produit 100% du contenu. Votre rôle : valider les 5 champs sûrs + corriger le champ ambigu.
             </div>
           </div>
         </div>
@@ -173,7 +173,7 @@ const RightPanel = ({ state, wordCount }: { state: AppState; wordCount: number }
           <div className="rounded-xl p-3 border" style={{ background: 'rgba(239,68,68,0.05)', borderColor: 'rgba(239,68,68,0.2)' }}>
             <div className="text-[12px] font-semibold mb-1" style={{ color: '#DC2626' }}>Audio sauvegardé localement</div>
             <div className="text-[11px] leading-relaxed" style={{ color: '#EF4444' }}>
-              Aucune perte de données. L'enregistrement est disponible sur l'appareil.
+              Aucune perte de données. L&apos;enregistrement est disponible sur l&apos;appareil.
             </div>
           </div>
         </div>
