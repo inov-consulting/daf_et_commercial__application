@@ -49,7 +49,7 @@ export function ProspectDetailHeader({ prospect, locale, onEdit }: ProspectDetai
               <PencilSimpleIcon size={13} />
               Modifier
             </Button>
-            <Button variant="gradient" size="sm" href={crUrl}>
+            <Button variant="gradient" size="sm" onClick={() => window.location.href = crUrl}>
               <FileTextIcon size={13} />
               Nouveau CR
             </Button>

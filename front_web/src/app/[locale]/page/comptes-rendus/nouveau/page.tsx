@@ -373,7 +373,7 @@ export default function NouveauCRPage() {
                       <div className="flex items-center gap-2">
                         <span className="w-[5px] h-[5px] rounded-full cr-rec-dot" style={{ background: '#10B981' }} />
                         <span className="text-[12px] text-[var(--tx-3)]">
-                          Enregistrement en cours — la transcription sera générée à l'arrêt
+                          Enregistrement en cours — la transcription sera générée à l`&apos;`arrêt
                         </span>
                       </div>
                     )}
@@ -387,7 +387,7 @@ export default function NouveauCRPage() {
                       onClick={cancelRecording}
                     >
                       <XIcon size={12} />
-                      Annuler l'enregistrement
+                      Annuler l`&apos;`enregistrement
                     </Button>
                   </div>
                 </div>
@@ -416,7 +416,7 @@ export default function NouveauCRPage() {
                     style={{ background: 'rgba(107,53,201,0.05)', border: '1px solid rgba(107,53,201,0.18)', color: '#5829A8' }}>
                     <InfoIcon size={14} style={{ flexShrink: 0, marginTop: 1 }} />
                     <span>
-                      Corrigez les erreurs <strong>avant</strong> d'envoyer à Claude Sonnet 4.5 — chiffres, noms propres, ponctuation.
+                      Corrigez les erreurs <strong>avant</strong> d`&apos;`envoyer à Claude Sonnet 4.5 — chiffres, noms propres, ponctuation.
                     </span>
                   </div>
 
@@ -651,7 +651,7 @@ export default function NouveauCRPage() {
 
                   {/* Paradigm box */}
                   <div className="bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-xl p-4 text-left mb-6">
-                    <div className="text-[12px] font-bold text-[var(--tx-1)] mb-2">Résumé de l'action — Paradigme 70 / 30</div>
+                    <div className="text-[12px] font-bold text-[var(--tx-1)] mb-2">Résumé de l`&apos;`action — Paradigme 70 / 30</div>
                     <div className="text-[12px] text-[var(--tx-3)] leading-relaxed">
                       IA (70 %) : transcription + structuration + rédaction des 6 champs<br />
                       Vous (30 %) : relecture · correction champ « Points discutés » · envoi
@@ -728,7 +728,7 @@ export default function NouveauCRPage() {
                       className="w-full"
                       style={{ boxShadow: '0 2px 12px rgba(107,53,201,0.3)' }}
                     >
-                      <ArrowClockwiseIcon size={16} /> Réessayer l'envoi
+                      <ArrowClockwiseIcon size={16} /> Réessayer l`&apos;`envoi
                     </Button>
                     <Button
                       variant="ghost"
@@ -736,7 +736,7 @@ export default function NouveauCRPage() {
                       onClick={() => setState('transcript')}
                       className="w-full"
                     >
-                      Réécouter l'enregistrement
+                      Réécouter l`&apos;`enregistrement
                     </Button>
                     <Button
                       variant="link"
