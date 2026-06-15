@@ -103,12 +103,13 @@ const spinnerClasses: Record<ButtonVariant, string> = {
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   (
     { variant = 'primary', size = 'md', loading = false, iconOnly = false,
-      className, children, disabled, style, ...props },
+      className, children, onClick, disabled, style, ...props },
     ref,
   ) => {
     return (
       <button
         ref={ref}
+        onClick={onClick}
         disabled={disabled || loading}
         aria-busy={loading || undefined}
         style={variant === 'gradient' ? { background: 'var(--grad)', ...style } : style}

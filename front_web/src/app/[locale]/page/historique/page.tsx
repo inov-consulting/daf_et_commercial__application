@@ -17,12 +17,12 @@ export default function HistoriquePage() {
 
   const filtered = useMemo(() => {
     return MOCK_ACTIVITIES.filter(a => {
-      if (search && !a.action.toLowerCase().includes(search.toLowerCase()) && !a.data.toLowerCase().includes(search.toLowerCase())) return false;
+      if (search && !a.action.toLowerCase().includes(search.toLowerCase()) && !a.data?.toLowerCase().includes(search.toLowerCase())) return false;
       if (module && a.module !== module) return false;
       if (user && a.user !== user) return false;
       return true;
     });
-  }, [search, module, user, dateFrom, dateTo]);
+  }, [search, module, user]);
 
   return (
     <div className="flex flex-col gap-5 p-5 md:p-6 min-h-full">

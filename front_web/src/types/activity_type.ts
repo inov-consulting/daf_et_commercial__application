@@ -7,6 +7,7 @@ export interface Activity {
   ts: string;
   module: ActivityModule;
   action: string;
+  data?: string;
   method: HttpMethod;
   endpoint: string;
   user: string;
