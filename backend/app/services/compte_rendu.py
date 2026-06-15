@@ -164,14 +164,25 @@ class CompteRenduService:
         # 2. Préparer le contexte pour Claude
         notes_text = self._format_notes_for_prompt(notes)
 
-        # 3. Récupérer le template de la config AI (ou utiliser le défaut)
+        # 3. Récupérer le template de style personnalisable (optionnel)
         from app.infrastructure.db.models.ai_config import AiConfigOrm
         
         config = await AiConfigOrm.first()
-        cr_template = config.compte_rendu_template if config and config.compte_rendu_template else CR_GENERATION_PROMPT
+        style_template = config.compte_rendu_template if config else None
         
-        # 4. Appeler Claude pour générer le contenu
-        prompt = cr_template.format(notes=notes_text)
+        # 4. Construire le prompt complet : instructions techniques + template de style
+        if style_template:
+            # Template personnalisé : instructions + style custom + notes
+            prompt = f"""{CR_GENERATION_PROMPT}
+
+TEMPLATE DE STRUCTURE (à respecter obligatoirement):
+{style_template}
+
+NOTES À TRAITER:
+{notes_text}"""
+        else:
+            # Template par défaut
+            prompt = CR_GENERATION_PROMPT.format(notes=notes_text)
         
         # Utiliser Anthropic client
         md_content = await self._call_claude(prompt)

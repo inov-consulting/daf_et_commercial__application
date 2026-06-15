@@ -346,6 +346,7 @@ async def create_prospect(
     tag_ids = None  # TODO: mapping sector → tag_ids
     odoo_lead_id = await sync_service.create_in_odoo(
         name=payload.opportunity_name,
+        partner_name=payload.partner_name,  # ← Nom de l'entreprise
         contact_name=payload.contact_name,
         email=payload.email,
         phone=payload.phone,
@@ -368,7 +369,8 @@ async def create_prospect(
     # 3. Construction des erp_metadata avec les données Odoo
     erp_metadata = {
         "id": odoo_lead_id,
-        "name": payload.opportunity_name,
+        "name": payload.opportunity_name,  # ← Titre du lead
+        "partner_name": payload.partner_name,  # ← Nom de l'entreprise
         "type": payload.lead_type or "lead",
         "contact_name": payload.contact_name,
         "email_from": payload.email,
