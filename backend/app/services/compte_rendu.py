@@ -164,6 +164,7 @@ RAPPEL: Générer un document HTML COMPLET avec ce Design System. Respecter les 
         # 5. Convertir HTML en PDF avec Playwright
         pdf_bytes = await self._generate_pdf(html_content, prospect_id, style_template)
         
+        
         # Vérifier que le PDF n'est pas vide
         if not pdf_bytes or len(pdf_bytes) < 1000:
             raise HTTPException(
@@ -213,6 +214,7 @@ RAPPEL: Générer un document HTML COMPLET avec ce Design System. Respecter les 
             file_size=len(pdf_bytes),
             generated_by="ai",
             prompt_used=prompt,
+            content=html_content,  # HTML généré par Claude (modifiable)
             note_ids=[str(n.id) for n in notes],
             created_by_id=author_id,
         )
@@ -310,3 +312,56 @@ RAPPEL: Générer un document HTML COMPLET avec ce Design System. Respecter les 
                 return pdf_bytes
 
         return await _render_pdf()
+
+    async def regenerate_pdf_from_content(
+        self,
+        cr: CompteRenduOrm,
+        new_content: str | None = None,
+        author_id: UUID | None = None,
+    ) -> CompteRenduOrm:
+        """Regénère le PDF depuis le content existant ou un nouveau HTML fourni.
+        
+        Args:
+            cr: Le compte-rendu à mettre à jour
+            new_content: Nouveau HTML (si None, utilise cr.content)
+            author_id: ID de l'utilisateur qui fait la modification
+            
+        Returns:
+            Le compte-rendu mis à jour
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Utiliser le nouveau content ou celui du CR
+        html_content = new_content if new_content else cr.content
+        
+        if not html_content:
+            raise ValueError("Aucun content HTML disponible pour regénérer le PDF")
+        
+        logger.info(f"Régénération PDF pour CR {cr.id} ({len(html_content)} caractères)")
+        
+        # Générer le nouveau PDF
+        pdf_bytes = await self._generate_pdf(html_content, cr.parent_id)
+        
+        # Déterminer le folder MinIO
+        folder = f"cr/{cr.parent_type}/{cr.parent_id}"
+        
+        # Mettre à jour le fichier sur MinIO
+        await self._storage.upload(
+            pdf_bytes,
+            filename=cr.minio_path.split("/")[-1],  # Garder le même nom de fichier
+            content_type="application/pdf",
+            folder=folder,
+            unique=False,
+        )
+        
+        # Mettre à jour le CR en DB
+        cr.content = html_content
+        cr.file_size = len(pdf_bytes)
+        cr.generated_by = "user"  # Marquer comme modifié par l'utilisateur
+        if author_id:
+            cr.created_by_id = author_id
+        await cr.save()
+        
+        logger.info(f"PDF régénéré pour CR {cr.id}: {len(pdf_bytes)} bytes")
+        return cr

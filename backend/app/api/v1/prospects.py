@@ -15,6 +15,7 @@ from app.api.v1.schemas.prospects import (
     CompteRenduGenerate,
     CompteRenduListOut,
     CompteRenduOut,
+    CompteRenduUpdate,
     NoteCreate,
     NoteListOut,
     NoteOut,
@@ -814,3 +815,51 @@ async def download_compte_rendu(
     download_url = storage.get_url(cr.minio_path, expires_in=3600)  # 1h
 
     return {"download_url": download_url, "filename": f"CR_{cr.parent_id}_v{cr.version}.pdf"}
+
+
+@router.put("/{prospect_id}/compte-rendus/{cr_id}", dependencies=_prospect_write_deps)
+async def update_compte_rendu(
+    prospect_id: UUID,
+    cr_id: UUID,
+    data: CompteRenduUpdate,
+    current_user: CurrentUser,
+) -> CompteRenduOut:
+    """Mettre à jour le content HTML d'un compte-rendu et regénérer le PDF."""
+    from app.services.compte_rendu import CompteRenduService
+    from app.infrastructure.storage.minio import StorageService
+
+    # Vérifier le prospect
+    prospect = await ProspectOrm.get_or_none(id=prospect_id)
+    if not prospect:
+        raise HTTPException(status_code=404, detail="Prospect non trouvé")
+
+    # Récupérer le CR
+    cr = await CompteRenduOrm.get_or_none(
+        id=cr_id,
+        parent_type="prospect",
+        parent_id=prospect_id,
+    )
+    if not cr:
+        raise HTTPException(status_code=404, detail="Compte-rendu non trouvé")
+
+    # Mettre à jour le content
+    cr.content = data.content
+    await cr.save()
+
+    # Regénérer le PDF si demandé
+    if data.regenerate_pdf:
+        service = CompteRenduService(storage=StorageService())
+        cr = await service.regenerate_pdf_from_content(
+            cr,
+            new_content=data.content,
+            author_id=current_user.id,
+        )
+
+    # Générer URL signée pour téléchargement
+    storage = StorageService()
+    download_url = storage.get_url(cr.minio_path, expires_in=3600)
+
+    return CompteRenduOut.model_validate({
+        **dict(cr),
+        "download_url": download_url,
+    })

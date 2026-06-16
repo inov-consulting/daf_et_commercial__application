@@ -61,6 +61,7 @@ class CompteRenduOrm(BaseModel):
     # Traçabilité génération
     generated_by: str = fields.CharField(max_length=20)  # ai | user
     prompt_used: str | None = fields.TextField(null=True)  # Prompt envoyé à Claude
+    content: str | None = fields.TextField(null=True)  # HTML généré par Claude (modifiable)
     note_ids: list | None = fields.JSONField(null=True)  # IDs des notes utilisées (liste)
 
     # Auteur

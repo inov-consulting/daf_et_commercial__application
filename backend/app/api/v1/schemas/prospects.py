@@ -350,6 +350,7 @@ class CompteRenduOut(BaseModel):
     file_size: int | None
     download_url: str | None = None  # URL signée MinIO
     generated_by: str  # "ai" | "user"
+    content: str | None = None  # HTML généré par Claude (modifiable)
     note_ids: list[str] | None
     created_at: datetime
     created_by: UUID | None
@@ -360,3 +361,10 @@ class CompteRenduListOut(BaseModel):
 
     items: list[CompteRenduOut]
     total: int
+
+
+class CompteRenduUpdate(BaseModel):
+    """Mise à jour d'un compte-rendu (pour édition HTML)."""
+
+    content: str  # HTML modifié par l'utilisateur
+    regenerate_pdf: bool = True  # Regénérer le PDF après mise à jour
