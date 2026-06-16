@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 export type KpiTrend = 'up' | 'down' | 'neutral' | 'warning';
 export type KpiAccent = 'primary' | 'success' | 'warning' | 'secondary';
 export type KpiLayout = 'vertical' | 'horizontal' | 'compact';
+export type KpiLabelPosition = 'above' | 'below';
 
 export interface KpiCardProps extends HTMLAttributes<HTMLDivElement> {
   label: string;
@@ -13,10 +14,14 @@ export interface KpiCardProps extends HTMLAttributes<HTMLDivElement> {
   trendValue?: string;
   sparkline?: ReactNode;
   accent?: KpiAccent;
+  /** Override the accent-bar with any valid CSS background value (gradient, color…) */
+  accentStyle?: string;
   iconAccent?: KpiAccent;
   showTopBar?: boolean;
-  layout?: KpiLayout; // Nouveau : contrôle le layout
+  layout?: KpiLayout;
   styleValue?: string;
+  /** Position du libellé par rapport à la valeur. Défaut : 'below' (comportement existant) */
+  labelPosition?: KpiLabelPosition;
 }
 
 const accentBar: Record<KpiAccent, string> = {
@@ -41,16 +46,91 @@ export function KpiCard({
   trendValue,
   sparkline,
   accent = 'primary',
+  accentStyle,
   iconAccent,
   showTopBar = true,
   layout = 'vertical',
+  labelPosition = 'below',
   className,
   styleValue,
   ...props
 }: KpiCardProps) {
   const effectiveIconAccent = iconAccent ?? accent;
 
-  // Layout vertical (par défaut)
+  /* Accent bar helper — inline style overrides class when accentStyle is set */
+  function AccentBar({ thin = false }: { thin?: boolean }) {
+    if (!showTopBar) return null;
+    return accentStyle
+      ? <span style={{ background: accentStyle }} className={cn('absolute top-0 left-0 right-0', thin ? 'h-[2px]' : 'h-[3px]')} aria-hidden="true" />
+      : <span className={cn('absolute top-0 left-0 right-0', thin ? 'h-[2px]' : 'h-[3px]', accentBar[accent])} aria-hidden="true" />;
+  }
+
+  /* Trend pill — shared across layouts */
+  function TrendPill({ small = false }: { small?: boolean }) {
+    if (!trend || !trendValue) return null;
+    return (
+      <span className={cn(
+        'flex items-center gap-[.2rem] font-semibold rounded-full ml-auto',
+        small ? 'text-[11px] px-1.5 py-0.5' : 'text-xs px-2 py-[.2rem]',
+        trend === 'up'      ? 'text-success-600 bg-success-50 dark:text-[#6EE7B7] dark:bg-[rgba(16,185,129,.15)]'
+        : trend === 'down'  ? 'text-error bg-error-50 dark:text-[#FCA5A5] dark:bg-[rgba(239,68,68,.15)]'
+        : trend === 'warning' ? 'text-warning-600 bg-warning-50 dark:text-[#FBBF24] dark:bg-[rgba(245,158,11,.15)]'
+        : 'text-foreground-2 bg-surface-sink',
+      )}>
+        {trend === 'up' ? '▲' : trend === 'down' ? '▼' : ''} {trendValue}
+      </span>
+    );
+  }
+
+  /* Trend inline text — used in labelPosition='above' mode */
+  function TrendInline() {
+    if (!trendValue) return null;
+    const trendCls =
+      trend === 'up'      ? 'text-success-600'
+      : trend === 'down'  ? 'text-error'
+      : trend === 'warning' ? 'text-warning-600'
+      : 'text-foreground-3';
+    return (
+      <p className={cn('text-[11px] mt-1.5', trendCls)}>
+        {trend === 'up' ? '▲ ' : trend === 'down' ? '▼ ' : ''}{trendValue}
+      </p>
+    );
+  }
+
+  // Layout vertical — label ABOVE value (style rapport/KPI transport)
+  if (layout === 'vertical' && labelPosition === 'above') {
+    return (
+      <div
+        className={cn(
+          'relative bg-surface border border-border rounded-2xl p-[1.125rem_1.375rem]',
+          'shadow-xs overflow-hidden cursor-pointer',
+          'transition-[box-shadow,transform] duration-norm hover:shadow-md hover:-translate-y-0.5',
+          className,
+        )}
+        {...props}
+      >
+        <AccentBar />
+
+        {/* Label + optional icon on top */}
+        <p className="text-[11px] font-semibold uppercase tracking-[.06em] text-foreground-3 mb-2 mt-0.5 flex items-center gap-1.5">
+          {icon && <span className={cn('w-4 h-4 flex items-center justify-center shrink-0', iconBg[effectiveIconAccent])}>{icon}</span>}
+          {label}
+        </p>
+
+        {/* Value */}
+        <p className={cn('font-display text-[26px] font-bold text-foreground leading-none tracking-tight', styleValue)}>
+          {value}
+        </p>
+
+        {/* Sub / trend inline */}
+        <TrendInline />
+
+        {sparkline && <div className="mt-2" aria-hidden="true">{sparkline}</div>}
+      </div>
+    );
+  }
+
+  // Layout vertical (par défaut) — label BELOW value (comportement existant)
   if (layout === 'vertical') {
     return (
       <div
@@ -62,9 +142,7 @@ export function KpiCard({
         )}
         {...props}
       >
-        {showTopBar && (
-          <span className={cn('absolute top-0 left-0 right-0 h-[3px]', accentBar[accent])} aria-hidden="true" />
-        )}
+        <AccentBar />
 
         <div className="flex items-start justify-between mb-3">
           {icon && (
@@ -72,17 +150,7 @@ export function KpiCard({
               {icon}
             </div>
           )}
-          {trend && trendValue && (
-            <span className={cn(
-              'flex items-center gap-[.2rem] text-xs font-semibold px-2 py-[.2rem] rounded-full ml-auto',
-              trend === 'up' ? 'text-success-600 bg-success-50 dark:text-[#6EE7B7] dark:bg-[rgba(16,185,129,.15)]'
-              : trend === 'down' ? 'text-error bg-error-50 dark:text-[#FCA5A5] dark:bg-[rgba(239,68,68,.15)]'
-              : trend === 'warning' ? 'text-warning-600 bg-warning-50 dark:text-[#FBBF24] dark:bg-[rgba(245,158,11,.15)]'
-              : 'text-foreground-2 bg-surface-sink',
-            )}>
-              {trend === 'up' ? '▲' : trend === 'down' ? '▼' : ''} {trendValue}
-            </span>
-          )}
+          <TrendPill />
         </div>
 
         <p className={cn('font-display text-3xl font-bold text-foreground leading-none mb-[.3rem] tracking-tight', styleValue)}>
@@ -107,9 +175,7 @@ export function KpiCard({
         )}
         {...props}
       >
-        {showTopBar && (
-          <span className={cn('absolute top-0 left-0 right-0 h-[3px]', accentBar[accent])} aria-hidden="true" />
-        )}
+        <AccentBar />
 
         <div className="flex items-center gap-4">
           {icon && (
@@ -127,17 +193,7 @@ export function KpiCard({
                 </p>
                 {sparkline && <div className="mt-3" aria-hidden="true">{sparkline}</div>}
               </div>
-              {trend && trendValue && (
-                <span className={cn(
-                  'flex items-center gap-[.2rem] text-xs font-semibold px-2 py-[.2rem] rounded-full shrink-0',
-                  trend === 'up' ? 'text-success-600 bg-success-50 dark:text-[#6EE7B7] dark:bg-[rgba(16,185,129,.15)]'
-                  : trend === 'down' ? 'text-error bg-error-50 dark:text-[#FCA5A5] dark:bg-[rgba(239,68,68,.15)]'
-                  : trend === 'warning' ? 'text-warning-600 bg-warning-50 dark:text-[#FBBF24] dark:bg-[rgba(245,158,11,.15)]'
-                  : 'text-foreground-2 bg-surface-sink',
-                )}>
-                  {trend === 'up' ? '▲' : trend === 'down' ? '▼' : ''} {trendValue}
-                </span>
-              )}
+                      <TrendPill />
             </div>
           </div>
         </div>
@@ -157,9 +213,7 @@ export function KpiCard({
         )}
         {...props}
       >
-        {showTopBar && (
-          <span className={cn('absolute top-0 left-0 right-0 h-[2px]', accentBar[accent])} aria-hidden="true" />
-        )}
+        <AccentBar thin />
 
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -179,17 +233,7 @@ export function KpiCard({
             </div>
           </div>
           
-          {trend && trendValue && (
-            <span className={cn(
-              'flex items-center gap-[.2rem] text-[11px] font-semibold px-1.5 py-0.5 rounded-full shrink-0',
-              trend === 'up' ? 'text-success-600 bg-success-50 dark:text-[#6EE7B7] dark:bg-[rgba(16,185,129,.15)]'
-              : trend === 'down' ? 'text-error bg-error-50 dark:text-[#FCA5A5] dark:bg-[rgba(239,68,68,.15)]'
-              : trend === 'warning' ? 'text-warning-600 bg-warning-50 dark:text-[#FBBF24] dark:bg-[rgba(245,158,11,.15)]'
-              : 'text-foreground-2 bg-surface-sink',
-            )}>
-              {trend === 'up' ? '▲' : trend === 'down' ? '▼' : ''} {trendValue}
-            </span>
-          )}
+          <TrendPill small />
         </div>
 
         {sparkline && <div className="mt-2" aria-hidden="true">{sparkline}</div>}
