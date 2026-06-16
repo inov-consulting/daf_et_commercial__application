@@ -246,7 +246,7 @@ export default function TransportPage() {
           labelPosition="above"
           accentStyle="linear-gradient(135deg,#EF4444,#F59E0B)"
           trendValue={alertCount > 0 ? `${alertCount} dossier${alertCount > 1 ? 's' : ''} à vérifier` : 'Aucune alerte'}
-          trend={kpi.alertes > 0 ? 'down' : 'neutral'}
+          trend={kpi.alertes > 0 ? 'down' : 'neutral'} 
           styleValue={kpi.alertes > 0 ? 'text-[#DC2626]' : undefined}
         />
       </div>
