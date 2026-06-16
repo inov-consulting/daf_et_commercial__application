@@ -289,9 +289,9 @@ RAPPEL: Générer un document HTML COMPLET avec ce Design System. Respecter les 
                 body_html = await page.evaluate('() => document.body.innerHTML.substring(0, 500)')
                 doc_html = await page.evaluate('() => document.documentElement.outerHTML.substring(0, 500)')
                 
-                logger.info(f"Playwright: HTML chargé, {body_text} caractères dans body")
-                logger.info(f"Playwright: Body HTML preview: {body_html}...")
-                logger.info(f"Playwright: Doc HTML preview: {doc_html}...")
+                # logger.info(f"Playwright: HTML chargé, {body_text} caractères dans body")
+                # logger.info(f"Playwright: Body HTML preview: {body_html}...")
+                # logger.info(f"Playwright: Doc HTML preview: {doc_html}...")
                 
                 if body_text < 10:
                     logger.error("Playwright: Body vide ou quasi-vide!")

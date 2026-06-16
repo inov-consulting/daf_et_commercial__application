@@ -40,12 +40,17 @@ FROM base AS prod
 COPY pyproject.toml uv.lock* ./
 RUN uv sync --frozen --no-dev --no-install-project 2>/dev/null || uv sync --no-dev --no-install-project
 
-# Installer Chromium pour Playwright
-RUN  playwright install chromium
-COPY . .
+# Créer l'utilisateur et installer Playwright avec les bons droits
+RUN useradd -m -u 1000 appuser
 
-# User non-root pour la prod
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+# Installer Chromium pour Playwright dans un dossier accessible
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers
+RUN playwright install chromium && \
+    chown -R appuser:appuser /opt/playwright-browsers
+
+COPY . .
+RUN chown -R appuser:appuser /app
+
 USER appuser
 
 EXPOSE 8000

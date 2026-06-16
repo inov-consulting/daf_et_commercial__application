@@ -156,18 +156,33 @@ class StorageService:
     def get_url(self, object_key: str, expires_in: int = 604800) -> str:
         """Retourne l'URL d'accès à un fichier.
 
-        - Si `minio_public_base_url` est défini → URL publique directe.
-        - Sinon → URL pré-signée valable `expires_in` secondes (défaut : 7 jours).
+        Par défaut retourne une URL publique permanente.
+        Si expires_in > 0 et que tu veux une URL signée temporaire, utiliser get_signed_url().
         """
-        if settings.minio_public_base_url:
-            base = settings.minio_public_base_url.rstrip("/")
-            return f"{base}/{self._bucket}/{object_key}"
+        return self.get_public_url(object_key)
 
+    def get_signed_url(self, object_key: str, expires_in: int = 3600) -> str:
+        """Retourne une URL pré-signée temporaire (avec expiration).
+
+        Args:
+            expires_in: Durée de validité en secondes (défaut: 1h)
+        """
         return self._client.generate_presigned_url(
             "get_object",
             Params={"Bucket": self._bucket, "Key": object_key},
             ExpiresIn=expires_in,
         )
+
+    def get_public_url(self, object_key: str) -> str:
+        """Retourne l'URL publique permanente d'un fichier (ne expire jamais).
+
+        Nécessite que le bucket soit configuré en lecture publique.
+        Utilise minio_url comme base.
+
+        Exemple: https://storage.manage.inov-consulting.com/portalis/cr/prospect/xxx/file.pdf
+        """
+        base = settings.minio_url.rstrip("/")
+        return f"{base}/{self._bucket}/{object_key}"
 
     # ── Suppression ───────────────────────────────────────────────────
 

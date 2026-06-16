@@ -85,10 +85,7 @@ class KeycloakClient:
             exp = 0
         now_ts = int(time.time())
         leeway = settings.jwt_leeway_seconds
-        logger.debug(
-            "Keycloak [JWKS] exp=%s now=%s delta=%ds leeway=%ds",
-            exp, now_ts, exp - now_ts, leeway,
-        )
+       
 
         try:
             payload: dict = jwt.decode(
@@ -98,7 +95,6 @@ class KeycloakClient:
                 options={"verify_aud": False, "verify_iss": False},
                 leeway=leeway,
             )
-            logger.debug("Keycloak [JWKS] token valide — sub=%s", payload.get("sub"))
             return payload
         except jwt.ExpiredSignatureError:
             logger.warning("Keycloak [JWKS] token expiré (delta=%ds)", exp - now_ts)

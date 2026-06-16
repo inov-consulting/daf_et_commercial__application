@@ -817,6 +817,34 @@ async def download_compte_rendu(
     return {"download_url": download_url, "filename": f"CR_{cr.parent_id}_v{cr.version}.pdf"}
 
 
+@router.get("/{prospect_id}/compte-rendus/{cr_id}/public-url", dependencies=_prospect_deps)
+async def get_compte_rendu_public_url(
+    prospect_id: UUID,
+    cr_id: UUID,
+) -> dict:
+    """Obtenir l'URL publique permanente d'un compte-rendu (ne expire jamais).
+
+    Nécessite que le bucket MinIO soit configuré en lecture publique.
+    """
+    from app.infrastructure.storage.minio import StorageService
+
+    cr = await CompteRenduOrm.get_or_none(
+        id=cr_id,
+        parent_type="prospect",
+        parent_id=prospect_id,
+    )
+    if not cr:
+        raise HTTPException(status_code=404, detail="Compte-rendu non trouvé")
+
+    storage = StorageService()
+    public_url = storage.get_public_url(cr.minio_path)
+
+    return {
+        "public_url": public_url,
+        "filename": f"CR_{cr.parent_id}_v{cr.version}.pdf",
+    }
+
+
 @router.put("/{prospect_id}/compte-rendus/{cr_id}", dependencies=_prospect_write_deps)
 async def update_compte_rendu(
     prospect_id: UUID,
