@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { PostData } from '@/lib/ApiService';
+import { PostData, GetData } from '@/lib/ApiService';
+import { type ProspectCR, type GenerateCRBody, type NotesListResponse } from '@/types/prospect_note_type';
 import { ApiRoutes } from '@/lib/ApiRoutes';
 import {
   MicrophoneIcon, SquareIcon, ArrowLeftIcon, CheckIcon, XIcon,
@@ -17,9 +18,10 @@ import { Blocknote } from '@/components/ui/blocknote';
 import RightPanel from '@/components/layout/rightPanel';
 import WaveformBars from '@/components/layout/waveformBars';
 import FolderModal from '@/components/layout/folderModal';
+import { ProspectPicker, type CRContext } from '@/components/layout/prospect-picker';
 
 /* ─── Types ────────────────────────────────────────────────────── */
-type AppState = 'idle' | 'recording' | 'transcript' | 'processing' | 'draft' | 'validated' | 'error';
+type AppState = 'context' | 'idle' | 'recording' | 'transcript' | 'processing' | 'draft' | 'validated' | 'error';
 type ProcStep = 'pending' | 'active' | 'done';
 
 /* ─── Constants ────────────────────────────────────────────────── */
@@ -44,7 +46,24 @@ export default function NouveauCRPage() {
   const prospectContact = searchParams?.get('contact') ?? '';
   const prospectId      = searchParams?.get('prospect_id') ?? '';
 
-  const [state, setState] = useState<AppState>('idle');
+  /* Derive initial crContext from URL params (set when coming from prospect detail) */
+  const [crContext, setCrContext] = useState<CRContext | null>(() => {
+    if (prospectId || prospectCompany) {
+      return {
+        type:      'prospection',
+        label:     prospectCompany || 'Prospect',
+        sublabel:  prospectContact || undefined,
+        reference: prospectId ? `PROS-${prospectId.slice(0, 8).toUpperCase()}` : undefined,
+        id:        prospectId || undefined,
+      };
+    }
+    return null;
+  });
+
+  /* Start in 'context' selection if no context was passed via URL */
+  const [state, setState] = useState<AppState>(
+    () => (prospectId || prospectCompany ? 'idle' : 'context'),
+  );
 
   /* Recording */
   const [timerSec, setTimerSec]         = useState(0);
@@ -74,6 +93,12 @@ export default function NouveauCRPage() {
   });
   const [accordOpen, setAccordOpen] = useState(false);
 
+  /* CR generation */
+  const [generatedCR, setGeneratedCR]     = useState<ProspectCR | null>(null);
+  const [preparing, setPreparing]         = useState(false);
+  const [generating, setGenerating]       = useState<'pdf' | 'word' | null>(null);
+  const [genError, setGenError]           = useState<string | null>(null);
+
   /* UI */
   const [folderModal, setFolderModal] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -91,6 +116,27 @@ export default function NouveauCRPage() {
     setToast(msg);
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 3000);
+  }
+
+  async function downloadGeneratedCR(format: 'pdf' | 'word') {
+    if (!generatedCR || !crContext?.id) return;
+    setGenerating(format);
+    const directUrl = generatedCR.download_url;
+    if (directUrl) {
+      window.open(directUrl, '_blank');
+      setGenerating(null);
+      return;
+    }
+    const res = await GetData<{ url?: string }>({
+      url: ApiRoutes.PROSPECT_CR_DOWNLOAD(crContext.id, generatedCR.id),
+      protected: true,
+    });
+    if (res.ok && res.data?.url) {
+      window.open(res.data.url, '_blank');
+    } else {
+      setGenError(res.error ?? 'Erreur lors du téléchargement du CR');
+    }
+    setGenerating(null);
   }
 
   function clearProcTimeouts() {
@@ -164,24 +210,76 @@ export default function NouveauCRPage() {
   }
 
   /* ── Processing ─────────────────────────────────────────────── */
-  const startProcessing = useCallback(() => {
-    clearProcTimeouts();
-    setProcSteps(['pending', 'pending', 'pending']);
-    setProcPct(0);
-    setProcEta('');
-    setState('processing');
+  const startProcessing = useCallback(async () => {
+    setGenError(null);
 
-    const add = (ms: number, fn: () => void) => {
-      const t = setTimeout(fn, ms);
-      procTimeouts.current.push(t);
+    const launchAnimation = () => {
+      clearProcTimeouts();
+      setProcSteps(['pending', 'pending', 'pending']);
+      setProcPct(0);
+      setProcEta('');
+      setState('processing');
+
+      const add = (ms: number, fn: () => void) => {
+        const t = setTimeout(fn, ms);
+        procTimeouts.current.push(t);
+      };
+      add(100,  () => { setProcSteps(['active', 'pending', 'pending']); setProcPct(5);  setProcEta('~8s restantes'); });
+      add(2000, () => { setProcSteps(['done',   'active', 'pending']); setProcPct(45); setProcEta('~5s restantes'); });
+      add(5000, () => { setProcSteps(['done',   'done',   'active']); setProcPct(75); setProcEta('~2s restantes'); });
+      add(7400, () => { setProcSteps(['done',   'done',   'done']);   setProcPct(100); setProcEta('Terminé'); });
+      add(7700, () => setState('draft'));
     };
 
-    add(100,  () => { setProcSteps(['active', 'pending', 'pending']); setProcPct(5);  setProcEta('~8s restantes'); });
-    add(2000, () => { setProcSteps(['done',   'active', 'pending']); setProcPct(45); setProcEta('~5s restantes'); });
-    add(5000, () => { setProcSteps(['done',   'done',   'active']); setProcPct(75); setProcEta('~2s restantes'); });
-    add(7400, () => { setProcSteps(['done',   'done',   'done']);   setProcPct(100); setProcEta('Terminé'); });
-    add(7700, () => setState('draft'));
-  }, []);
+    if (!crContext?.id) {
+      launchAnimation();
+      return;
+    }
+
+    /* 1. Récupérer les notes du prospect */
+    setPreparing(true);
+    const notesRes = await GetData<NotesListResponse>({
+      url: ApiRoutes.PROSPECT_NOTES(crContext.id),
+      protected: true,
+    });
+    setPreparing(false);
+
+    if (!notesRes.ok || !notesRes.data) {
+      setGenError(notesRes.error ?? 'Impossible de récupérer les notes du prospect.');
+      return;
+    }
+    if (notesRes.data.items.length === 0) {
+      setGenError('Aucune note trouvée pour ce prospect. Ajoutez des notes avant de générer un CR.');
+      return;
+    }
+
+    const noteIds = notesRes.data.items.map(n => n.id);
+
+    /* 2. Lancer l'animation + appel API en parallèle */
+    launchAnimation();
+
+    const crRes = await PostData<ProspectCR, GenerateCRBody>({
+      url: ApiRoutes.PROSPECT_CRS(crContext.id),
+      data: { note_ids: noteIds, template: 'standard' },
+      protected: true,
+    });
+
+    if (crRes.ok && crRes.data) {
+      setGeneratedCR(crRes.data);
+    } else {
+      setGenError(crRes.error ?? 'Erreur lors de la génération du CR');
+    }
+  }, [crContext]);
+
+  /* ── Sync crContext → draftValues (Société / Contact) ───────── */
+  useEffect(() => {
+    if (!crContext) return;
+    setDraftValues(v => ({
+      ...v,
+      'Société': crContext.label,
+      ...(crContext.sublabel ? { 'Contact': crContext.sublabel } : {}),
+    }));
+  }, [crContext]);
 
   /* ── Cleanup ─────────────────────────────────────────────────── */
   useEffect(() => () => {
@@ -223,7 +321,7 @@ export default function NouveauCRPage() {
               <Button
                 variant="link"
                 size="xs"
-                onClick={() => router.push(`/${locale}/page/comptes-rendus`)}
+                onClick={() => router.back()}
                 className="gap-1.5 !text-[12px]"
               >
                 <ArrowLeftIcon size={12} />
@@ -247,19 +345,61 @@ export default function NouveauCRPage() {
           {/* ── Main card ────────────────────────────────────── */}
           <div className="flex-1 min-w-0">
 
+            {/* ── CONTEXT ──────────────────────────────────── */}
+            {state === 'context' && (
+              <div className="bg-white border border-[var(--bd-def)] rounded-2xl overflow-hidden shadow-sm">
+                <div className="h-[3px]" style={{ background: 'var(--grad)' }} />
+                <div className="p-7">
+                  <ProspectPicker
+                    initialType={crContext?.type ?? null}
+                    onSelect={ctx => { setCrContext(ctx); setState('idle'); }}
+                    onSkip={() => { setCrContext(null); setState('idle'); }}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* ── IDLE ─────────────────────────────────────── */}
             {state === 'idle' && (
               <div className="bg-white border border-[var(--bd-def)] rounded-2xl overflow-hidden shadow-sm">
                 <div className="h-[3px]" style={{ background: 'var(--grad)' }} />
                 <div className="p-7">
-                  {/* DOS chip */}
-                  <button className="flex items-center gap-2.5 w-full bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-xl px-3 py-2.5 mb-6 hover:border-[rgba(14,134,232,0.4)] hover:bg-[rgba(14,134,232,0.04)] transition-colors text-left">
-                    <span className="text-[10px] text-[var(--tx-3)] font-mono">DOS-2026-0142</span>
-                    <span className="w-px h-3.5 bg-[var(--bd-def)]" />
-                    <span className="text-[13px] font-bold text-[var(--tx-1)] flex-1">Sonatrans SA</span>
-                    <span className="text-[13px]">🇸🇳</span>
-                    <CaretRightIcon size={12} className="text-[var(--tx-3)]" />
-                  </button>
+                  {/* Context chip — verrouillé si venu d'un prospect, sinon cliquable */}
+                  {crContext ? (
+                    prospectId || prospectCompany ? (
+                      /* Lecture seule : contexte imposé depuis la page détail */
+                      <div className="flex items-center gap-2.5 w-full bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-xl px-3 py-2.5 mb-6 text-left">
+                        <span className="text-[10px] text-[var(--tx-3)] font-mono">{crContext.reference ?? crContext.type}</span>
+                        <span className="w-px h-3.5 bg-[var(--bd-def)]" />
+                        <span className="text-[13px] font-bold text-[var(--tx-1)] flex-1 truncate">{crContext.label}</span>
+                        {crContext.sublabel && (
+                          <span className="text-[11px] text-[var(--tx-3)] max-w-[130px] truncate">{crContext.sublabel}</span>
+                        )}
+                      </div>
+                    ) : (
+                      /* Cliquable : contexte sélectionné via le picker, modifiable */
+                      <button
+                        onClick={() => setState('context')}
+                        className="flex items-center gap-2.5 w-full bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-xl px-3 py-2.5 mb-6 hover:border-[rgba(14,134,232,0.4)] hover:bg-[rgba(14,134,232,0.04)] transition-colors text-left"
+                      >
+                        <span className="text-[10px] text-[var(--tx-3)] font-mono">{crContext.reference ?? crContext.type}</span>
+                        <span className="w-px h-3.5 bg-[var(--bd-def)]" />
+                        <span className="text-[13px] font-bold text-[var(--tx-1)] flex-1 truncate">{crContext.label}</span>
+                        {crContext.sublabel && (
+                          <span className="text-[11px] text-[var(--tx-3)] max-w-[130px] truncate">{crContext.sublabel}</span>
+                        )}
+                        <CaretRightIcon size={12} className="text-[var(--tx-3)] flex-shrink-0" />
+                      </button>
+                    )
+                  ) : (
+                    <button
+                      onClick={() => setState('context')}
+                      className="flex items-center gap-2.5 w-full bg-[var(--bg-sink)] border border-dashed border-[var(--bd-def)] rounded-xl px-3 py-2.5 mb-6 hover:border-primary-400 hover:bg-[rgba(14,134,232,0.04)] transition-colors text-left"
+                    >
+                      <span className="text-[12px] text-[var(--tx-3)] flex-1">Sélectionner le contexte du CR</span>
+                      <CaretRightIcon size={12} className="text-[var(--tx-3)]" />
+                    </button>
+                  )}
 
                   {/* Prompt box */}
                   <div className="bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-xl p-4 mb-7">
@@ -373,7 +513,7 @@ export default function NouveauCRPage() {
                       <div className="flex items-center gap-2">
                         <span className="w-[5px] h-[5px] rounded-full cr-rec-dot" style={{ background: '#10B981' }} />
                         <span className="text-[12px] text-[var(--tx-3)]">
-                          Enregistrement en cours — la transcription sera générée à l`&apos;`arrêt
+                          Enregistrement en cours — la transcription sera générée à l&apos;arrêt
                         </span>
                       </div>
                     )}
@@ -387,7 +527,7 @@ export default function NouveauCRPage() {
                       onClick={cancelRecording}
                     >
                       <XIcon size={12} />
-                      Annuler l`&apos;`enregistrement
+                      Annuler l&apos;enregistrement
                     </Button>
                   </div>
                 </div>
@@ -416,7 +556,7 @@ export default function NouveauCRPage() {
                     style={{ background: 'rgba(107,53,201,0.05)', border: '1px solid rgba(107,53,201,0.18)', color: '#5829A8' }}>
                     <InfoIcon size={14} style={{ flexShrink: 0, marginTop: 1 }} />
                     <span>
-                      Corrigez les erreurs <strong>avant</strong> d`&apos;`envoyer à Claude Sonnet 4.5 — chiffres, noms propres, ponctuation.
+                      Corrigez les erreurs <strong>avant</strong> d&apos;envoyer à Claude Sonnet 4.5 — chiffres, noms propres, ponctuation.
                     </span>
                   </div>
 
@@ -431,15 +571,25 @@ export default function NouveauCRPage() {
                     <span className="text-[10px] text-[var(--tx-3)]">Cliquez pour modifier</span>
                   </div>
 
+                  {genError && (
+                    <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl mb-3 text-[12px]"
+                      style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.25)', color: '#DC2626' }}>
+                      <WarningIcon size={14} className="flex-shrink-0 mt-0.5" />
+                      <span>{genError}</span>
+                    </div>
+                  )}
                   <Button
                     variant="gradient"
                     size="lg"
                     onClick={startProcessing}
+                    disabled={preparing}
                     className="w-full mb-3"
-                    style={{ boxShadow: '0 2px 12px rgba(107,53,201,0.3)' }}
+                    style={{ boxShadow: preparing ? 'none' : '0 2px 12px rgba(107,53,201,0.3)' }}
                   >
-                    <SparkleIcon size={16} />
-                    Analyser et structurer avec Claude Sonnet 4.5
+                    {preparing
+                      ? <><CircleNotchIcon size={16} className="animate-spin" /> Vérification des notes…</>
+                      : <><SparkleIcon size={16} /> Analyser et structurer avec Claude Sonnet 4.5</>
+                    }
                   </Button>
 
                   <div className="flex gap-2">
@@ -640,8 +790,8 @@ export default function NouveauCRPage() {
                   </div>
                   <h2 className="text-[18px] font-bold text-[var(--tx-1)] font-display mb-2">CR validé et envoyé</h2>
                   <p className="text-[13px] text-[var(--tx-3)] leading-relaxed mb-4">
-                    {prospectCompany || 'Prospect'}{prospectContact ? ` · ${prospectContact}` : ''}<br />
-                    CR généré par IA{prospectId ? ` · lié au prospect #${prospectId.slice(0, 8)}` : ' · archivé dans PortaLis'}
+                    {crContext?.label ?? 'Sans contexte'}{crContext?.sublabel ? ` · ${crContext.sublabel}` : ''}<br />
+                    CR généré par IA{crContext?.id ? ` · lié au prospect #${crContext.id.slice(0, 8)}` : ' · archivé dans PortaLis'}
                   </p>
                   <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[12px] font-semibold mb-6"
                     style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10B981', color: '#065F46' }}>
@@ -651,7 +801,7 @@ export default function NouveauCRPage() {
 
                   {/* Paradigm box */}
                   <div className="bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-xl p-4 text-left mb-6">
-                    <div className="text-[12px] font-bold text-[var(--tx-1)] mb-2">Résumé de l`&apos;`action — Paradigme 70 / 30</div>
+                    <div className="text-[12px] font-bold text-[var(--tx-1)] mb-2">Résumé de l&apos;action — Paradigme 70 / 30</div>
                     <div className="text-[12px] text-[var(--tx-3)] leading-relaxed">
                       IA (70 %) : transcription + structuration + rédaction des 6 champs<br />
                       Vous (30 %) : relecture · correction champ « Points discutés » · envoi
@@ -661,23 +811,51 @@ export default function NouveauCRPage() {
                   {/* Export */}
                   <div className="border-t border-[var(--bd-def)] pt-5 mb-5 text-left">
                     <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-3)] font-mono mb-3">Exporter le CR</div>
+                    {genError && (
+                      <p className="text-[11px] text-red-500 mb-2">{genError}</p>
+                    )}
+                    {generatedCR && (
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-2 text-[11px]"
+                        style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)', color: '#059669' }}>
+                        <CheckCircleIcon size={12} />
+                        CR v{generatedCR.version + 1} généré ·{' '}
+                        {generatedCR.file_size ? `${(generatedCR.file_size / 1024).toFixed(1)} Ko` : '–'}
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 gap-2 mb-2">
                       {[
-                        { icon: <FileTextIcon size={18} className="text-primary-500" />, label: 'Exporter PDF', sub: 'Format A4 · impression' },
-                        { icon: <FileTextIcon size={18} className="text-primary-500" />, label: 'Exporter Word', sub: '.doc · éditable' },
-                      ].map((btn, i) => (
-                        <Button
-                          key={i}
-                          variant="ghost"
-                          onClick={() => showToast(`Export ${btn.label.split(' ')[1]} généré`)}
-                          className="flex-col !h-[60px] gap-1 w-full hover:!border-primary-500 hover:!bg-[rgba(14,134,232,0.04)]"
-                        >
-                          {btn.icon}
-                          <span className="text-[12px] font-semibold text-[var(--tx-1)]">{btn.label}</span>
-                          <span className="text-[10px] text-[var(--tx-3)]">{btn.sub}</span>
-                        </Button>
-                      ))}
+                        { fmt: 'pdf' as const, label: 'Télécharger PDF', sub: 'Format A4 · impression' },
+                        { fmt: 'word' as const, label: 'Télécharger Word', sub: '.doc · éditable' },
+                      ].map(btn => {
+                        const isLoading = generating === btn.fmt;
+                        const disabled  = !!generating || !generatedCR;
+                        return (
+                          <Button
+                            key={btn.fmt}
+                            variant="ghost"
+                            disabled={disabled}
+                            onClick={() => downloadGeneratedCR(btn.fmt)}
+                            className="flex-col !h-[60px] gap-1 w-full hover:!border-primary-500 hover:!bg-[rgba(14,134,232,0.04)]"
+                          >
+                            {isLoading
+                              ? <CircleNotchIcon size={18} className="animate-spin text-primary-500" />
+                              : <DownloadSimpleIcon size={18} className="text-primary-500" />
+                            }
+                            <span className="text-[12px] font-semibold text-[var(--tx-1)]">
+                              {isLoading ? 'Téléchargement…' : btn.label}
+                            </span>
+                            <span className="text-[10px] text-[var(--tx-3)]">{btn.sub}</span>
+                          </Button>
+                        );
+                      })}
                     </div>
+                    {!generatedCR && (
+                      <p className="text-[11px] text-[var(--tx-3)] text-center mb-2">
+                        {crContext?.id
+                          ? 'Le CR est en cours de génération…'
+                          : 'Associez un prospect pour activer le téléchargement'}
+                      </p>
+                    )}
                     <Button
                       variant="dashed"
                       size="md"
@@ -692,7 +870,7 @@ export default function NouveauCRPage() {
                   <Button
                     variant="ghost"
                     size="md"
-                    onClick={() => { setState('idle'); setTimerSec(0); setTranscriptText(''); }}
+                    onClick={() => { setState('idle'); setTimerSec(0); setTranscriptText(''); setGeneratedCR(null); setGenError(null); }}
                     className="w-full"
                   >
                     <MicrophoneIcon size={14} /> Nouveau CR vocal
@@ -728,7 +906,7 @@ export default function NouveauCRPage() {
                       className="w-full"
                       style={{ boxShadow: '0 2px 12px rgba(107,53,201,0.3)' }}
                     >
-                      <ArrowClockwiseIcon size={16} /> Réessayer l`&apos;`envoi
+                      <ArrowClockwiseIcon size={16} /> Réessayer l&apos;envoi
                     </Button>
                     <Button
                       variant="ghost"
@@ -736,7 +914,7 @@ export default function NouveauCRPage() {
                       onClick={() => setState('transcript')}
                       className="w-full"
                     >
-                      Réécouter l`&apos;`enregistrement
+                      Réécouter l&apos;enregistrement
                     </Button>
                     <Button
                       variant="link"

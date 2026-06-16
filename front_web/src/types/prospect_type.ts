@@ -3,6 +3,7 @@ export type ProspectStatus = 'nouveau' | 'contacte' | 'qualifie' | 'converti' | 
 export interface Prospect {
   id: string;
   company: string;
+  lead_name?: string;
   initials: string;
   color: string;
   flag: string;
@@ -109,24 +110,25 @@ export interface ApiProspect {
   status_label: string;
   portalis_sector: string;
   portalis_notes: string;
+  lead_name: string;
   opportunity_name?: string;
-  status_changed_at: string;
+  status_changed_at: string | null;
   pipeline_age_days: number;
   company_name: string;
   contact_name: string;
   email: string;
   phone: string;
-  assigned_to_id: number;
-  assigned_to_name: string;
-  team_id: number;
-  team_name: string;
+  assigned_to_id: number | null;
+  assigned_to_name: string | null;
+  team_id: number | null;
+  team_name: string | null;
   expected_revenue: number;
-  probability: number;
-  priority: string;
+  probability: number | null;
+  priority: string | null;
   odoo_tags: string[];
   created_at: string;
   updated_at: string;
-  last_sync_at: string;
+  last_sync_at: string | null;
   activities?: unknown[];
 }
 
@@ -140,7 +142,8 @@ export interface ProspectsListResponse {
 }
 
 export interface CreateProspectBody {
-  company_name: string;
+  company_id?: string;       // entreprise existante Portalis
+  partner_name?: string;     // saisie manuelle → créé dans Odoo
   opportunity_name?: string;
   contact_name?: string;
   email?: string;
@@ -173,19 +176,19 @@ const AVATAR_COLORS = [
   '#EF4444','#F59E0B','#8B5CF6','#EC4899','#6366F1','#84CC16','#F97316',
 ];
 
-function hashColor(str: string): string {
+export function hashColor(str: string): string {
   let h = 0;
   for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h);
   return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
 }
 
-function toInitials(name: string): string {
+export function toInitials(name: string): string {
   const words = name.trim().split(/\s+/);
   if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
   return (words[0][0] + words[words.length - 1][0]).toUpperCase();
 }
 
-function timeAgo(iso: string): string {
+export function timeAgo(iso: string): string {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
   if (mins < 1)  return "à l'instant";
   if (mins < 60) return `il y a ${mins}min`;
@@ -202,6 +205,7 @@ export function apiProspectToUi(p: ApiProspect): Prospect {
   return {
     id:          p.id,
     company:     p.company_name,
+    lead_name:   p.lead_name || undefined,
     initials:    toInitials(p.company_name),
     color:       hashColor(p.id),
     flag:        '',
@@ -209,7 +213,7 @@ export function apiProspectToUi(p: ApiProspect): Prospect {
     contactRole: p.email || '',
     sector:      p.portalis_sector || '–',
     status:      p.status,
-    city:        p.team_name || '',
+    city:        p.team_name ?? '',
     dossiers:    null,
     pipeline:    p.expected_revenue > 0 ? p.expected_revenue : null,
     pipelineAge: p.pipeline_age_days > 0 ? p.pipeline_age_days : null,
