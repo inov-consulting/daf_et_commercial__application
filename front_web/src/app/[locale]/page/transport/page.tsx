@@ -216,7 +216,8 @@ export default function TransportPage() {
       {/* KPI row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <KpiCard
-          label="⊞ Dossiers actifs"
+          icon={<FolderOpenIcon size={16} className="text-[#0E86E8]" />}
+          label="Dossiers actifs"
           value={loading ? '–' : String(kpi.actifs)}
           labelPosition="above"
           accentStyle="linear-gradient(135deg,#0E86E8,#6B35C9)"
@@ -224,7 +225,8 @@ export default function TransportPage() {
           trend="neutral"
         />
         <KpiCard
-          label="⊕ CA pipeline"
+          icon={<ArrowRightIcon size={16} className="text-[#6B35C9]" />}
+          label="CA pipeline"
           value={loading ? '–' : fmtMontant(kpi.caPipeline)}
           labelPosition="above"
           accentStyle="linear-gradient(135deg,#6B35C9,#C2257A)"
@@ -232,7 +234,8 @@ export default function TransportPage() {
           trend="up"
         />
         <KpiCard
-          label="% Marge moyenne"
+          icon={<ArrowRightIcon size={16} className="text-[#10B981]" />}
+          label="Marge moyenne"
           value={loading ? '–' : (kpi.margeAvg !== null ? `${kpi.margeAvg.toFixed(1)}%` : '–')}
           labelPosition="above"
           accentStyle="linear-gradient(135deg,#10B981,#0E86E8)"
@@ -241,12 +244,13 @@ export default function TransportPage() {
           styleValue={kpi.margeAvg !== null ? (kpi.margeAvg >= 15 ? 'text-[#059669]' : 'text-[#D97706]') : undefined}
         />
         <KpiCard
-          label="⚠ Alertes actives"
+          icon={<WarningIcon size={16} className="text-[#DC2626]" />}
+          label="Alertes actives"
           value={loading ? '–' : String(kpi.alertes)}
           labelPosition="above"
           accentStyle="linear-gradient(135deg,#EF4444,#F59E0B)"
           trendValue={alertCount > 0 ? `${alertCount} dossier${alertCount > 1 ? 's' : ''} à vérifier` : 'Aucune alerte'}
-          trend={kpi.alertes > 0 ? 'down' : 'neutral'} 
+          trend={kpi.alertes > 0 ? 'down' : 'neutral'}
           styleValue={kpi.alertes > 0 ? 'text-[#DC2626]' : undefined}
         />
       </div>
@@ -367,11 +371,11 @@ export default function TransportPage() {
                         <div className="flex items-center gap-1">
                           <span className="text-[13px] font-semibold text-[var(--tx-1)]">{d.client_name}</span>
                           {d.alerte && (
-                              <WarningIcon
-                                size={14}
-                                className="text-[#EF4444] flex-shrink-0"
-                                aria-label={d.alerte === 'critique' ? 'Marge critique < 10%' : 'Écart coûts > 10%'}
-                              />
+                            <WarningIcon
+                              size={14}
+                              className="text-[#EF4444] flex-shrink-0"
+                              aria-label={d.alerte === 'critique' ? 'Marge critique < 10%' : 'Écart coûts > 10%'}
+                            />
                           )}
                         </div>
                         {d.client_meta && (
