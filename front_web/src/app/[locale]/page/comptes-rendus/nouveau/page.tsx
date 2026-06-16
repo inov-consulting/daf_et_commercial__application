@@ -496,7 +496,7 @@ export default function NouveauCRPage() {
                       >
                         {preparing
                           ? <><CircleNotchIcon size={16} className="animate-spin" /> Vérification des notes…</>
-                          : <><SparkleIcon size={16} /> Analyser et structurer avec l'IA</>
+                          : <><SparkleIcon size={16} /> Analyser et structurer avec l&apos;IA</>
                         }
                       </Button>
                     </>
@@ -655,7 +655,7 @@ export default function NouveauCRPage() {
                   >
                     {preparing
                       ? <><CircleNotchIcon size={16} className="animate-spin" /> Vérification des notes…</>
-                      : <><SparkleIcon size={16} /> Analyser et structurer avec l'IA</>
+                      : <><SparkleIcon size={16} /> Analyser et structurer avec l&apos;IA</>
                     }
                   </Button>
 
