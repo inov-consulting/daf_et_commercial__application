@@ -100,3 +100,13 @@ class AiConfigRepository:
         return (
             orm.to_domain(),
             orm.default_model.to_domain(),            orm.default_embedding_model.to_domain(),        )
+
+    async def set_compte_rendu_template(self, template: str | None) -> tuple[AiConfig, AiModel, AiModel]:
+        """Met à jour le template de compte-rendu."""
+        orm = await self._get_or_create()
+        orm.compte_rendu_template = template
+        await orm.save()
+        await orm.fetch_related("default_model", "default_embedding_model")
+        return (
+            orm.to_domain(),
+            orm.default_model.to_domain(),            orm.default_embedding_model.to_domain(),        )

@@ -208,6 +208,7 @@ class ProspectSyncService:
         expected_revenue: int,
         tag_ids: list[int] | None = None,
         partner_id: int | None = None,
+        partner_name: str | None = None,
         lead_type: str = "lead",
         probability: float | None = None,
         date_deadline: str | None = None,
@@ -216,6 +217,7 @@ class ProspectSyncService:
         
         Args:
             partner_id: ID du client/entreprise existant (res.partner) à lier.
+            partner_name: Nom de l'entreprise (affiché dans le lead).
             lead_type: 'lead' ou 'opportunity'.
             probability: Probabilité de conversion (0-100) pour opportunités.
             date_deadline: Date butoir (format YYYY-MM-DD).
@@ -229,6 +231,8 @@ class ProspectSyncService:
             "type": lead_type,
         }
         
+        if partner_name:
+            values["partner_name"] = partner_name
         if contact_name:
             values["contact_name"] = contact_name
         if email:
