@@ -5,123 +5,56 @@ Génère des PDF professionnels à partir des notes via Claude AI.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, UTC
 from uuid import UUID
 
 from app.core.config import settings
 from app.infrastructure.db.models.note import CompteRenduOrm, NoteOrm
+from app.infrastructure.db.models.prospect import ProspectOrm
 from app.infrastructure.storage.minio import StorageService
 
 
 # Template HTML pour le PDF
-HTML_TEMPLATE = """
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>{title}</title>
-    <style>
-        @page {{
-            size: A4;
-            margin: 2.5cm;
-        }}
-        body {{
-            font-family: 'Helvetica', 'Arial', sans-serif;
-            font-size: 11pt;
-            line-height: 1.6;
-            color: #333;
-        }}
-        h1 {{
-            font-size: 18pt;
-            color: #1a365d;
-            border-bottom: 2px solid #1a365d;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-        }}
-        h2 {{
-            font-size: 14pt;
-            color: #2c5282;
-            margin-top: 25px;
-            margin-bottom: 12px;
-        }}
-        h3 {{
-            font-size: 12pt;
-            color: #2d3748;
-        }}
-        .header {{
-            text-align: right;
-            font-size: 9pt;
-            color: #666;
-            margin-bottom: 30px;
-        }}
-        .metadata {{
-            background: #f7fafc;
-            border-left: 4px solid #1a365d;
-            padding: 15px;
-            margin-bottom: 20px;
-        }}
-        .metadata-item {{
-            margin: 5px 0;
-        }}
-        .note {{
-            background: #fff;
-            border: 1px solid #e2e8f0;
-            border-radius: 4px;
-            padding: 12px;
-            margin: 10px 0;
-        }}
-        .note-meta {{
-            font-size: 9pt;
-            color: #666;
-            margin-bottom: 8px;
-        }}
-        .footer {{
-            position: fixed;
-            bottom: 1cm;
-            right: 2.5cm;
-            font-size: 8pt;
-            color: #999;
-        }}
-    </style>
-</head>
-<body>
-    <div class="header">
-        Généré le {date}<br>
-        PortaLis - CRM Commercial
-    </div>
-    {content}
-    <div class="footer">
-        Page {{ page }} sur {{ pages }}
-    </div>
-</body>
-</html>
-"""
+
 
 # Prompt pour Claude
-CR_GENERATION_PROMPT = """Tu es un assistant commercial professionnel. Tu dois rédiger un compte-rendu structuré et professionnel à partir des notes fournies.
+CR_GENERATION_PROMPT = """Tu es un assistant commercial professionnel. Tu dois créer un document HTML complet et professionnel pour un compte-rendu.
 
 INSTRUCTIONS:
 1. Analyse toutes les notes fournies
-2. Rédige un compte-rendu professionnel en français
-3. Structure le document avec:
-   - Un titre approprié
-   - Un résumé exécutif (points clés)
-   - Les détails par thème ou chronologiquement
-   - Des recommandations ou actions à suivre
-4. Utilise un ton professionnel mais accessible
-5. Format: Markdown avec titres (# ## ###), listes, etc.
+2. Génère un document HTML autonome avec:
+   - CSS inline dans <style>
+   - Logo PortaLis Sénégal (URL: https://web.portalis.manage.inov-consulting.com/assets/images/logo_portalis.png)
+   - Couleurs du Design System PortaLis
+   - Structure professionnelle avec page de garde
 
-FORMAT DE SORTIE (Markdown):
-# Compte-Rendu: [Sujet]
+STRUCTURE HTML OBLIGATOIRE (appliquer le Design System fourni ci-dessous):
+1. Page de garde avec gradient, logo (64px), titre, date
+2. Résumé exécutif en bullets colorés
+3. Détails structurés par sections
+4. Actions recommandées avec badges
+5. Footer "PortaLis — Sénégal"
 
-## Résumé Exécutif
-[Bullets des points clés]
+⚠️ RÈGLES ABSOLUES - OBLIGATOIRES:
+1. Document HTML COMPLET et autonome (pas de dépendances externes)
+2. CSS inline uniquement dans <style>
+3. **CRITIQUE: NE PAS utiliser de bloc de code Markdown** - pas de ```html au début, pas de ``` à la fin
+4. **Le HTML doit démarrer immédiatement par <!DOCTYPE html>**
+5. **Le HTML doit se termimer par </html>** sans rien après
+6. Contenu en français
+7. **MARGES DIFFÉRENCIÉES**: Utiliser @page pour marge 0 sur page de garde, 2cm sur autres pages
+   CSS requis: @page :first {{ margin: 0; }} et @page {{ margin: 2cm; }}
 
-## Détails
-[Contenu structuré des notes]
+❌ INTERDIT: ```html au début ou ``` à la fin
+❌ INTERDIT: box-shadow, ombres sur les blocs (impression problématique)
+✅ OBLIGATOIRE: Commencer directement par <!DOCTYPE html>
 
-## Actions Recommandées
-[Liste d'actions]
+FORMAT DE SORTIE (copier-coller exact):
+<!DOCTYPE html>
+<html lang="fr">
+...
+</html>
 
 NOTES À TRAITER:
 {notes}
@@ -164,30 +97,101 @@ class CompteRenduService:
         # 2. Préparer le contexte pour Claude
         notes_text = self._format_notes_for_prompt(notes)
 
-        # 3. Récupérer le template de la config AI (ou utiliser le défaut)
+        # 3. Récupérer le template de style depuis la base de données (OBLIGATOIRE)
         from app.infrastructure.db.models.ai_config import AiConfigOrm
+        from fastapi import HTTPException, status
         
         config = await AiConfigOrm.first()
-        cr_template = config.compte_rendu_template if config and config.compte_rendu_template else CR_GENERATION_PROMPT
+        style_template = config.compte_rendu_template if config else None
         
-        # 4. Appeler Claude pour générer le contenu
-        prompt = cr_template.format(notes=notes_text)
+        # Vérifier que le template existe et n'est pas vide
+        if not style_template or not style_template.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Template de compte-rendu non configuré. Veuillez configurer le Design System dans les paramètres AI."
+            )
+        
+        # 4. Construire le prompt complet : instructions + template Design System
+        base_prompt = CR_GENERATION_PROMPT.format(notes=notes_text)
+        
+        # Claude reçoit le Design System COMPLET de la DB avec instructions de marge
+        prompt = f"""{base_prompt}
+
+⚠️ DESIGN SYSTEM PORTALIS (À APPLIQUER STRICTEMENT):
+{style_template}
+
+RAPPEL: Générer un document HTML COMPLET avec ce Design System. Respecter les couleurs, typographie et espacements exacts."""
         
         # Utiliser Anthropic client
-        md_content = await self._call_claude(prompt)
+        html_content = await self._call_claude(prompt)
+        
+        # Nettoyer les éventuels blocs de code Markdown
+        import re
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Retirer ```html, ```, ou tout autre bloc de code au début/fin
+        html_content = re.sub(r'^\s*```\s*\n?', '', html_content, flags=re.IGNORECASE)
+        html_content = re.sub(r'\n?```\s*$', '', html_content, flags=re.IGNORECASE)
+        html_content = html_content.strip()
+        
+        # Vérifier que le HTML est complet (se termine par </html>)
+        if not html_content.rstrip().endswith('</html>'):
+            if '<body>' in html_content and '</body>' not in html_content:
+                html_content += "\n</body>\n</html>"
+            elif '</body>' in html_content and '</html>' not in html_content:
+                html_content += "\n</html>"
+        
+        # S'assurer que ça commence par <!DOCTYPE ou <html
+        if not html_content.startswith(('<!DOCTYPE', '<!doctype', '<html')):
+            # Si Claude a quand même mis du texte avant, on wrap dans un HTML basique
+            # PAS de padding ici pour éviter les marges doublées (les marges sont gérées par CSS @page)
+            html_content = f"""<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><style>body{{font-family:system-ui,sans-serif;color:#212121;margin:0;padding:0;}}</style></head>
+<body>{html_content}</body>
+</html>"""
 
-        # 4. Convertir Markdown en HTML puis PDF
-        pdf_bytes = await self._generate_pdf(md_content, prospect_id)
+        # Debug: logger le HTML généré
+    
+        # Vérifier que le HTML n'est pas vide
+        if len(html_content) < 100:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"HTML généré vide ou trop court ({len(html_content)} caractères)"
+            )
+        
+        # 5. Convertir HTML en PDF avec Playwright
+        pdf_bytes = await self._generate_pdf(html_content, prospect_id, style_template)
+        
+        
+        # Vérifier que le PDF n'est pas vide
+        if not pdf_bytes or len(pdf_bytes) < 1000:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"PDF généré vide ou trop petit ({len(pdf_bytes) if pdf_bytes else 0} bytes)"
+            )
 
-        # 5. Calculer la prochaine version
+        # 6. Calculer la prochaine version
         existing_crs = await CompteRenduOrm.filter(
             parent_type="prospect",
             parent_id=prospect_id,
         ).count()
         version = existing_crs + 1
 
-        # 6. Upload sur MinIO
-        filename = f"v{version}.pdf"
+        # 6b. Récupérer le prospect pour le slug
+        prospect = await ProspectOrm.get_or_none(id=prospect_id)
+        prospect_slug = "prospect"
+        if prospect and prospect.erp_metadata:
+            # Utiliser partner_name (entreprise) ou name (titre lead)
+            name = prospect.erp_metadata.get("partner_name") or prospect.erp_metadata.get("name") or "prospect"
+            # Créer un slug: minuscule, sans accents, alphanumérique uniquement, max 30 car
+            prospect_slug = re.sub(r'[^\w\s-]', '', name.lower())
+            prospect_slug = re.sub(r'[-\s]+', '-', prospect_slug)
+            prospect_slug = prospect_slug.strip('-')[:30] or "prospect"
+
+        # 7. Upload sur MinIO
+        filename = f"CR-{prospect_slug}-v{version}.pdf"
         folder = f"cr/prospect/{prospect_id}"
         minio_path = f"{folder}/{filename}"
         
@@ -199,7 +203,7 @@ class CompteRenduService:
             unique=False,
         )
 
-        # 7. Créer l'enregistrement en DB
+        # 8. Créer l'enregistrement en DB
         cr = await CompteRenduOrm.create(
             parent_type="prospect",
             parent_id=prospect_id,
@@ -210,6 +214,7 @@ class CompteRenduService:
             file_size=len(pdf_bytes),
             generated_by="ai",
             prompt_used=prompt,
+            content=html_content,  # HTML généré par Claude (modifiable)
             note_ids=[str(n.id) for n in notes],
             created_by_id=author_id,
         )
@@ -237,98 +242,126 @@ class CompteRenduService:
             client = Anthropic(api_key=settings.anthropic_api_key)
             response = client.messages.create(
                 model=settings.ai_default_model if "claude" in settings.ai_default_model else "claude-sonnet-4-5",
-                max_tokens=4000,
+                max_tokens=10000,  # Augmenté pour HTML long avec Design System
                 messages=[{"role": "user", "content": prompt}],
             )
             return response.content[0].text
 
         return await asyncio.to_thread(_sync_call)
 
-    async def _generate_pdf(self, md_content: str, prospect_id: UUID) -> bytes:
-        """Convertit le Markdown en PDF avec reportlab (Unicode natif, mise en page auto)."""
+
+    async def _generate_pdf(self, html_content: str, prospect_id: UUID, style_template: str | None = None) -> bytes:
+        """Convertit le HTML en PDF avec Playwright (Chromium headless)."""
         import asyncio
-        import io
-        import re
+        from playwright.async_api import async_playwright
+        import logging
+        logger = logging.getLogger(__name__)
 
-        date_str = datetime.now(UTC).strftime("%d/%m/%Y")
+        async def _render_pdf() -> bytes:
+            logger.info(f"Playwright: début conversion HTML ({len(html_content)} caractères) → PDF")
+            
+            async with async_playwright() as p:
+                # Flags nécessaires pour Docker (no-sandbox)
+                browser = await p.chromium.launch(
+                    args=['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+                )
+                page = await browser.new_page()
+                
+                # Charger le HTML - utiliser domcontentloaded pour éviter d'attendre les images externes
+                logger.debug(f"HTML à charger: {html_content[:300]}...")
+                await page.set_content(html_content, wait_until='domcontentloaded')
+                
+                # Attendre que le DOM soit stable
+                await asyncio.sleep(1)
+                
+                # Vérifier que la page a du contenu
+                # Vérifier si body existe
+                body_exists = await page.evaluate('() => !!document.body')
+                logger.info(f"Playwright: document.body existe: {body_exists}")
+                
+                if not body_exists:
+                    # Logger tout le HTML de la page pour debug
+                    full_html = await page.evaluate('() => document.documentElement.outerHTML.substring(0, 1000)')
+                    logger.error(f"Playwright: Pas de body! HTML: {full_html}...")
+                    raise ValueError("Pas de balise <body> dans le HTML généré")
+                
+                body_text = await page.evaluate('() => document.body.innerText.trim().length')
+                body_html = await page.evaluate('() => document.body.innerHTML.substring(0, 500)')
+                doc_html = await page.evaluate('() => document.documentElement.outerHTML.substring(0, 500)')
+                
+                logger.info(f"Playwright: HTML chargé, {body_text} caractères dans body")
+                logger.info(f"Playwright: Body HTML preview: {body_html}...")
+                logger.info(f"Playwright: Doc HTML preview: {doc_html}...")
+                
+                if body_text < 10:
+                    logger.error("Playwright: Body vide ou quasi-vide!")
+                    full_html = await page.evaluate('() => document.documentElement.outerHTML')
+                    logger.error(f"Playwright: HTML complet: {full_html[:2000]}...")
+                    raise ValueError(f"HTML rendu vide (body contient {body_text} caractères)")
+                
+                # Générer le PDF - pas de marges (le HTML les gère avec @page ou body padding)
+                pdf_bytes = await page.pdf(
+                    format="A4",
+                    margin={"top": "0", "right": "0", "bottom": "0", "left": "0"},
+                    print_background=True,
+                )
+                
+                logger.info(f"Playwright: PDF généré ({len(pdf_bytes)} bytes)")
+                
+                await browser.close()
+                return pdf_bytes
 
-        def _strip_inline(text: str) -> str:
-            """Supprime les marqueurs Markdown inline (*bold*, _italic_)."""
-            text = re.sub(r"\*{1,3}([^*]+)\*{1,3}", r"\1", text)
-            text = re.sub(r"_{1,2}([^_]+)_{1,2}", r"\1", text)
-            return text.strip()
+        return await _render_pdf()
 
-        def _sync_pdf() -> bytes:
-            from reportlab.lib import colors
-            from reportlab.lib.pagesizes import A4
-            from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-            from reportlab.lib.units import mm
-            from reportlab.platypus import (
-                HRFlowable,
-                ListFlowable,
-                ListItem,
-                Paragraph,
-                SimpleDocTemplate,
-                Spacer,
-            )
-
-            buf = io.BytesIO()
-            doc = SimpleDocTemplate(
-                buf,
-                pagesize=A4,
-                leftMargin=20 * mm,
-                rightMargin=20 * mm,
-                topMargin=20 * mm,
-                bottomMargin=20 * mm,
-            )
-
-            styles = getSampleStyleSheet()
-            style_h1 = ParagraphStyle("H1", parent=styles["Heading1"], fontSize=16, textColor=colors.HexColor("#1a365d"), spaceAfter=6)
-            style_h2 = ParagraphStyle("H2", parent=styles["Heading2"], fontSize=13, textColor=colors.HexColor("#2c5282"), spaceAfter=4)
-            style_h3 = ParagraphStyle("H3", parent=styles["Heading3"], fontSize=11, textColor=colors.HexColor("#2d3748"), spaceAfter=3)
-            style_body = ParagraphStyle("Body", parent=styles["Normal"], fontSize=10, leading=14, spaceAfter=4)
-            style_meta = ParagraphStyle("Meta", parent=styles["Normal"], fontSize=9, textColor=colors.HexColor("#666666"), alignment=2)
-
-            story = []
-
-            # En-tête date
-            story.append(Paragraph(date_str, style_meta))
-            story.append(Spacer(1, 4 * mm))
-            story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#1a365d")))
-            story.append(Spacer(1, 6 * mm))
-
-            # Parsing Markdown ligne par ligne
-            bullet_buffer: list[str] = []
-
-            def _flush_bullets():
-                if bullet_buffer:
-                    items = [ListItem(Paragraph(_strip_inline(b), style_body), leftIndent=12) for b in bullet_buffer]
-                    story.append(ListFlowable(items, bulletType="bullet", start="\u2022"))
-                    story.append(Spacer(1, 2 * mm))
-                    bullet_buffer.clear()
-
-            for line in md_content.splitlines():
-                if line.startswith("# "):
-                    _flush_bullets()
-                    story.append(Paragraph(_strip_inline(line[2:]), style_h1))
-                elif line.startswith("## "):
-                    _flush_bullets()
-                    story.append(Paragraph(_strip_inline(line[3:]), style_h2))
-                elif line.startswith("### "):
-                    _flush_bullets()
-                    story.append(Paragraph(_strip_inline(line[4:]), style_h3))
-                elif line.startswith("- ") or line.startswith("* "):
-                    bullet_buffer.append(line[2:])
-                elif line.strip() == "":
-                    _flush_bullets()
-                    story.append(Spacer(1, 3 * mm))
-                else:
-                    _flush_bullets()
-                    story.append(Paragraph(_strip_inline(line), style_body))
-
-            _flush_bullets()
-
-            doc.build(story)
-            return buf.getvalue()
-
-        return await asyncio.to_thread(_sync_pdf)
+    async def regenerate_pdf_from_content(
+        self,
+        cr: CompteRenduOrm,
+        new_content: str | None = None,
+        author_id: UUID | None = None,
+    ) -> CompteRenduOrm:
+        """Regénère le PDF depuis le content existant ou un nouveau HTML fourni.
+        
+        Args:
+            cr: Le compte-rendu à mettre à jour
+            new_content: Nouveau HTML (si None, utilise cr.content)
+            author_id: ID de l'utilisateur qui fait la modification
+            
+        Returns:
+            Le compte-rendu mis à jour
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Utiliser le nouveau content ou celui du CR
+        html_content = new_content if new_content else cr.content
+        
+        if not html_content:
+            raise ValueError("Aucun content HTML disponible pour regénérer le PDF")
+        
+        logger.info(f"Régénération PDF pour CR {cr.id} ({len(html_content)} caractères)")
+        
+        # Générer le nouveau PDF
+        pdf_bytes = await self._generate_pdf(html_content, cr.parent_id)
+        
+        # Déterminer le folder MinIO
+        folder = f"cr/{cr.parent_type}/{cr.parent_id}"
+        
+        # Mettre à jour le fichier sur MinIO
+        await self._storage.upload(
+            pdf_bytes,
+            filename=cr.minio_path.split("/")[-1],  # Garder le même nom de fichier
+            content_type="application/pdf",
+            folder=folder,
+            unique=False,
+        )
+        
+        # Mettre à jour le CR en DB
+        cr.content = html_content
+        cr.file_size = len(pdf_bytes)
+        cr.generated_by = "user"  # Marquer comme modifié par l'utilisateur
+        if author_id:
+            cr.created_by_id = author_id
+        await cr.save()
+        
+        logger.info(f"PDF régénéré pour CR {cr.id}: {len(pdf_bytes)} bytes")
+        return cr

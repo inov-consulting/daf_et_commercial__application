@@ -35,6 +35,7 @@ class AiConfigOut(BaseModel):
     id: UUID
     default_model: AiModelOut            # modèle de génération
     default_embedding_model: AiModelOut  # modèle d'embedding
+    compte_rendu_template: str | None    # template pour génération CR
     updated_at: datetime | None
 
 
@@ -50,6 +51,10 @@ class AiConfigUpdateGeneration(BaseModel):
 
 class AiConfigUpdateEmbedding(BaseModel):
     model_id: UUID
+
+
+class AiConfigUpdateTemplate(BaseModel):
+    compte_rendu_template: str | None = None  # None = utiliser le template par défaut
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────
@@ -109,6 +114,7 @@ async def get_ai_config() -> AiConfigOut:
         id=config.id,
         default_model=_model_out(model),
         default_embedding_model=_model_out(embedding_model),
+        compte_rendu_template=config.compte_rendu_template,
         updated_at=config.updated_at,
     )
 
@@ -125,6 +131,7 @@ async def update_generation_model(payload: AiConfigUpdateGeneration) -> AiConfig
         id=config.id,
         default_model=_model_out(model),
         default_embedding_model=_model_out(embedding_model),
+        compte_rendu_template=config.compte_rendu_template,
         updated_at=config.updated_at,
     )
 
@@ -141,5 +148,25 @@ async def update_embedding_model(payload: AiConfigUpdateEmbedding) -> AiConfigOu
         id=config.id,
         default_model=_model_out(model),
         default_embedding_model=_model_out(embedding_model),
+        compte_rendu_template=config.compte_rendu_template,
+        updated_at=config.updated_at,
+    )
+
+
+@router.patch(
+    "/config/template",
+    dependencies=[Depends(require_permission("admin"))],
+)
+async def update_template(payload: AiConfigUpdateTemplate) -> AiConfigOut:
+    """Met à jour le template de génération de compte-rendus (Markdown)."""
+    uc = UpdateAiConfigUseCase(get_config_repo(), get_model_repo())
+    config, model, embedding_model = await uc.set_compte_rendu_template(
+        payload.compte_rendu_template
+    )
+    return AiConfigOut(
+        id=config.id,
+        default_model=_model_out(model),
+        default_embedding_model=_model_out(embedding_model),
+        compte_rendu_template=config.compte_rendu_template,
         updated_at=config.updated_at,
     )

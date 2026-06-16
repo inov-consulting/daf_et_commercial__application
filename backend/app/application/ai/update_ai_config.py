@@ -30,3 +30,7 @@ class UpdateAiConfigUseCase:
             raise ApplicationError("Ce modèle n'est pas un modèle d'embedding")
         model_orm = await AiModelOrm.get(id=model_id)
         return await self._config_repo.set_default_embedding_model(model_orm)
+
+    async def set_compte_rendu_template(self, template: str | None) -> tuple[AiConfig, AiModel, AiModel]:
+        """Met à jour le template de génération de compte-rendus."""
+        return await self._config_repo.set_compte_rendu_template(template)
