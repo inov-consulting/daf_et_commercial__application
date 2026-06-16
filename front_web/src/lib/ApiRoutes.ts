@@ -44,4 +44,9 @@ export const ApiRoutes = {
   // ── Prospect Comptes-rendus ──────────────────────────────────────
   PROSPECT_CRS:         (id: string) => `${BASE}/api/v1/commercial/prospects/${id}/compte-rendus`,
   PROSPECT_CR_DOWNLOAD: (prospectId: string, crId: string) => `${BASE}/api/v1/commercial/prospects/${prospectId}/compte-rendus/${crId}/download`,
+
+  // ── Transport ────────────────────────────────────────────────────
+  TRANSPORT_DOSSIERS:      `${BASE}/api/v1/transport/dossiers`,
+  TRANSPORT_DOSSIER:       (id: string) => `${BASE}/api/v1/transport/dossiers/${id}`,
+  TRANSPORT_DOSSIER_CLOSE: (id: string) => `${BASE}/api/v1/transport/dossiers/${id}/close`,
 } as const;

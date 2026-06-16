@@ -8,6 +8,7 @@ import {
   SquaresFourIcon, BrainIcon, UserIcon, TruckIcon, FunnelIcon,
   FilesIcon, FileTextIcon, DiamondIcon, ChartLineIcon, DownloadSimpleIcon,
   UsersIcon, GearIcon, SignOutIcon, XIcon, ClockCounterClockwiseIcon,
+  FolderOpenIcon, PlusCircleIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { ApiUser, User as UserType } from '@/types/user_type';
@@ -59,6 +60,13 @@ function buildNav(locale: string): NavSection[] {
         { href: `/${locale}/page/documents`, label: 'Documents', Icon: FilesIcon },
         { href: `/${locale}/page/comptes-rendus`, label: 'Comptes-rendus', Icon: FileTextIcon },
         { href: `/${locale}/page/offres`, label: 'Offres', Icon: DiamondIcon },
+      ],
+    },
+    {
+      title: 'TRANSPORT',
+      items: [
+        { href: `/${locale}/page/transport`, label: 'Dossiers transport', Icon: FolderOpenIcon, badge: 6 },
+        { href: `/${locale}/page/transport/nouveau`, label: 'Nouveau dossier', Icon: PlusCircleIcon },
       ],
     },
     {
