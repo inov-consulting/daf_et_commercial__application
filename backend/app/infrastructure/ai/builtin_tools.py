@@ -252,6 +252,7 @@ async def search_odoo_prospects(name: str) -> str:
 
 async def create_prospect(
     company_name: str,
+    opportunity_name: str | None = None,
     contact_name: str | None = None,
     email: str | None = None,
     phone: str | None = None,
@@ -263,6 +264,7 @@ async def create_prospect(
     
     Args:
         company_name: Nom de l'entreprise (obligatoire)
+        opportunity_name: Titre de l'opportunité/lead (défaut: même que company_name)
         contact_name: Nom du contact
         email: Email de contact
         phone: Numéro de téléphone
@@ -270,6 +272,8 @@ async def create_prospect(
         notes: Notes commerciales
         expected_revenue: CA prévu en euros
     """
+    # Si pas de nom d'opportunité spécifié, utiliser le nom de l'entreprise
+    lead_name = opportunity_name or company_name
     import logging
     logger = logging.getLogger(__name__)
     
@@ -304,7 +308,8 @@ async def create_prospect(
         logger.info(f"[AI Tool] Création lien Portalis pour Odoo ID={lead_id}")
         erp_metadata = {
             "id": lead_id,
-            "name": lead.get("name"),
+            "name": lead.get("name"),  # Titre du lead/opportunité
+            "partner_name": lead.get("partner_name"),  # ← Nom de l'entreprise
             "type": lead.get("type", "lead"),
             "contact_name": lead.get("contact_name"),
             "email_from": lead.get("email_from"),
@@ -322,19 +327,22 @@ async def create_prospect(
             odoo_lead_id=lead_id,
             erp_metadata=erp_metadata,
         )
+        # Nom de l'entreprise pour affichage (partner_name ou name)
+        display_company = lead.get("partner_name") or lead.get("name") or lead_name
         return (
             f"✅ **Prospect lié à l'ERP**\n\n"
-            f"🏢 {lead_name}\n"
+            f"🏢 {display_company}\n"
             f"🔗 ID ERP: `{lead_id}`\n"
             f"🆔 ID Portalis: `{prospect.id}`\n\n"
             f"*Ce prospect existait dans l'ERP, il est maintenant suivi dans Portalis.*"
         )
     
     # 2. Pas trouvé dans Odoo → créer dans les deux
-    logger.info(f"[AI Tool] Aucun existant, création dans Odoo: {company_name}")
+    logger.info(f"[AI Tool] Aucun existant, création dans Odoo: entreprise={company_name}, lead={lead_name}")
     try:
         odoo_lead_id = await sync_service.create_in_odoo(
-            name=company_name,
+            name=lead_name,  # ← Titre de l'opportunité/lead
+            partner_name=company_name,  # ← Nom de l'entreprise
             contact_name=contact_name,
             email=email,
             phone=phone,
@@ -351,9 +359,12 @@ async def create_prospect(
         return "❌ L'ERP n'a pas retourné d'ID pour le lead"
     
     # 3. Construction des erp_metadata avec les données fournies
+    # name = titre du lead/opportunité (lead_name)
+    # partner_name = nom de l'entreprise (company_name)
     erp_metadata = {
         "id": odoo_lead_id,
-        "name": company_name,
+        "name": lead_name,  # ← Titre/opportunité
+        "partner_name": company_name,  # ← Nom de l'entreprise
         "type": "lead",
         "contact_name": contact_name,
         "email_from": email,
@@ -370,13 +381,13 @@ async def create_prospect(
     prospect = await ProspectOrm.create(
         portalis_sector=sector,
         portalis_notes=notes,
-        status="nouveau",
+        status="new",
         odoo_lead_id=odoo_lead_id,
         erp_metadata=erp_metadata,
     )
     logger.info(f"[AI Tool] Prospect Portalis créé avec ID: {prospect.id}")
     
-    # 4. Récupérer les données finales d'Odoo pour réponse complète
+    # 4. Récupérer les données finales d'Odoo pour réponse complète + mettre à jour erp_metadata
     logger.info(f"[AI Tool] Récupération données finales Odoo ID={odoo_lead_id}")
     try:
         odoo_final = await sync_service.get_odoo_lead(odoo_lead_id)
@@ -384,8 +395,32 @@ async def create_prospect(
         logger.warning(f"[AI Tool] Impossible de récupérer données finales Odoo: {exc}")
         odoo_final = None
     
+    # Mettre à jour erp_metadata avec les données fraîches d'Odoo
+    if odoo_final:
+        fresh_metadata = {
+            "id": odoo_lead_id,
+            "name": odoo_final.get("name"),
+            "partner_name": odoo_final.get("partner_name"),  # ← Nom de l'entreprise réel
+            "contact_name": odoo_final.get("contact_name"),
+            "email_from": odoo_final.get("email_from"),
+            "phone": odoo_final.get("phone"),
+            "expected_revenue": odoo_final.get("expected_revenue"),
+            "probability": odoo_final.get("probability"),
+            "type": odoo_final.get("type"),
+            "partner_id": odoo_final.get("partner_id"),
+            "user_id": odoo_final.get("user_id"),
+            "team_id": odoo_final.get("team_id"),
+        }
+        # Enlever les valeurs None pour garder erp_metadata propre
+        fresh_metadata = {k: v for k, v in fresh_metadata.items() if v is not None}
+        prospect.erp_metadata = fresh_metadata
+        await prospect.save()
+        logger.info(f"[AI Tool] erp_metadata mis à jour avec partner_name={fresh_metadata.get('partner_name')}")
+    
     # Construction réponse avec données Odoo (source de vérité) + Portalis
     if odoo_final:
+        # Utiliser partner_name comme nom d'entreprise, fallback sur name
+        odoo_company = odoo_final.get('partner_name') or odoo_final.get('name', company_name)
         odoo_name = odoo_final.get('name', company_name)
         odoo_contact = odoo_final.get('contact_name', contact_name) or 'N/A'
         odoo_email = odoo_final.get('email_from', email) or 'N/A'
@@ -394,6 +429,7 @@ async def create_prospect(
         odoo_type = odoo_final.get('type', 'lead')
     else:
         # Fallback sur les paramètres si Odoo indisponible
+        odoo_company = company_name
         odoo_name = company_name
         odoo_contact = contact_name or 'N/A'
         odoo_email = email or 'N/A'
@@ -407,7 +443,8 @@ async def create_prospect(
         f"## ✅ Prospect créé avec succès {type_emoji}",
         "",
         "### 🏢 Données ERP (source de vérité)",
-        f"- **Entreprise:** {odoo_name}",
+        f"- **Entreprise:** {odoo_company}",
+        f"- **Titre/Opp:** {odoo_name}",
         f"- **Contact:** {odoo_contact}",
         f"- **Email:** {odoo_email}",
         f"- **Téléphone:** {odoo_phone}",
@@ -596,6 +633,7 @@ async def create_odoo_partner(
 async def create_prospect_with_partner(
     company_name: str,
     partner_id: int,
+    opportunity_name: str | None = None,
     contact_name: str | None = None,
     email: str | None = None,
     phone: str | None = None,
@@ -606,8 +644,9 @@ async def create_prospect_with_partner(
     """Crée une opportunité dans Portalis et Odoo avec un client assigné.
     
     Args:
-        company_name: Nom de l'opportunité/prospect
+        company_name: Nom de l'entreprise
         partner_id: ID du client (res.partner) dans Odoo
+        opportunity_name: Titre de l'opportunité (défaut: company_name)
         contact_name: Nom du contact
         email: Email
         phone: Téléphone
@@ -622,40 +661,57 @@ async def create_prospect_with_partner(
     logger = logging.getLogger(__name__)
     sync_service = ProspectSyncService()
     
+    # Si pas de nom d'opportunité, utiliser le nom de l'entreprise
+    lead_name = opportunity_name or company_name
+    
     # 1. Créer dans Odoo avec le partner assigné
-    logger.info(f"[AI Tool] Création lead Odoo: {company_name} avec partner_id={partner_id}")
+    logger.info(f"[AI Tool] Création lead Odoo: entreprise={company_name}, lead={lead_name}, partner_id={partner_id}")
     try:
         odoo_lead_id = await sync_service.create_in_odoo(
-            name=company_name,
+            name=lead_name,
+            partner_name=company_name,
             contact_name=contact_name,
             email=email,
             phone=phone,
             user_id=None,
             team_id=None,
             expected_revenue=expected_revenue or 0,
+            partner_id=partner_id,  # ← Lier au client existant
         )
-        # Note: Le partner_id n'est pas passé à create_in_odoo actuellement
-        # Il faudrait modifier create_in_odoo pour accepter partner_id
         logger.info(f"[AI Tool] Lead Odoo créé avec ID: {odoo_lead_id}")
     except Exception as exc:
         logger.error(f"[AI Tool] Erreur création Odoo: {exc}")
         return f"❌ Erreur création dans l'ERP: {exc}"
     
-    # 2. Créer dans Portalis
+    # 2. Construction des erp_metadata
+    erp_metadata = {
+        "id": odoo_lead_id,
+        "name": lead_name,
+        "partner_name": company_name,
+        "type": "lead",
+        "contact_name": contact_name,
+        "email_from": email,
+        "phone": phone,
+        "expected_revenue": expected_revenue,
+        "probability": None,
+        "partner_id": partner_id,
+        "user_id": None,
+        "team_id": None,
+    }
+    
+    # 3. Créer dans Portalis avec erp_metadata
     prospect = await ProspectOrm.create(
-        company_name=company_name,
-        contact_name=contact_name,
-        email=email,
-        phone=phone,
         portalis_sector=sector,
         portalis_notes=notes,
         status="nouveau",
         odoo_lead_id=odoo_lead_id,
+        erp_metadata=erp_metadata,
     )
     
     return (
         f"✅ **Opportunité créée avec client assigné**\n\n"
         f"🏢 {company_name}\n"
+        f"📋 Opportunité: {lead_name}\n"
         f"👤 Client ID: `{partner_id}`\n"
         f"🔗 ID ERP: `{odoo_lead_id}`\n"
         f"🆔 ID Portalis: `{prospect.id}`\n\n"

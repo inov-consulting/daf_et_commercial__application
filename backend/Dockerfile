@@ -10,10 +10,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Dépendances système minimales (libpq pour psycopg si besoin futur)
+# Dépendances système : libpq + Playwright/Chromium
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     libpq5 \
+    # Playwright/Chromium deps
+    libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
+    libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 \
+    libxrandr2 libgbm1 libasound2 fonts-liberation libappindicator3-1 \
     && rm -rf /var/lib/apt/lists/*
 
 # ───── Stage dev : volume monté + reload ────────────────────────────────
@@ -22,6 +26,8 @@ FROM base AS dev
 # Installer toutes les deps (prod + dev)
 COPY pyproject.toml uv.lock* ./
 RUN uv sync --frozen --no-install-project 2>/dev/null || uv sync --no-install-project
+
+RUN playwright install chromium
 
 # Le code sera monté en volume (cf docker-compose), donc on ne le COPY pas ici
 EXPOSE 8000
@@ -34,6 +40,8 @@ FROM base AS prod
 COPY pyproject.toml uv.lock* ./
 RUN uv sync --frozen --no-dev --no-install-project 2>/dev/null || uv sync --no-dev --no-install-project
 
+# Installer Chromium pour Playwright
+RUN  playwright install chromium
 COPY . .
 
 # User non-root pour la prod
