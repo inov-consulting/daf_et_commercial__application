@@ -692,7 +692,7 @@ export default function DocumentsPage() {
                       Nom
                     </th>
                     <th className="py-2.5 pr-4 text-[10px] font-bold tracking-wider text-[var(--tx-3)] uppercase whitespace-nowrap">
-                      Date d`&apos;`ajout
+                      Date d&apos;ajout
                     </th>
                     <th className="py-2.5 pr-4 text-[10px] font-bold tracking-wider text-[var(--tx-3)] uppercase" />
                     <th className="py-2.5 pr-4 text-[10px] font-bold tracking-wider text-[var(--tx-3)] uppercase text-right">

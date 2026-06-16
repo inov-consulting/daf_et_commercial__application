@@ -192,12 +192,14 @@ export default function UtilisateursPage() {
                 <span className="font-display font-semibold text-sm text-foreground">
                   Détails utilisateur
                 </span>
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setMobilePanelOpen(false)}
-                  className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-foreground-3 hover:bg-surface-sink transition-colors"
+                  className="!w-7 !h-7 !p-0"
                 >
                   ×
-                </button>
+                </Button>
               </div>
               <div className="overflow-y-auto">
                 <UserDetailPanel
@@ -253,19 +255,23 @@ export default function UtilisateursPage() {
                 PortaLis retiré immédiatement. Les données créées sont conservées.
               </p>
               <div className="flex flex-col sm:flex-row gap-2">
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setDeleteUid(null)}
-                  className="flex-1 h-8 rounded-md border border-white/20 bg-transparent text-xs font-display font-semibold text-white hover:bg-white/[.06] transition-colors"
+                  className="flex-1 !text-white !border-white/20 hover:!bg-white/[.06]"
                 >
                   Annuler
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
                   onClick={handleDelete}
-                  className="flex-1 h-8 rounded-md border border-error/40 bg-error/15 text-xs font-display font-semibold text-red-300 flex items-center justify-center gap-1.5 hover:bg-error/25 transition-colors"
+                  className="flex-1"
                 >
                   <TrashIcon size={12} />
                   Confirmer la suppression
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -293,12 +299,14 @@ export default function UtilisateursPage() {
             <p className="font-display font-bold text-foreground text-xs">{toast.message}</p>
             {toast.sub && <p className="text-[11px] text-foreground-3 mt-0.5">{toast.sub}</p>}
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setToast(null)}
-            className="w-5 h-5 rounded border border-border flex items-center justify-center text-foreground-3 hover:text-foreground text-[10px] flex-shrink-0"
+            className="!w-5 !h-5 !p-0 flex-shrink-0 !text-[10px]"
           >
             ×
-          </button>
+          </Button>
         </div>
       )}
     </div>

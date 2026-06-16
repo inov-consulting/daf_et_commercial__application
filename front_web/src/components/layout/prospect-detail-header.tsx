@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   ArrowLeftIcon, PencilSimpleIcon, FileTextIcon,
   BuildingsIcon, EnvelopeIcon, PhoneIcon, CurrencyCircleDollarIcon,
@@ -20,6 +21,7 @@ function fmt(n: number | null) {
 }
 
 export function ProspectDetailHeader({ prospect, locale, onEdit }: ProspectDetailHeaderProps) {
+  const router = useRouter();
   const statusCfg = STATUS_CONFIG[prospect.status];
   const sectorStyle = SECTOR_STYLES[prospect.portalis_sector] ?? { bg: 'rgba(100,116,139,0.1)', text: '#475569', border: 'rgba(100,116,139,0.2)' };
 
@@ -28,6 +30,10 @@ export function ProspectDetailHeader({ prospect, locale, onEdit }: ProspectDetai
     .map(w => w[0]).slice(0, 2).join('').toUpperCase();
 
   const crUrl = `/${locale}/page/comptes-rendus/nouveau?prospect_id=${prospect.id}&company=${encodeURIComponent(prospect.company_name)}&contact=${encodeURIComponent(prospect.contact_name ?? '')}`;
+
+  const handleClickNewReport = () => {
+    router.push(crUrl);
+  }
 
   return (
     <div className="bg-[var(--bg-surf)] border border-[var(--bd-def)] rounded-2xl overflow-hidden">
@@ -49,7 +55,7 @@ export function ProspectDetailHeader({ prospect, locale, onEdit }: ProspectDetai
               <PencilSimpleIcon size={13} />
               Modifier
             </Button>
-            <Button variant="gradient" size="sm" onClick={() => window.location.href = crUrl}>
+            <Button variant="gradient" size="sm" onClick={handleClickNewReport}>
               <FileTextIcon size={13} />
               Nouveau CR
             </Button>

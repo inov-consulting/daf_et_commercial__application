@@ -1,18 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CaretUpDown, CaretUp, CaretDown, DotsThree, Files } from '@phosphor-icons/react';
+import { CaretUpDown, CaretUp, CaretDown, DotsThreeVertical } from '@phosphor-icons/react';
 import {
   STATUS_CONFIG, SECTOR_STYLES,
   formatFcfa, pipelineAgeInfo,
-  type Prospect,
+  hashColor, toInitials, timeAgo,
+  type ApiProspect,
 } from '@/types/prospect_type';
 import { cn } from '@/lib/utils';
 
 export type SortKey = 'company' | 'pipeline' | 'age';
 
 interface ProspectListProps {
-  prospects: Prospect[];
+  prospects: ApiProspect[];
   total: number;
   page: number;
   pageSize: number;
@@ -39,18 +40,22 @@ export function ProspectList({
   onDetail,
 }: ProspectListProps) {
   const [actionOpen, setActionOpen] = useState<string | null>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number } | null>(null);
 
   useEffect(() => {
     if (!actionOpen) return;
-    function close() { setActionOpen(null); }
+    function close() { setActionOpen(null); setDropdownPos(null); }
     document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
+    window.addEventListener('scroll', close, true);
+    return () => {
+      document.removeEventListener('click', close);
+      window.removeEventListener('scroll', close, true);
+    };
   }, [actionOpen]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const startIdx   = (page - 1) * pageSize;
 
-  // Page number list with ellipsis
   const pageNumbers: (number | '…')[] = [];
   for (let n = 1; n <= totalPages; n++) {
     if (n === 1 || n === totalPages || Math.abs(n - page) <= 1) {
@@ -130,12 +135,14 @@ export function ProspectList({
                 </tr>
               )}
               {prospects.map((p, i) => {
-                const statusCfg = STATUS_CONFIG[p.status];
-                const sectorStyle = SECTOR_STYLES[p.sector] ?? {
+                const statusCfg   = STATUS_CONFIG[p.status];
+                const sectorStyle = SECTOR_STYLES[p.portalis_sector] ?? {
                   bg: 'rgba(118,145,168,0.10)', text: '#5A738A', border: 'rgba(118,145,168,0.22)',
                 };
-                const age    = pipelineAgeInfo(p.pipelineAge);
-                const isLast = i === prospects.length - 1;
+                const pipeline    = p.expected_revenue > 0 ? p.expected_revenue : null;
+                const pipelineAge = p.pipeline_age_days > 0 ? p.pipeline_age_days : null;
+                const age         = pipelineAgeInfo(pipelineAge);
+                const isLast      = i === prospects.length - 1;
 
                 return (
                   <tr
@@ -155,30 +162,41 @@ export function ProspectList({
                       <div className="flex items-center gap-2.5">
                         <div
                           className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-white text-[10px] font-bold"
-                          style={{ background: p.color }}
+                          style={{ background: hashColor(p.id) }}
                         >
-                          {p.initials}
+                          {toInitials(p.company_name)}
                         </div>
-                        <span className="text-[var(--tx-1)] text-[13px] font-semibold font-display whitespace-nowrap">
-                          {p.company}
-                        </span>
+                        <div className="min-w-0">
+                          <span className="text-[var(--tx-1)] text-[13px] font-semibold font-display whitespace-nowrap">
+                            {p.company_name || p.lead_name}
+                          </span>
+                          {p.lead_name && p.lead_name !== p.company_name && (
+                            <p className="text-[11px] text-[var(--tx-3)] truncate">{p.lead_name}</p>
+                          )}
+                        </div>
                       </div>
                     </td>
 
                     {/* Contact */}
                     <td className="py-3.5 pr-4">
-                      <p className="text-[var(--tx-1)] text-[13px] font-medium whitespace-nowrap">{p.contact}</p>
-                      <p className="text-[var(--tx-3)] text-xs whitespace-nowrap">{p.contactRole}</p>
+                      <p className="text-[var(--tx-1)] text-[13px] font-medium whitespace-nowrap">
+                        {p.contact_name || '–'}
+                      </p>
+                      <p className="text-[var(--tx-3)] text-xs whitespace-nowrap">{p.email || ''}</p>
                     </td>
 
                     {/* Secteur */}
                     <td className="py-3.5 pr-4">
-                      <span
-                        className="inline-flex items-center px-2.5 py-[3px] rounded-full text-[11px] font-semibold border whitespace-nowrap"
-                        style={{ background: sectorStyle.bg, color: sectorStyle.text, borderColor: sectorStyle.border }}
-                      >
-                        {p.sector}
-                      </span>
+                      {p.portalis_sector ? (
+                        <span
+                          className="inline-flex items-center px-2.5 py-[3px] rounded-full text-[11px] font-semibold border whitespace-nowrap"
+                          style={{ background: sectorStyle.bg, color: sectorStyle.text, borderColor: sectorStyle.border }}
+                        >
+                          {p.portalis_sector}
+                        </span>
+                      ) : (
+                        <span className="text-[var(--tx-3)] text-sm">–</span>
+                      )}
                     </td>
 
                     {/* Statut */}
@@ -192,31 +210,24 @@ export function ProspectList({
                       </span>
                     </td>
 
-                    {/* Équipe / Ville */}
+                    {/* Équipe */}
                     <td className="py-3.5 pr-4 text-[var(--tx-2)] text-[13px] whitespace-nowrap">
-                      {p.city || '–'}
+                      {p.team_name ?? '–'}
                     </td>
 
                     {/* Dossiers */}
                     <td className="py-3.5 pr-4">
-                      {p.dossiers ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[var(--bg-sink)] border border-[var(--bd-def)] text-[var(--tx-2)] text-[11px] font-medium whitespace-nowrap">
-                          <Files size={10} weight="duotone" />
-                          {p.dossiers} dossier{p.dossiers > 1 ? 's' : ''}
-                        </span>
-                      ) : (
-                        <span className="text-[var(--tx-3)] text-sm">—</span>
-                      )}
+                      <span className="text-[var(--tx-3)] text-sm">—</span>
                     </td>
 
                     {/* Pipeline FCFA */}
                     <td className="py-3.5 pr-4 text-[var(--tx-1)] text-[13px] font-semibold font-display tabular-nums whitespace-nowrap">
-                      {formatFcfa(p.pipeline, true)}
+                      {formatFcfa(pipeline, true)}
                     </td>
 
                     {/* Âge pipeline */}
                     <td className="py-3.5 pr-4 whitespace-nowrap">
-                      {p.pipelineAge !== null ? (
+                      {pipelineAge !== null ? (
                         <span className="text-[13px] font-semibold tabular-nums" style={{ color: age.color }}>
                           {age.prefix && <span className="mr-0.5">{age.prefix}</span>}
                           {age.label}
@@ -228,44 +239,32 @@ export function ProspectList({
 
                     {/* Activité */}
                     <td className="py-3.5 pr-4 text-[var(--tx-3)] text-[13px] whitespace-nowrap">
-                      {p.lastActivity}
+                      {timeAgo(p.updated_at)}
                     </td>
 
                     {/* Actions */}
                     <td className="py-3.5 pr-4">
-                      <div className="relative">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActionOpen((prev) => (prev === p.id ? null : p.id));
-                          }}
-                          className={cn(
-                            'w-7 h-7 rounded-lg flex items-center justify-center transition-colors',
-                            'text-[var(--tx-3)] hover:bg-[var(--bg-sink)] hover:text-[var(--tx-1)]',
-                            'opacity-0 group-hover:opacity-100',
-                            actionOpen === p.id && 'opacity-100 bg-[var(--bg-sink)] text-[var(--tx-1)]',
-                          )}
-                        >
-                          <DotsThree size={16} weight="bold" />
-                        </button>
-
-                        {actionOpen === p.id && (
-                          <div className="absolute right-0 top-8 z-50 bg-white border border-[var(--bd-def)] rounded-xl shadow-lg py-1 min-w-[152px]">
-                            <button
-                              onClick={() => { setActionOpen(null); onDetail?.(p.id); }}
-                              className="w-full px-3.5 py-2 text-left text-[13px] text-[var(--tx-2)] hover:bg-[var(--bg-sink)] hover:text-[var(--tx-1)] transition-colors"
-                            >
-                              Voir le détail
-                            </button>
-                            <button
-                              onClick={() => { setActionOpen(null); onEdit?.(p.id); }}
-                              className="w-full px-3.5 py-2 text-left text-[13px] text-[var(--tx-2)] hover:bg-[var(--bg-sink)] hover:text-[var(--tx-1)] transition-colors"
-                            >
-                              Modifier
-                            </button>
-                          </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (actionOpen === p.id) {
+                            setActionOpen(null);
+                            setDropdownPos(null);
+                          } else {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setDropdownPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+                            setActionOpen(p.id);
+                          }
+                        }}
+                        className={cn(
+                          'w-7 h-7 rounded-lg flex items-center justify-center transition-colors',
+                          'text-[var(--tx-3)] hover:bg-[var(--bg-sink)] hover:text-[var(--tx-1)]',
+                          'opacity-0 group-hover:opacity-100',
+                          actionOpen === p.id && 'opacity-100 bg-[var(--bg-sink)] text-[var(--tx-1)]',
                         )}
-                      </div>
+                      >
+                        <DotsThreeVertical size={16} weight="bold" />
+                      </button>
                     </td>
                   </tr>
                 );
@@ -360,6 +359,28 @@ export function ProspectList({
           </span>
         </div>
       </div>
+
+      {/* Dropdown portal — fixed pour échapper au overflow du tableau */}
+      {actionOpen && dropdownPos && (
+        <div
+          className="fixed z-[200] bg-white border border-[var(--bd-def)] rounded-xl shadow-lg py-1 min-w-[152px]"
+          style={{ top: dropdownPos.top, right: dropdownPos.right }}
+          onClick={e => e.stopPropagation()}
+        >
+          <button
+            onClick={() => { setActionOpen(null); setDropdownPos(null); onDetail?.(actionOpen); }}
+            className="w-full px-3.5 py-2 text-left text-[13px] text-[var(--tx-2)] hover:bg-[var(--bg-sink)] hover:text-[var(--tx-1)] transition-colors"
+          >
+            Voir le détail
+          </button>
+          <button
+            onClick={() => { setActionOpen(null); setDropdownPos(null); onEdit?.(actionOpen); }}
+            className="w-full px-3.5 py-2 text-left text-[13px] text-[var(--tx-2)] hover:bg-[var(--bg-sink)] hover:text-[var(--tx-1)] transition-colors"
+          >
+            Modifier
+          </button>
+        </div>
+      )}
     </div>
   );
 }

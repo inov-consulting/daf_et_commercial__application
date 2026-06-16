@@ -73,7 +73,7 @@ export default function ProspectDetailPage() {
   }
 
   return (
-    <div className="flex flex-col gap-5 p-5 md:p-6 min-h-full max-w-5xl">
+    <div className="flex flex-col gap-5 p-5 md:p-6 min-h-full">
       {/* Header */}
       <ProspectDetailHeader
         prospect={prospect}
