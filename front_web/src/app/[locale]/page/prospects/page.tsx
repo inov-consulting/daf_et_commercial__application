@@ -324,7 +324,7 @@ export default function ProspectsPage() {
       ) : (
         <div className={cn('transition-opacity duration-150', loading && 'opacity-60 pointer-events-none')}>
           <ProspectList
-            prospects={prospects}
+            prospects={apiProspects}
             total={total}
             page={page}
             pageSize={pageSize}

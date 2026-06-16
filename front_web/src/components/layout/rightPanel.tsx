@@ -1,6 +1,6 @@
 import React from 'react'
 
-type AppState = 'idle' | 'recording' | 'transcript' | 'processing' | 'draft' | 'validated' | 'error';
+type AppState = 'context' | 'idle' | 'recording' | 'transcript' | 'processing' | 'draft' | 'validated' | 'error';
 
 const RightPanel = ({ state, wordCount }: { state: AppState; wordCount: number }) => {
   const tipDot = <span className="w-1 h-1 rounded-full flex-shrink-0 mt-[6px]" style={{ background: '#6B35C9' }} />;
