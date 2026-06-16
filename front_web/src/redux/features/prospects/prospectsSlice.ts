@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { GetData, PostData, PutData } from '@/lib/ApiService';
+import { GetData, PatchData, PostData, PutData } from '@/lib/ApiService';
 import { ApiRoutes } from '@/lib/ApiRoutes';
 import type {
   ApiProspect, ProspectsListResponse, CreateProspectBody,
@@ -97,7 +97,7 @@ export const createProspect = createAsyncThunk(
 export const updateProspect = createAsyncThunk(
   'prospects/update',
   async ({ id, body }: { id: string; body: UpdateProspectBody }, { rejectWithValue }) => {
-    const res = await PutData<ApiProspect, UpdateProspectBody>({
+    const res = await PatchData<ApiProspect, UpdateProspectBody>({
       url: ApiRoutes.PROSPECTS_UPDATE(id),
       data: body,
       protected: true,
