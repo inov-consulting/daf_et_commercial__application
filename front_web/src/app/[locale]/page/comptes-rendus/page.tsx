@@ -172,7 +172,7 @@ export default function ComptesRendusPage() {
           style={{ background: 'var(--grad)', boxShadow: '0 2px 14px rgba(107,53,201,0.30)' }}
         >
           <MicrophoneIcon size={14} weight="bold" />
-          Nouveau CR vocal
+          Nouveau CR
         </button>
       </div>
 
@@ -252,7 +252,7 @@ export default function ComptesRendusPage() {
             <FileTextIcon size={38} className="text-[var(--tx-3)]" />
             <div>
               <p className="text-[14px] font-semibold text-[var(--tx-2)]">Aucun compte-rendu trouvé</p>
-              <p className="text-[12px] text-[var(--tx-3)] mt-1">Modifiez vos filtres ou créez un nouveau CR vocal</p>
+              <p className="text-[12px] text-[var(--tx-3)] mt-1">Modifiez vos filtres ou créez un nouveau CR</p>
             </div>
           </div>
         ) : (

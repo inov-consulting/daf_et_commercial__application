@@ -104,6 +104,10 @@ export default function NouveauCRPage() {
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<NodeJS.Timeout | null>(null);
 
+  /* Input mode for idle state */
+  const [inputMode, setInputMode] = useState<'voice' | 'text'>('voice');
+  const [textContent, setTextContent] = useState('');
+
   /* Computed */
   const wordCount = transcriptText.trim() ? transcriptText.trim().split(/\s+/).length : 0;
 
@@ -328,7 +332,7 @@ export default function NouveauCRPage() {
                 Comptes-rendus
               </Button>
               <CaretRightIcon size={10} className="text-[var(--tx-3)]" />
-              <span className="text-[12px] text-[var(--tx-3)]">Nouveau CR vocal</span>
+              <span className="text-[12px] text-[var(--tx-3)]">Nouveau CR</span>
             </div>
             <h1 className="font-display text-[22px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight">
               Dictée vocale
@@ -401,39 +405,102 @@ export default function NouveauCRPage() {
                     </button>
                   )}
 
-                  {/* Prompt box */}
-                  <div className="bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-xl p-4 mb-7">
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-3)] mb-3 font-mono">Dites dans votre CR</div>
-                    <div className="space-y-2">
-                      {[
-                        'La société et le contact rencontré',
-                        "L'objet de la réunion",
-                        'Les points discutés et le budget évoqué',
-                        'Les actions convenues et les délais',
-                        'La prochaine étape et la date de décision',
-                      ].map((item, i) => (
-                        <div key={i} className="flex items-start gap-2 text-[13px] text-[var(--tx-2)]">
-                          <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-[6px]" style={{ background: 'rgba(14,134,232,0.35)' }} />
-                          {item}
-                        </div>
-                      ))}
-                    </div>
+                  {/* Input mode toggle */}
+                  <div className="flex items-center gap-1 p-1 rounded-xl bg-[var(--bg-sink)] border border-[var(--bd-def)] mb-5">
+                    {([
+                      { key: 'voice' as const, icon: <MicrophoneIcon size={13} />, label: 'Dictée vocale' },
+                      { key: 'text'  as const, icon: <PencilSimpleIcon size={13} />, label: 'Saisie texte' },
+                    ]).map(tab => (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setInputMode(tab.key)}
+                        className={cn(
+                          'flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-semibold transition-all duration-150',
+                          inputMode === tab.key
+                            ? 'bg-white text-[var(--tx-1)] shadow-sm border border-[var(--bd-def)]'
+                            : 'text-[var(--tx-3)] hover:text-[var(--tx-2)]',
+                        )}
+                      >
+                        {tab.icon}
+                        {tab.label}
+                      </button>
+                    ))}
                   </div>
 
-                  {/* Mic button */}
-                  <div className="flex flex-col items-center gap-3">
-                    <Button
-                      variant="gradient"
-                      iconOnly
-                      onClick={startRecording}
-                      className="!w-[72px] !h-[72px] !rounded-[20px] hover:scale-105 active:scale-95"
-                      style={{ boxShadow: '0 4px 24px rgba(107,53,201,0.35)' }}
-                      aria-label="Démarrer l'enregistrement"
-                    >
-                      <MicrophoneIcon size={28} />
-                    </Button>
-                    <span className="text-[13px] text-[var(--tx-3)]">Appuyer pour enregistrer</span>
-                  </div>
+                  {/* Voice mode */}
+                  {inputMode === 'voice' && (
+                    <>
+                      <div className="bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-xl p-4 mb-7">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-3)] mb-3 font-mono">Dites dans votre CR</div>
+                        <div className="space-y-2">
+                          {[
+                            'La société et le contact rencontré',
+                            "L'objet de la réunion",
+                            'Les points discutés et le budget évoqué',
+                            'Les actions convenues et les délais',
+                            'La prochaine étape et la date de décision',
+                          ].map((item, i) => (
+                            <div key={i} className="flex items-start gap-2 text-[13px] text-[var(--tx-2)]">
+                              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-[6px]" style={{ background: 'rgba(14,134,232,0.35)' }} />
+                              {item}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-center gap-3">
+                        <Button
+                          variant="gradient"
+                          iconOnly
+                          onClick={startRecording}
+                          className="!w-[72px] !h-[72px] !rounded-[20px] hover:scale-105 active:scale-95"
+                          style={{ boxShadow: '0 4px 24px rgba(107,53,201,0.35)' }}
+                          aria-label="Démarrer l'enregistrement"
+                        >
+                          <MicrophoneIcon size={28} />
+                        </Button>
+                        <span className="text-[13px] text-[var(--tx-3)]">Appuyer pour enregistrer</span>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Text / Blocknote mode */}
+                  {inputMode === 'text' && (
+                    <>
+                      <Blocknote
+                        initialContent={textContent}
+                        onChange={setTextContent}
+                        placeholder="Rédigez votre compte-rendu — société, contact, objet, points discutés, actions, prochaine étape…"
+                        className="mb-4"
+                      />
+                      <div className="flex items-center justify-between mb-5 px-1">
+                        <span className="text-[10px] text-[var(--tx-3)] font-mono">
+                          {textContent.trim() ? textContent.trim().split(/\s+/).length : 0} mots
+                        </span>
+                        <span className="text-[10px] text-[var(--tx-3)]">Cliquez pour modifier</span>
+                      </div>
+                      {genError && (
+                        <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl mb-3 text-[12px]"
+                          style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.25)', color: '#DC2626' }}>
+                          <WarningIcon size={14} className="flex-shrink-0 mt-0.5" />
+                          <span>{genError}</span>
+                        </div>
+                      )}
+                      <Button
+                        variant="gradient"
+                        size="lg"
+                        onClick={() => { setTranscriptText(textContent); startProcessing(); }}
+                        disabled={!textContent.trim() || preparing}
+                        className="w-full"
+                        style={{ boxShadow: preparing ? 'none' : '0 2px 12px rgba(107,53,201,0.3)' }}
+                      >
+                        {preparing
+                          ? <><CircleNotchIcon size={16} className="animate-spin" /> Vérification des notes…</>
+                          : <><SparkleIcon size={16} /> Analyser et structurer avec l'IA</>
+                        }
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -588,7 +655,7 @@ export default function NouveauCRPage() {
                   >
                     {preparing
                       ? <><CircleNotchIcon size={16} className="animate-spin" /> Vérification des notes…</>
-                      : <><SparkleIcon size={16} /> Analyser et structurer avec Claude Sonnet 4.5</>
+                      : <><SparkleIcon size={16} /> Analyser et structurer avec l'IA</>
                     }
                   </Button>
 
@@ -873,7 +940,7 @@ export default function NouveauCRPage() {
                     onClick={() => { setState('idle'); setTimerSec(0); setTranscriptText(''); setGeneratedCR(null); setGenError(null); }}
                     className="w-full"
                   >
-                    <MicrophoneIcon size={14} /> Nouveau CR vocal
+                    <MicrophoneIcon size={14} /> Nouveau CR
                   </Button>
                 </div>
               </div>
