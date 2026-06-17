@@ -49,4 +49,9 @@ export const ApiRoutes = {
   TRANSPORT_DOSSIERS:      `${BASE}/api/v1/transport/dossiers`,
   TRANSPORT_DOSSIER:       (id: string) => `${BASE}/api/v1/transport/dossiers/${id}`,
   TRANSPORT_DOSSIER_CLOSE: (id: string) => `${BASE}/api/v1/transport/dossiers/${id}/close`,
+
+  // ── API Logs ─────────────────────────────────────────────────────────
+  API_LOGS:        `${BASE}/api/v1/api-logs`,
+  API_LOG:         (id: string) => `${BASE}/api/v1/api-logs/${id}`,
+  API_LOG_DETAILS: (id: string) => `${BASE}/api/v1/api-logs/${id}/details`,
 } as const;

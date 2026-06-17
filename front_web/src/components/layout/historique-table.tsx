@@ -1,56 +1,73 @@
 'use client';
 
 import { EyeIcon } from '@phosphor-icons/react';
-import {
-  type Activity,
-  MODULE_STYLES,
-  STATUS_STYLES,
-  METHOD_STYLES,
-} from '@/types/activity_type';
+import { type ApiLog, METHOD_COLORS, logStatus, fmtLogDate } from '@/types/api_log_type';
+import { cn } from '@/lib/utils';
 
 interface HistoriqueTableProps {
-  activities: Activity[];
-  onSelect: (a: Activity) => void;
+  logs: ApiLog[];
+  loading: boolean;
+  onSelect: (log: ApiLog) => void;
 }
 
-function Avatar({ name }: { name: string }) {
-  const initials = name === 'Système' || name === 'Inconnu'
-    ? name.slice(0, 2).toUpperCase()
-    : name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+function MethodBadge({ method }: { method: string }) {
+  const c = METHOD_COLORS[method] ?? { bg: '#F3F4F6', color: '#374151' };
+  return (
+    <span
+      className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded font-mono flex-shrink-0"
+      style={{ background: c.bg, color: c.color }}
+    >
+      {method}
+    </span>
+  );
+}
+
+function Avatar({ email }: { email: string | null }) {
+  const label = email ? email.slice(0, 2).toUpperCase() : 'SY';
   return (
     <div
       className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
       style={{ background: 'var(--grad)' }}
     >
-      {initials}
+      {label}
     </div>
   );
 }
 
-export function HistoriqueTable({ activities, onSelect }: HistoriqueTableProps) {
-  if (activities.length === 0) {
+export function HistoriqueTable({ logs, loading, onSelect }: HistoriqueTableProps) {
+  if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-[var(--tx-3)]">
-        <p className="text-[13px]">Aucune activité ne correspond aux filtres.</p>
+      <div className="rounded-xl border border-[var(--bd-def)] bg-[var(--bg-surf)]">
+        <div className="py-16 flex items-center justify-center">
+          <div className="w-5 h-5 rounded-full border-2 border-[var(--p500)] border-t-transparent animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  if (logs.length === 0) {
+    return (
+      <div className="rounded-xl border border-[var(--bd-def)] bg-[var(--bg-surf)] py-16 flex items-center justify-center">
+        <p className="text-[13px] text-[var(--tx-3)]">Aucune entrée ne correspond aux filtres.</p>
       </div>
     );
   }
 
   return (
     <div className="rounded-xl border border-[var(--bd-def)] overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full table-fixed text-[13px]">
+      <div style={{ overflowX: 'auto', overflowY: 'clip' }}>
+        <table className="w-full table-fixed text-[13px]" style={{ minWidth: 860 }}>
           <colgroup>
-            <col style={{ width: 148 }} />
-            <col style={{ width: 220 }} />
-            <col />
             <col style={{ width: 160 }} />
-            <col style={{ width: 100 }} />
+            <col />
+            <col style={{ width: 120 }} />
+            <col style={{ width: 170 }} />
+            <col style={{ width: 90 }} />
             <col style={{ width: 44 }} />
           </colgroup>
-          <thead>
+          <thead className="sticky top-0 z-10 bg-[var(--bg-sink)]">
             <tr className="bg-[var(--bg-sink)] border-b border-[var(--bd-def)]">
-              {['Horodatage', 'Action / Module', 'Requête', 'Responsable', 'Statut', ''].map(h => (
+              {['Horodatage', 'Requête', 'Code · Durée', 'Utilisateur', 'Statut', ''].map(h => (
                 <th
                   key={h}
                   className="px-3 py-2.5 text-left text-[11px] font-semibold text-[var(--tx-3)] tracking-[.04em] uppercase"
@@ -61,51 +78,56 @@ export function HistoriqueTable({ activities, onSelect }: HistoriqueTableProps) 
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--bd-def)]">
-            {activities.map(a => {
-              const mod = MODULE_STYLES[a.module];
-              const st = STATUS_STYLES[a.status];
+            {logs.map(log => {
+              const st = logStatus(log);
               return (
                 <tr
-                  key={a.id}
+                  key={log.id}
                   className="bg-[var(--bg-surf)] hover:bg-[var(--bg-sink)] transition-colors cursor-pointer"
-                  onClick={() => onSelect(a)}
+                  onClick={() => onSelect(log)}
                 >
                   {/* Horodatage */}
                   <td className="px-3 py-2.5">
-                    <span className="font-mono text-[12px] text-[var(--tx-2)] whitespace-nowrap">{a.ts}</span>
+                    <span className="font-mono text-[11px] text-[var(--tx-2)] whitespace-nowrap">
+                      {fmtLogDate(log.created_at)}
+                    </span>
                   </td>
 
-                  {/* Action + Module */}
+                  {/* Méthode + chemin */}
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <MethodBadge method={log.method} />
+                      <span className="font-mono text-[11px] text-[var(--tx-2)] truncate">{log.path}</span>
+                    </div>
+                    {log.error_message && (
+                      <p className="text-[10px] text-red-500 truncate mt-0.5">{log.error_message}</p>
+                    )}
+                  </td>
+
+                  {/* Code + durée */}
                   <td className="px-3 py-2.5">
                     <span
-                      className="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full mb-1"
-                      style={{ background: mod.bg, color: mod.color }}
+                      className={cn(
+                        'inline-block font-mono font-bold text-[12px] px-1.5 py-0.5 rounded',
+                        log.status_code >= 500 ? 'bg-red-50 text-red-600' :
+                        log.status_code >= 400 ? 'bg-amber-50 text-amber-600' :
+                        'bg-green-50 text-green-700',
+                      )}
                     >
-                      {a.module}
+                      {log.status_code}
                     </span>
-                    <p className="text-[var(--tx-1)] font-medium leading-tight truncate">{a.action}</p>
+                    <p className="text-[10px] text-[var(--tx-3)] font-mono mt-0.5">{log.duration_ms} ms</p>
                   </td>
 
-                  {/* Requête */}
+                  {/* Utilisateur */}
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
-                      <span
-                        className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded font-mono flex-shrink-0"
-                        style={{ background: METHOD_STYLES[a.method].bg, color: METHOD_STYLES[a.method].color }}
-                      >
-                        {a.method}
-                      </span>
-                      <span className="font-mono text-[11px] text-[var(--tx-2)] truncate">{a.endpoint}</span>
-                    </div>
-                  </td>
-
-                  {/* Responsable */}
-                  <td className="px-3 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <Avatar name={a.user} />
+                      <Avatar email={log.user_email} />
                       <div className="min-w-0">
-                        <p className="text-[var(--tx-1)] font-medium truncate leading-tight">{a.user}</p>
-                        <p className="text-[10px] text-[var(--tx-3)] truncate">{a.userRole}</p>
+                        <p className="text-[var(--tx-1)] text-[12px] font-medium truncate">
+                          {log.user_email ?? 'Système'}
+                        </p>
+                        <p className="font-mono text-[10px] text-[var(--tx-3)] truncate">{log.ip_address}</p>
                       </div>
                     </div>
                   </td>
@@ -116,14 +138,14 @@ export function HistoriqueTable({ activities, onSelect }: HistoriqueTableProps) 
                       className="inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
                       style={{ background: st.bg, color: st.color }}
                     >
-                      {a.status}
+                      {st.label}
                     </span>
                   </td>
 
                   {/* Action */}
                   <td className="px-2 py-2.5 text-center">
                     <button
-                      onClick={e => { e.stopPropagation(); onSelect(a); }}
+                      onClick={e => { e.stopPropagation(); onSelect(log); }}
                       className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--tx-3)] hover:text-[var(--p500)] hover:bg-[rgba(27,107,69,0.08)] transition-colors mx-auto"
                     >
                       <EyeIcon size={14} />
