@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CaretUpDown, CaretUp, CaretDown, DotsThreeVertical } from '@phosphor-icons/react';
+import { CaretUpDownIcon, CaretUpIcon, CaretDownIcon, DotsThreeVerticalIcon } from '@phosphor-icons/react';
 import {
   STATUS_CONFIG, SECTOR_STYLES,
   formatFcfa, pipelineAgeInfo,
@@ -76,9 +76,9 @@ export function ProspectList({
         )}
       >
         {label}
-        {!active && <CaretUpDown size={10} className="ml-0.5 opacity-60" />}
-        {active && sortOrder === 'asc'  && <CaretUp   size={10} className="ml-0.5" />}
-        {active && sortOrder === 'desc' && <CaretDown size={10} className="ml-0.5" />}
+        {!active && <CaretUpDownIcon size={10} className="ml-0.5 opacity-60" />}
+        {active && sortOrder === 'asc'  && <CaretUpIcon   size={10} className="ml-0.5" />}
+        {active && sortOrder === 'desc' && <CaretDownIcon size={10} className="ml-0.5" />}
       </button>
     );
   }
@@ -87,9 +87,9 @@ export function ProspectList({
     <div>
       {/* Table */}
       <div className="bg-white border border-[var(--bd-def)] rounded-xl overflow-hidden shadow-xs">
-        <div className="overflow-x-auto">
+        <div style={{ overflowX: 'auto', overflowY: 'clip' }}>
           <table className="w-full text-left border-collapse" style={{ minWidth: 920 }}>
-            <thead>
+            <thead className="sticky top-0 z-10 bg-[var(--bg-sink)]">
               <tr className="border-b border-[var(--bd-def)] bg-[var(--bg-sink)]">
                 <th className="w-10 pl-4 py-3">
                   <input type="checkbox" className="w-3.5 h-3.5 rounded border-neutral-300 cursor-pointer" />
@@ -147,14 +147,20 @@ export function ProspectList({
                 return (
                   <tr
                     key={p.id}
+                    onClick={() => onDetail?.(p.id)}
                     className={cn(
                       'group transition-colors hover:bg-[var(--bg-sink)]',
                       !isLast && 'border-b border-[var(--bd-def)]',
+                      onDetail && 'cursor-pointer',
                     )}
                   >
                     {/* Checkbox */}
                     <td className="pl-4 py-3.5">
-                      <input type="checkbox" className="w-3.5 h-3.5 rounded border-neutral-300 cursor-pointer" />
+                      <input
+                        type="checkbox"
+                        onClick={e => e.stopPropagation()}
+                        className="w-3.5 h-3.5 rounded border-neutral-300 cursor-pointer"
+                      />
                     </td>
 
                     {/* Entreprise */}
@@ -263,7 +269,7 @@ export function ProspectList({
                           actionOpen === p.id && 'opacity-100 bg-[var(--bg-sink)] text-[var(--tx-1)]',
                         )}
                       >
-                        <DotsThreeVertical size={16} weight="bold" />
+                        <DotsThreeVerticalIcon size={16} weight="bold" />
                       </button>
                     </td>
                   </tr>

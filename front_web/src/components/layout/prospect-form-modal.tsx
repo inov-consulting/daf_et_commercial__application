@@ -6,6 +6,8 @@ import { SECTOR_STYLES, type ApiProspect, type UpdateProspectBody } from '@/type
 import { GetData } from '@/lib/ApiService';
 import { ApiRoutes } from '@/lib/ApiRoutes';
 import { cn } from '@/lib/utils';
+import { COUNTRY_CODES } from '@/data/country-code-data';
+import Image from 'next/image';
 
 /* ── Company types ─────────────────────────────────────────────────────── */
 
@@ -46,6 +48,15 @@ export interface ProspectFormModalProps {
   onSave: (body: UpdateProspectBody) => void;
 }
 
+function splitPhone(raw: string): { code: string; local: string } {
+  for (const c of COUNTRY_CODES) {
+    if (raw.startsWith(c.code)) {
+      return { code: c.code, local: raw.slice(c.code.length).trimStart() };
+    }
+  }
+  return { code: '+221', local: raw };
+}
+
 /* ── Component ─────────────────────────────────────────────────────────── */
 
 export function ProspectFormModal({
@@ -73,7 +84,12 @@ export function ProspectFormModal({
     expected_revenue: undefined,
     portalis_notes: '',
   });
-  const [localError, setLocalError] = useState<string | null>(null);
+  const [localError, setLocalError]         = useState<string | null>(null);
+  const [countryCode, setCountryCode]       = useState('+221');
+  const [emailError, setEmailError]         = useState<string | null>(null);
+  const [phoneError, setPhoneError]         = useState<string | null>(null);
+  const [showCodePicker, setShowCodePicker] = useState(false);
+  const codePickerRef = useRef<HTMLDivElement>(null);
 
   /* ── Fetch companies once (cached in state while component is mounted) ── */
   useEffect(() => {
@@ -90,19 +106,24 @@ export function ProspectFormModal({
     setSelectedCompany(null);
     setCompanyQuery(initial?.company_name ?? '');
     setShowDropdown(false);
+    setShowCodePicker(false);
     setLocalError(null);
+    setEmailError(null);
+    setPhoneError(null);
+    const split = splitPhone(initial?.phone ?? '');
+    setCountryCode(split.code);
     setForm({
       opportunity_name: initial?.opportunity_name ?? initial?.lead_name ?? '',
-      contact_name:     initial?.contact_name     ?? '',
-      email:            initial?.email            ?? '',
-      phone:            initial?.phone            ?? '',
-      portalis_sector:  initial?.portalis_sector  ?? '',
+      contact_name: initial?.contact_name ?? '',
+      email: initial?.email ?? '',
+      phone: split.local,
+      portalis_sector: initial?.portalis_sector ?? '',
       expected_revenue: initial?.expected_revenue || undefined,
-      portalis_notes:   initial?.portalis_notes   ?? '',
+      portalis_notes: initial?.portalis_notes ?? '',
     });
   }, [open, initial]);
 
-  /* ── Close dropdown on outside click ── */
+  /* ── Close dropdowns on outside click ── */
   useEffect(() => {
     if (!showDropdown) return;
     function handle(e: MouseEvent) {
@@ -113,6 +134,17 @@ export function ProspectFormModal({
     document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
   }, [showDropdown]);
+
+  useEffect(() => {
+    if (!showCodePicker) return;
+    function handle(e: MouseEvent) {
+      if (codePickerRef.current && !codePickerRef.current.contains(e.target as Node)) {
+        setShowCodePicker(false);
+      }
+    }
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [showCodePicker]);
 
   /* ── After hooks ── */
   if (!open) return null;
@@ -141,6 +173,18 @@ export function ProspectFormModal({
     setForm(f => ({ ...f, [k]: v }));
   }
 
+  function validateEmail() {
+    if (!form.email.trim()) { setEmailError(null); return; }
+    const ok = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim());
+    setEmailError(ok ? null : 'Adresse e-mail invalide');
+  }
+
+  function validatePhone() {
+    if (!form.phone.trim()) { setPhoneError(null); return; }
+    const digits = form.phone.replace(/\D/g, '');
+    setPhoneError(digits.length >= 6 ? null : 'Numéro trop court (min. 6 chiffres)');
+  }
+
   /* ── Submit ── */
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -148,7 +192,19 @@ export function ProspectFormModal({
       setLocalError("Veuillez sélectionner ou saisir le nom d'une entreprise.");
       return;
     }
+
+    const emailOk = !form.email.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim());
+    const phoneOk = !form.phone.trim() || form.phone.replace(/\D/g, '').length >= 6;
+    if (!emailOk) setEmailError('Adresse e-mail invalide');
+    if (!phoneOk) setPhoneError('Numéro trop court (min. 6 chiffres)');
+    if (!emailOk || !phoneOk) return;
+
     setLocalError(null);
+
+    const localPhone = form.phone.trim();
+    const fullPhone = localPhone
+      ? `${countryCode} ${localPhone.replace(/^0+/, '')}`
+      : undefined;
 
     const companyField = selectedCompany
       ? { company_id: selectedCompany.id }
@@ -157,12 +213,12 @@ export function ProspectFormModal({
     const body: UpdateProspectBody = {
       ...companyField,
       opportunity_name: form.opportunity_name || undefined,
-      contact_name:     form.contact_name     || undefined,
-      email:            form.email            || undefined,
-      phone:            form.phone            || undefined,
-      portalis_sector:  form.portalis_sector  || undefined,
+      contact_name: form.contact_name || undefined,
+      email: form.email.trim() || undefined,
+      phone: fullPhone,
+      portalis_sector: form.portalis_sector || undefined,
       expected_revenue: form.expected_revenue,
-      portalis_notes:   form.portalis_notes   || undefined,
+      portalis_notes: form.portalis_notes || undefined,
     };
     onSave(body);
   }
@@ -374,23 +430,90 @@ export function ProspectFormModal({
               <input
                 type="email"
                 value={form.email}
-                onChange={e => setField('email', e.target.value)}
+                onChange={e => { setField('email', e.target.value); setEmailError(null); }}
+                onBlur={validateEmail}
                 placeholder="email@exemple.com"
-                className={inp}
+                className={cn(inp, emailError && 'border-red-400 focus:border-red-400 focus:ring-red-100')}
               />
+              {emailError && (
+                <p className="text-[11px] text-red-500 mt-1">{emailError}</p>
+              )}
             </div>
           </div>
 
           {/* ── Téléphone + Secteur ── */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={lbl}>Téléphone</label>
-              <input
-                value={form.phone}
-                onChange={e => setField('phone', e.target.value)}
-                placeholder="+221 77 000 0000"
-                className={inp}
-              />
+              <div className="flex h-9">
+                {/* Sélecteur de code pays — bouton custom avec image de drapeau */}
+                <div className="relative flex-shrink-0" ref={codePickerRef}>
+                  <button
+                    type="button"
+                    onClick={() => setShowCodePicker(o => !o)}
+                    className={cn(
+                      'h-9 flex items-center gap-1.5 pl-2.5 pr-6 rounded-l-lg',
+                      'border border-r-0 border-[var(--bd-def)]',
+                      'bg-[var(--bg-sink)] text-[12px] text-[var(--tx-1)] font-medium',
+                      'focus:outline-none transition-colors cursor-pointer whitespace-nowrap',
+                      phoneError      && 'border-red-400',
+                      showCodePicker  && 'border-primary-400 bg-primary-50/40',
+                    )}
+                    style={{
+                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239EB0C4' stroke-width='1.5' fill='none'/%3E%3C/svg%3E")`,
+                      backgroundRepeat: 'no-repeat',
+                      backgroundPosition: 'right 6px center',
+                    }}
+                  >
+                    {(() => {
+                      const sel = COUNTRY_CODES.find(c => c.code === countryCode);
+                      return (
+                        <>
+                          {sel?.flagUrl && (
+                            <Image src={sel.flagUrl} alt="" width={18} height={13} className="rounded-[2px] flex-shrink-0" />
+                          )}
+                          <span>{countryCode}</span>
+                        </>
+                      );
+                    })()}
+                  </button>
+
+                  {showCodePicker && (
+                    <div className="absolute top-[calc(100%+4px)] left-0 z-50 bg-white border border-[var(--bd-def)] rounded-xl shadow-lg w-52 max-h-56 overflow-y-auto">
+                      {COUNTRY_CODES.map(c => (
+                        <button
+                          key={c.code}
+                          type="button"
+                          onClick={() => { setCountryCode(c.code); setShowCodePicker(false); }}
+                          className={cn(
+                            'w-full flex items-center gap-2.5 px-3 py-2 text-left text-[12px]',
+                            'hover:bg-[var(--bg-sink)] transition-colors',
+                            c.code === countryCode && 'bg-primary-50 text-primary-600',
+                          )}
+                        >
+                          {c.flagUrl && (
+                            <Image src={c.flagUrl} alt="" width={18} height={13} className="rounded-[2px] flex-shrink-0" />
+                          )}
+                          <span className="flex-1 text-[var(--tx-1)] truncate">{c.label}</span>
+                          <span className="text-[var(--tx-3)] font-mono text-[11px]">{c.code}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Champ numéro */}
+                <input
+                  value={form.phone}
+                  onChange={e => { setField('phone', e.target.value.replace(/[^\d\s\-()+]/g, '')); setPhoneError(null); }}
+                  onBlur={validatePhone}
+                  placeholder="77 000 0000"
+                  className={cn(inp, 'rounded-l-none border-l-0', phoneError && 'border-red-400 focus:border-red-400 focus:ring-red-100')}
+                />
+              </div>
+              {phoneError && (
+                <p className="text-[11px] text-red-500 mt-1">{phoneError}</p>
+              )}
             </div>
             <div>
               <label className={lbl}>Secteur</label>
