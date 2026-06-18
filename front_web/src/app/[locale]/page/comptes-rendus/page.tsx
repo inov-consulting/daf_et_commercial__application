@@ -1,160 +1,348 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
-  MicrophoneIcon, MagnifyingGlassIcon, FunnelIcon, DownloadSimpleIcon,
-  ClockIcon, CaretRightIcon, FileTextIcon, CheckCircleIcon, WarningIcon,
-  SparkleIcon,
+  MicrophoneIcon, MagnifyingGlassIcon, DownloadSimpleIcon,
+  ClockIcon, FileTextIcon, WarningIcon,
+  XIcon, CircleNotchIcon, CodeIcon,
+  ShareNetworkIcon, CheckIcon, WhatsappLogoIcon, LinkIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
+import { GetData } from '@/lib/ApiService';
+import { ApiRoutes } from '@/lib/ApiRoutes';
+import { useAppDispatch, useAppSelector } from '@/redux/store';
+import {
+  fetchCompteRendus,
+  fetchCompteRenduDetail,
+  setParentType,
+  setOffset,
+} from '@/redux/features/compte-rendus/compteRendusSlice';
+import { type GlobalCR, type GlobalCRDetail } from '@/types/prospect_note_type';
 
-type CRStatus = 'brouillon' | 'en_traitement' | 'valide' | 'rejete';
-
-interface CompteRendu {
-  id: string;
-  ref: string;
-  company: string;
-  initials: string;
-  color: string;
-  flag: string;
-  contact: string;
-  contactRole: string;
-  dossier: string;
-  date: string;
-  duration: string;
-  wordCount: number;
-  status: CRStatus;
-  iaConfidence: number;
-  summary: string;
-}
-
-const STATUS_CFG: Record<CRStatus, { label: string; bg: string; text: string; border: string; dot: string }> = {
-  valide: {
-    label: 'Validé', bg: 'rgba(16,185,129,0.10)', text: '#065F46',
+/* ── Status config ──────────────────────────────────────────────── */
+const STATUS_CFG: Record<string, { label: string; bg: string; text: string; border: string; dot: string }> = {
+  final: {
+    label: 'Finalisé', bg: 'rgba(16,185,129,0.10)', text: '#065F46',
     border: 'rgba(16,185,129,0.25)', dot: '#10B981',
   },
-  brouillon: {
+  draft: {
     label: 'Brouillon', bg: 'rgba(245,158,11,0.10)', text: '#92400E',
     border: 'rgba(245,158,11,0.25)', dot: '#F59E0B',
   },
-  en_traitement: {
-    label: 'En traitement', bg: 'rgba(107,53,201,0.10)', text: '#5829A8',
+  processing: {
+    label: 'En cours…', bg: 'rgba(107,53,201,0.10)', text: '#5829A8',
     border: 'rgba(107,53,201,0.20)', dot: '#6B35C9',
-  },
-  rejete: {
-    label: 'Rejeté', bg: 'rgba(239,68,68,0.10)', text: '#991B1B',
-    border: 'rgba(239,68,68,0.20)', dot: '#EF4444',
   },
 };
 
-const MOCK_CRS: CompteRendu[] = [
-  {
-    id: 'cr1', ref: 'CR-2026-0009', company: 'Sonatrans SA', initials: 'SS', color: '#0EA5E9', flag: '🇸🇳',
-    contact: 'Ibrahima Traoré', contactRole: 'DSI', dossier: 'DOS-2026-0142',
-    date: '9 juin 2026', duration: '2:14', wordCount: 247, status: 'valide',
-    iaConfidence: 94, summary: 'Transport frigorifique 40T/mois · DKR–ABJ · ~18M FCFA/mois',
-  },
-  {
-    id: 'cr2', ref: 'CR-2026-0008', company: 'Bolloré Africa', initials: 'BA', color: '#8B5CF6', flag: '🇨🇲',
-    contact: 'Pierre Mbarga', contactRole: 'Dir. Régional', dossier: 'DOS-2026-0138',
-    date: '7 juin 2026', duration: '3:42', wordCount: 389, status: 'valide',
-    iaConfidence: 97, summary: 'Logistique portuaire · Contrat-cadre 2026 · Décision 20 juin',
-  },
-  {
-    id: 'cr3', ref: 'CR-2026-0007', company: 'Dakar Terminal', initials: 'DT', color: '#F59E0B', flag: '🇸🇳',
-    contact: 'Ibrahima Sow', contactRole: 'Dir. Opérations', dossier: 'DOS-2026-0129',
-    date: '5 juin 2026', duration: '1:58', wordCount: 192, status: 'brouillon',
-    iaConfidence: 78, summary: 'Révision contrat manutention · Nouveaux tarifs H2 2026',
-  },
-  {
-    id: 'cr4', ref: 'CR-2026-0006', company: 'SITARAIL', initials: 'SR', color: '#EF4444', flag: '🇨🇮',
-    contact: 'Emmanuel Koffi', contactRole: 'DG Adjoint', dossier: 'DOS-2026-0121',
-    date: '4 juin 2026', duration: '4:05', wordCount: 456, status: 'valide',
-    iaConfidence: 91, summary: "Extension réseau ferroviaire · Appel d'offres · 38,5M FCFA",
-  },
-  {
-    id: 'cr5', ref: 'CR-2026-0005', company: 'AngloGold Ashanti', initials: 'AG', color: '#84CC16', flag: '🇬🇭',
-    contact: 'Christophe Mensah', contactRole: 'Supply Chain Mgr', dossier: 'DOS-2026-0117',
-    date: '3 juin 2026', duration: '2:31', wordCount: 284, status: 'en_traitement',
-    iaConfidence: 88, summary: 'Transport minerai · Route ABJ–Kumasi · 200T/semaine',
-  },
-  {
-    id: 'cr6', ref: 'CR-2026-0004', company: 'Petroci Holding', initials: 'PH', color: '#22C55E', flag: '🇨🇮',
-    contact: 'Jean-Baptiste Kouamé', contactRole: 'Dir. Achats', dossier: 'DOS-2026-0108',
-    date: '1 juin 2026', duration: '2:48', wordCount: 312, status: 'valide',
-    iaConfidence: 95, summary: 'Approvisionnement carburant · Pipeline DKR–ABJ · Q3 2026',
-  },
-  {
-    id: 'cr7', ref: 'CR-2026-0003', company: 'Globex Abidjan', initials: 'GA', color: '#10B981', flag: '🇨🇮',
-    contact: "Kouassi N'Goran", contactRole: 'Dir. Commercial', dossier: 'DOS-2026-0099',
-    date: '28 mai 2026', duration: '1:22', wordCount: 148, status: 'rejete',
-    iaConfidence: 62, summary: 'Proposition refusée · Budget insuffisant · Reconvenir Q4',
-  },
-  {
-    id: 'cr8', ref: 'CR-2026-0002', company: 'Ciment de CI', initials: 'CI', color: '#F97316', flag: '🇨🇮',
-    contact: 'Sékou Traoré', contactRole: 'Dir. Logistique', dossier: 'DOS-2026-0087',
-    date: '25 mai 2026', duration: '3:15', wordCount: 341, status: 'valide',
-    iaConfidence: 92, summary: 'Livraison béton · Chantier Bouaké · 19,5M FCFA',
-  },
+const FALLBACK_STATUS = { label: '–', bg: '#F3F4F6', text: '#374151', border: '#E5E7EB', dot: '#9CA3AF' };
+
+type TabKey = 'tous' | 'draft' | 'processing' | 'final';
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'tous',       label: 'Tous' },
+  { key: 'draft',      label: 'Brouillons' },
+  { key: 'processing', label: 'En cours' },
+  { key: 'final',      label: 'Finalisés' },
 ];
 
-type TabKey = 'tous' | CRStatus;
+/* ── Helpers ────────────────────────────────────────────────────── */
+function fmtSize(bytes: number) {
+  if (!bytes) return '–';
+  if (bytes < 1024) return `${bytes} o`;
+  if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} Ko`;
+  return `${(bytes / 1048576).toFixed(1)} Mo`;
+}
 
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function hashColor(str: string): string {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h);
+  const colors = ['#0EA5E9','#8B5CF6','#F59E0B','#EF4444','#10B981','#6366F1','#F97316','#22C55E'];
+  return colors[Math.abs(h) % colors.length];
+}
+
+function toInitials(name: string): string {
+  return name.split(/\s+/).map(w => w[0] ?? '').slice(0, 2).join('').toUpperCase() || '??';
+}
+
+function displayName(cr: GlobalCR): string {
+  return cr.parent.company_name || cr.parent.name || '–';
+}
+
+/* ── Detail Drawer ──────────────────────────────────────────────── */
+function CRDetailDrawer({ crId, items, downloading, onClose, onDownload }: {
+  crId: string | null;
+  items: GlobalCR[];
+  downloading: string | null;
+  onClose: () => void;
+  onDownload: (cr: GlobalCR) => void;
+}) {
+  const dispatch = useAppDispatch();
+  const detail        = useAppSelector(s => crId ? s.compteRendus.detail[crId] : undefined);
+  const detailLoading = useAppSelector(s => crId ? !!s.compteRendus.detailLoading[crId] : false);
+
+  const cr = crId ? items.find(x => x.id === crId) : undefined;
+  const st = cr ? (STATUS_CFG[cr.status] ?? FALLBACK_STATUS) : FALLBACK_STATUS;
+
+  useEffect(() => {
+    if (crId && detail === undefined && !detailLoading) {
+      dispatch(fetchCompteRenduDetail(crId));
+    }
+  }, [crId, detail, detailLoading, dispatch]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const open = !!crId;
+
+  return (
+    <>
+      <div
+        className={`fixed inset-0 z-[70] bg-black/30 backdrop-blur-[2px] transition-opacity duration-200 ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={onClose}
+      />
+      <aside
+        className={`fixed inset-y-0 right-0 z-[71] w-full max-w-3xl flex flex-col bg-[var(--bg-surf)] border-l border-[var(--bd-def)] shadow-2xl transition-transform duration-300 ease-in-out ${open ? 'translate-x-0' : 'translate-x-full'}`}
+      >
+        {/* Header */}
+        <div
+          className="flex-shrink-0 px-6 pt-5 pb-4"
+          style={{ background: 'var(--grad)', borderBottom: '1px solid rgba(255,255,255,0.12)' }}
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-white/70 text-[10px] font-semibold uppercase tracking-[.08em] mb-1">
+                Compte-rendu · {cr ? `v${cr.version + 1}` : ''}
+              </p>
+              <h2 className="text-white text-[16px] font-bold leading-snug truncate">
+                {cr ? displayName(cr) : ''}
+              </h2>
+              {cr && (
+                <div className="flex items-center gap-3 mt-1.5">
+                  <span
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                    style={{ background: 'rgba(255,255,255,0.18)', color: 'white' }}
+                  >
+                    {st.label}
+                  </span>
+                  <span className="text-white/60 text-[11px]">{fmtDate(cr.created_at)}</span>
+                  <span className="text-white/60 text-[11px]">{fmtSize(cr.file_size)}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {cr && (
+                <button
+                  type="button"
+                  onClick={() => onDownload(cr)}
+                  disabled={downloading === cr.id}
+                  className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors disabled:opacity-60"
+                  title="Télécharger le PDF"
+                >
+                  {downloading === cr.id
+                    ? <CircleNotchIcon size={14} className="animate-spin" />
+                    : <DownloadSimpleIcon size={15} />
+                  }
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+              >
+                <XIcon size={15} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto">
+          {detailLoading ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--tx-3)]">
+              <CircleNotchIcon size={22} className="animate-spin text-[var(--p500)]" />
+              <p className="text-[13px]">Chargement du contenu…</p>
+            </div>
+          ) : (detail as GlobalCRDetail | undefined)?.content ? (
+            <div
+              className="p-6 prose prose-sm max-w-none text-[var(--tx-1)]"
+              /* eslint-disable-next-line react/no-danger */
+              dangerouslySetInnerHTML={{ __html: (detail as GlobalCRDetail).content }}
+            />
+          ) : detail && !(detail as GlobalCRDetail).content ? (
+            <div className="flex flex-col items-center justify-center h-full gap-2 text-[var(--tx-3)]">
+              <CodeIcon size={28} className="opacity-40" />
+              <p className="text-[13px]">Aucun contenu HTML disponible pour ce CR.</p>
+            </div>
+          ) : null}
+        </div>
+
+        {/* Footer méta */}
+        {cr && (
+          <div className="flex-shrink-0 border-t border-[var(--bd-def)] px-6 py-3 bg-[var(--bg-sink)] flex items-center gap-6 flex-wrap">
+            <div>
+              <p className="text-[10px] text-[var(--tx-3)] font-semibold uppercase tracking-wide">Parent</p>
+              <p className="text-[12px] font-medium text-[var(--tx-1)] capitalize">{cr.parent_type} · {cr.parent.name}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-[var(--tx-3)] font-semibold uppercase tracking-wide">Notes utilisées</p>
+              <p className="text-[12px] font-medium text-[var(--tx-1)]">{cr.note_ids.length}</p>
+            </div>
+            {cr.parent.email && (
+              <div>
+                <p className="text-[10px] text-[var(--tx-3)] font-semibold uppercase tracking-wide">Email</p>
+                <p className="text-[12px] font-medium text-[var(--tx-1)]">{cr.parent.email}</p>
+              </div>
+            )}
+            {cr.parent.phone && (
+              <div>
+                <p className="text-[10px] text-[var(--tx-3)] font-semibold uppercase tracking-wide">Téléphone</p>
+                <p className="text-[12px] font-medium text-[var(--tx-1)]">{cr.parent.phone}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </aside>
+    </>
+  );
+}
+
+/* ── Page ───────────────────────────────────────────────────────── */
 export default function ComptesRendusPage() {
   const router = useRouter();
   const params = useParams();
   const locale = (params?.locale as string) || 'fr';
 
-  const [activeTab, setActiveTab] = useState<TabKey>('tous');
-  const [search, setSearch] = useState('');
+  const dispatch = useAppDispatch();
+  const { items, total, loading, error, parentType, limit, offset } = useAppSelector(s => s.compteRendus);
 
-  const counts = useMemo(() => {
-    const c: Record<string, number> = { tous: MOCK_CRS.length };
-    (['valide', 'brouillon', 'en_traitement', 'rejete'] as CRStatus[]).forEach(s => {
-      c[s] = MOCK_CRS.filter(cr => cr.status === s).length;
+  const [activeTab, setActiveTab]   = useState<TabKey>('tous');
+  const [search, setSearch]         = useState('');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [downloading, setDownloading]  = useState<string | null>(null);
+  const [shareOpenId, setShareOpenId]  = useState<string | null>(null);
+  const [copiedId, setCopiedId]        = useState<string | null>(null);
+
+  /* Ferme le popover de partage au clic extérieur */
+  useEffect(() => {
+    if (!shareOpenId) return;
+    function handle(e: MouseEvent) {
+      if (!(e.target as Element).closest('[data-share-popover]')) setShareOpenId(null);
+    }
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [shareOpenId]);
+
+  async function resolveUrl(crId: string, downloadUrl: string): Promise<string | null> {
+    if (downloadUrl) return downloadUrl;
+    const cr = items.find(x => x.id === crId);
+    if (!cr) return null;
+    const res = await GetData<{ url?: string; download_url?: string }>({
+      url: ApiRoutes.PROSPECT_CR_DOWNLOAD(cr.parent_id, crId),
+      protected: true,
     });
-    return c;
-  }, []);
+    return res.ok ? (res.data?.url ?? res.data?.download_url ?? null) : null;
+  }
 
+  async function shareViaWhatsApp(crId: string, downloadUrl: string) {
+    const url = await resolveUrl(crId, downloadUrl);
+    setShareOpenId(null);
+    if (!url) return;
+    window.open(`https://wa.me/?text=${encodeURIComponent(url)}`, '_blank');
+  }
+
+  async function copyLink(crId: string, downloadUrl: string) {
+    const url = await resolveUrl(crId, downloadUrl);
+    setShareOpenId(null);
+    if (!url) return;
+    await navigator.clipboard.writeText(url);
+    setCopiedId(crId);
+    setTimeout(() => setCopiedId(null), 2000);
+  }
+
+  async function downloadCR(cr: GlobalCR) {
+    if (downloading === cr.id) return;
+    setDownloading(cr.id);
+    if (cr.download_url) {
+      window.open(cr.download_url, '_blank');
+      setDownloading(null);
+      return;
+    }
+    const res = await GetData<{ url?: string; download_url?: string }>({
+      url: ApiRoutes.PROSPECT_CR_DOWNLOAD(cr.parent_id, cr.id),
+      protected: true,
+    });
+    if (res.ok && (res.data?.url || res.data?.download_url)) {
+      window.open((res.data!.url ?? res.data!.download_url)!, '_blank');
+    }
+    setDownloading(null);
+  }
+
+  /* Fetch on mount + filter change */
+  useEffect(() => {
+    dispatch(fetchCompteRendus({ parentType, limit, offset }));
+  }, [dispatch, parentType, limit, offset]);
+
+  /* Client-side filter by status tab + search */
   const filtered = useMemo(() => {
-    let r = MOCK_CRS;
+    let r = items;
     if (activeTab !== 'tous') r = r.filter(cr => cr.status === activeTab);
     if (search.trim()) {
       const q = search.toLowerCase();
       r = r.filter(cr =>
-        cr.company.toLowerCase().includes(q) ||
-        cr.contact.toLowerCase().includes(q) ||
-        cr.dossier.toLowerCase().includes(q) ||
-        cr.summary.toLowerCase().includes(q),
+        displayName(cr).toLowerCase().includes(q) ||
+        cr.parent.email?.toLowerCase().includes(q) ||
+        cr.parent.name?.toLowerCase().includes(q) ||
+        cr.parent_type?.toLowerCase().includes(q),
       );
     }
     return r;
-  }, [activeTab, search]);
+  }, [items, activeTab, search]);
 
-  const kpis = [
-    { label: 'Total CRs', value: MOCK_CRS.length, sub: 'tous dossiers', icon: FileTextIcon },
-    { label: 'Ce mois', value: 4, sub: 'juin 2026', icon: ClockIcon },
-    { label: 'À valider', value: counts.brouillon + counts.en_traitement, sub: 'en attente', icon: WarningIcon },
-    { label: 'Durée moy.', value: '2:38', sub: 'par enregistrement', icon: MicrophoneIcon },
-  ];
+  /* Tab counts */
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { tous: items.length };
+    (['draft', 'processing', 'final'] as const).forEach(s => {
+      c[s] = items.filter(cr => cr.status === s).length;
+    });
+    return c;
+  }, [items]);
 
-  const tabs: { key: TabKey; label: string }[] = [
-    { key: 'tous', label: 'Tous' },
-    { key: 'valide', label: 'Validés' },
-    { key: 'brouillon', label: 'Brouillons' },
-    { key: 'en_traitement', label: 'En traitement' },
-    { key: 'rejete', label: 'Rejetés' },
-  ];
+  /* KPIs */
+  const kpis = useMemo(() => {
+    const now = new Date();
+    const thisMo = items.filter(cr => {
+      const d = new Date(cr.created_at);
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    }).length;
+    const pending = (counts.draft ?? 0) + (counts.processing ?? 0);
+    return [
+      { label: 'Total CRs',   value: loading ? '…' : String(total), sub: 'tous parents' },
+      { label: 'Ce mois',     value: loading ? '…' : String(thisMo), sub: new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) },
+      { label: 'En attente',  value: loading ? '…' : String(pending), sub: 'brouillons + en cours' },
+      { label: 'Finalisés',   value: loading ? '…' : String(counts.final ?? 0), sub: 'prêts à envoyer' },
+    ];
+  }, [items, total, loading, counts]);
 
-  const dateStr = new Date().toLocaleDateString('fr-FR', {
-    day: 'numeric', month: 'long', year: 'numeric',
-  });
+  /* Pagination */
+  const totalPages  = Math.max(1, Math.ceil(total / limit));
+  const currentPage = Math.floor(offset / limit) + 1;
+
+  const handleClose = useCallback(() => setSelectedId(null), []);
+
+  const dateStr = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
     <div className="p-4 sm:p-7 pb-16">
 
-      {/* ── Header ────────────────────────────────────────── */}
+      {/* ── Header ──────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
         <div>
           <h1 className="font-display text-[22px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight">
@@ -176,7 +364,7 @@ export default function ComptesRendusPage() {
         </button>
       </div>
 
-      {/* ── KPI row ───────────────────────────────────────── */}
+      {/* ── KPI row ─────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {kpis.map((k, i) => (
           <div key={i} className="bg-white border border-[var(--bd-def)] rounded-xl p-4 flex flex-col gap-1">
@@ -187,10 +375,11 @@ export default function ComptesRendusPage() {
         ))}
       </div>
 
-      {/* ── Tabs + search ─────────────────────────────────── */}
+      {/* ── Tabs + filtres ──────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-5">
+        {/* Status tabs */}
         <div className="flex items-center gap-0.5 bg-[var(--bg-sink)] rounded-lg p-1 flex-wrap">
-          {tabs.map(t => (
+          {TABS.map(t => (
             <button
               key={t.key}
               onClick={() => setActiveTab(t.key)}
@@ -212,7 +401,19 @@ export default function ComptesRendusPage() {
           ))}
         </div>
 
-        <div className="flex items-center gap-2 sm:ml-auto">
+        <div className="flex items-center gap-2 sm:ml-auto flex-wrap">
+          {/* Parent type filter */}
+          <select
+            value={parentType}
+            onChange={e => dispatch(setParentType(e.target.value))}
+            className="h-8 px-2 pr-7 rounded-lg border border-[var(--bd-def)] bg-white text-[12px] text-[var(--tx-2)] focus:outline-none focus:border-[var(--p500)] cursor-pointer"
+          >
+            <option value="">Tous les parents</option>
+            <option value="prospect">Prospects</option>
+            <option value="service">Services</option>
+          </select>
+
+          {/* Search */}
           <div className="relative">
             <MagnifyingGlassIcon
               size={13}
@@ -220,7 +421,7 @@ export default function ComptesRendusPage() {
             />
             <input
               type="text"
-              placeholder="Rechercher..."
+              placeholder="Rechercher…"
               value={search}
               onChange={e => setSearch(e.target.value)}
               className={cn(
@@ -231,23 +432,32 @@ export default function ComptesRendusPage() {
               )}
             />
           </div>
-          <button className="h-8 px-3 rounded-lg border border-[var(--bd-def)] bg-white text-[12px] text-[var(--tx-2)] flex items-center gap-1.5 hover:bg-[var(--bg-sink)] transition-colors whitespace-nowrap">
-            <FunnelIcon size={13} />
-            Filtres
-          </button>
         </div>
       </div>
 
-      {/* ── List ──────────────────────────────────────────── */}
-      <div className="bg-white border border-[var(--bd-def)] rounded-xl overflow-hidden">
+      {/* ── Error ───────────────────────────────────────────── */}
+      {error && (
+        <div className="mb-4 flex items-center gap-2 text-[13px] text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+          <WarningIcon size={15} className="flex-shrink-0" />
+          {error}
+        </div>
+      )}
+
+      {/* ── List ────────────────────────────────────────────── */}
+      <div className="bg-white border border-[var(--bd-def)] rounded-xl">
         {/* Table header */}
-        <div className="hidden sm:grid grid-cols-[minmax(0,2.2fr)_minmax(0,1.4fr)_minmax(0,0.9fr)_minmax(0,1.1fr)_56px] px-5 py-3 border-b border-[var(--bd-def)] bg-[var(--bg-sink)]">
-          {['Société · Dossier', 'Contact', 'Date', 'Statut', ''].map((h, i) => (
+        <div className="hidden sm:grid grid-cols-[minmax(0,2.2fr)_minmax(0,1.2fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,1fr)_56px] px-5 py-3 border-b border-[var(--bd-def)] bg-[var(--bg-sink)]">
+          {['Société / Parent', 'Contact', 'Date', 'Taille', 'Statut', ''].map((h, i) => (
             <span key={i} className="text-[11px] font-semibold text-[var(--tx-3)] uppercase tracking-wide">{h}</span>
           ))}
         </div>
 
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-16 gap-3 text-[var(--tx-3)]">
+            <CircleNotchIcon size={18} className="animate-spin text-[var(--p500)]" />
+            <span className="text-[13px]">Chargement…</span>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
             <FileTextIcon size={38} className="text-[var(--tx-3)]" />
             <div>
@@ -257,60 +467,60 @@ export default function ComptesRendusPage() {
           </div>
         ) : (
           filtered.map((cr, idx) => {
-            const s = STATUS_CFG[cr.status];
-            const conf = cr.iaConfidence;
-            const confColor = conf >= 90 ? '#10B981' : conf >= 75 ? '#F59E0B' : '#EF4444';
+            const s    = STATUS_CFG[cr.status] ?? FALLBACK_STATUS;
+            const name = displayName(cr);
             return (
               <div
                 key={cr.id}
-                onClick={() => router.push(`/${locale}/page/comptes-rendus/nouveau`)}
+                onClick={() => setSelectedId(cr.id)}
                 className={cn(
-                  'sm:grid grid-cols-[minmax(0,2.2fr)_minmax(0,1.4fr)_minmax(0,0.9fr)_minmax(0,1.1fr)_56px]',
+                  'sm:grid grid-cols-[minmax(0,2.2fr)_minmax(0,1.2fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,1fr)_56px]',
                   'flex flex-col gap-2 sm:gap-0',
                   'items-start sm:items-center px-5 py-4 hover:bg-[var(--bg-sink)] transition-colors cursor-pointer',
                   idx < filtered.length - 1 && 'border-b border-[var(--bd-def)]',
                 )}
               >
-                {/* Company */}
+                {/* Société */}
                 <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
                   <div
                     className="w-9 h-9 rounded-lg flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0"
-                    style={{ background: cr.color }}
+                    style={{ background: hashColor(cr.parent_id) }}
                   >
-                    {cr.initials}
+                    {toInitials(name)}
                   </div>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[13px] font-semibold text-[var(--tx-1)] truncate">{cr.company}</span>
-                      <span className="text-[13px]">{cr.flag}</span>
-                    </div>
+                    <span className="text-[13px] font-semibold text-[var(--tx-1)] truncate block">{name}</span>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <span className="text-[11px] text-[var(--tx-3)] font-mono tracking-tight">{cr.dossier}</span>
+                      <span className="text-[11px] text-[var(--tx-3)] capitalize">{cr.parent_type}</span>
                       <span className="text-[var(--tx-3)] opacity-40 text-[10px]">·</span>
-                      <span className="text-[11px] text-[var(--tx-3)] truncate max-w-[200px]">{cr.summary}</span>
+                      <span className="text-[11px] font-mono text-[var(--tx-3)]">v{cr.version + 1}</span>
+                      <span className="text-[var(--tx-3)] opacity-40 text-[10px]">·</span>
+                      <span className="text-[11px] text-[var(--tx-3)]">{cr.note_ids.length} note{cr.note_ids.length !== 1 ? 's' : ''}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Contact */}
-                <div>
-                  <div className="text-[13px] text-[var(--tx-1)] font-medium">{cr.contact}</div>
-                  <div className="text-[11px] text-[var(--tx-3)] mt-0.5">{cr.contactRole}</div>
+                <div className="min-w-0">
+                  <div className="text-[13px] text-[var(--tx-1)] font-medium truncate">{cr.parent.email || '–'}</div>
+                  <div className="text-[11px] text-[var(--tx-3)] mt-0.5 truncate">{cr.parent.phone || ''}</div>
                 </div>
 
                 {/* Date */}
                 <div>
-                  <div className="text-[12px] text-[var(--tx-2)]">{cr.date}</div>
-                  <div className="flex items-center gap-1 mt-0.5">
+                  <div className="flex items-center gap-1">
                     <ClockIcon size={10} className="text-[var(--tx-3)]" />
-                    <span className="text-[11px] text-[var(--tx-3)] font-mono">{cr.duration}</span>
-                    <span className="text-[var(--tx-3)] opacity-40 text-[10px]">·</span>
-                    <span className="text-[11px] text-[var(--tx-3)]">{cr.wordCount} mots</span>
+                    <span className="text-[12px] text-[var(--tx-2)]">{fmtDate(cr.created_at)}</span>
                   </div>
                 </div>
 
-                {/* Status */}
-                <div className="flex flex-col gap-1.5">
+                {/* Taille */}
+                <div>
+                  <span className="text-[12px] font-mono text-[var(--tx-2)]">{fmtSize(cr.file_size)}</span>
+                </div>
+
+                {/* Statut */}
+                <div>
                   <span
                     className="inline-flex items-center gap-1.5 px-2 py-[3px] rounded-full text-[10px] font-bold w-fit"
                     style={{ background: s.bg, color: s.text, border: `1px solid ${s.border}` }}
@@ -318,30 +528,68 @@ export default function ComptesRendusPage() {
                     <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: s.dot }} />
                     {s.label}
                   </span>
-                  <span
-                    className="flex items-center gap-1 text-[10px] font-mono"
-                    style={{ color: confColor }}
-                  >
-                    <SparkleIcon size={9} />
-                    IA {conf}%
-                  </span>
                 </div>
 
                 {/* Actions */}
                 <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                   <button
-                    title="Télécharger"
-                    className="h-7 w-7 rounded-md flex items-center justify-center text-[var(--tx-3)] hover:bg-[var(--bd-def)] hover:text-[var(--tx-1)] transition-colors"
+                    type="button"
+                    title="Télécharger le PDF"
+                    disabled={downloading === cr.id}
+                    onClick={() => downloadCR(cr)}
+                    className="h-7 w-7 rounded-md flex items-center justify-center text-[var(--tx-3)] hover:bg-[var(--bd-def)] hover:text-[var(--tx-1)] transition-colors disabled:opacity-50"
                   >
-                    <DownloadSimpleIcon size={13} />
+                    {downloading === cr.id
+                      ? <CircleNotchIcon size={12} className="animate-spin" />
+                      : <DownloadSimpleIcon size={13} />
+                    }
                   </button>
-                  <button
-                    title="Ouvrir"
-                    onClick={() => router.push(`/${locale}/page/comptes-rendus/nouveau`)}
-                    className="h-7 w-7 rounded-md flex items-center justify-center text-[var(--tx-3)] hover:bg-[var(--bd-def)] hover:text-[var(--tx-1)] transition-colors"
-                  >
-                    <CaretRightIcon size={13} />
-                  </button>
+                  {/* Bouton partage + popover */}
+                  <div className="relative" data-share-popover>
+                    <button
+                      type="button"
+                      onClick={() => setShareOpenId(shareOpenId === cr.id ? null : cr.id)}
+                      className={cn(
+                        'h-7 w-7 rounded-md flex items-center justify-center transition-colors',
+                        copiedId === cr.id
+                          ? 'text-green-500 bg-green-50'
+                          : 'text-[var(--tx-3)] hover:text-[var(--p500)] hover:bg-[rgba(107,53,201,0.08)]',
+                      )}
+                      title="Partager"
+                    >
+                      {copiedId === cr.id
+                        ? <CheckIcon size={13} weight="bold" />
+                        : <ShareNetworkIcon size={13} />
+                      }
+                    </button>
+
+                    {shareOpenId === cr.id && (
+                      <div
+                        data-share-popover
+                        className="absolute right-0 bottom-[calc(100%+4px)] z-50 bg-white border border-[var(--bd-def)] rounded-xl shadow-lg p-1.5 min-w-[172px]"
+                      >
+                        <p className="text-[10px] text-[var(--tx-3)] font-semibold uppercase tracking-wide px-2.5 pt-1 pb-1.5">
+                          Partager le lien
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => shareViaWhatsApp(cr.id, cr.download_url)}
+                          className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12px] text-[var(--tx-1)] hover:bg-[var(--bg-sink)] transition-colors"
+                        >
+                          <WhatsappLogoIcon size={14} weight="fill" className="text-[#25D366] flex-shrink-0" />
+                          Via WhatsApp
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => copyLink(cr.id, cr.download_url)}
+                          className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12px] text-[var(--tx-1)] hover:bg-[var(--bg-sink)] transition-colors"
+                        >
+                          <LinkIcon size={14} className="text-[var(--tx-3)] flex-shrink-0" />
+                          Copier le lien
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -349,13 +597,48 @@ export default function ComptesRendusPage() {
         )}
       </div>
 
-      {filtered.length > 0 && (
+      {/* ── Pagination ──────────────────────────────────────── */}
+      {total > limit && (
+        <div className="flex items-center justify-between mt-3 px-1">
+          <span className="text-[12px] text-[var(--tx-3)]">
+            {offset + 1}–{Math.min(offset + limit, total)} sur <span className="font-medium text-[var(--tx-2)]">{total}</span>
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              disabled={offset === 0}
+              onClick={() => dispatch(setOffset(Math.max(0, offset - limit)))}
+              className="h-7 px-3 rounded-lg text-xs text-[var(--tx-2)] border border-[var(--bd-def)] bg-white disabled:opacity-40 hover:bg-[var(--bg-sink)] transition-colors"
+            >
+              ← Préc.
+            </button>
+            <span className="text-[11px] text-[var(--tx-3)]">{currentPage} / {totalPages}</span>
+            <button
+              disabled={offset + limit >= total}
+              onClick={() => dispatch(setOffset(offset + limit))}
+              className="h-7 px-3 rounded-lg text-xs text-[var(--tx-2)] border border-[var(--bd-def)] bg-white disabled:opacity-40 hover:bg-[var(--bg-sink)] transition-colors"
+            >
+              Suiv. →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!loading && filtered.length > 0 && total <= limit && (
         <div className="flex items-center justify-between mt-3 px-1">
           <span className="text-[12px] text-[var(--tx-3)]">
             {filtered.length} résultat{filtered.length > 1 ? 's' : ''}
           </span>
         </div>
       )}
+
+      {/* ── Detail drawer ───────────────────────────────────── */}
+      <CRDetailDrawer
+        crId={selectedId}
+        items={items}
+        downloading={downloading}
+        onClose={handleClose}
+        onDownload={downloadCR}
+      />
     </div>
   );
 }
