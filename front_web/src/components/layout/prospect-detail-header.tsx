@@ -6,13 +6,16 @@ import {
   ArrowLeftIcon, PencilSimpleIcon, FileTextIcon,
   BuildingsIcon, EnvelopeIcon, PhoneIcon, CurrencyCircleDollarIcon,
 } from '@phosphor-icons/react';
-import { type ApiProspect, STATUS_CONFIG, SECTOR_STYLES } from '@/types/prospect_type';
+import { type ApiProspect, STATUS_CONFIG, SECTOR_STYLES, ProspectStatus, PROSPECT_STATUSES } from '@/types/prospect_type';
 import { Button } from '@/components/ui/button';
+import { useEffect, useState } from 'react';
+import { cn } from '@/lib/utils';
 
 interface ProspectDetailHeaderProps {
   prospect: ApiProspect;
   locale: string;
   onEdit: () => void;
+  onMove?: (id: string, newStatus: ProspectStatus) => void;
 }
 
 function fmt(n: number | null) {
@@ -20,9 +23,14 @@ function fmt(n: number | null) {
   return n.toLocaleString('fr-FR') + ' FCFA';
 }
 
-export function ProspectDetailHeader({ prospect, locale, onEdit }: ProspectDetailHeaderProps) {
+export function ProspectDetailHeader({ prospect, locale, onEdit, onMove }: ProspectDetailHeaderProps) {
+  const [statusOpen, setStatusOpen] = useState<string | null>(null);
+  const [statusPos, setStatusPos] = useState<{ top: number; left: number } | null>(null);
+  const [pendingStatuses, setPendingStatuses] = useState<Record<string, ProspectStatus>>({});
+
   const router = useRouter();
-  const statusCfg = STATUS_CONFIG[prospect.status];
+  const displayStatus = (pendingStatuses[prospect.id] ?? prospect.status) as ProspectStatus;
+  const statusCfg = STATUS_CONFIG[displayStatus];
   const sectorStyle = SECTOR_STYLES[prospect.portalis_sector] ?? { bg: 'rgba(100,116,139,0.1)', text: '#475569', border: 'rgba(100,116,139,0.2)' };
 
   const initials = prospect.company_name
@@ -34,6 +42,24 @@ export function ProspectDetailHeader({ prospect, locale, onEdit }: ProspectDetai
   const handleClickNewReport = () => {
     router.push(crUrl);
   }
+
+  /* Vide les overrides dès que Redux livre l'état final (succès ou rollback) */
+  useEffect(() => {
+    if (Object.keys(pendingStatuses).length === 0) return;
+    setPendingStatuses({});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prospect.status]);
+
+  useEffect(() => {
+    if (!statusOpen) return;
+    function close() { setStatusOpen(null); setStatusPos(null); }
+    document.addEventListener('click', close);
+    window.addEventListener('scroll', close, true);
+    return () => {
+      document.removeEventListener('click', close);
+      window.removeEventListener('scroll', close, true);
+    };
+  }, [statusOpen]);
 
   return (
     <div className="bg-[var(--bg-surf)] border border-[var(--bd-def)] rounded-2xl overflow-hidden">
@@ -76,12 +102,66 @@ export function ProspectDetailHeader({ prospect, locale, onEdit }: ProspectDetai
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <h1 className="text-[17px] font-bold text-[var(--tx-1)]">{prospect.company_name}</h1>
               {/* Status */}
-              <span
-                className="text-[11px] font-semibold px-2 py-0.5 rounded-full border"
+              <button
+                onClick={e => {
+                  e.stopPropagation();
+                  if (!onMove) return;
+                  if (statusOpen === prospect.id) { setStatusOpen(null); setStatusPos(null); return; }
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const spaceBelow = window.innerHeight - rect.bottom;
+                  const top = spaceBelow < 220 ? rect.top - 220 : rect.bottom + 4;
+                  setStatusPos({ top, left: rect.left });
+                  setStatusOpen(prospect.id);
+                }}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-2.5 py-[3px] rounded-full text-[11px] font-semibold border whitespace-nowrap transition-opacity',
+                  onMove ? 'cursor-pointer hover:opacity-80' : 'cursor-default',
+                )}
                 style={{ background: statusCfg.tagBg, color: statusCfg.tagText, borderColor: statusCfg.tagBorder }}
               >
+                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: statusCfg.dotColor }} />
                 {statusCfg.label}
-              </span>
+                {onMove && <span className="ml-0.5 opacity-50">▾</span>}
+              </button>
+
+              {/* Status dropdown portal */}
+              {statusOpen && statusPos && onMove && (
+                <div
+                  className="fixed z-[200] bg-white border border-[var(--bd-def)] rounded-xl shadow-lg py-1 min-w-[160px]"
+                  style={{ top: statusPos.top, left: statusPos.left }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--tx-3)] px-3 pt-1.5 pb-1">
+                    Changer le statut
+                  </p>
+                  {PROSPECT_STATUSES.filter(s => s !== 'nouveau').map(s => {
+                    const cfg = STATUS_CONFIG[s];
+                    const isCurrent = (pendingStatuses[statusOpen] ?? prospect.status) === s;
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => {
+                          setPendingStatuses(prev => ({ ...prev, [statusOpen]: s }));
+                          onMove(prospect.id, s);
+                          setStatusOpen(null);
+                          setStatusPos(null);
+                        }}
+                        className={cn(
+                          'w-full flex items-center gap-2.5 px-3 py-2 text-left text-[12px] transition-colors',
+                          isCurrent ? 'bg-[var(--bg-sink)]' : 'hover:bg-[var(--bg-sink)]',
+                        )}
+                      >
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: cfg.dotColor }} />
+                        <span className={cn('flex-1', isCurrent && 'font-semibold')} style={{ color: cfg.tagText }}>
+                          {cfg.label}
+                        </span>
+                        {isCurrent && <span className="text-[10px] text-[var(--tx-3)]">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* Sector */}
               {prospect.portalis_sector && (
                 <span

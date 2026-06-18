@@ -23,7 +23,7 @@ const RightPanel = ({ state, wordCount }: { state: AppState; wordCount: number }
             </div>
             <div>
               <div className="text-[12px] font-bold text-[var(--tx-1)]">Agent CR Vocal</div>
-              <div className="text-[10px] text-[var(--tx-3)] font-mono mt-0.5">Claude Sonnet 4.5</div>
+              <div className="text-[10px] text-[var(--tx-3)] font-mono mt-0.5">IA</div>
             </div>
           </div>
           <span

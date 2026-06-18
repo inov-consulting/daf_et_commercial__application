@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { PostData, GetData } from '@/lib/ApiService';
-import { type ProspectCR, type GenerateCRBody, type NotesListResponse } from '@/types/prospect_note_type';
+import { type ProspectNote, type ProspectCR, type GenerateCRBody } from '@/types/prospect_note_type';
 import { ApiRoutes } from '@/lib/ApiRoutes';
 import {
   MicrophoneIcon, SquareIcon, ArrowLeftIcon, CheckIcon, XIcon,
@@ -214,8 +214,9 @@ export default function NouveauCRPage() {
   }
 
   /* ── Processing ─────────────────────────────────────────────── */
-  const startProcessing = useCallback(async () => {
+  const startProcessing = useCallback(async (content?: string) => {
     setGenError(null);
+    const noteContent = content ?? transcriptText;
 
     const launchAnimation = () => {
       clearProcTimeouts();
@@ -240,31 +241,28 @@ export default function NouveauCRPage() {
       return;
     }
 
-    /* 1. Récupérer les notes du prospect */
+    /* 1. Sauvegarder le contenu comme note */
     setPreparing(true);
-    const notesRes = await GetData<NotesListResponse>({
+    const saveRes = await PostData<ProspectNote>({
       url: ApiRoutes.PROSPECT_NOTES(crContext.id),
+      data: { content: noteContent },
       protected: true,
     });
     setPreparing(false);
 
-    if (!notesRes.ok || !notesRes.data) {
-      setGenError(notesRes.error ?? 'Impossible de récupérer les notes du prospect.');
-      return;
-    }
-    if (notesRes.data.items.length === 0) {
-      setGenError('Aucune note trouvée pour ce prospect. Ajoutez des notes avant de générer un CR.');
+    if (!saveRes.ok || !saveRes.data) {
+      setGenError(saveRes.error ?? 'Impossible de sauvegarder la note.');
       return;
     }
 
-    const noteIds = notesRes.data.items.map(n => n.id);
+    const noteId = saveRes.data.id;
 
     /* 2. Lancer l'animation + appel API en parallèle */
     launchAnimation();
 
     const crRes = await PostData<ProspectCR, GenerateCRBody>({
       url: ApiRoutes.PROSPECT_CRS(crContext.id),
-      data: { note_ids: noteIds, template: 'standard' },
+      data: { note_ids: [noteId], template: 'standard' },
       protected: true,
     });
 
@@ -273,7 +271,7 @@ export default function NouveauCRPage() {
     } else {
       setGenError(crRes.error ?? 'Erreur lors de la génération du CR');
     }
-  }, [crContext]);
+  }, [crContext, transcriptText]);
 
   /* ── Sync crContext → draftValues (Société / Contact) ───────── */
   useEffect(() => {
@@ -338,7 +336,7 @@ export default function NouveauCRPage() {
               Dictée vocale
             </h1>
             <p className="text-[var(--tx-3)] text-[12px] mt-0.5">
-              M-08 · Compte-rendu de visite · Claude Sonnet 4.5 · {dateStr}
+              M-08 · Compte-rendu de visite · IA · {dateStr}
             </p>
           </div>
         </div>
@@ -489,7 +487,7 @@ export default function NouveauCRPage() {
                       <Button
                         variant="gradient"
                         size="lg"
-                        onClick={() => { setTranscriptText(textContent); startProcessing(); }}
+                        onClick={() => { setTranscriptText(textContent); startProcessing(textContent); }}
                         disabled={!textContent.trim() || preparing}
                         className="w-full"
                         style={{ boxShadow: preparing ? 'none' : '0 2px 12px rgba(107,53,201,0.3)' }}
@@ -623,7 +621,7 @@ export default function NouveauCRPage() {
                     style={{ background: 'rgba(107,53,201,0.05)', border: '1px solid rgba(107,53,201,0.18)', color: '#5829A8' }}>
                     <InfoIcon size={14} style={{ flexShrink: 0, marginTop: 1 }} />
                     <span>
-                      Corrigez les erreurs <strong>avant</strong> d&apos;envoyer à Claude Sonnet 4.5 — chiffres, noms propres, ponctuation.
+                      Corrigez les erreurs <strong>avant</strong> d&apos;envoyer à IA — chiffres, noms propres, ponctuation.
                     </span>
                   </div>
 
@@ -685,7 +683,7 @@ export default function NouveauCRPage() {
                       </div>
                       <div>
                         <div className="text-[14px] font-bold text-[var(--tx-1)]">Agent CR Vocal</div>
-                        <div className="text-[10px] text-[var(--tx-3)] font-mono mt-0.5">Claude Sonnet 4.5 · M-08</div>
+                        <div className="text-[10px] text-[var(--tx-3)] font-mono mt-0.5">IA · M-08</div>
                         <div className="flex items-center gap-1 mt-1 text-[10px]" style={{ color: '#059669' }}>
                           <CheckIcon size={9} />
                           Transcription validée par vous
@@ -957,7 +955,7 @@ export default function NouveauCRPage() {
                   </div>
                   <h2 className="text-[17px] font-bold text-[var(--tx-1)] font-display mb-2">Traitement interrompu</h2>
                   <p className="text-[13px] text-[var(--tx-3)] leading-relaxed mb-4">
-                    La connexion a été perdue pendant le traitement par Claude Sonnet 4.5.
+                    La connexion a été perdue pendant le traitement par IA.
                   </p>
                   <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[12px] font-semibold mb-6"
                     style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10B981', color: '#065F46' }}>

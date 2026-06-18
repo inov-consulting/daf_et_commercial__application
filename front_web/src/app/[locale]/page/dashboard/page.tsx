@@ -77,7 +77,7 @@ const PIPELINE = [
 ];
 
 const ACTIVITY = [
-  { id: 1, avatar: null, name: 'Claude Sonnet 4.5', tag: 'IA', text: 'CR vocal généré · Sonatrans SA', time: '09h14' },
+  { id: 1, avatar: null, name: 'IA', tag: 'IA', text: 'CR vocal généré · Sonatrans SA', time: '09h14' },
   { id: 2, avatar: 'HK', name: 'Hawa Konaté', tag: 'Validé', text: 'Offre SITARAIL 32M · approuvée', time: '08h51' },
   { id: 3, avatar: null, name: 'Claude Haiku 4.5', tag: 'IA', text: 'Fiche extraite · MTN CI · 7 champs', time: '08h33' },
   { id: 4, avatar: 'MK', name: 'Moussa Koné', tag: 'Humain', text: 'Prospect qualifié · Globex Abidjan', time: 'Hier' },

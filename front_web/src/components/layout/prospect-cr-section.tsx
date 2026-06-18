@@ -7,15 +7,17 @@ import {
 } from '@phosphor-icons/react';
 import { GetData, PostData } from '@/lib/ApiService';
 import { ApiRoutes } from '@/lib/ApiRoutes';
-import { type ProspectCR, type CRListResponse, type GenerateCRBody } from '@/types/prospect_note_type';
+import { type ProspectCR, type GlobalCR, type CRListResponse, type GenerateCRBody } from '@/types/prospect_note_type';
 import { Button } from '@/components/ui/button';
 import { FloatingToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import { useAppDispatch, useAppSelector } from '@/redux/store';
 import { fetchNotes } from '@/redux/features/notes/notesSlice';
+import CRDetailDrawer from './cr-detail-drawer';
 
 interface ProspectCRSectionProps {
   prospectId: string;
+  prospectName?: string;
 }
 
 const STATUS_CR: Record<string, { label: string; bg: string; color: string }> = {
@@ -35,7 +37,7 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-export function ProspectCRSection({ prospectId }: ProspectCRSectionProps) {
+export function ProspectCRSection({ prospectId, prospectName }: ProspectCRSectionProps) {
   const dispatch = useAppDispatch();
 
   /* Notes depuis le store global — plus de fetch dédié dans ce composant */
@@ -54,8 +56,20 @@ export function ProspectCRSection({ prospectId }: ProspectCRSectionProps) {
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<NodeJS.Timeout | null>(null);
 
+  const [selectedId, setSelectedId]   = useState<string | null>(null);
+  const [downloading, setDownloading] = useState<string | null>(null);
   const [shareOpenId, setShareOpenId] = useState<string | null>(null);
   const [copiedId, setCopiedId]       = useState<string | null>(null);
+
+  /* Construit des GlobalCR synthétiques depuis les ProspectCR locaux */
+  const syntheticParent = {
+    type: 'prospection', id: prospectId,
+    name: prospectName ?? '', company_name: prospectName ?? '',
+    status: '', email: '', phone: '',
+  };
+  const globalCrs: GlobalCR[] = crs.map(cr => ({ ...cr, parent: syntheticParent }));
+
+  function handleClose() { setSelectedId(null); }
 
   function showToast(msg: string) {
     setToast(msg);
@@ -115,42 +129,45 @@ export function ProspectCRSection({ prospectId }: ProspectCRSectionProps) {
     setGenerating(false);
   }
 
-  async function downloadCR(crId: string, downloadUrl: string) {
-    if (downloadUrl) {
-      window.open(downloadUrl, '_blank');
+  async function downloadCR(cr: GlobalCR) {
+    setDownloading(cr.id);
+    if (cr.download_url) {
+      window.open(cr.download_url, '_blank');
+      setDownloading(null);
       return;
     }
     const res = await GetData<{ download_url?: string }>({
-      url: ApiRoutes.PROSPECT_CR_DOWNLOAD(prospectId, crId),
+      url: ApiRoutes.PROSPECT_CR_DOWNLOAD(prospectId, cr.id),
       protected: true,
     });
     if (res.ok && res.data?.download_url) {
       window.open(res.data.download_url, '_blank');
     }
+    setDownloading(null);
   }
 
-  async function resolveUrl(crId: string, downloadUrl: string): Promise<string | null> {
-    if (downloadUrl) return downloadUrl;
+  async function resolveUrl(cr: GlobalCR): Promise<string | null> {
+    if (cr.download_url) return cr.download_url;
     const res = await GetData<{ download_url?: string }>({
-      url: ApiRoutes.PROSPECT_CR_DOWNLOAD(prospectId, crId),
+      url: ApiRoutes.PROSPECT_CR_DOWNLOAD(prospectId, cr.id),
       protected: true,
     });
     return res.ok ? (res.data?.download_url ?? null) : null;
   }
 
-  async function shareViaWhatsApp(crId: string, downloadUrl: string) {
-    const url = await resolveUrl(crId, downloadUrl);
+  async function shareViaWhatsApp(cr: GlobalCR) {
+    const url = await resolveUrl(cr);
     setShareOpenId(null);
     if (!url) return;
     window.open(`https://wa.me/?text=${encodeURIComponent(url)}`, '_blank');
   }
 
-  async function copyLink(crId: string, downloadUrl: string) {
-    const url = await resolveUrl(crId, downloadUrl);
+  async function copyLink(cr: GlobalCR) {
+    const url = await resolveUrl(cr);
     setShareOpenId(null);
     if (!url) return;
     await navigator.clipboard.writeText(url);
-    setCopiedId(crId);
+    setCopiedId(cr.id);
     setTimeout(() => setCopiedId(null), 2000);
   }
 
@@ -197,10 +214,14 @@ export function ProspectCRSection({ prospectId }: ProspectCRSectionProps) {
               <p className="text-[12px] text-[var(--tx-3)]">Aucun compte-rendu généré.</p>
             </div>
           ) : (
-            crs.map(cr => {
+            globalCrs.map(cr => {
               const st = STATUS_CR[cr.status] ?? STATUS_CR.draft;
               return (
-                <div key={cr.id} className="flex items-center gap-2 px-5 py-3.5 hover:bg-[var(--bg-sink)] transition-colors">
+                <div
+                  key={cr.id}
+                  className="flex items-center gap-2 px-5 py-3.5 hover:bg-[var(--bg-sink)] transition-colors cursor-pointer"
+                  onClick={() => setSelectedId(cr.id)}
+                >
                   <div className="w-8 h-8 rounded-lg bg-[rgba(107,53,201,0.08)] flex items-center justify-center flex-shrink-0">
                     <FileTextIcon size={15} className="text-[var(--p500)]" />
                   </div>
@@ -220,7 +241,7 @@ export function ProspectCRSection({ prospectId }: ProspectCRSectionProps) {
                   </div>
 
                   {/* Bouton partage + popover */}
-                  <div className="relative flex-shrink-0" data-share-popover>
+                  <div className="relative flex-shrink-0" data-share-popover onClick={e => e.stopPropagation()}>
                     <button
                       type="button"
                       onClick={() => setShareOpenId(shareOpenId === cr.id ? null : cr.id)}
@@ -249,7 +270,7 @@ export function ProspectCRSection({ prospectId }: ProspectCRSectionProps) {
 
                         <button
                           type="button"
-                          onClick={() => shareViaWhatsApp(cr.id, cr.download_url)}
+                          onClick={() => shareViaWhatsApp(cr)}
                           className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12px] text-[var(--tx-1)] hover:bg-[var(--bg-sink)] transition-colors"
                         >
                           <WhatsappLogoIcon size={15} weight="fill" className="text-[#25D366] flex-shrink-0" />
@@ -258,7 +279,7 @@ export function ProspectCRSection({ prospectId }: ProspectCRSectionProps) {
 
                         <button
                           type="button"
-                          onClick={() => copyLink(cr.id, cr.download_url)}
+                          onClick={() => copyLink(cr)}
                           className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12px] text-[var(--tx-1)] hover:bg-[var(--bg-sink)] transition-colors"
                         >
                           <LinkIcon size={15} className="text-[var(--tx-3)] flex-shrink-0" />
@@ -270,11 +291,15 @@ export function ProspectCRSection({ prospectId }: ProspectCRSectionProps) {
 
                   {/* Bouton télécharger */}
                   <button
-                    onClick={() => downloadCR(cr.id, cr.download_url)}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--tx-3)] hover:text-[var(--p500)] hover:bg-[rgba(27,107,69,0.08)] transition-colors flex-shrink-0"
+                    onClick={e => { e.stopPropagation(); downloadCR(cr); }}
+                    disabled={downloading === cr.id}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--tx-3)] hover:text-[var(--p500)] hover:bg-[rgba(27,107,69,0.08)] transition-colors flex-shrink-0 disabled:opacity-50"
                     title="Télécharger"
                   >
-                    <DownloadSimpleIcon size={15} />
+                    {downloading === cr.id
+                      ? <CircleNotchIcon size={15} className="animate-spin" />
+                      : <DownloadSimpleIcon size={15} />
+                    }
                   </button>
                 </div>
               );
@@ -282,6 +307,14 @@ export function ProspectCRSection({ prospectId }: ProspectCRSectionProps) {
           )}
         </div>
       </div>
+
+      <CRDetailDrawer
+        crId={selectedId}
+        items={globalCrs}
+        downloading={downloading}
+        onClose={handleClose}
+        onDownload={downloadCR}
+      />
 
       <FloatingToast message={toast} />
     </>
