@@ -31,6 +31,33 @@ export interface CRListResponse {
   total: number;
 }
 
+/* ── Global CR (liste / détail) ───────────────────────────────── */
+
+export interface CRParent {
+  type: string;
+  id: string;
+  name: string;
+  status: string;
+  email: string;
+  phone: string;
+  company_name: string;
+}
+
+export interface GlobalCR extends ProspectCR {
+  parent: CRParent;
+}
+
+export interface GlobalCRDetail extends GlobalCR {
+  content: string;
+}
+
+export interface GlobalCRListResponse {
+  items: GlobalCR[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
 export interface GenerateCRBody {
   note_ids: string[];
   template?: string;
