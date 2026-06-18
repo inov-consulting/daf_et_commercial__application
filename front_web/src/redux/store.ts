@@ -7,6 +7,8 @@ import meReducer from "./features/me/meSlice";
 import companiesReducer from "./features/companies/companiesSlice";
 import groupsReducer from "./features/groups/groupsSlice";
 import prospectsReducer from "./features/prospects/prospectsSlice";
+import notesReducer from "./features/notes/notesSlice";
+import apiLogsReducer from "./features/api-logs/apiLogsSlice";
 
 const persistConfig = {
   key: "root",
@@ -21,6 +23,8 @@ const rootReducer = {
   companies: companiesReducer,
   groups: groupsReducer,
   prospects: prospectsReducer,
+  notes: notesReducer,
+  apiLogs: apiLogsReducer,
 };
 
 const persistedReducer = persistReducer(persistConfig, combineReducers(rootReducer));
