@@ -1,0 +1,130 @@
+"""Router API Compte-Rendus (module indépendant)."""
+from __future__ import annotations
+
+from typing import Annotated
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, Query
+
+from app.api.deps import require_permission
+from app.api.v1.schemas.prospects import (
+    CompteRenduListItemOut,
+    CompteRenduParentInfo,
+    CompteRenduWithParentListOut,
+    CompteRenduWithParentOut,
+)
+from app.infrastructure.db.models.note import CompteRenduOrm
+from app.infrastructure.db.models.prospect import ProspectOrm
+from app.infrastructure.storage.minio import StorageService
+
+router = APIRouter(prefix="/compte-rendus", tags=["compte-rendus"])
+
+_cr_deps = [Depends(require_permission("compte-rendus:read"))]
+
+
+@router.get("", dependencies=_cr_deps)
+async def list_compte_rendus(
+    parent_type: Annotated[str | None, Query(description="Filtrer par type: prospect, service, etc.")] = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> CompteRenduWithParentListOut:
+    """Lister tous les comptes-rendus avec leur parent associé."""
+    query = CompteRenduOrm.all()
+    if parent_type:
+        query = query.filter(parent_type=parent_type)
+
+    total = await query.count()
+    crs = await query.order_by("-created_at").offset(offset).limit(limit)
+
+    storage = StorageService()
+    items: list[CompteRenduListItemOut] = []
+
+    for cr in crs:
+        download_url = storage.get_url(cr.minio_path)
+
+        cr_data = {
+            "id": cr.id,
+            "parent_type": cr.parent_type,
+            "parent_id": cr.parent_id,
+            "version": cr.version,
+            "status": cr.status,
+            "file_size": cr.file_size,
+            "download_url": download_url,
+            "generated_by": cr.generated_by,
+            "note_ids": cr.note_ids,
+            "created_at": cr.created_at,
+            "created_by": cr.created_by_id,
+            "parent": None,
+        }
+
+        if cr.parent_type in ("prospect", "prospections", "prospection"):
+            prospect = await ProspectOrm.get_or_none(id=cr.parent_id)
+            if prospect:
+                # Données Odoo sont dans erp_metadata (cache local)
+                erp_data = prospect.erp_metadata or {}
+                cr_data["parent"] = CompteRenduParentInfo(
+                    type="prospect",
+                    id=prospect.id,
+                    name=erp_data.get("name") or erp_data.get("partner_name") or "Prospect sans nom",
+                    status=prospect.status,
+                    email=erp_data.get("email"),
+                    phone=erp_data.get("phone"),
+                    company_name=erp_data.get("partner_name"),
+                )
+
+        items.append(CompteRenduListItemOut.model_validate(cr_data))
+
+    return CompteRenduWithParentListOut(
+        items=items,
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
+
+
+@router.get("/{cr_id}", dependencies=_cr_deps)
+async def get_compte_rendu(cr_id: UUID) -> CompteRenduWithParentOut:
+    """Récupérer un compte-rendu par ID avec content HTML complet."""
+    from fastapi import HTTPException, status
+
+    cr = await CompteRenduOrm.get_or_none(id=cr_id)
+    if not cr:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Compte-rendu non trouvé",
+        )
+
+    storage = StorageService()
+    download_url = storage.get_url(cr.minio_path)
+
+    cr_data = {
+        "id": cr.id,
+        "parent_type": cr.parent_type,
+        "parent_id": cr.parent_id,
+        "version": cr.version,
+        "status": cr.status,
+        "file_size": cr.file_size,
+        "download_url": download_url,
+        "generated_by": cr.generated_by,
+        "content": cr.content,
+        "note_ids": cr.note_ids,
+        "created_at": cr.created_at,
+        "created_by": cr.created_by_id,
+        "parent": None,
+    }
+
+    if cr.parent_type in ("prospect", "prospections", "prospection"):
+        prospect = await ProspectOrm.get_or_none(id=cr.parent_id)
+        if prospect:
+            erp_data = prospect.erp_metadata or {}
+            cr_data["parent"] = CompteRenduParentInfo(
+                type="prospect",
+                id=prospect.id,
+                name=erp_data.get("name") or erp_data.get("partner_name") or "Prospect sans nom",
+                status=prospect.status,
+                email=erp_data.get("email"),
+                phone=erp_data.get("phone"),
+                company_name=erp_data.get("partner_name"),
+            )
+
+    return CompteRenduWithParentOut.model_validate(cr_data)

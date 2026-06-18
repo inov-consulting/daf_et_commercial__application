@@ -368,3 +368,51 @@ class CompteRenduUpdate(BaseModel):
 
     content: str  # HTML modifié par l'utilisateur
     regenerate_pdf: bool = True  # Regénérer le PDF après mise à jour
+
+
+class CompteRenduParentInfo(BaseModel):
+    """Info minimale du parent associé au CR."""
+
+    type: str  # prospect, service, etc.
+    id: UUID
+    name: str | None = None
+    status: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    company_name: str | None = None
+
+
+class CompteRenduListItemOut(BaseModel):
+    """Compte-rendu pour la liste (sans content, allégé)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    parent_type: str
+    parent_id: UUID
+    version: int
+    status: str
+    file_size: int | None
+    download_url: str | None = None
+    generated_by: str
+    note_ids: list[str] | None
+    created_at: datetime
+    created_by: UUID | None
+
+    # Parent associé (si trouvé)
+    parent: CompteRenduParentInfo | None = None
+
+
+class CompteRenduWithParentOut(CompteRenduListItemOut):
+    """Compte-rendu détail avec content HTML (pour GET by ID)."""
+
+    content: str | None = None
+
+
+class CompteRenduWithParentListOut(BaseModel):
+    """Liste de compte-rendus avec leurs parents."""
+
+    items: list[CompteRenduListItemOut]
+    total: int
+    offset: int
+    limit: int
