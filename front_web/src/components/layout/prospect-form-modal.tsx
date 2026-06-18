@@ -89,6 +89,7 @@ export function ProspectFormModal({
   const [emailError, setEmailError]         = useState<string | null>(null);
   const [phoneError, setPhoneError]         = useState<string | null>(null);
   const [showCodePicker, setShowCodePicker] = useState(false);
+  const [codePickerUp, setCodePickerUp]     = useState(false);
   const codePickerRef = useRef<HTMLDivElement>(null);
 
   /* ── Fetch companies once (cached in state while component is mounted) ── */
@@ -450,7 +451,13 @@ export function ProspectFormModal({
                 <div className="relative flex-shrink-0" ref={codePickerRef}>
                   <button
                     type="button"
-                    onClick={() => setShowCodePicker(o => !o)}
+                    onClick={() => {
+                      if (!showCodePicker && codePickerRef.current) {
+                        const rect = codePickerRef.current.getBoundingClientRect();
+                        setCodePickerUp(window.innerHeight - rect.bottom < 240);
+                      }
+                      setShowCodePicker(o => !o);
+                    }}
                     className={cn(
                       'h-9 flex items-center gap-1.5 pl-2.5 pr-6 rounded-l-lg',
                       'border border-r-0 border-[var(--bd-def)]',
@@ -479,7 +486,10 @@ export function ProspectFormModal({
                   </button>
 
                   {showCodePicker && (
-                    <div className="absolute top-[calc(100%+4px)] left-0 z-50 bg-white border border-[var(--bd-def)] rounded-xl shadow-lg w-52 max-h-56 overflow-y-auto">
+                    <div className={cn(
+                      'absolute left-0 z-50 bg-white border border-[var(--bd-def)] rounded-xl shadow-lg w-52 max-h-56 overflow-y-auto',
+                      codePickerUp ? 'bottom-[calc(100%+4px)]' : 'top-[calc(100%+4px)]',
+                    )}>
                       {COUNTRY_CODES.map(c => (
                         <button
                           key={c.code}

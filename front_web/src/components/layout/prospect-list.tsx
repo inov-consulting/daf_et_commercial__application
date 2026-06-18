@@ -3,10 +3,10 @@
 import { useEffect, useState } from 'react';
 import { CaretUpDownIcon, CaretUpIcon, CaretDownIcon, DotsThreeVerticalIcon } from '@phosphor-icons/react';
 import {
-  STATUS_CONFIG, SECTOR_STYLES,
+  STATUS_CONFIG, SECTOR_STYLES, PROSPECT_STATUSES,
   formatFcfa, pipelineAgeInfo,
   hashColor, toInitials, timeAgo,
-  type ApiProspect,
+  type ApiProspect, type ProspectStatus,
 } from '@/types/prospect_type';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +24,7 @@ interface ProspectListProps {
   onSort: (col: SortKey) => void;
   onEdit?: (id: string) => void;
   onDetail?: (id: string) => void;
+  onMove?: (id: string, newStatus: ProspectStatus) => void;
 }
 
 export function ProspectList({
@@ -38,9 +39,20 @@ export function ProspectList({
   onSort,
   onEdit,
   onDetail,
+  onMove,
 }: ProspectListProps) {
   const [actionOpen, setActionOpen] = useState<string | null>(null);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number } | null>(null);
+  const [statusOpen, setStatusOpen]   = useState<string | null>(null);
+  const [statusPos,  setStatusPos]    = useState<{ top: number; left: number } | null>(null);
+  const [pendingStatuses, setPendingStatuses] = useState<Record<string, ProspectStatus>>({});
+
+  /* Vide les overrides dès que Redux livre l'état final (succès ou rollback) */
+  useEffect(() => {
+    if (Object.keys(pendingStatuses).length === 0) return;
+    setPendingStatuses({});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prospects]);
 
   useEffect(() => {
     if (!actionOpen) return;
@@ -52,6 +64,17 @@ export function ProspectList({
       window.removeEventListener('scroll', close, true);
     };
   }, [actionOpen]);
+
+  useEffect(() => {
+    if (!statusOpen) return;
+    function close() { setStatusOpen(null); setStatusPos(null); }
+    document.addEventListener('click', close);
+    window.addEventListener('scroll', close, true);
+    return () => {
+      document.removeEventListener('click', close);
+      window.removeEventListener('scroll', close, true);
+    };
+  }, [statusOpen]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const startIdx   = (page - 1) * pageSize;
@@ -135,7 +158,8 @@ export function ProspectList({
                 </tr>
               )}
               {prospects.map((p, i) => {
-                const statusCfg   = STATUS_CONFIG[p.status];
+                const displayStatus = (pendingStatuses[p.id] ?? p.status) as ProspectStatus;
+                const statusCfg   = STATUS_CONFIG[displayStatus];
                 const sectorStyle = SECTOR_STYLES[p.portalis_sector] ?? {
                   bg: 'rgba(118,145,168,0.10)', text: '#5A738A', border: 'rgba(118,145,168,0.22)',
                 };
@@ -207,13 +231,27 @@ export function ProspectList({
 
                     {/* Statut */}
                     <td className="py-3.5 pr-4">
-                      <span
-                        className="inline-flex items-center gap-1.5 px-2.5 py-[3px] rounded-full text-[11px] font-semibold border whitespace-nowrap"
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          if (!onMove) return;
+                          if (statusOpen === p.id) { setStatusOpen(null); setStatusPos(null); return; }
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          const spaceBelow = window.innerHeight - rect.bottom;
+                          const top = spaceBelow < 220 ? rect.top - 220 : rect.bottom + 4;
+                          setStatusPos({ top, left: rect.left });
+                          setStatusOpen(p.id);
+                        }}
+                        className={cn(
+                          'inline-flex items-center gap-1.5 px-2.5 py-[3px] rounded-full text-[11px] font-semibold border whitespace-nowrap transition-opacity',
+                          onMove ? 'cursor-pointer hover:opacity-80' : 'cursor-default',
+                        )}
                         style={{ background: statusCfg.tagBg, color: statusCfg.tagText, borderColor: statusCfg.tagBorder }}
                       >
                         <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: statusCfg.dotColor }} />
                         {statusCfg.label}
-                      </span>
+                        {onMove && <span className="ml-0.5 opacity-50">▾</span>}
+                      </button>
                     </td>
 
                     {/* Équipe */}
@@ -264,9 +302,7 @@ export function ProspectList({
                         }}
                         className={cn(
                           'w-7 h-7 rounded-lg flex items-center justify-center transition-colors',
-                          'text-[var(--tx-3)] hover:bg-[var(--bg-sink)] hover:text-[var(--tx-1)]',
-                          'opacity-0 group-hover:opacity-100',
-                          actionOpen === p.id && 'opacity-100 bg-[var(--bg-sink)] text-[var(--tx-1)]',
+                          'opacity-100 bg-[var(--bg-sink)] text-[var(--tx-1)]',
                         )}
                       >
                         <DotsThreeVerticalIcon size={16} weight="bold" />
@@ -365,6 +401,44 @@ export function ProspectList({
           </span>
         </div>
       </div>
+
+      {/* Status dropdown portal */}
+      {statusOpen && statusPos && onMove && (
+        <div
+          className="fixed z-[200] bg-white border border-[var(--bd-def)] rounded-xl shadow-lg py-1 min-w-[160px]"
+          style={{ top: statusPos.top, left: statusPos.left }}
+          onClick={e => e.stopPropagation()}
+        >
+          <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--tx-3)] px-3 pt-1.5 pb-1">
+            Changer le statut
+          </p>
+          {PROSPECT_STATUSES.filter(s => s !== 'nouveau').map(s => {
+            const cfg = STATUS_CONFIG[s];
+            const isCurrent = (pendingStatuses[statusOpen] ?? prospects.find(p => p.id === statusOpen)?.status) === s;
+            return (
+              <button
+                key={s}
+                onClick={() => {
+                  setPendingStatuses(prev => ({ ...prev, [statusOpen]: s }));
+                  onMove(statusOpen, s);
+                  setStatusOpen(null);
+                  setStatusPos(null);
+                }}
+                className={cn(
+                  'w-full flex items-center gap-2.5 px-3 py-2 text-left text-[12px] transition-colors',
+                  isCurrent ? 'bg-[var(--bg-sink)]' : 'hover:bg-[var(--bg-sink)]',
+                )}
+              >
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: cfg.dotColor }} />
+                <span className={cn('flex-1', isCurrent && 'font-semibold')} style={{ color: cfg.tagText }}>
+                  {cfg.label}
+                </span>
+                {isCurrent && <span className="text-[10px] text-[var(--tx-3)]">✓</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Dropdown portal — fixed pour échapper au overflow du tableau */}
       {actionOpen && dropdownPos && (
