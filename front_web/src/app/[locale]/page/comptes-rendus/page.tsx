@@ -5,8 +5,8 @@ import { useRouter, useParams } from 'next/navigation';
 import {
   MicrophoneIcon, MagnifyingGlassIcon, DownloadSimpleIcon,
   ClockIcon, FileTextIcon, WarningIcon,
-  XIcon, CircleNotchIcon, CodeIcon,
-  ShareNetworkIcon, CheckIcon, WhatsappLogoIcon, LinkIcon,
+  CircleNotchIcon,ShareNetworkIcon, CheckIcon, 
+  WhatsappLogoIcon, LinkIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { GetData } from '@/lib/ApiService';
@@ -14,11 +14,11 @@ import { ApiRoutes } from '@/lib/ApiRoutes';
 import { useAppDispatch, useAppSelector } from '@/redux/store';
 import {
   fetchCompteRendus,
-  fetchCompteRenduDetail,
   setParentType,
   setOffset,
 } from '@/redux/features/compte-rendus/compteRendusSlice';
 import { type GlobalCR, type GlobalCRDetail } from '@/types/prospect_note_type';
+import CRDetailDrawer from '@/components/layout/cr-detail-drawer';
 
 /* ── Status config ──────────────────────────────────────────────── */
 const STATUS_CFG: Record<string, { label: string; bg: string; text: string; border: string; dot: string }> = {
@@ -72,146 +72,6 @@ function toInitials(name: string): string {
 
 function displayName(cr: GlobalCR): string {
   return cr.parent.company_name || cr.parent.name || '–';
-}
-
-/* ── Detail Drawer ──────────────────────────────────────────────── */
-function CRDetailDrawer({ crId, items, downloading, onClose, onDownload }: {
-  crId: string | null;
-  items: GlobalCR[];
-  downloading: string | null;
-  onClose: () => void;
-  onDownload: (cr: GlobalCR) => void;
-}) {
-  const dispatch = useAppDispatch();
-  const detail        = useAppSelector(s => crId ? s.compteRendus.detail[crId] : undefined);
-  const detailLoading = useAppSelector(s => crId ? !!s.compteRendus.detailLoading[crId] : false);
-
-  const cr = crId ? items.find(x => x.id === crId) : undefined;
-  const st = cr ? (STATUS_CFG[cr.status] ?? FALLBACK_STATUS) : FALLBACK_STATUS;
-
-  useEffect(() => {
-    if (crId && detail === undefined && !detailLoading) {
-      dispatch(fetchCompteRenduDetail(crId));
-    }
-  }, [crId, detail, detailLoading, dispatch]);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  const open = !!crId;
-
-  return (
-    <>
-      <div
-        className={`fixed inset-0 z-[70] bg-black/30 backdrop-blur-[2px] transition-opacity duration-200 ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-        onClick={onClose}
-      />
-      <aside
-        className={`fixed inset-y-0 right-0 z-[71] w-full max-w-3xl flex flex-col bg-[var(--bg-surf)] border-l border-[var(--bd-def)] shadow-2xl transition-transform duration-300 ease-in-out ${open ? 'translate-x-0' : 'translate-x-full'}`}
-      >
-        {/* Header */}
-        <div
-          className="flex-shrink-0 px-6 pt-5 pb-4"
-          style={{ background: 'var(--grad)', borderBottom: '1px solid rgba(255,255,255,0.12)' }}
-        >
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-white/70 text-[10px] font-semibold uppercase tracking-[.08em] mb-1">
-                Compte-rendu · {cr ? `v${cr.version + 1}` : ''}
-              </p>
-              <h2 className="text-white text-[16px] font-bold leading-snug truncate">
-                {cr ? displayName(cr) : ''}
-              </h2>
-              {cr && (
-                <div className="flex items-center gap-3 mt-1.5">
-                  <span
-                    className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                    style={{ background: 'rgba(255,255,255,0.18)', color: 'white' }}
-                  >
-                    {st.label}
-                  </span>
-                  <span className="text-white/60 text-[11px]">{fmtDate(cr.created_at)}</span>
-                  <span className="text-white/60 text-[11px]">{fmtSize(cr.file_size)}</span>
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {cr && (
-                <button
-                  type="button"
-                  onClick={() => onDownload(cr)}
-                  disabled={downloading === cr.id}
-                  className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors disabled:opacity-60"
-                  title="Télécharger le PDF"
-                >
-                  {downloading === cr.id
-                    ? <CircleNotchIcon size={14} className="animate-spin" />
-                    : <DownloadSimpleIcon size={15} />
-                  }
-                </button>
-              )}
-              <button
-                onClick={onClose}
-                className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
-              >
-                <XIcon size={15} />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto">
-          {detailLoading ? (
-            <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--tx-3)]">
-              <CircleNotchIcon size={22} className="animate-spin text-[var(--p500)]" />
-              <p className="text-[13px]">Chargement du contenu…</p>
-            </div>
-          ) : (detail as GlobalCRDetail | undefined)?.content ? (
-            <div
-              className="p-6 prose prose-sm max-w-none text-[var(--tx-1)]"
-              /* eslint-disable-next-line react/no-danger */
-              dangerouslySetInnerHTML={{ __html: (detail as GlobalCRDetail).content }}
-            />
-          ) : detail && !(detail as GlobalCRDetail).content ? (
-            <div className="flex flex-col items-center justify-center h-full gap-2 text-[var(--tx-3)]">
-              <CodeIcon size={28} className="opacity-40" />
-              <p className="text-[13px]">Aucun contenu HTML disponible pour ce CR.</p>
-            </div>
-          ) : null}
-        </div>
-
-        {/* Footer méta */}
-        {cr && (
-          <div className="flex-shrink-0 border-t border-[var(--bd-def)] px-6 py-3 bg-[var(--bg-sink)] flex items-center gap-6 flex-wrap">
-            <div>
-              <p className="text-[10px] text-[var(--tx-3)] font-semibold uppercase tracking-wide">Parent</p>
-              <p className="text-[12px] font-medium text-[var(--tx-1)] capitalize">{cr.parent_type} · {cr.parent.name}</p>
-            </div>
-            <div>
-              <p className="text-[10px] text-[var(--tx-3)] font-semibold uppercase tracking-wide">Notes utilisées</p>
-              <p className="text-[12px] font-medium text-[var(--tx-1)]">{cr.note_ids.length}</p>
-            </div>
-            {cr.parent.email && (
-              <div>
-                <p className="text-[10px] text-[var(--tx-3)] font-semibold uppercase tracking-wide">Email</p>
-                <p className="text-[12px] font-medium text-[var(--tx-1)]">{cr.parent.email}</p>
-              </div>
-            )}
-            {cr.parent.phone && (
-              <div>
-                <p className="text-[10px] text-[var(--tx-3)] font-semibold uppercase tracking-wide">Téléphone</p>
-                <p className="text-[12px] font-medium text-[var(--tx-1)]">{cr.parent.phone}</p>
-              </div>
-            )}
-          </div>
-        )}
-      </aside>
-    </>
-  );
 }
 
 /* ── Page ───────────────────────────────────────────────────────── */
@@ -337,8 +197,6 @@ export default function ComptesRendusPage() {
 
   const handleClose = useCallback(() => setSelectedId(null), []);
 
-  const dateStr = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
-
   return (
     <div className="p-4 sm:p-7 pb-16">
 
@@ -348,11 +206,6 @@ export default function ComptesRendusPage() {
           <h1 className="font-display text-[22px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight">
             Comptes-rendus
           </h1>
-          <p className="text-[var(--tx-3)] text-[12px] mt-0.5">
-            Dashboard › Comptes-rendus
-            <span className="mx-1 opacity-50">·</span>
-            {dateStr}
-          </p>
         </div>
         <button
           onClick={() => router.push(`/${locale}/page/comptes-rendus/nouveau`)}
