@@ -9,6 +9,7 @@ import groupsReducer from "./features/groups/groupsSlice";
 import prospectsReducer from "./features/prospects/prospectsSlice";
 import notesReducer from "./features/notes/notesSlice";
 import apiLogsReducer from "./features/api-logs/apiLogsSlice";
+import compteRendusReducer from "./features/compte-rendus/compteRendusSlice";
 
 const persistConfig = {
   key: "root",
@@ -25,6 +26,7 @@ const rootReducer = {
   prospects: prospectsReducer,
   notes: notesReducer,
   apiLogs: apiLogsReducer,
+  compteRendus: compteRendusReducer,
 };
 
 const persistedReducer = persistReducer(persistConfig, combineReducers(rootReducer));

@@ -50,6 +50,10 @@ export const ApiRoutes = {
   TRANSPORT_DOSSIER:       (id: string) => `${BASE}/api/v1/transport/dossiers/${id}`,
   TRANSPORT_DOSSIER_CLOSE: (id: string) => `${BASE}/api/v1/transport/dossiers/${id}/close`,
 
+  // ── Comptes-rendus (global) ──────────────────────────────────────────
+  COMPTE_RENDUS:       `${BASE}/api/v1/compte-rendus`,
+  COMPTE_RENDU_DETAIL: (id: string) => `${BASE}/api/v1/compte-rendus/${id}`,
+
   // ── API Logs ─────────────────────────────────────────────────────────
   API_LOGS:        `${BASE}/api/v1/api-logs`,
   API_LOG:         (id: string) => `${BASE}/api/v1/api-logs/${id}`,

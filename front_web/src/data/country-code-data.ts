@@ -19,7 +19,7 @@ function getFlagUrl(countryCode: string): string {
   };
   
   const iso = phoneToIso[countryCode] || 'un';
-  return `https://flagcdn.com/20x14/${iso}.png`;
+  return `https://flagcdn.com/20x15/${iso}.png`;
 }
 
 export const COUNTRY_CODES = [

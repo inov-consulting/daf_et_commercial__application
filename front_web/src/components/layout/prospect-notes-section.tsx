@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { PostData } from '@/lib/ApiService';
 import { ApiRoutes } from '@/lib/ApiRoutes';
 import { cn } from '@/lib/utils';
+import { NoteContent } from '@/components/ui/note-content';
 
 interface ProspectNotesSectionProps {
   prospectId: string;
@@ -278,9 +279,7 @@ export function ProspectNotesSection({ prospectId }: ProspectNotesSectionProps) 
                     {note.author_id.slice(0, 2).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] text-[var(--tx-1)] leading-relaxed whitespace-pre-wrap">
-                      {note.content}
-                    </p>
+                    <NoteContent content={note.content} />
                     <p className="text-[11px] text-[var(--tx-3)] mt-1">{timeAgo(note.created_at)}</p>
                   </div>
                   <button

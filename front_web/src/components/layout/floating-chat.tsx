@@ -261,7 +261,7 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
             <p className="font-semibold text-[var(--tx-1)] text-xs sm:text-sm">Assistant IA PortaLis</p>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-              <span className="text-[10px] sm:text-[11px] text-success">En ligne · Claude Sonnet 4.5</span>
+              <span className="text-[10px] sm:text-[11px] text-success">En ligne · IA</span>
             </div>
           </div>
           <button
