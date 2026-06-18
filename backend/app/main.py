@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.error_handlers import register_error_handlers
-from app.api.v1 import ai_config, api_logs, auth, chat, companies, groups, health, prospects, users
+from app.api.v1 import ai_config, api_logs, auth, chat, companies, compte_rendus, groups, health, prospects, users
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
 from app.infrastructure.db.repositories.ai_config import AiModelRepository
@@ -60,5 +60,6 @@ app.include_router(users.router, prefix=API_V1_PREFIX)
 app.include_router(groups.router, prefix=API_V1_PREFIX)
 app.include_router(ai_config.router, prefix=API_V1_PREFIX)
 app.include_router(api_logs.router, prefix=API_V1_PREFIX)
+app.include_router(compte_rendus.router, prefix=API_V1_PREFIX)
 app.include_router(chat.router, prefix=API_V1_PREFIX)
 app.include_router(prospects.router, prefix=API_V1_PREFIX)
