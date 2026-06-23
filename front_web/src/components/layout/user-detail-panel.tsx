@@ -42,7 +42,7 @@ function InfoRow({
     <div className="flex items-start justify-between gap-2 text-xs mb-1.5 last:mb-0">
       <span className="text-foreground-3 font-medium flex-shrink-0">{label}</span>
       <span className={cn(
-        'text-right',
+        'text-right truncate',
         mono ? 'font-mono text-[11px] text-foreground-2' : 'font-semibold text-foreground',
         warn && 'text-warning-600',
       )}>
@@ -334,7 +334,7 @@ export function UserDetailPanel({ user, onEdit, onDelete, onToggleActive, naked 
       'flex flex-col overflow-hidden',
       naked
         ? 'w-full'
-        : 'w-[340px] flex-shrink-0 bg-surface rounded-2xl border border-border shadow-xs',
+        : 'flex-shrink-0 bg-surface rounded-2xl border border-border shadow-xs',
     )}>
       {!user ? (
         <div className="flex-1 flex items-center justify-center">
