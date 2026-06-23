@@ -410,7 +410,7 @@ export function UserTable({
                   )}
                 </td>
                 {/* Accès */}
-                <td className="px-4">
+                <td className="px-4 truncate">
                   {user.status !== 'pending' ? (
                     <span className="flex items-center gap-1.5 text-[11px] text-foreground-3">
                       {user.surface === 'Mobile' && <DeviceMobileIcon size={13} />}

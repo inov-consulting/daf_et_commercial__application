@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
   DownloadSimpleIcon, MagnifyingGlassIcon, FunnelIcon, PlusIcon,
-  TableIcon, KanbanIcon, ArrowsClockwiseIcon,
+  TableIcon, KanbanIcon, ArrowsClockwiseIcon, XIcon
 } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { ProspectKanban } from '@/components/layout/prospect-kanban';
@@ -57,6 +57,7 @@ export default function ProspectsPage() {
   const [activeTab, setActiveTab] = useState<TabFilter>('tous');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [globalTotal, setGlobalTotal] = useState(total);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [sortBy, setSortBy] = useState<SortKey | null>(null);
@@ -161,11 +162,18 @@ export default function ProspectsPage() {
     );
   }, [prospects, debouncedSearch]);
 
+  // Mettre à jour globalTotal uniquement quand on est sur l'onglet "tous"
+  useEffect(() => {
+    if (activeTab === 'tous') {
+      setGlobalTotal(total);
+    }
+  }, [activeTab, total]);
+
   const counts = useMemo(() => {
-    const c: Record<string, number> = { tous: total };
+    const c: Record<string, number> = { tous: globalTotal };
     PROSPECT_STATUSES.forEach(s => { c[s] = byStatus[s] ?? 0; });
     return c;
-  }, [total, byStatus]);
+  }, [globalTotal, byStatus]);
 
   const tabs: { key: TabFilter; label: string; count: number }[] = [
     { key: 'tous', label: 'Tous', count: counts.tous },
@@ -270,12 +278,21 @@ export default function ProspectsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className={cn(
-                'h-8 pl-8 pr-3 rounded-lg border border-[var(--bd-def)] bg-white w-full',
+                'h-8 pl-8 pr-8 rounded-lg border border-[var(--bd-def)] bg-white w-full',
                 'text-[12px] sm:text-[13px] text-[var(--tx-1)] placeholder:text-[var(--tx-3)]',
                 'focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20',
                 'transition-colors sm:w-40 md:w-44',
               )}
             />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--tx-3)] hover:text-[var(--tx-2)] transition-colors z-10 p-0.5 rounded hover:bg-[var(--bg-sink)]"
+                aria-label="Effacer la recherche"
+              >
+                <XIcon size={12} />
+              </button>
+            )}
           </div>
 
           <button className="h-8 px-2.5 sm:px-3 rounded-lg border border-[var(--bd-def)] bg-white text-[11px] sm:text-[12px] text-[var(--tx-2)] flex items-center gap-1 sm:gap-1.5 hover:bg-[var(--bg-sink)] transition-colors whitespace-nowrap flex-shrink-0">
