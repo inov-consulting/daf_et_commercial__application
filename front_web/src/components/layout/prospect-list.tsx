@@ -25,6 +25,7 @@ interface ProspectListProps {
   onEdit?: (id: string) => void;
   onDetail?: (id: string) => void;
   onMove?: (id: string, newStatus: ProspectStatus) => void;
+  onSelectionChange?: (selectedIds: string[]) => void;
 }
 
 export function ProspectList({
@@ -40,12 +41,16 @@ export function ProspectList({
   onEdit,
   onDetail,
   onMove,
+  onSelectionChange,
 }: ProspectListProps) {
   const [actionOpen, setActionOpen] = useState<string | null>(null);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number } | null>(null);
   const [statusOpen, setStatusOpen]   = useState<string | null>(null);
   const [statusPos,  setStatusPos]    = useState<{ top: number; left: number } | null>(null);
   const [pendingStatuses, setPendingStatuses] = useState<Record<string, ProspectStatus>>({});
+  
+  // État pour les sélections
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   /* Vide les overrides dès que Redux livre l'état final (succès ou rollback) */
   useEffect(() => {
@@ -53,6 +58,16 @@ export function ProspectList({
     setPendingStatuses({});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prospects]);
+
+  // Notifier le parent des changements de sélection
+  useEffect(() => {
+    onSelectionChange?.(Array.from(selectedIds));
+  }, [selectedIds, onSelectionChange]);
+
+  // Réinitialiser la sélection quand la page change ou les données changent
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [page, prospects]);
 
   useEffect(() => {
     if (!actionOpen) return;
@@ -75,6 +90,30 @@ export function ProspectList({
       window.removeEventListener('scroll', close, true);
     };
   }, [statusOpen]);
+
+  // Gestionnaires de sélection
+  const isAllSelected = prospects.length > 0 && prospects.every(p => selectedIds.has(p.id));
+  const isSomeSelected = prospects.some(p => selectedIds.has(p.id));
+
+  function handleSelectAll() {
+    if (isAllSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(prospects.map(p => p.id)));
+    }
+  }
+
+  function handleSelectOne(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const startIdx   = (page - 1) * pageSize;
@@ -108,6 +147,23 @@ export function ProspectList({
 
   return (
     <div>
+      {/* Barre d'actions de sélection */}
+      {isSomeSelected && (
+        <div className="mb-3 px-3 py-2 bg-primary-50 border border-primary-200 rounded-lg flex items-center gap-3 text-sm">
+          <span className="text-primary-700 font-medium">
+            {selectedIds.size} sélectionné{selectedIds.size > 1 ? 's' : ''}
+          </span>
+          <div className="flex-1" />
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-xs text-primary-600 hover:text-primary-800 font-medium"
+          >
+            Désélectionner
+          </button>
+          {/* Ajoutez ici d'autres actions groupées si nécessaire */}
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white border border-[var(--bd-def)] rounded-xl overflow-hidden shadow-xs">
         <div style={{ overflowX: 'auto', overflowY: 'clip' }}>
@@ -115,7 +171,15 @@ export function ProspectList({
             <thead className="sticky top-0 z-10 bg-[var(--bg-sink)]">
               <tr className="border-b border-[var(--bd-def)] bg-[var(--bg-sink)]">
                 <th className="w-10 pl-4 py-3">
-                  <input type="checkbox" className="w-3.5 h-3.5 rounded border-neutral-300 cursor-pointer" />
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    ref={el => {
+                      if (el) el.indeterminate = isSomeSelected && !isAllSelected;
+                    }}
+                    onChange={handleSelectAll}
+                    className="w-3.5 h-3.5 rounded border-neutral-300 cursor-pointer accent-primary-500"
+                  />
                 </th>
                 <th className="py-3 pl-1 pr-4">
                   <SortBtn col="company" label="Entreprise" />
@@ -167,13 +231,15 @@ export function ProspectList({
                 const pipelineAge = p.pipeline_age_days > 0 ? p.pipeline_age_days : null;
                 const age         = pipelineAgeInfo(pipelineAge);
                 const isLast      = i === prospects.length - 1;
+                const isSelected  = selectedIds.has(p.id);
 
                 return (
                   <tr
                     key={p.id}
                     onClick={() => onDetail?.(p.id)}
                     className={cn(
-                      'group transition-colors hover:bg-[var(--bg-sink)]',
+                      'group transition-colors',
+                      isSelected ? 'bg-primary-50/50 hover:bg-primary-50' : 'hover:bg-[var(--bg-sink)]',
                       !isLast && 'border-b border-[var(--bd-def)]',
                       onDetail && 'cursor-pointer',
                     )}
@@ -182,11 +248,14 @@ export function ProspectList({
                     <td className="pl-4 py-3.5">
                       <input
                         type="checkbox"
+                        checked={isSelected}
                         onClick={e => e.stopPropagation()}
-                        className="w-3.5 h-3.5 rounded border-neutral-300 cursor-pointer"
+                        onChange={() => handleSelectOne(p.id)}
+                        className="w-3.5 h-3.5 rounded border-neutral-300 cursor-pointer accent-primary-500"
                       />
                     </td>
 
+                    {/* Reste du code inchangé... */}
                     {/* Entreprise */}
                     <td className="py-3.5 pl-1 pr-4">
                       <div className="flex items-center gap-2.5">
@@ -212,7 +281,7 @@ export function ProspectList({
                       <p className="text-[var(--tx-1)] text-[13px] font-medium whitespace-nowrap">
                         {p.contact_name || '–'}
                       </p>
-                      <p className="text-[var(--tx-3)] text-xs whitespace-nowrap">{p.email || ''}</p>
+                      <p className="text-[var(--tx-3)] text-xs whitespace-nowrap truncate">{p.email || ''}</p>
                     </td>
 
                     {/* Secteur */}
@@ -316,7 +385,7 @@ export function ProspectList({
         </div>
       </div>
 
-      {/* Pagination + legend */}
+      {/* Pagination + legend - inchangé */}
       <div className="mt-3 px-1 space-y-3">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <p className="text-xs text-[var(--tx-3)]">
@@ -402,7 +471,7 @@ export function ProspectList({
         </div>
       </div>
 
-      {/* Status dropdown portal */}
+      {/* Status dropdown portal - inchangé */}
       {statusOpen && statusPos && onMove && (
         <div
           className="fixed z-[200] bg-white border border-[var(--bd-def)] rounded-xl shadow-lg py-1 min-w-[160px]"
@@ -440,7 +509,7 @@ export function ProspectList({
         </div>
       )}
 
-      {/* Dropdown portal — fixed pour échapper au overflow du tableau */}
+      {/* Dropdown portal - inchangé */}
       {actionOpen && dropdownPos && (
         <div
           className="fixed z-[200] bg-white border border-[var(--bd-def)] rounded-xl shadow-lg py-1 min-w-[152px]"
