@@ -148,12 +148,15 @@ export default function UtilisateursPage() {
         </div>
       </div>
 
-      {/* KPI */}
-      <UserKpiRow users={users} />
+      {/* KPI + Table + Detail Panel - grille alignée */}
+      <div className="grid grid-cols-4 gap-4">
+        {/* KPI Row - prend toute la largeur */}
+        <div className="col-span-4">
+          <UserKpiRow users={users} />
+        </div>
 
-      {/* Table + Detail Panel */}
-      <div className="flex flex-col lg:flex-row gap-4 items-start">
-        <div className="w-full lg:flex-1 min-w-0">
+        {/* Table - occupe les 3 premières colonnes */}
+        <div className="col-span-4 lg:col-span-3 min-w-0">
           <UserTable
             users={users}
             selectedUid={selectedUid}
@@ -165,9 +168,9 @@ export default function UtilisateursPage() {
             }}
           />
         </div>
-        
-        {/* Desktop panel */}
-        <div className="hidden lg:block lg:w-[380px] lg:flex-shrink-0">
+
+        {/* Desktop panel - occupe exactement la 4ème colonne */}
+        <div className="hidden lg:block lg:col-span-1">
           <UserDetailPanel
             user={selectedUser}
             onEdit={uid => setFormModal({ mode: 'edit', uid })}
@@ -175,51 +178,51 @@ export default function UtilisateursPage() {
             onToggleActive={handleToggleActive}
           />
         </div>
+      </div>
 
-        {/* Mobile detail modal */}
-        {mobilePanelOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden flex items-center justify-center p-4">
-            <div
-              role="button"
-              tabIndex={0}
-              aria-label="Fermer le panneau"
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-              onClick={() => setMobilePanelOpen(false)}
-              onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') setMobilePanelOpen(false); }}
-            />
-            <div className="relative w-full max-w-[480px] max-h-[85vh] flex flex-col bg-surface rounded-2xl border border-border shadow-[var(--sh-xl)] overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
-                <span className="font-display font-semibold text-sm text-foreground">
-                  Détails utilisateur
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setMobilePanelOpen(false)}
-                  className="!w-7 !h-7 !p-0"
-                >
-                  ×
-                </Button>
-              </div>
-              <div className="overflow-y-auto">
-                <UserDetailPanel
-                  naked
-                  user={selectedUser}
-                  onEdit={uid => {
-                    setFormModal({ mode: 'edit', uid });
-                    setMobilePanelOpen(false);
-                  }}
-                  onDelete={uid => {
-                    setDeleteUid(uid);
-                    setMobilePanelOpen(false);
-                  }}
-                  onToggleActive={handleToggleActive}
-                />
-              </div>
+      {/* Mobile detail modal */}
+      {mobilePanelOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden flex items-center justify-center p-4">
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label="Fermer le panneau"
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setMobilePanelOpen(false)}
+            onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') setMobilePanelOpen(false); }}
+          />
+          <div className="relative w-full max-w-[480px] max-h-[85vh] flex flex-col bg-surface rounded-2xl border border-border shadow-[var(--sh-xl)] overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
+              <span className="font-display font-semibold text-sm text-foreground">
+                Détails utilisateur
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setMobilePanelOpen(false)}
+                className="!w-7 !h-7 !p-0"
+              >
+                ×
+              </Button>
+            </div>
+            <div className="overflow-y-auto">
+              <UserDetailPanel
+                naked
+                user={selectedUser}
+                onEdit={uid => {
+                  setFormModal({ mode: 'edit', uid });
+                  setMobilePanelOpen(false);
+                }}
+                onDelete={uid => {
+                  setDeleteUid(uid);
+                  setMobilePanelOpen(false);
+                }}
+                onToggleActive={handleToggleActive}
+              />
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Form Modal (invite / edit) */}
       {formModal && (
@@ -281,15 +284,13 @@ export default function UtilisateursPage() {
       {/* Toast */}
       {toast && (
         <div
-          className={`fixed top-4 sm:top-20 right-4 sm:right-6 z-[80] bg-surface rounded-xl p-3 flex items-start gap-2.5 max-w-[calc(100vw-2rem)] sm:max-w-[320px] border ${
-            toast.type === 'error'
+          className={`fixed top-4 sm:top-20 right-4 sm:right-6 z-[80] bg-surface rounded-xl p-3 flex items-start gap-2.5 max-w-[calc(100vw-2rem)] sm:max-w-[320px] border ${toast.type === 'error'
               ? 'border-error shadow-[0_4px_20px_rgba(239,68,68,.18)]'
               : 'border-success shadow-[0_4px_20px_rgba(16,185,129,.18)]'
-          }`}
+            }`}
         >
-          <div className={`w-[30px] h-[30px] rounded-lg flex items-center justify-center flex-shrink-0 ${
-            toast.type === 'error' ? 'bg-error/10 text-error' : 'bg-success-50 text-success'
-          }`}>
+          <div className={`w-[30px] h-[30px] rounded-lg flex items-center justify-center flex-shrink-0 ${toast.type === 'error' ? 'bg-error/10 text-error' : 'bg-success-50 text-success'
+            }`}>
             {toast.type === 'error'
               ? <WarningIcon size={14} weight="fill" />
               : <CheckIcon size={14} weight="bold" />
