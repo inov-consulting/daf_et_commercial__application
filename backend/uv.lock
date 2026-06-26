@@ -251,6 +251,18 @@ wheels = [
 ]
 
 [[package]]
+name = "bugsnag"
+version = "4.9.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "webob" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2d/fb/dce30c6abe07f4ddcf16bd3cdb6d9d50f58f55d74b6e632de8cd155760b6/bugsnag-4.9.1.tar.gz", hash = "sha256:2817577a47e253985fd0d9646d21ebe5094deabf40c1a5938567541c5f40ad79", size = 74102, upload-time = "2026-06-18T08:39:27.884Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b4/4c/b808100c3eccd9474a6a9b5868f3a60b42f1daef0dde4fd5f6f08f9f825a/bugsnag-4.9.1-py3-none-any.whl", hash = "sha256:24a36782d0775fdf6147cd75be369bc13154a665081848c109e5b7962a07ff18", size = 46267, upload-time = "2026-06-18T08:39:26.223Z" },
+]
+
+[[package]]
 name = "celery"
 version = "5.6.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1240,6 +1252,15 @@ wheels = [
 ]
 
 [[package]]
+name = "legacy-cgi"
+version = "2.6.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f4/9c/91c7d2c5ebbdf0a1a510bfa0ddeaa2fbb5b78677df5ac0a0aa51cf7125b0/legacy_cgi-2.6.4.tar.gz", hash = "sha256:abb9dfc7835772f7c9317977c63253fd22a7484b5c9bbcdca60a29dcce97c577", size = 24603, upload-time = "2025-10-27T05:20:05.395Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8c/7e/e7394eeb49a41cc514b3eb49020223666cbf40d86f5721c2f07871e6d84a/legacy_cgi-2.6.4-py3-none-any.whl", hash = "sha256:7e235ce58bf1e25d1fc9b2d299015e4e2cd37305eccafec1e6bac3fc04b878cd", size = 20035, upload-time = "2025-10-27T05:20:04.289Z" },
+]
+
+[[package]]
 name = "librt"
 version = "0.11.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1613,6 +1634,7 @@ dependencies = [
     { name = "asyncpg" },
     { name = "babel" },
     { name = "boto3" },
+    { name = "bugsnag" },
     { name = "celery", extra = ["redis"] },
     { name = "fastapi" },
     { name = "httpx" },
@@ -1661,6 +1683,7 @@ requires-dist = [
     { name = "asyncpg", specifier = ">=0.30" },
     { name = "babel", specifier = ">=2.16" },
     { name = "boto3", specifier = ">=1.35" },
+    { name = "bugsnag", specifier = ">=4.7" },
     { name = "celery", extras = ["redis"], specifier = ">=5.4" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.27" },
@@ -2794,6 +2817,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/2c/ee/afaf0f85a9a18fe47a67f1e4422ed6cf1fe642f0ae0a2f81166231303c52/wcwidth-0.7.0.tar.gz", hash = "sha256:90e3a7ea092341c44b99562e75d09e4d5160fe7a3974c6fb842a101a95e7eed0", size = 182132, upload-time = "2026-05-02T16:04:12.653Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/41/52/e465037f5375f43533d1a80b6923955201596a99142ed524d77b571a1418/wcwidth-0.7.0-py3-none-any.whl", hash = "sha256:5d69154c429a82910e241c738cd0e2976fac8a2dd47a1a805f4afed1c0f136f2", size = 110825, upload-time = "2026-05-02T16:04:11.033Z" },
+]
+
+[[package]]
+name = "webob"
+version = "1.8.10"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "legacy-cgi", marker = "python_full_version >= '3.13'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/58/f9/974eafebfd0bd442b8848899fe7d30675c93f750c313e1a6fe61acbde1e3/webob-1.8.10.tar.gz", hash = "sha256:1c963a11f307bc3f624fbab9dde737701eae255f32981b7a5486a88db1767c2b", size = 280796, upload-time = "2026-06-02T19:56:47.268Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/83/21/fce134877fb6fc6ad3c464e4a07ede0ee9219f705d26a981ae58ea36ca13/webob-1.8.10-py2.py3-none-any.whl", hash = "sha256:e68ad87fda378191081965ab02a185391c26e4e926adec855c3b0286a8369d49", size = 115825, upload-time = "2026-06-02T19:56:44.765Z" },
 ]
 
 [[package]]

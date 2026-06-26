@@ -109,6 +109,7 @@ class Settings(BaseSettings):
 
     # ── Observability ──────────────────────────────────────────────────
     sentry_dsn: str = ""
+    bugsnag_api_key: str = ""
 
     @property
     def cors_origins_list(self) -> list[str]:
