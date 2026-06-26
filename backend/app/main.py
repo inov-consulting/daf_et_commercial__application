@@ -19,7 +19,7 @@ bugsnag.configure(
     api_key=settings.bugsnag_api_key,
     project_root=str(Path(__file__).parent.parent),
     release_stage=settings.environment,
-    #notify_release_stages=["staging", "production"],
+    notify_release_stages=["staging", "production"],
 )
 
 configure_logging(settings.backend_log_level)
@@ -60,8 +60,6 @@ from app.infrastructure.web.middleware.api_logging import ApiLoggingMiddleware
 app.add_middleware(ApiLoggingMiddleware)
 
 app.add_middleware(BugsnagMiddleware)
-
-bugsnag.notify(Exception('Test error'))
 
 register_error_handlers(app)
 
