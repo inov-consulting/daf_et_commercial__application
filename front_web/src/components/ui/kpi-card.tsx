@@ -72,7 +72,7 @@ export function KpiCard({
       <span className={cn(
         'flex items-center gap-[.2rem] font-semibold rounded-full ml-auto',
         small ? 'text-[11px] px-1.5 py-0.5' : 'text-xs px-2 py-[.2rem]',
-        trend === 'up'      ? 'text-success-600 bg-success-50 dark:text-[#6EE7B7] dark:bg-[rgba(16,185,129,.15)]'
+        trend === 'up'      ? 'text-success-600 bg-success-50 dark:text-primary-300 dark:bg-[rgba(16,185,129,.15)]'
         : trend === 'down'  ? 'text-error bg-error-50 dark:text-[#FCA5A5] dark:bg-[rgba(239,68,68,.15)]'
         : trend === 'warning' ? 'text-warning-600 bg-warning-50 dark:text-[#FBBF24] dark:bg-[rgba(245,158,11,.15)]'
         : 'text-foreground-2 bg-surface-sink',

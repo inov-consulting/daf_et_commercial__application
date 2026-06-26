@@ -33,16 +33,16 @@ function MiniStepper({ etape }: { etape: string }) {
           <div
             className={cn(
               'w-[22px] h-[22px] rounded-[6px] flex items-center justify-center text-[10px] font-bold font-display',
-              i < ci ? 'bg-[#ECFDF5] text-[#059669]' :
+              i < ci ? 'bg-primary-100 text-primary' :
                 i === ci ? 'text-white' :
-                  'bg-[#F0F4F8] text-[#9EB0C4]',
+                  'bg-[#F0F4F8] text-neutral',
             )}
             style={i === ci ? { background: 'linear-gradient(135deg,#0E86E8,#6B35C9)' } : {}}
           >
             {i < ci ? '✓' : s}
           </div>
           {i < 4 && (
-            <div className={cn('w-[6px] h-[2px] rounded-[1px]', i < ci ? 'bg-[#10B981]' : 'bg-[var(--bd-def)]')} />
+            <div className={cn('w-[6px] h-[2px] rounded-[1px]', i < ci ? 'bg-primary-400' : 'bg-[var(--bd-def)]')} />
           )}
         </div>
       ))}
@@ -234,14 +234,14 @@ export default function TransportPage() {
           trend="up"
         />
         <KpiCard
-          icon={<ArrowRightIcon size={16} className="text-[#10B981]" />}
+          icon={<ArrowRightIcon size={16} className="text-primary-400" />}
           label="Marge moyenne"
           value={loading ? '–' : (kpi.margeAvg !== null ? `${kpi.margeAvg.toFixed(1)}%` : '–')}
           labelPosition="above"
           accentStyle="linear-gradient(135deg,#10B981,#0E86E8)"
           trendValue="Estimée · dossiers actifs"
           trend={kpi.margeAvg !== null ? (kpi.margeAvg >= 15 ? 'up' : 'warning') : 'neutral'}
-          styleValue={kpi.margeAvg !== null ? (kpi.margeAvg >= 15 ? 'text-[#059669]' : 'text-[#D97706]') : undefined}
+          styleValue={kpi.margeAvg !== null ? (kpi.margeAvg >= 15 ? 'text-primary' : 'text-[#D97706]') : undefined}
         />
         <KpiCard
           icon={<WarningIcon size={16} className="text-[#DC2626]" />}
