@@ -28,6 +28,7 @@ dependencies = [
     # ── Observability ──
     "structlog>=24.4",
     "sentry-sdk[fastapi]>=2.18",
+    "bugsnag>=4.7",
     # ── AI providers ──
     "anthropic>=0.39",
     "openai>=1.55",
