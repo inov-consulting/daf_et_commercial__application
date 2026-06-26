@@ -48,15 +48,24 @@ const defaultIcons: Record<ToastType, ReactNode> = {
       <line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
     </svg>
   ),
-}; 
+};
 
 /* ─── FloatingToast ─────────────────────────────────────────────────── */
 
 export interface FloatingToastProps {
   message: string | null;
+  type?: 'error' | 'info' | 'success' | 'warning';
 }
 
-export function FloatingToast({ message }: FloatingToastProps) {
+export function FloatingToast({ message, type = 'success' }: FloatingToastProps) {
+  // Définir les couleurs selon le type
+  const colors = {
+    success: '#10B981',
+    error: '#EF4444',
+    warning: '#F59E0B',
+    info: '#3B82F6',
+  };
+
   return (
     <div
       className={cn(
@@ -67,8 +76,12 @@ export function FloatingToast({ message }: FloatingToastProps) {
       )}
       style={{ background: '#1B2633', boxShadow: '0 4px 24px rgba(0,0,0,0.18)' }}
     >
-      <svg width="14" height="14" viewBox="0 0 256 256" fill="#10B981" aria-hidden="true">
-        <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm45.66,85.66-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32Z"/>
+      <svg width="14" height="14" viewBox="0 0 256 256" fill={colors[type]} aria-hidden="true">
+        {/* Icône selon le type */}
+        {type === 'success' && (
+          <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm45.66,85.66-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32Z" />
+        )}
+        {/* Ajoutez d'autres icônes pour error, warning, info */}
       </svg>
       {message}
     </div>
