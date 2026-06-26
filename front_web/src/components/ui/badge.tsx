@@ -31,8 +31,8 @@ const colorVariant: Record<BadgeColor, Record<BadgeVariant, string>> = {
   },
   success: {
     solid: 'bg-success text-white',
-    subtle: 'bg-success-50 text-success-600 dark:bg-[rgba(16,185,129,.15)] dark:text-[#6EE7B7]',
-    outline: 'bg-transparent text-success-600 border-[1.5px] border-[#6EE7B7]',
+    subtle: 'bg-success-50 text-success-600 dark:bg-[rgba(16,185,129,.15)] dark:text-primary-300',
+    outline: 'bg-transparent text-success-600 border-[1.5px] border-primary-300',
   },
   warning: {
     solid: 'bg-warning text-white',
