@@ -117,7 +117,7 @@ function CentreIAPage() {
 
     return (
         <div className="min-h-screen overflow-hidden">
-            <div className="">
+            <div className="p-4 sm:p-5 md:p-7 pb-14 max-w-full">
                 <PageHeader pendingCount={pendingCount} />
 
                 <div className="flex flex-col lg:flex-row gap-4 lg:gap-5 items-start">
