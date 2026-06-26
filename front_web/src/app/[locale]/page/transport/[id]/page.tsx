@@ -104,7 +104,7 @@ function CostTable({ lines, taux_usd, taux_eur }: { lines: CostLine[]; taux_usd?
               </th>
               {showFx && <>
                 <th className="px-3 py-2 text-right">
-                  <span className="inline-block px-1.5 py-[1px] rounded text-[9px] font-bold bg-[#ECFDF5] text-[#059669]">USD</span>
+                  <span className="inline-block px-1.5 py-[1px] rounded text-[9px] font-bold bg-primary-100 text-primary">USD</span>
                 </th>
                 <th className="px-3 py-2 text-right">
                   <span className="inline-block px-1.5 py-[1px] rounded text-[9px] font-bold bg-[#FFFBEB] text-[#D97706]">EUR</span>
@@ -125,8 +125,8 @@ function CostTable({ lines, taux_usd, taux_eur }: { lines: CostLine[]; taux_usd?
           </tbody>
           <tfoot className="border-t-2 border-[var(--bd-def)] bg-[var(--bg-sink)] font-bold">
             <tr>
-              <td className="px-3 py-2.5 text-[13px] text-[#059669]">CA Total</td>
-              <td className="px-3 py-2.5 text-right font-mono text-[#059669]">{totalCA.toLocaleString('fr-FR')}</td>
+              <td className="px-3 py-2.5 text-[13px] text-primary">CA Total</td>
+              <td className="px-3 py-2.5 text-right font-mono text-primary">{totalCA.toLocaleString('fr-FR')}</td>
               {showFx && <><td /><td /></>}<td />
             </tr>
             <tr>
@@ -197,10 +197,10 @@ function Stepper({ current, dossierEtape, onChange }: {
               >
                 <div className={cn(
                   'w-9 h-9 rounded-[10px] flex items-center justify-center font-display text-[13px] font-bold flex-shrink-0 border-2 transition-all',
-                  isDone    ? 'bg-[#ECFDF5] border-[#10B981] text-[#059669]' :
+                  isDone    ? 'bg-primary-100 border-primary-400 text-primary' :
                   isCurrent ? 'text-white border-transparent shadow-[0_2px_12px_rgba(107,53,201,.35)]' :
                   isLocked  ? 'bg-[#F0F4F8] border-[var(--bd-def)] text-[#C3D0DF]' :
-                  'bg-white border-[var(--bd-def)] text-[#9EB0C4] group-hover:border-[#0E86E8]',
+                  'bg-white border-[var(--bd-def)] text-neutral group-hover:border-[#0E86E8]',
                 )}
                 style={isCurrent ? { background: 'linear-gradient(135deg,#0E86E8,#6B35C9)' } : {}}>
                   {isDone ? <CheckIcon size={14} weight="bold" /> : isLocked ? <LockSimpleIcon size={12} weight="bold" /> : s}
@@ -208,13 +208,13 @@ function Stepper({ current, dossierEtape, onChange }: {
                 <div className="hidden sm:block">
                   <div className={cn(
                     'text-[12px] font-semibold leading-none',
-                    isDone ? 'text-[#059669]' : isCurrent ? 'text-[#085499]' : 'text-[var(--tx-2)]',
+                    isDone ? 'text-primary' : isCurrent ? 'text-[#085499]' : 'text-[var(--tx-2)]',
                   )}>{ETAPE_LABELS[s]}</div>
                   <div className="text-[10px] text-[var(--tx-3)] mt-0.5">{subLabels[s]}</div>
                 </div>
               </button>
               {i < steps.length - 1 && (
-                <div className={cn('flex-1 h-[2px] mx-3', i < ci ? 'bg-[#10B981]' : 'bg-[var(--bd-def)]')} />
+                <div className={cn('flex-1 h-[2px] mx-3', i < ci ? 'bg-primary-400' : 'bg-[var(--bd-def)]')} />
               )}
             </div>
           );
@@ -482,7 +482,7 @@ function StepD({ d, onPrev, onNext }: { d: DossierTransportDetail; onPrev: () =>
             }
             <div className="flex justify-between items-center py-2 mt-1 border-t-2 border-[var(--bd-def)] text-[13px] font-bold">
               <span className="text-[var(--tx-1)]">Total réel</span>
-              <span className={cn('font-mono', ecartAbs > 0 ? 'text-[#DC2626]' : 'text-[#059669]')}>
+              <span className={cn('font-mono', ecartAbs > 0 ? 'text-[#DC2626]' : 'text-primary')}>
                 {totalReel.toLocaleString('fr-FR')} XOF
               </span>
             </div>
@@ -495,7 +495,7 @@ function StepD({ d, onPrev, onNext }: { d: DossierTransportDetail; onPrev: () =>
         <SectionCard icon="≈" title="Analyse écarts">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Écart total */}
-            <div className={cn('rounded-xl p-4 text-center', ecartAbs > 0 ? 'bg-[#FEF2F2]' : 'bg-[#ECFDF5]')}>
+            <div className={cn('rounded-xl p-4 text-center', ecartAbs > 0 ? 'bg-[#FEF2F2]' : 'bg-primary-100')}>
               <div className="text-[10px] font-semibold uppercase tracking-[.06em] text-[var(--tx-3)] mb-1">Écart total</div>
               <div className="font-display text-[20px] font-bold" style={{ color: ecartAbs > 0 ? '#DC2626' : '#059669' }}>
                 {ecartAbs > 0 ? '+' : ''}{ecartAbs.toLocaleString('fr-FR')} XOF
@@ -505,7 +505,7 @@ function StepD({ d, onPrev, onNext }: { d: DossierTransportDetail; onPrev: () =>
               </div>
             </div>
             {/* Marge réelle */}
-            <div className={cn('rounded-xl p-4 text-center', (margeReel ?? 0) < 10 ? 'bg-[#FEF2F2]' : (margeReel ?? 0) < 20 ? 'bg-[#FFFBEB]' : 'bg-[#ECFDF5]')}>
+            <div className={cn('rounded-xl p-4 text-center', (margeReel ?? 0) < 10 ? 'bg-[#FEF2F2]' : (margeReel ?? 0) < 20 ? 'bg-[#FFFBEB]' : 'bg-primary-100')}>
               <div className="text-[10px] font-semibold uppercase tracking-[.06em] text-[var(--tx-3)] mb-1">Marge réelle</div>
               <div className="font-display text-[20px] font-bold"
                    style={{ color: (margeReel ?? 0) < 10 ? '#DC2626' : (margeReel ?? 0) < 20 ? '#D97706' : '#059669' }}>
