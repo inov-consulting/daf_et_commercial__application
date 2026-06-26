@@ -696,7 +696,7 @@ export default function NouveauCRPage() {
                       {procSteps.map((step, i) => (
                         <div key={i} className="flex items-center gap-3">
                           <div className={cn('w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 border-[1.5px]',
-                            step === 'done'   && 'border-[#10B981] bg-[rgba(16,185,129,0.1)]',
+                            step === 'done'   && 'border-primary-400 bg-[rgba(16,185,129,0.1)]',
                             step === 'active' && 'border-[#6B35C9] bg-[rgba(107,53,201,0.1)]',
                             step === 'pending' && 'border-[var(--bd-def)] bg-[var(--bg-sink)]',
                           )}>
@@ -705,7 +705,7 @@ export default function NouveauCRPage() {
                             {step === 'pending' && <span className="text-[var(--tx-3)] text-[9px]">—</span>}
                           </div>
                           <span className={cn('text-[13px] font-medium',
-                            step === 'done'    && 'text-[#059669]',
+                            step === 'done'    && 'text-primary',
                             step === 'active'  && 'text-[#5829A8] font-semibold',
                             step === 'pending' && 'text-[var(--tx-3)]',
                           )}>

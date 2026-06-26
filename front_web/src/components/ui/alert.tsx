@@ -12,7 +12,7 @@ export interface AlertProps extends HTMLAttributes<HTMLDivElement> {
 
 const typeClasses: Record<AlertType, string> = {
   info: 'bg-primary-50 border-[rgba(27,107,69,.3)] text-primary-700 dark:bg-[rgba(27,107,69,.1)] dark:border-[rgba(27,107,69,.3)] dark:text-primary-300',
-  success: 'bg-success-50 border-[rgba(16,185,129,.3)] text-success-600 dark:bg-[rgba(16,185,129,.1)] dark:border-[rgba(16,185,129,.3)] dark:text-[#6EE7B7]',
+  success: 'bg-success-50 border-[rgba(16,185,129,.3)] text-success-600 dark:bg-[rgba(16,185,129,.1)] dark:border-[rgba(16,185,129,.3)] dark:text-primary-300',
   warning: 'bg-warning-50 border-[rgba(245,158,11,.3)] text-warning-600 dark:bg-[rgba(245,158,11,.1)] dark:border-[rgba(245,158,11,.3)] dark:text-[#FCD34D]',
   error: 'bg-error-50 border-[rgba(239,68,68,.3)] text-error-600 dark:bg-[rgba(239,68,68,.1)] dark:border-[rgba(239,68,68,.3)] dark:text-[#FCA5A5]',
 };
