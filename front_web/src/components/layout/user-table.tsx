@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   MagnifyingGlassIcon, PencilSimpleIcon, PaperPlaneTiltIcon, XIcon,
   DotsThreeVerticalIcon, DeviceMobileIcon, DesktopIcon, DevicesIcon,
-  FunnelIcon,
+  FunnelIcon, UserSwitchIcon, TrashIcon, ProhibitIcon,
 } from '@phosphor-icons/react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -45,20 +45,165 @@ function RoleBadge({ role, pending }: { role: UserRole; pending?: boolean }) {
   );
 }
 
+/* ── Menu contextuel ─────────────────────────────────────────────── */
+interface ContextMenuProps {
+  isOpen: boolean;
+  position: { top: number; left: number };
+  onClose: () => void;
+  onEditUser: () => void;
+  onDeleteUser: () => void;
+  onToggleActiveUser: () => void;
+  user: User;
+}
+
+function ContextMenu({ isOpen, position, onClose, onEditUser, onDeleteUser, onToggleActiveUser, user }: ContextMenuProps) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [adjustedPosition, setAdjustedPosition] = useState(position);
+
+  // Ajuster la position pour rester dans le viewport
+  useEffect(() => {
+    if (!isOpen || !menuRef.current) return;
+
+    const menuEl = menuRef.current;
+    const { width, height } = menuEl.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const margin = 8;
+
+    let top = position.top;
+    let left = position.left;
+
+    // Ajustement horizontal
+    if (left + width > viewportWidth - margin) {
+      left = Math.max(margin, viewportWidth - width - margin);
+    }
+    if (left < margin) {
+      left = margin;
+    }
+
+    // Ajustement vertical
+    if (top + height > viewportHeight - margin) {
+      // Essayer d'afficher au-dessus
+      if (position.top - height - 4 > margin) {
+        top = position.top - height - 4;
+      } else {
+        top = Math.max(margin, viewportHeight - height - margin);
+      }
+    }
+    if (top < margin) {
+      top = margin;
+    }
+
+    setAdjustedPosition({ top, left });
+  }, [isOpen, position]);
+
+  // Gestion du clic extérieur et Escape
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+
+    // Ajout d'un délai pour éviter la fermeture immédiate
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+    }, 0);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      ref={menuRef}
+      className="fixed z-[300] bg-white border border-border rounded-xl shadow-lg py-1 min-w-[180px] animate-in fade-in zoom-in-95 duration-150"
+      style={{ top: adjustedPosition.top, left: adjustedPosition.left }}
+    >
+      <button
+        onClick={() => { onEditUser(); onClose(); }}
+        className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-foreground hover:bg-surface-sink transition-colors"
+      >
+        <PencilSimpleIcon size={14} />
+        Modifier
+      </button>
+
+      <button
+        onClick={() => { onToggleActiveUser(); onClose(); }}
+        className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-foreground hover:bg-surface-sink transition-colors"
+      >
+        {user.status === 'active' ? (
+          <>
+            <ProhibitIcon size={14} />
+            Désactiver le compte
+          </>
+        ) : (
+          <>
+            <UserSwitchIcon size={14} />
+            Activer le compte
+          </>
+        )}
+      </button>
+
+      <div className="h-px bg-border my-1" />
+
+      <button
+        onClick={() => { onDeleteUser(); onClose(); }}
+        className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-error hover:bg-error-50 transition-colors"
+      >
+        <TrashIcon size={14} />
+        Supprimer
+      </button>
+    </div>
+  );
+}
+
 /* ── Mobile User Card ─────────────────────────────────────────────── */
 function MobileUserCard({
   user,
   isSelected,
   onSelect,
-  onEdit,
+  onEditUser,
+  onDeleteUser,
+  onToggleActiveUser,
   onResendInvite,
 }: {
   user: User;
   isSelected: boolean;
   onSelect: (uid: string) => void;
-  onEdit: (uid: string) => void;
+  onEditUser: (uid: string) => void;
+  onDeleteUser: (uid: string) => void;
+  onToggleActiveUser: (uid: string, active: boolean) => void;
   onResendInvite?: (uid: string) => void;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  const handleOpenMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setMenuPosition({
+        top: rect.bottom + 4,
+        left: rect.right - 180,
+      });
+    }
+    setMenuOpen(true);
+  };
+
   return (
     <div
       role="button"
@@ -181,7 +326,7 @@ function MobileUserCard({
               Renvoyer
             </button>
             <button
-              onClick={e => e.stopPropagation()}
+              onClick={e => { e.stopPropagation(); onDeleteUser(user.uid); }}
               className="w-8 h-8 rounded-md border border-border bg-surface flex items-center justify-center text-foreground-3 hover:bg-error-50 hover:text-error hover:border-error transition-colors"
             >
               <XIcon size={13} />
@@ -190,14 +335,15 @@ function MobileUserCard({
         ) : (
           <>
             <button
-              onClick={e => { e.stopPropagation(); onEdit(user.uid); }}
+              onClick={e => { e.stopPropagation(); onEditUser(user.uid); }}
               className="h-8 px-2.5 rounded-md border border-border bg-surface flex items-center gap-1 text-[11px] text-foreground-3 hover:bg-surface-sink hover:text-foreground transition-colors"
             >
               <PencilSimpleIcon size={13} />
               Modifier
             </button>
             <button
-              onClick={e => e.stopPropagation()}
+              ref={buttonRef}
+              onClick={handleOpenMenu}
               className="w-8 h-8 rounded-md border border-border bg-surface flex items-center justify-center text-foreground-3 hover:bg-surface-sink hover:text-foreground transition-colors"
             >
               <DotsThreeVerticalIcon size={13} />
@@ -205,6 +351,17 @@ function MobileUserCard({
           </>
         )}
       </div>
+
+      {/* Menu contextuel mobile */}
+      <ContextMenu
+        isOpen={menuOpen}
+        position={menuPosition}
+        onClose={() => setMenuOpen(false)}
+        onEditUser={() => onEditUser(user.uid)}
+        onDeleteUser={() => onDeleteUser(user.uid)}
+        onToggleActiveUser={() => onToggleActiveUser(user.uid, user.status !== 'active')}
+        user={user}
+      />
     </div>
   );
 }
@@ -216,6 +373,8 @@ interface UserTableProps {
   selectedUid: string | null;
   onSelectUser: (uid: string) => void;
   onEditUser: (uid: string) => void;
+  onDeleteUser: (uid: string) => void;
+  onToggleActiveUser: (uid: string, active: boolean) => void;
   onResendInvite?: (uid: string) => void;
 }
 
@@ -224,11 +383,20 @@ export function UserTable({
   selectedUid,
   onSelectUser,
   onEditUser,
+  onDeleteUser,
+  onToggleActiveUser,
   onResendInvite,
 }: UserTableProps) {
   const [filter, setFilter] = useState<FilterTab>('all');
   const [search, setSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{
+    uid: string;
+    position: { top: number; left: number };
+  } | null>(null);
+  
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const contextMenuButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const filtered = users.filter(u => {
     const matchStatus = filter === 'all' || u.status === filter;
@@ -240,6 +408,62 @@ export function UserTable({
       u.role.toLowerCase().includes(q);
     return matchStatus && matchSearch;
   });
+
+  // Fermer le menu contextuel lors du scroll
+  useEffect(() => {
+    const container = tableContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      setContextMenu(null);
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Recalculer la position lors du scroll
+  useEffect(() => {
+    if (!contextMenu || !contextMenuButtonRef.current) return;
+
+    const updatePosition = () => {
+      const button = contextMenuButtonRef.current;
+      if (button) {
+        const rect = button.getBoundingClientRect();
+        setContextMenu(prev => prev ? {
+          ...prev,
+          position: {
+            top: rect.bottom + 4,
+            left: rect.right - 180,
+          },
+        } : null);
+      }
+    };
+
+    const container = tableContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', updatePosition, { passive: true });
+      return () => container.removeEventListener('scroll', updatePosition);
+    }
+  }, [contextMenu]);
+
+  const handleContextMenu = (e: React.MouseEvent, uid: string) => {
+    e.stopPropagation();
+    const button = e.currentTarget as HTMLElement;
+    contextMenuButtonRef.current = button as HTMLButtonElement;
+    const rect = button.getBoundingClientRect();
+    setContextMenu({
+      uid,
+      position: {
+        top: rect.bottom + 4,
+        left: rect.right - 180,
+      },
+    });
+  };
+
+  const currentContextUser = contextMenu
+    ? users.find(u => u.uid === contextMenu.uid)
+    : null;
 
   return (
     <div className="w-full min-w-0 bg-surface rounded-2xl border border-border shadow-xs overflow-hidden">
@@ -263,7 +487,7 @@ export function UserTable({
             <FunnelIcon size={15} weight={showFilters ? 'fill' : 'regular'} />
           </button>
         </div>
-        
+
         {/* Filtres : toujours visible sur desktop, toggle sur mobile */}
         <div className={cn(
           'flex gap-1.5 flex-wrap',
@@ -285,7 +509,7 @@ export function UserTable({
             </button>
           ))}
         </div>
-        
+
         <div className="hidden sm:flex flex-1" />
         <span className="font-mono text-[10px] sm:text-[11px] text-foreground-3 text-right sm:text-left">
           {filtered.length} compte{filtered.length !== 1 ? 's' : ''}
@@ -293,9 +517,9 @@ export function UserTable({
       </div>
 
       {/* Vue Desktop : Tableau */}
-      <div className="hidden md:block overflow-auto">
+      <div ref={tableContainerRef} className="hidden md:block overflow-auto relative">
         <table className="w-full border-collapse">
-          <thead>
+          <thead className="sticky top-0 z-10">
             <tr className="h-10 bg-surface-sink border-b border-border">
               {['Utilisateur', 'Rôle', 'Groupes', 'Entreprise', 'Statut', 'Accès', 'Actions'].map((h, i) => (
                 <th
@@ -436,7 +660,7 @@ export function UserTable({
                         </button>
                         <button
                           title="Révoquer"
-                          onClick={e => e.stopPropagation()}
+                          onClick={e => { e.stopPropagation(); onDeleteUser(user.uid); }}
                           className="w-[30px] h-[30px] rounded-md border border-border bg-surface flex items-center justify-center text-foreground-3 hover:bg-error-50 hover:text-error hover:border-error transition-colors"
                         >
                           <XIcon size={13} />
@@ -453,7 +677,7 @@ export function UserTable({
                         </button>
                         <button
                           title="Plus d'actions"
-                          onClick={e => e.stopPropagation()}
+                          onClick={e => handleContextMenu(e, user.uid)}
                           className="w-[30px] h-[30px] rounded-md border border-border bg-surface flex items-center justify-center text-foreground-3 hover:bg-surface-sink hover:text-foreground transition-colors"
                         >
                           <DotsThreeVerticalIcon size={13} />
@@ -466,6 +690,22 @@ export function UserTable({
             ))}
           </tbody>
         </table>
+
+        {/* Menu contextuel desktop - suit le scroll */}
+        {contextMenu && currentContextUser && (
+          <ContextMenu
+            isOpen={true}
+            position={contextMenu.position}
+            onClose={() => {
+              setContextMenu(null);
+              contextMenuButtonRef.current = null;
+            }}
+            onEditUser={() => onEditUser(currentContextUser.uid)}
+            onDeleteUser={() => onDeleteUser(currentContextUser.uid)}
+            onToggleActiveUser={() => onToggleActiveUser(currentContextUser.uid, currentContextUser.status !== 'active')}
+            user={currentContextUser}
+          />
+        )}
       </div>
 
       {/* Vue Mobile/Tablette : Cards */}
@@ -483,7 +723,9 @@ export function UserTable({
               user={user}
               isSelected={selectedUid === user.uid}
               onSelect={onSelectUser}
-              onEdit={onEditUser}
+              onEditUser={onEditUser}
+              onDeleteUser={onDeleteUser}
+              onToggleActiveUser={onToggleActiveUser}
               onResendInvite={onResendInvite}
             />
           ))

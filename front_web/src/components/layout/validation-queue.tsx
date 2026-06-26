@@ -83,12 +83,20 @@ export function ValidationQueue({
   const visibleItems = ITEMS.filter(it => !dismissed.has(it.id));
 
   const handleValidate = (id: string, title: string) => {
-    setDismissed(prev => new Set([...prev, id]));
+    setDismissed(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
     onValidate(id, title);
   };
 
   const handleReject = (id: string) => {
-    setDismissed(prev => new Set([...prev, id]));
+    setDismissed(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
     onReject(id);
   };
 
