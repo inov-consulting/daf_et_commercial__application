@@ -1,0 +1,41 @@
+'use client';
+
+export function InformationsLegales() {
+  return (
+    <div className="bg-white rounded-xl border border-[#DDE5EF] mb-4 overflow-hidden">
+      <div className="px-5 py-[14px] border-b border-[#EEF2F7] font-space-grotesk text-sm font-semibold text-[#1B2633]">
+        Informations légales
+      </div>
+      <div className="p-5">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <div className="font-inter text-xs font-medium text-[#435869] mb-1.5">NINEA</div>
+            <input 
+              type="text" 
+              value="00543721-2023-D"
+              className="w-full h-9 px-2.5 border border-[#DDE5EF] rounded-lg bg-white text-[#2E3D4C] font-inter text-[13px] focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,118,73,0.1)]"
+            />
+            <div className="font-inter text-[11px] text-[#9EB0C4] mt-1">
+              Numéro d&apos;Identification National des Entreprises et Associations
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] text-[#059669] mt-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
+              NINEA vérifié · TVA applicable : 18% (Sénégal)
+            </div>
+          </div>
+          <div>
+            <div className="font-inter text-xs font-medium text-[#435869] mb-1.5">RCCM</div>
+            <input 
+              type="text" 
+              value="SN-DKR-2023-B-15482"
+              className="w-full h-9 px-2.5 border border-[#DDE5EF] rounded-lg bg-white text-[#2E3D4C] font-inter text-[13px] focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,118,73,0.1)]"
+            />
+            <div className="font-inter text-[11px] text-[#9EB0C4] mt-1">
+              Registre du Commerce et du Crédit Mobilier
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import Sidebar from './sidebar';
 import TopBar from './top-bar';
 import FloatingChat from './floating-chat';
@@ -15,7 +16,9 @@ interface DashboardShellProps {
 }
 
 export default function DashboardShell({ user, rawUser, locale, children }: DashboardShellProps) {
+  const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const hideFloatingChat = pathname === `/${locale}/page/parametres`;
 
   const handleClose = useCallback(() => setSidebarOpen(false), []);
   const handleToggle = useCallback(() => setSidebarOpen(v => !v), []);
@@ -68,7 +71,7 @@ export default function DashboardShell({ user, rawUser, locale, children }: Dash
           </div>
         </main>
       </div>
-      <FloatingChat user={user} rawUser={rawUser} />
+      {!hideFloatingChat && <FloatingChat user={user} rawUser={rawUser} />}
     </div>
   );
 }
