@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 
 import { ExportIcon, UserPlusIcon, WarningIcon, TrashIcon, CheckIcon } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { UserDetailPanel } from '@/components/layout/user-detail-panel';
 import { UserFormModal } from '@/components/layout/user-form-modal';
+import { Toast } from '@/components/ui/toast';
 import { useAppDispatch, useAppSelector } from '@/redux/store';
 import {
   fetchUsers,
@@ -18,6 +19,41 @@ import { mapApiUser, type User } from '@/types/user_type';
 import { UserTable } from '@/components/layout/user-table';
 import { UserKpiRow } from '@/components/layout/user-kpi-row';
 import type { UserFormSubmitData } from '@/components/layout/user-form-modal';
+import {
+  CheckCircleIcon,
+  WarningCircleIcon,
+  InfoIcon,
+  XCircleIcon,
+} from '@phosphor-icons/react';
+
+type ToastType = 'success' | 'error' | 'warning' | 'info';
+
+interface ToastState {
+  id: number;
+  message: string;
+  sub?: string;
+  type: ToastType;
+}
+
+// Configuration des toasts selon le type
+const toastConfig: Record<ToastType, { title: string; icon: React.ReactNode }> = {
+  success: {
+    title: 'Succès',
+    icon: <CheckCircleIcon size={18} weight="fill" />,
+  },
+  error: {
+    title: 'Erreur',
+    icon: <XCircleIcon size={18} weight="fill" />,
+  },
+  warning: {
+    title: 'Attention',
+    icon: <WarningCircleIcon size={18} weight="fill" />,
+  },
+  info: {
+    title: 'Information',
+    icon: <InfoIcon size={18} weight="fill" />,
+  },
+};
 
 export default function UtilisateursPage() {
   const dispatch = useAppDispatch();
@@ -30,8 +66,11 @@ export default function UtilisateursPage() {
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [formModal, setFormModal] = useState<{ mode: 'invite' | 'edit'; uid?: string } | null>(null);
   const [deleteUid, setDeleteUid] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ message: string; sub?: string; type?: 'success' | 'error' } | null>(null);
+  const [toasts, setToasts] = useState<ToastState[]>([]);
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
+  
+  const toastIdRef = useRef(0);
+  const timersRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
 
   // Chargement initial
   useEffect(() => {
@@ -39,15 +78,52 @@ export default function UtilisateursPage() {
     dispatch(fetchGroups());
   }, [dispatch]);
 
+  // Nettoyage des timers au démontage
+  useEffect(() => {
+    const currentTimers = timersRef.current;
+    return () => {
+      currentTimers.forEach(timer => clearTimeout(timer));
+      currentTimers.clear();
+    };
+  }, []);
+
   const selectedUser = selectedUid ? (users.find(u => u.uid === selectedUid) ?? null) : null;
   const editUser = formModal?.uid ? users.find(u => u.uid === formModal.uid) : undefined;
   const rawEditUser = formModal?.uid ? apiUsers.find(u => u.id === formModal.uid) : undefined;
   const deleteUser = deleteUid ? (users.find(u => u.uid === deleteUid) ?? null) : null;
 
-  function showToast(message: string, sub?: string, type: 'success' | 'error' = 'success') {
-    setToast({ message, sub, type });
-    setTimeout(() => setToast(null), 5000);
-  }
+  // Fonction pour afficher un toast avec le composant Toast
+  const showToast = useCallback((
+    message: string,
+    sub?: string,
+    type: ToastType = 'success',
+    duration = 5000
+  ) => {
+    const id = toastIdRef.current++;
+    const newToast: ToastState = { id, message, sub, type };
+
+    setToasts(prev => [...prev, newToast]);
+
+    // Auto-dismiss après la durée spécifiée
+    if (duration > 0) {
+      const timer = setTimeout(() => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+        timersRef.current.delete(id);
+      }, duration);
+
+      timersRef.current.set(id, timer);
+    }
+  }, []);
+
+  // Fonction pour fermer manuellement un toast
+  const dismissToast = useCallback((id: number) => {
+    const timer = timersRef.current.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      timersRef.current.delete(id);
+    }
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
 
   async function handleDelete() {
     if (!deleteUid) return;
@@ -58,7 +134,7 @@ export default function UtilisateursPage() {
     // Suppression optimiste + désactivation côté backend (pas de DELETE endpoint)
     dispatch(removeUser(uid));
     await dispatch(updateUser({ id: uid, payload: { is_active: false } }));
-    showToast('Utilisateur supprimé', 'Le compte a été désactivé');
+    showToast('Utilisateur supprimé', 'Le compte a été désactivé', 'success');
   }
 
   async function handleFormSubmit(data: UserFormSubmitData): Promise<{ ok: boolean; error?: string }> {
@@ -76,11 +152,11 @@ export default function UtilisateursPage() {
       }));
       if (updateUser.rejected.match(result)) {
         const error = result.payload as string;
-        showToast(error, undefined, 'error');
+        showToast('Erreur de modification', error, 'error');
         return { ok: false, error };
       }
       setFormModal(null);
-      showToast('Modifications enregistrées', 'Profil mis à jour avec succès');
+      showToast('Modifications enregistrées', 'Profil mis à jour avec succès', 'success');
       return { ok: true };
     } else {
       const result = await dispatch(createUser({
@@ -92,11 +168,11 @@ export default function UtilisateursPage() {
       }));
       if (createUser.fulfilled.match(result)) {
         setFormModal(null);
-        showToast('Invitation envoyée', "Email d'invitation envoyé avec succès");
+        showToast('Invitation envoyée', "Email d'invitation envoyé avec succès", 'success');
         return { ok: true };
       }
       const error = result.payload as string;
-      showToast(error, undefined, 'error');
+      showToast('Erreur d\'invitation', error, 'error');
       return { ok: false, error };
     }
   }
@@ -106,6 +182,7 @@ export default function UtilisateursPage() {
     showToast(
       active ? 'Compte réactivé' : 'Compte désactivé',
       active ? "L'utilisateur a de nouveau accès à PortaLis" : "L'accès à PortaLis a été retiré",
+      'success'
     );
   }
 
@@ -162,9 +239,16 @@ export default function UtilisateursPage() {
             selectedUid={selectedUid}
             onSelectUser={handleSelectUser}
             onEditUser={uid => setFormModal({ mode: 'edit', uid })}
+            onDeleteUser={uid => setDeleteUid(uid)}
+            onToggleActiveUser={(uid) => {
+              const user = users.find(u => u.uid === uid);
+              if (user) {
+                handleToggleActive(uid, user.status !== 'active');
+              }
+            }}
             onResendInvite={uid => {
               const u = users.find(x => x.uid === uid);
-              showToast('Invitation renvoyée', `${u?.email} · Lien 7 jours`);
+              showToast('Invitation renvoyée', `${u?.email} · Lien 7 jours`, 'info');
             }}
           />
         </div>
@@ -281,35 +365,23 @@ export default function UtilisateursPage() {
         </div>
       )}
 
-      {/* Toast */}
-      {toast && (
-        <div
-          className={`fixed top-4 sm:top-20 right-4 sm:right-6 z-[80] bg-surface rounded-xl p-3 flex items-start gap-2.5 max-w-[calc(100vw-2rem)] sm:max-w-[320px] border ${toast.type === 'error'
-              ? 'border-error shadow-[0_4px_20px_rgba(239,68,68,.18)]'
-              : 'border-success shadow-[0_4px_20px_rgba(16,185,129,.18)]'
-            }`}
-        >
-          <div className={`w-[30px] h-[30px] rounded-lg flex items-center justify-center flex-shrink-0 ${toast.type === 'error' ? 'bg-error/10 text-error' : 'bg-success-50 text-success'
-            }`}>
-            {toast.type === 'error'
-              ? <WarningIcon size={14} weight="fill" />
-              : <CheckIcon size={14} weight="bold" />
-            }
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-display font-bold text-foreground text-xs">{toast.message}</p>
-            {toast.sub && <p className="text-[11px] text-foreground-3 mt-0.5">{toast.sub}</p>}
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setToast(null)}
-            className="!w-5 !h-5 !p-0 flex-shrink-0 !text-[10px]"
+      {/* Toasts - Positionnés en haut à droite */}
+      <div className="fixed top-4 sm:top-20 right-4 sm:right-6 z-[80] flex flex-col gap-2 max-w-[calc(100vw-2rem)] sm:max-w-[380px] pointer-events-none">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className="animate-in slide-in-from-right fade-in duration-300 pointer-events-auto"
           >
-            ×
-          </Button>
-        </div>
-      )}
+            <Toast
+              type={toast.type}
+              title={toastConfig[toast.type].title}
+              message={toast.sub ? `${toast.message}\n${toast.sub}` : toast.message}
+              icon={toastConfig[toast.type].icon}
+              onDismiss={() => dismissToast(toast.id)}
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
-} 
+}
