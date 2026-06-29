@@ -80,6 +80,126 @@ export const ETAPE_LABELS: Record<DossierEtape, string> = {
 
 export const DOSSIER_ETAPES: DossierEtape[] = ['A', 'B', 'C', 'D', 'E'];
 
+// ── Shipments ──────────────────────────────────────────────────────────────
+
+export type ShipmentState = 'draft' | 'confirmed' | 'in_transit' | 'delivered' | 'cancelled';
+
+export interface Shipment {
+  id: string;
+  reference: string;
+  state: ShipmentState;
+  transport_mode?: string;
+  partner_id?: string;
+  partner_name?: string;
+  vehicle_subtype_id?: string;
+  vehicle_subtype_name?: string;
+  origin?: string;
+  destination?: string;
+  date_from?: string;
+  date_to?: string;
+  created_at: string;
+}
+
+export interface ShipmentListResponse {
+  items: Shipment[];
+  total: number;
+  limit?: number;
+  offset?: number;
+}
+
+export interface ShipmentVoyage {
+  id: string;
+  reference?: string;
+  vessel_name?: string;
+  carrier?: string;
+  bl_number?: string;
+  etd?: string;
+  eta?: string;
+  atd?: string;
+  ata?: string;
+  port_origin?: string;
+  port_destination?: string;
+  status?: string;
+}
+
+export interface VoyageListResponse {
+  items: ShipmentVoyage[];
+  total: number;
+}
+
+export interface ShipmentCharge {
+  id: string;
+  description?: string;
+  amount: number;
+  currency?: string;
+  charge_type?: string;
+}
+
+export interface ShipmentImmobilization {
+  id: string;
+  reason?: string;
+  start_date?: string;
+  end_date?: string;
+  days?: number;
+  daily_cost?: number;
+  total_cost?: number;
+}
+
+export interface ShipmentWorkflowStep {
+  step: string;
+  label?: string;
+  status: 'done' | 'current' | 'pending';
+  date?: string;
+}
+
+export interface ShipmentDetail extends Shipment {
+  voyages?: ShipmentVoyage[];
+  charges?: ShipmentCharge[];
+  immobilizations?: ShipmentImmobilization[];
+  workflow?: ShipmentWorkflowStep[];
+  notes?: string;
+}
+
+// ── Dashboard ──────────────────────────────────────────────────────────────
+
+export interface DashboardByMode {
+  mode: string;
+  label?: string;
+  count: number;
+  revenue?: number;
+  cost?: number;
+}
+
+export interface TransportDashboard {
+  period?: string;
+  total_shipments?: number;
+  in_transit?: number;
+  delivered?: number;
+  cancelled?: number;
+  total_revenue?: number;
+  total_cost?: number;
+  by_mode?: DashboardByMode[];
+}
+
+export const SHIPMENT_STATE_CONFIG: Record<ShipmentState, { label: string; bg: string; color: string; dot: string }> = {
+  draft:      { label: 'Brouillon',  bg: '#F3F4F6', color: '#374151', dot: '#9CA3AF' },
+  confirmed:  { label: 'Confirmé',   bg: '#EBF5FD', color: '#085499', dot: '#0E86E8' },
+  in_transit: { label: 'En transit', bg: '#FFFBEB', color: '#D97706', dot: '#F59E0B' },
+  delivered:  { label: 'Livré',      bg: '#ECFDF5', color: '#059669', dot: '#10B981' },
+  cancelled:  { label: 'Annulé',     bg: '#FEF2F2', color: '#DC2626', dot: '#EF4444' },
+};
+
+export const SHIPMENT_MODE_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
+  maritime:    { label: 'Maritime',    bg: '#EBF5FD', color: '#085499' },
+  routier:     { label: 'Routier',     bg: '#ECFDF5', color: '#059669' },
+  road:        { label: 'Routier',     bg: '#ECFDF5', color: '#059669' },
+  multimodal:  { label: 'Multimodal',  bg: '#F3EFFE', color: '#5829A8' },
+  aerien:      { label: 'Aérien',      bg: '#FDF0F7', color: '#A01D65' },
+  air:         { label: 'Aérien',      bg: '#FDF0F7', color: '#A01D65' },
+  ferroviaire: { label: 'Ferroviaire', bg: '#FFF3E0', color: '#D97706' },
+  rail:        { label: 'Ferroviaire', bg: '#FFF3E0', color: '#D97706' },
+};
+
 // ── Detail types ────────────────────────────────────────────────────────────
 
 export interface CostLine {

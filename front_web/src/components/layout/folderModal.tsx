@@ -4,14 +4,14 @@ import { Button } from '@/components/ui/button';
 import React, { useState } from 'react'
 
 const FOLDERS = [
-  { group: 'Dossier lié',   id: 'dos-0142',    name: 'DOS-2026-0142 — Sonatrans SA', count: null, current: true },
-  { group: 'Opérations',    id: 'crs',         name: 'Comptes-rendus', count: 14 },
-  { group: 'Opérations',    id: 'crs-sn',      name: 'Sénégal', count: 6, indent: true },
-  { group: 'Opérations',    id: 'crs-ci',      name: "Côte d'Ivoire", count: 8, indent: true },
-  { group: 'Opérations',    id: 'offres',      name: 'Offres', count: 9 },
-  { group: 'Prospects',     id: 'pros-sn',     name: 'Sénégal', count: 23 },
-  { group: 'Prospects',     id: 'pros-ci',     name: "Côte d'Ivoire", count: 17 },
-  { group: 'Missions',      id: 'mis-dkr',     name: 'Transport DKR–ABJ', count: 5 },
+  { group: 'Dossier lié', id: 'dos-0142', name: 'DOS-2026-0142 — Sonatrans SA', count: null, current: true },
+  { group: 'Opérations', id: 'crs', name: 'Comptes-rendus', count: 14 },
+  { group: 'Opérations', id: 'crs-sn', name: 'Sénégal', count: 6, indent: true },
+  { group: 'Opérations', id: 'crs-ci', name: "Côte d'Ivoire", count: 8, indent: true },
+  { group: 'Opérations', id: 'offres', name: 'Offres', count: 9 },
+  { group: 'Prospections', id: 'pros-sn', name: 'Sénégal', count: 23 },
+  { group: 'Prospections', id: 'pros-ci', name: "Côte d'Ivoire", count: 17 },
+  { group: 'Missions', id: 'mis-dkr', name: 'Transport DKR–ABJ', count: 5 },
 ] as const;
 
 const FolderModal = ({

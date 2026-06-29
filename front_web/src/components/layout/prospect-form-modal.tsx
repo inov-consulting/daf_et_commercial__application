@@ -92,14 +92,14 @@ export function ProspectFormModal({
   const [codePickerUp, setCodePickerUp]     = useState(false);
   const codePickerRef = useRef<HTMLDivElement>(null);
 
-  /* ── Fetch companies once (cached in state while component is mounted) ── */
+  /* ── Fetch companies once on mount (modal always stays in DOM) ── */
   useEffect(() => {
-    if (!open || companies.length > 0 || loadingCompanies) return;
     setLoadingCompanies(true);
     GetData<CompanyListResponse>({ url: ApiRoutes.COMPANY_LIST, protected: true })
       .then(res => { if (res.ok && res.data) setCompanies(res.data.items); })
       .finally(() => setLoadingCompanies(false));
-  }, [open, companies.length, loadingCompanies]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* ── Reset form on open ── */
   useEffect(() => {
