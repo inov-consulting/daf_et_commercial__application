@@ -23,9 +23,13 @@ from app.api.v1.schemas.transport import (
     VoyageDetail,
     VoyageListItem,
     VoyageListOut,
+    WorkflowHistoryOut,
     WorkflowStepOut,
 )
+from app.core.logging import get_logger
 from app.infrastructure.odoo.client import OdooClient
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/transport", tags=["transport"])
 
@@ -51,17 +55,21 @@ VOYAGE_FIELDS = [
 ]
 
 CHARGE_FIELDS = [
-    "id", "name", "charge_type_id", "amount", "porteur", "state", "date",
-    "voyage_id", "shipment_id",
+    "id", "name", "charge_type_id", "amount", "porteur", "state", "date_charge",
+    "source", "voyage_id", "shipment_id",
 ]
 
 IMMOB_FIELDS = [
-    "id", "name", "type", "start_date", "end_date", "duration_hours", "state",
-    "voyage_id", "shipment_id",
+    "id", "name", "immob_type", "date_start", "date_end", "duration_hours",
+    "state", "location", "cause_description", "voyage_id", "shipment_id",
 ]
 
 WORKFLOW_FIELDS = [
     "id", "shipment_id", "template_id", "current_step_id", "state",
+]
+
+WORKFLOW_HISTORY_FIELDS = [
+    "id", "instance_id", "step_id", "date_entered", "date_exited", "duration_hours", "user_id", "note",
 ]
 
 
@@ -81,6 +89,18 @@ def _safe_float(v: Any) -> float:
         return float(v) if v not in (None, False) else 0.0
     except (TypeError, ValueError):
         return 0.0
+
+
+async def _safe_read(client: OdooClient, model: str, fields: list[str], domain: list) -> list[dict]:
+    try:
+        return await asyncio.to_thread(
+            client.execute, model, "search_read",
+            [domain],
+            {"fields": fields},
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("odoo.read_failed", model=model, error=str(exc))
+        return []
 
 
 def _shipment_to_out(r: dict) -> ShipmentListItem:
@@ -157,21 +177,9 @@ async def get_shipment(shipment_id: int) -> ShipmentDetail:
     r["margin"] = r.get("margin_amount")
 
     voyages_raw, charges_raw, immobs_raw = await asyncio.gather(
-        asyncio.to_thread(
-            client.execute, "transport.voyage", "search_read",
-            [[("shipment_id", "=", shipment_id)]],
-            {"fields": VOYAGE_FIELDS},
-        ),
-        asyncio.to_thread(
-            client.execute, "transport.charge", "search_read",
-            [[("shipment_id", "=", shipment_id)]],
-            {"fields": CHARGE_FIELDS},
-        ),
-        asyncio.to_thread(
-            client.execute, "transport.immobilization", "search_read",
-            [[("shipment_id", "=", shipment_id)]],
-            {"fields": IMMOB_FIELDS},
-        ),
+        _safe_read(client, "transport.voyage", VOYAGE_FIELDS, [("shipment_id", "=", shipment_id)]),
+        _safe_read(client, "transport.charge", CHARGE_FIELDS, [("shipment_id", "=", shipment_id)]),
+        _safe_read(client, "transport.immobilization", IMMOB_FIELDS, [("shipment_id", "=", shipment_id)]),
     )
 
     # Workflow
@@ -185,11 +193,18 @@ async def get_shipment(shipment_id: int) -> ShipmentDetail:
         )
         if wf_records:
             wf = wf_records[0]  # type: ignore[index]
+            history_records = await _safe_read(
+                client,
+                "transport.workflow.history",
+                WORKFLOW_HISTORY_FIELDS,
+                [("instance_id", "=", wf.get("id"))],
+            )
             workflow_out = WorkflowStepOut(
                 instance_id=wf.get("id"),
                 template=wf["template_id"][1] if isinstance(wf.get("template_id"), list) else None,
                 current_step=wf["current_step_id"][1] if isinstance(wf.get("current_step_id"), list) else None,
                 state=wf.get("state"),
+                history=[WorkflowHistoryOut.from_odoo(h) for h in history_records],
             )
 
     detail = ShipmentDetail(
@@ -266,22 +281,14 @@ async def get_voyage(voyage_id: int) -> VoyageDetail:
     r = records[0]  # type: ignore[index]
 
     charges_raw, immobs_raw = await asyncio.gather(
-        asyncio.to_thread(
-            client.execute, "transport.charge", "search_read",
-            [[("voyage_id", "=", voyage_id)]],
-            {"fields": CHARGE_FIELDS},
-        ),
-        asyncio.to_thread(
-            client.execute, "transport.immobilization", "search_read",
-            [[("voyage_id", "=", voyage_id)]],
-            {"fields": IMMOB_FIELDS},
-        ),
+        _safe_read(client, "transport.charge", CHARGE_FIELDS, [("voyage_id", "=", voyage_id)]),
+        _safe_read(client, "transport.immobilization", IMMOB_FIELDS, [("voyage_id", "=", voyage_id)]),
     )
 
     return VoyageDetail(
         **VoyageListItem.from_odoo(r).model_dump(),
-        charges=[ChargeOut.from_odoo(c) for c in charges_raw],  # type: ignore[union-attr]
-        immobilizations=[ImmobilizationOut.from_odoo(i) for i in immobs_raw],  # type: ignore[union-attr]
+        charges=[ChargeOut.from_odoo(c) for c in charges_raw],
+        immobilizations=[ImmobilizationOut.from_odoo(i) for i in immobs_raw],
     )
 
 
