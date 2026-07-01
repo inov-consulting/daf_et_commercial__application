@@ -85,19 +85,26 @@ export const DOSSIER_ETAPES: DossierEtape[] = ['A', 'B', 'C', 'D', 'E'];
 export type ShipmentState = 'draft' | 'confirmed' | 'in_transit' | 'delivered' | 'cancelled';
 
 export interface Shipment {
-  id: string;
-  reference: string;
+  id: number;
+  name: string;
   state: ShipmentState;
   transport_mode?: string;
-  partner_id?: string;
-  partner_name?: string;
-  vehicle_subtype_id?: string;
-  vehicle_subtype_name?: string;
-  origin?: string;
-  destination?: string;
-  date_from?: string;
-  date_to?: string;
-  created_at: string;
+  partner_id?: number;
+  partner?: string;
+  vehicle_subtype?: string;
+  origin_location?: string;
+  destination_location?: string;
+  date_start?: string;
+  date_end?: string;
+  created_at?: string;
+  distance_km?: number;
+  sale_price_unit?: number;
+  voyage_count?: number;
+  total_charges?: number;
+  revenue?: number;
+  margin?: number;
+  company?: string;
+  currency?: string;
 }
 
 export interface ShipmentListResponse {
@@ -108,18 +115,31 @@ export interface ShipmentListResponse {
 }
 
 export interface ShipmentVoyage {
-  id: string;
-  reference?: string;
-  vessel_name?: string;
-  carrier?: string;
-  bl_number?: string;
-  etd?: string;
-  eta?: string;
-  atd?: string;
-  ata?: string;
-  port_origin?: string;
-  port_destination?: string;
-  status?: string;
+  id: number;
+  name: string;
+  shipment_id?: number;
+  shipment_name?: string;
+  transport_mode?: string;
+  state?: string;
+  mode_operatoire?: string;
+  vehicle?: string;
+  driver?: string;
+  vehicle_subtype?: string;
+  origin_location?: string;
+  destination_location?: string;
+  date_departure?: string;
+  date_arrival_dest?: string | null;
+  actual_qty_weighed?: number;
+  distance_km?: number;
+  fuel_allowance?: number;
+  fuel_actual?: number;
+  fuel_variance?: number;
+  fuel_efficiency_pct?: number;
+  total_charges?: number;
+  revenue?: number | null;
+  margin?: number | null;
+  company?: string;
+  currency?: string;
 }
 
 export interface VoyageListResponse {
@@ -128,15 +148,18 @@ export interface VoyageListResponse {
 }
 
 export interface ShipmentCharge {
-  id: string;
-  description?: string;
-  amount: number;
-  currency?: string;
+  id: number;
+  name: string;
   charge_type?: string;
+  amount: number;
+  porteur?: string;
+  state?: string;
+  date?: string;
+  source?: string;
 }
 
 export interface ShipmentImmobilization {
-  id: string;
+  id: number;
   reason?: string;
   start_date?: string;
   end_date?: string;
@@ -145,39 +168,54 @@ export interface ShipmentImmobilization {
   total_cost?: number;
 }
 
-export interface ShipmentWorkflowStep {
+export interface ShipmentWorkflowHistory {
+  id: number;
   step: string;
-  label?: string;
-  status: 'done' | 'current' | 'pending';
-  date?: string;
+  date_entered?: string;
+  date_exited?: string | null;
+  duration_hours?: number;
+  user?: string;
+  note?: string | null;
+}
+
+export interface ShipmentWorkflow {
+  instance_id?: number;
+  template?: string;
+  current_step?: string;
+  state?: string;
+  history?: ShipmentWorkflowHistory[];
 }
 
 export interface ShipmentDetail extends Shipment {
   voyages?: ShipmentVoyage[];
   charges?: ShipmentCharge[];
   immobilizations?: ShipmentImmobilization[];
-  workflow?: ShipmentWorkflowStep[];
+  workflow?: ShipmentWorkflow;
   notes?: string;
+  date_order?: string;
+  product_description?: string;
+  planned_qty?: number;
 }
 
 // ── Dashboard ──────────────────────────────────────────────────────────────
 
 export interface DashboardByMode {
-  mode: string;
-  label?: string;
-  count: number;
+  transport_mode: string;
+  shipment_count: number;
+  voyage_count?: number;
+  total_charges?: number;
   revenue?: number;
-  cost?: number;
+  margin?: number;
 }
 
 export interface TransportDashboard {
-  period?: string;
+  period_from?: string | null;
+  period_to?: string | null;
   total_shipments?: number;
-  in_transit?: number;
-  delivered?: number;
-  cancelled?: number;
+  total_voyages?: number;
+  total_charges?: number;
   total_revenue?: number;
-  total_cost?: number;
+  total_margin?: number;
   by_mode?: DashboardByMode[];
 }
 
@@ -193,6 +231,7 @@ export const SHIPMENT_MODE_CONFIG: Record<string, { label: string; bg: string; c
   maritime:    { label: 'Maritime',    bg: '#EBF5FD', color: '#085499' },
   routier:     { label: 'Routier',     bg: '#ECFDF5', color: '#059669' },
   road:        { label: 'Routier',     bg: '#ECFDF5', color: '#059669' },
+  terrestre:   { label: 'Terrestre',   bg: '#ECFDF5', color: '#059669' },
   multimodal:  { label: 'Multimodal',  bg: '#F3EFFE', color: '#5829A8' },
   aerien:      { label: 'Aérien',      bg: '#FDF0F7', color: '#A01D65' },
   air:         { label: 'Aérien',      bg: '#FDF0F7', color: '#A01D65' },
