@@ -6,6 +6,7 @@ from app.infrastructure.db.models.api_log import ApiRequestLogOrm
 from app.infrastructure.db.models.company import CompanyOrm
 from app.infrastructure.db.models.note import CompteRenduOrm, NoteOrm
 from app.infrastructure.db.models.prospect import ProspectActivityOrm, ProspectOrm
+from app.infrastructure.db.models.transport_offer import TransportOfferOrm
 from app.infrastructure.db.models.user import UserOrm
 
 __all__ = [
@@ -17,5 +18,6 @@ __all__ = [
     "NoteOrm",
     "ProspectActivityOrm",
     "ProspectOrm",
+    "TransportOfferOrm",
     "UserOrm",
 ]

@@ -394,7 +394,7 @@ export function UserTable({
     uid: string;
     position: { top: number; left: number };
   } | null>(null);
-  
+
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const contextMenuButtonRef = useRef<HTMLButtonElement | null>(null);
 
@@ -470,8 +470,9 @@ export function UserTable({
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-border">
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 flex-1 sm:w-56 h-9 bg-surface-sink border border-border rounded-lg px-3">
+          <div className="flex items-center gap-2 flex-1 sm:w-56 h-9 bg-surface-sink border border-border rounded-lg px-3 relative">
             <MagnifyingGlassIcon size={14} className="text-foreground-3 flex-shrink-0" />
+
             <input
               type="text"
               value={search}
@@ -479,6 +480,16 @@ export function UserTable({
               placeholder="Rechercher…"
               className="flex-1 bg-transparent text-sm text-foreground placeholder:text-foreground-3 outline-none min-w-0"
             />
+
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-foreground-3 hover:text-foreground hover:bg-surface-sink transition-colors"
+                title="Effacer la recherche"
+              >
+                <XIcon size={11} weight="bold" />
+              </button>
+            )}
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
