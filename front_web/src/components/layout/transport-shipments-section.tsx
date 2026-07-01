@@ -15,6 +15,11 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import { KpiCard } from '@/components/ui/kpi-card';
+import ApercuSection from './apercu-section';
+import VoyagesSection from './voyages-section';
+import ChargesSection from './charges-section';
+import ImmobilisationsSection from './immobilisation-section';
+import WorkflowSection from './workfow-section';
 
 /* ── Types locaux ─────────────────────────────────────────────────────────── */
 
@@ -60,255 +65,6 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-/* ── Drawer tab sections ──────────────────────────────────────────────────── */
-
-function ApercuSection({ detail }: { detail: ShipmentDetail }) {
-  return (
-    <div>
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <InfoRow label="Partenaire" value={detail.partner_name ?? detail.partner_id ?? '–'} />
-        <InfoRow label="Mode" value={
-          detail.transport_mode
-            ? (SHIPMENT_MODE_CONFIG[detail.transport_mode]?.label ?? detail.transport_mode)
-            : '–'
-        } />
-        <InfoRow label="Origine" value={detail.origin ?? '–'} />
-        <InfoRow label="Destination" value={detail.destination ?? '–'} />
-        <InfoRow label="Date départ" value={fmtDate(detail.date_from)} />
-        <InfoRow label="Date arrivée" value={fmtDate(detail.date_to)} />
-        <InfoRow label="Type véhicule" value={detail.vehicle_subtype_name ?? detail.vehicle_subtype_id ?? '–'} />
-        <InfoRow label="Créé le" value={fmtDate(detail.created_at)} />
-      </div>
-      {detail.notes && (
-        <div className="flex flex-col gap-1">
-          <span className="text-[10px] font-semibold uppercase tracking-[.05em] text-[var(--tx-3)]">Notes</span>
-          <div className="px-3 py-2 bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-lg text-[12px] text-[var(--tx-1)] leading-relaxed">
-            {detail.notes}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function VoyagesSection({ detail }: { detail: ShipmentDetail }) {
-  const voyages = detail.voyages ?? [];
-  if (voyages.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-[var(--tx-3)] gap-2">
-        <FolderOpenIcon size={24} className="opacity-40" />
-        <span className="text-[13px]">Aucun voyage enregistré</span>
-      </div>
-    );
-  }
-  return (
-    <div className="space-y-3">
-      {voyages.map((v, i) => (
-        <div
-          key={v.id ?? i}
-          className="bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-xl p-4"
-        >
-          <div className="flex items-start justify-between mb-2">
-            <div>
-              <div className="font-mono text-[12px] font-semibold text-[#085499]">
-                {v.reference ?? `Voyage ${i + 1}`}
-              </div>
-              {v.vessel_name && (
-                <div className="text-[13px] font-bold text-[var(--tx-1)] mt-0.5">{v.vessel_name}</div>
-              )}
-              {v.carrier && (
-                <div className="text-[11px] text-[var(--tx-3)]">{v.carrier}</div>
-              )}
-            </div>
-            {v.status && (
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#EBF5FD] text-[#085499]">
-                {v.status}
-              </span>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px] mt-2">
-            {v.bl_number && (
-              <div className="col-span-2 text-[var(--tx-3)]">
-                BL n° : <span className="font-mono font-semibold text-[var(--tx-1)]">{v.bl_number}</span>
-              </div>
-            )}
-            {(v.port_origin || v.port_destination) && (
-              <div className="col-span-2 text-[var(--tx-3)] flex items-center gap-1">
-                <span>{v.port_origin ?? '–'}</span>
-                <ArrowRightIcon size={10} className="flex-shrink-0" />
-                <span>{v.port_destination ?? '–'}</span>
-              </div>
-            )}
-            {v.etd && (
-              <div className="text-[var(--tx-3)]">ETD : <span className="font-semibold text-[var(--tx-1)]">{fmtDate(v.etd)}</span></div>
-            )}
-            {v.eta && (
-              <div className="text-[var(--tx-3)]">ETA : <span className="font-semibold text-[var(--tx-1)]">{fmtDate(v.eta)}</span></div>
-            )}
-            {v.atd && (
-              <div className="text-[var(--tx-3)]">ATD : <span className="font-semibold text-[var(--tx-1)]">{fmtDate(v.atd)}</span></div>
-            )}
-            {v.ata && (
-              <div className="text-[var(--tx-3)]">ATA : <span className="font-semibold text-[var(--tx-1)]">{fmtDate(v.ata)}</span></div>
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ChargesSection({ detail }: { detail: ShipmentDetail }) {
-  const charges = detail.charges ?? [];
-  if (charges.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-[var(--tx-3)] gap-2">
-        <FolderOpenIcon size={24} className="opacity-40" />
-        <span className="text-[13px]">Aucune charge enregistrée</span>
-      </div>
-    );
-  }
-  const total = charges.reduce((s, c) => s + (c.amount ?? 0), 0);
-  return (
-    <div>
-      <div className="overflow-x-auto rounded-xl border border-[var(--bd-def)]">
-        <table className="w-full border-collapse text-[12px]">
-          <thead className="bg-[var(--bg-sink)] border-b-2 border-[var(--bd-def)]">
-            <tr>
-              <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[.06em] text-[var(--tx-3)]">Description</th>
-              <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[.06em] text-[var(--tx-3)]">Type</th>
-              <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-[.06em] text-[var(--tx-3)]">Montant</th>
-            </tr>
-          </thead>
-          <tbody>
-            {charges.map((c, i) => (
-              <tr key={c.id ?? i} className="border-b border-[#F0F4F8] hover:bg-[#FAFCFF]">
-                <td className="px-3 py-2.5 text-[var(--tx-1)]">{c.description ?? '–'}</td>
-                <td className="px-3 py-2.5 text-[var(--tx-3)]">{c.charge_type ?? '–'}</td>
-                <td className="px-3 py-2.5 text-right font-mono font-semibold text-[var(--tx-1)]">
-                  {fmtAmount(c.amount, c.currency)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot className="border-t-2 border-[var(--bd-def)] bg-[var(--bg-sink)] font-bold">
-            <tr>
-              <td className="px-3 py-2.5 text-[13px] text-[var(--tx-1)]" colSpan={2}>Total</td>
-              <td className="px-3 py-2.5 text-right font-mono text-primary">
-                {total.toLocaleString('fr-FR')} XOF
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function ImmobilisationsSection({ detail }: { detail: ShipmentDetail }) {
-  const items = detail.immobilizations ?? [];
-  if (items.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-[var(--tx-3)] gap-2">
-        <FolderOpenIcon size={24} className="opacity-40" />
-        <span className="text-[13px]">Aucune immobilisation enregistrée</span>
-      </div>
-    );
-  }
-  return (
-    <div className="space-y-3">
-      {items.map((item, i) => (
-        <div
-          key={item.id ?? i}
-          className="bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-xl p-4"
-        >
-          <div className="flex items-start justify-between">
-            <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-semibold text-[var(--tx-1)]">
-                {item.reason ?? `Immobilisation ${i + 1}`}
-              </div>
-              <div className="text-[11px] text-[var(--tx-3)] mt-1">
-                {fmtDate(item.start_date)} – {item.end_date ? fmtDate(item.end_date) : 'En cours'}
-              </div>
-            </div>
-            <div className="text-right flex-shrink-0 ml-3">
-              {item.days != null && (
-                <div className="text-[15px] font-bold text-[#D97706]">{item.days}j</div>
-              )}
-              {item.total_cost != null && (
-                <div className="text-[11px] font-mono text-[var(--tx-1)]">
-                  {fmtAmount(item.total_cost)}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function WorkflowSection({ detail }: { detail: ShipmentDetail }) {
-  const steps = detail.workflow ?? [];
-  if (steps.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-[var(--tx-3)] gap-2">
-        <FolderOpenIcon size={24} className="opacity-40" />
-        <span className="text-[13px]">Aucune étape de workflow</span>
-      </div>
-    );
-  }
-  return (
-    <div className="space-y-2">
-      {steps.map((step, i) => (
-        <div
-          key={i}
-          className={cn(
-            'flex items-center gap-3 p-3 rounded-xl border',
-            step.status === 'done' ? 'bg-[#ECFDF5] border-[rgba(16,185,129,.2)]' :
-              step.status === 'current' ? 'bg-[#EBF5FD] border-[rgba(14,134,232,.2)]' :
-                'bg-[var(--bg-sink)] border-[var(--bd-def)]',
-          )}
-        >
-          <div className={cn(
-            'w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0',
-            step.status === 'done' ? 'bg-[#10B981]' :
-              step.status === 'current' ? 'bg-[#0E86E8]' :
-                'bg-[#D1D5DB]',
-          )}>
-            {step.status === 'done' ? (
-              <CheckIcon size={12} weight="bold" className="text-white" />
-            ) : (
-              <span className="text-[10px] font-bold text-white">{i + 1}</span>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className={cn(
-              'text-[13px] font-semibold',
-              step.status === 'done' ? 'text-[#059669]' :
-                step.status === 'current' ? 'text-[#085499]' :
-                  'text-[var(--tx-2)]',
-            )}>
-              {step.label ?? step.step}
-            </div>
-            {step.date && (
-              <div className="text-[11px] text-[var(--tx-3)]">{fmtDate(step.date)}</div>
-            )}
-          </div>
-          <span className={cn(
-            'text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0',
-            step.status === 'done' ? 'bg-[#DCFCE7] text-[#059669]' :
-              step.status === 'current' ? 'bg-[#EBF5FD] text-[#085499]' :
-                'bg-[var(--bg-sink)] text-[var(--tx-3)]',
-          )}>
-            {step.status === 'done' ? 'Terminé' : step.status === 'current' ? 'En cours' : 'En attente'}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 /* ── Main component ────────────────────────────────────────────────────────── */
 
 export function TransportShipmentsSection() {
@@ -320,7 +76,7 @@ export function TransportShipmentsSection() {
   const [search, setSearch] = useState('');
   const [stateFilter, setStateFilter] = useState<StateFilter>('all');
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [detail, setDetail] = useState<ShipmentDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [drawerTab, setDrawerTab] = useState<DrawerTab>('apercu');
@@ -375,7 +131,7 @@ export function TransportShipmentsSection() {
     (async () => {
       setDetailLoading(true);
       const res = await GetData<ShipmentDetail>({
-        url: ApiRoutes.TRANSPORT_SHIPMENT(selectedId),
+        url: ApiRoutes.TRANSPORT_SHIPMENT(String(selectedId)),
         protected: true,
       });
       if (cancelled) return;
@@ -392,10 +148,10 @@ export function TransportShipmentsSection() {
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(s =>
-        s.reference.toLowerCase().includes(q) ||
-        (s.partner_name ?? '').toLowerCase().includes(q) ||
-        (s.origin ?? '').toLowerCase().includes(q) ||
-        (s.destination ?? '').toLowerCase().includes(q),
+        s.name.toLowerCase().includes(q) ||
+        (s.partner ?? '').toLowerCase().includes(q) ||
+        (s.origin_location ?? '').toLowerCase().includes(q) ||
+        (s.destination_location ?? '').toLowerCase().includes(q),
       );
     }
     return list;
@@ -403,55 +159,90 @@ export function TransportShipmentsSection() {
 
   /* ── KPI values ── */
   const kpi = useMemo(() => ({
-    total: dashboard?.total_shipments ?? shipments.length,
-    inTransit: dashboard?.in_transit ?? shipments.filter(s => s.state === 'in_transit').length,
-    delivered: dashboard?.delivered ?? shipments.filter(s => s.state === 'delivered').length,
-    cancelled: dashboard?.cancelled ?? shipments.filter(s => s.state === 'cancelled').length,
+    totalShipments: dashboard?.total_shipments ?? shipments.length,
+    totalVoyages:   dashboard?.total_voyages ?? 0,
+    totalRevenue:   dashboard?.total_revenue ?? null,
+    totalMargin:    dashboard?.total_margin  ?? null,
+    totalCharges:   dashboard?.total_charges ?? null,
+    currency: (shipments[0]?.currency ?? 'XOF'),
+    byMode: dashboard?.by_mode ?? [],
   }), [dashboard, shipments]);
 
   /* ── Render ── */
   return (
     <>
       {/* KPI row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
         <KpiCard
           icon={<FolderOpenIcon size={16} className="text-[#0E86E8] bg-white" />}
-          label="Total envois"
-          value={loading ? '–' : String(kpi.total)}
+          label="Envois"
+          value={loading ? '–' : String(kpi.totalShipments)}
           labelPosition="above"
           accentStyle="linear-gradient(135deg,#0E86E8,#6B35C9)"
-          trendValue="Tous statuts confondus"
+          trendValue="Expéditions totales"
           trend="neutral"
         />
         <KpiCard
           icon={<ArrowRightIcon size={16} className="text-[#D97706] bg-white" />}
-          label="En transit"
-          value={loading ? '–' : String(kpi.inTransit)}
+          label="Voyages"
+          value={loading ? '–' : String(kpi.totalVoyages)}
           labelPosition="above"
           accentStyle="linear-gradient(135deg,#F59E0B,#D97706)"
-          trendValue="En cours d'acheminement"
+          trendValue="Trajets effectués"
           trend="neutral"
         />
         <KpiCard
           icon={<CheckIcon size={16} className="text-[#059669] bg-white" />}
-          label="Livrés"
-          value={loading ? '–' : String(kpi.delivered)}
+          label="Chiffre d'affaires"
+          value={loading ? '–' : kpi.totalRevenue != null ? kpi.totalRevenue.toLocaleString('fr-FR') : '–'}
           labelPosition="above"
           accentStyle="linear-gradient(135deg,#10B981,#059669)"
-          trendValue="Envois finalisés"
+          trendValue={kpi.currency}
           trend="up"
         />
         <KpiCard
-          icon={<WarningIcon size={16} className="text-[#EF4444] bg-white" />}
-          label="Annulés"
-          value={loading ? '–' : String(kpi.cancelled)}
+          icon={<WarningIcon size={16} className="text-[#6B35C9] bg-white" />}
+          label="Marge"
+          value={loading ? '–' : kpi.totalMargin != null ? kpi.totalMargin.toLocaleString('fr-FR') : '–'}
           labelPosition="above"
-          accentStyle="linear-gradient(135deg,#EF4444,#DC2626)"
-          trendValue={kpi.cancelled > 0 ? `${kpi.cancelled} envoi(s) annulé(s)` : 'Aucun annulé'}
-          trend={kpi.cancelled > 0 ? 'down' : 'neutral'}
-          styleValue={kpi.cancelled > 0 ? 'text-[#DC2626]' : undefined}
+          accentStyle="linear-gradient(135deg,#6B35C9,#A01D65)"
+          trendValue={kpi.totalRevenue && kpi.totalMargin != null
+            ? `${((kpi.totalMargin / kpi.totalRevenue) * 100).toFixed(1)}% de marge`
+            : kpi.currency}
+          trend={kpi.totalMargin != null && kpi.totalMargin >= 0 ? 'up' : 'down'}
         />
       </div>
+
+      {/* By-mode breakdown */}
+      {!loading && kpi.byMode.length > 0 && (
+        <div className="flex items-center gap-2 mb-5 flex-wrap">
+          {kpi.byMode.map(m => {
+            const modeCfg = SHIPMENT_MODE_CONFIG[m.transport_mode];
+            return (
+              <div
+                key={m.transport_mode}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[var(--bd-def)] bg-white text-[11px]"
+              >
+                <span
+                  className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-semibold"
+                  style={modeCfg ? { background: modeCfg.bg, color: modeCfg.color } : { background: '#F3F4F6', color: '#374151' }}
+                >
+                  {modeCfg?.label ?? m.transport_mode}
+                </span>
+                <span className="text-[var(--tx-2)] font-medium">
+                  {m.shipment_count} envoi{m.shipment_count > 1 ? 's' : ''}
+                  {m.voyage_count != null && ` · ${m.voyage_count} voyage${m.voyage_count > 1 ? 's' : ''}`}
+                </span>
+                {m.revenue != null && (
+                  <span className="text-[var(--tx-3)]">
+                    · {m.revenue.toLocaleString('fr-FR')}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Filter bar */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
@@ -541,13 +332,13 @@ export function TransportShipmentsSection() {
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-[var(--bg-sink)] border-b-2 border-[var(--bd-def)]">
-                  {['Référence', 'Partenaire', 'Trajet', 'Mode', 'Statut', 'Dates', ''].map((h, i) => (
+                  {['Référence', 'Partenaire', 'Trajet', 'Mode', 'Statut', 'Période', 'CA / Marge', ''].map((h, i) => (
                     <th
                       key={i}
                       className={cn(
                         'px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[.06em] text-[var(--tx-3)] whitespace-nowrap',
                         i === 0 && 'pl-5',
-                        i === 6 && 'pr-4 text-right',
+                        i === 7 && 'pr-4 text-right',
                       )}
                     >
                       {h}
@@ -559,6 +350,9 @@ export function TransportShipmentsSection() {
                 {filtered.map(s => {
                   const stCfg = s.state ? SHIPMENT_STATE_CONFIG[s.state] : null;
                   const modCfg = s.transport_mode ? SHIPMENT_MODE_CONFIG[s.transport_mode] : null;
+                  const marginPct = s.revenue && s.margin != null
+                    ? ((s.margin / s.revenue) * 100).toFixed(0)
+                    : null;
                   return (
                     <tr
                       key={s.id}
@@ -568,23 +362,26 @@ export function TransportShipmentsSection() {
                       {/* Référence */}
                       <td className="pl-5 pr-3 py-3.5 align-middle">
                         <span className="font-mono text-[12px] font-semibold text-[#085499]">
-                          {s.reference}
+                          {s.name}
                         </span>
                       </td>
 
                       {/* Partenaire */}
                       <td className="px-3 py-3.5 align-middle">
-                        <span className="text-[13px] font-semibold text-[var(--tx-1)]">
-                          {s.partner_name ?? '–'}
-                        </span>
+                        <div className="text-[13px] font-semibold text-[var(--tx-1)] leading-tight">
+                          {s.partner ?? '–'}
+                        </div>
+                        {s.company && (
+                          <div className="text-[11px] text-[var(--tx-3)] mt-0.5">{s.company}</div>
+                        )}
                       </td>
 
                       {/* Trajet */}
-                      <td className="px-3 py-3.5 align-middle">
-                        <div className="text-[13px] text-[var(--tx-1)] flex items-center gap-1">
-                          <span className="max-w-[90px] truncate">{s.origin ?? '–'}</span>
-                          <ArrowRightIcon size={11} className="text-[var(--tx-3)] flex-shrink-0" />
-                          <span className="max-w-[90px] truncate">{s.destination ?? '–'}</span>
+                      <td className="px-3 py-3.5 align-middle max-w-[200px]">
+                        <div className="text-[12px] text-[var(--tx-1)] flex items-start gap-1">
+                          <span className="truncate">{s.origin_location ?? '–'}</span>
+                          <ArrowRightIcon size={11} className="text-[var(--tx-3)] flex-shrink-0 mt-0.5" />
+                          <span className="truncate">{s.destination_location ?? '–'}</span>
                         </div>
                       </td>
 
@@ -620,17 +417,37 @@ export function TransportShipmentsSection() {
                         )}
                       </td>
 
-                      {/* Dates */}
+                      {/* Période */}
                       <td className="px-3 py-3.5 align-middle">
-                        <div className="text-[11px] text-[var(--tx-3)]">
-                          {s.date_from ? fmtDate(s.date_from) : '–'}
-                          {s.date_to && (
+                        <div className="text-[11px] text-[var(--tx-3)] whitespace-nowrap">
+                          {s.date_start ? fmtDate(s.date_start) : '–'}
+                          {s.date_end && (
                             <>
                               <span className="mx-1 text-[var(--bd-def)]">→</span>
-                              {fmtDate(s.date_to)}
+                              {fmtDate(s.date_end)}
                             </>
                           )}
                         </div>
+                      </td>
+
+                      {/* CA / Marge */}
+                      <td className="px-3 py-3.5 align-middle">
+                        {s.revenue != null ? (
+                          <div>
+                            <div className="font-mono text-[12px] font-semibold text-[var(--tx-1)] whitespace-nowrap">
+                              {s.revenue.toLocaleString('fr-FR')}
+                              <span className="text-[var(--tx-3)] font-normal ml-0.5 text-[10px]">{s.currency ?? 'XOF'}</span>
+                            </div>
+                            {s.margin != null && (
+                              <div className={`text-[10px] font-semibold mt-0.5 whitespace-nowrap ${s.margin >= 0 ? 'text-[#059669]' : 'text-[#DC2626]'}`}>
+                                {s.margin >= 0 ? '+' : ''}{s.margin.toLocaleString('fr-FR')}
+                                {marginPct && <span className="ml-1 opacity-70">({marginPct}%)</span>}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-[12px] text-[var(--tx-3)]">–</span>
+                        )}
                       </td>
 
                       {/* Action */}
@@ -652,17 +469,9 @@ export function TransportShipmentsSection() {
         )}
       </div>
 
-      {/* Footer */}
-      {!loading && !error && (
-        <div className="mt-6 pt-4 border-t border-[var(--bd-def)] flex items-center justify-between text-[11px] text-[var(--tx-3)]">
-          <span>W-02 · Envois transport · {filtered.length} résultat{filtered.length !== 1 ? 's' : ''}</span>
-          <span>PortaLis MVP V1.0 · INOV Consulting · INOV–PGH–PC–2026</span>
-        </div>
-      )}
-
       {/* ── Shipment detail drawer ── */}
       {selectedId && (
-        <div className="fixed inset-0 z-50 flex justify-end">
+        <div className="fixed inset-0 z-50 flex justify-end backdrop-blur-sm">
           <div
             className="absolute inset-0 bg-black/30"
             onClick={() => setSelectedId(null)}
@@ -691,7 +500,7 @@ export function TransportShipmentsSection() {
                 <div className="px-5 py-4 border-b border-[var(--bd-def)] bg-white">
                   <div className="flex items-start justify-between mb-2">
                     <span className="font-mono text-[12px] font-semibold text-[#085499] bg-[#EBF5FD] px-2.5 py-1 rounded-[6px]">
-                      {detail.reference}
+                      {detail.name}
                     </span>
                     <button
                       onClick={() => setSelectedId(null)}
@@ -725,12 +534,14 @@ export function TransportShipmentsSection() {
                         </span>
                       );
                     })()}
-                    {detail.partner_name && (
-                      <span className="text-[12px] font-semibold text-[var(--tx-2)]">{detail.partner_name}</span>
+                    {detail.partner && (
+                      <span className="text-[12px] font-semibold text-[var(--tx-2)]">{detail.partner}</span>
                     )}
-                    {(detail.origin || detail.destination) && (
+                    {(detail.origin_location || detail.destination_location) && (
                       <span className="text-[12px] text-[var(--tx-3)] flex items-center gap-1">
-                        {detail.origin} <ArrowRightIcon size={10} /> {detail.destination}
+                        <span className="max-w-[120px] truncate">{detail.origin_location}</span>
+                        <ArrowRightIcon size={10} className="flex-shrink-0" />
+                        <span className="max-w-[120px] truncate">{detail.destination_location}</span>
                       </span>
                     )}
                   </div>
@@ -775,7 +586,7 @@ export function TransportShipmentsSection() {
                   {drawerTab === 'voyages' && <VoyagesSection detail={detail} />}
                   {drawerTab === 'charges' && <ChargesSection detail={detail} />}
                   {drawerTab === 'immobilisations' && <ImmobilisationsSection detail={detail} />}
-                  {drawerTab === 'workflow' && <WorkflowSection detail={detail} />}
+                  {drawerTab === 'workflow' && <WorkflowSection workflow={detail.workflow} />}
                 </div>
               </>
             )}
