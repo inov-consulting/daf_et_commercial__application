@@ -46,9 +46,14 @@ export const ApiRoutes = {
   PROSPECT_CR_DOWNLOAD: (prospectId: string, crId: string) => `${BASE}/api/v1/commercial/prospects/${prospectId}/compte-rendus/${crId}/download`,
 
   // ── Transport ────────────────────────────────────────────────────
-  TRANSPORT_DOSSIERS:      `${BASE}/api/v1/transport/dossiers`,
-  TRANSPORT_DOSSIER:       (id: string) => `${BASE}/api/v1/transport/dossiers/${id}`,
-  TRANSPORT_DOSSIER_CLOSE: (id: string) => `${BASE}/api/v1/transport/dossiers/${id}/close`,
+  TRANSPORT_DOSSIERS:           `${BASE}/api/v1/transport/dossiers`,
+  TRANSPORT_DOSSIER:            (id: string) => `${BASE}/api/v1/transport/dossiers/${id}`,
+  TRANSPORT_DOSSIER_CLOSE:      (id: string) => `${BASE}/api/v1/transport/dossiers/${id}/close`,
+  TRANSPORT_DASHBOARD:          `${BASE}/api/v1/transport/dashboard`,
+  TRANSPORT_SHIPMENTS:          `${BASE}/api/v1/transport/shipments`,
+  TRANSPORT_SHIPMENT:           (id: string) => `${BASE}/api/v1/transport/shipments/${id}`,
+  TRANSPORT_SHIPMENT_VOYAGES:   (id: string) => `${BASE}/api/v1/transport/shipments/${id}/voyages`,
+  TRANSPORT_VOYAGE:             (id: string) => `${BASE}/api/v1/transport/voyages/${id}`,
 
   // ── Comptes-rendus (global) ──────────────────────────────────────────
   COMPTE_RENDUS:       `${BASE}/api/v1/compte-rendus`,

@@ -5,8 +5,9 @@ import { useRouter, useParams } from 'next/navigation';
 import {
   MicrophoneIcon, MagnifyingGlassIcon, DownloadSimpleIcon,
   ClockIcon, FileTextIcon, WarningIcon,
-  CircleNotchIcon,ShareNetworkIcon, CheckIcon, 
+  CircleNotchIcon, ShareNetworkIcon, CheckIcon,
   WhatsappLogoIcon, LinkIcon,
+  XIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { GetData } from '@/lib/ApiService';
@@ -41,10 +42,10 @@ const FALLBACK_STATUS = { label: '–', bg: '#F3F4F6', text: '#374151', border: 
 type TabKey = 'tous' | 'draft' | 'processing' | 'final';
 
 const TABS: { key: TabKey; label: string }[] = [
-  { key: 'tous',       label: 'Tous' },
-  { key: 'draft',      label: 'Brouillons' },
+  { key: 'tous', label: 'Tous' },
+  { key: 'draft', label: 'Brouillons' },
   { key: 'processing', label: 'En cours' },
-  { key: 'final',      label: 'Finalisés' },
+  { key: 'final', label: 'Finalisés' },
 ];
 
 /* ── Helpers ────────────────────────────────────────────────────── */
@@ -62,7 +63,7 @@ function fmtDate(iso: string) {
 function hashColor(str: string): string {
   let h = 0;
   for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h);
-  const colors = ['#0EA5E9','#8B5CF6','#F59E0B','#EF4444','#10B981','#6366F1','#F97316','#22C55E'];
+  const colors = ['#0EA5E9', '#8B5CF6', '#F59E0B', '#EF4444', '#10B981', '#6366F1', '#F97316', '#22C55E'];
   return colors[Math.abs(h) % colors.length];
 }
 
@@ -83,12 +84,12 @@ export default function ComptesRendusPage() {
   const dispatch = useAppDispatch();
   const { items, total, loading, error, parentType, limit, offset } = useAppSelector(s => s.compteRendus);
 
-  const [activeTab, setActiveTab]   = useState<TabKey>('tous');
-  const [search, setSearch]         = useState('');
+  const [activeTab, setActiveTab] = useState<TabKey>('tous');
+  const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [downloading, setDownloading]  = useState<string | null>(null);
-  const [shareOpenId, setShareOpenId]  = useState<string | null>(null);
-  const [copiedId, setCopiedId]        = useState<string | null>(null);
+  const [downloading, setDownloading] = useState<string | null>(null);
+  const [shareOpenId, setShareOpenId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   /* Ferme le popover de partage au clic extérieur */
   useEffect(() => {
@@ -184,15 +185,15 @@ export default function ComptesRendusPage() {
     }).length;
     const pending = (counts.draft ?? 0) + (counts.processing ?? 0);
     return [
-      { label: 'Total CRs',   value: loading ? '…' : String(total), sub: 'tous parents' },
-      { label: 'Ce mois',     value: loading ? '…' : String(thisMo), sub: new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) },
-      { label: 'En attente',  value: loading ? '…' : String(pending), sub: 'brouillons + en cours' },
-      { label: 'Finalisés',   value: loading ? '…' : String(counts.final ?? 0), sub: 'prêts à envoyer' },
+      { label: 'Total CRs', value: loading ? '…' : String(total), sub: 'tous parents' },
+      { label: 'Ce mois', value: loading ? '…' : String(thisMo), sub: new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) },
+      { label: 'En attente', value: loading ? '…' : String(pending), sub: 'brouillons + en cours' },
+      { label: 'Finalisés', value: loading ? '…' : String(counts.final ?? 0), sub: 'prêts à envoyer' },
     ];
   }, [items, total, loading, counts]);
 
   /* Pagination */
-  const totalPages  = Math.max(1, Math.ceil(total / limit));
+  const totalPages = Math.max(1, Math.ceil(total / limit));
   const currentPage = Math.floor(offset / limit) + 1;
 
   const handleClose = useCallback(() => setSelectedId(null), []);
@@ -284,6 +285,15 @@ export default function ComptesRendusPage() {
                 'transition-colors w-44',
               )}
             />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-[var(--tx-3)] hover:text-[var(--tx-1)] hover:bg-[var(--bg-sink)] transition-colors"
+                title="Effacer la recherche"
+              >
+                <XIcon size={11} weight="bold" />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -320,7 +330,7 @@ export default function ComptesRendusPage() {
           </div>
         ) : (
           filtered.map((cr, idx) => {
-            const s    = STATUS_CFG[cr.status] ?? FALLBACK_STATUS;
+            const s = STATUS_CFG[cr.status] ?? FALLBACK_STATUS;
             const name = displayName(cr);
             return (
               <div
