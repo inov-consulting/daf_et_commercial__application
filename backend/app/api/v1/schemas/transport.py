@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -38,6 +38,7 @@ class ChargeOut(BaseModel):
     porteur: str | None
     state: str | None
     date: date | None
+    source: str | None
 
     @classmethod
     def from_odoo(cls, r: dict) -> "ChargeOut":
@@ -48,29 +49,56 @@ class ChargeOut(BaseModel):
             amount=r.get("amount"),
             porteur=r.get("porteur"),
             state=r.get("state"),
-            date=r.get("date") or None,
+            date=r.get("date_charge") or None,
+            source=r.get("source"),
         )
 
 
 class ImmobilizationOut(BaseModel):
     id: int
     name: str | None
-    type: str | None
-    start_date: date | None
-    end_date: date | None
+    immob_type: str | None
+    start_date: datetime | None
+    end_date: datetime | None
     duration_hours: float | None
     state: str | None
+    location: str | None
+    cause_description: str | None
 
     @classmethod
     def from_odoo(cls, r: dict) -> "ImmobilizationOut":
         return cls(
             id=r["id"],
             name=r.get("name") or None,
-            type=r.get("type"),
-            start_date=r.get("start_date") or None,
-            end_date=r.get("end_date") or None,
+            immob_type=r.get("immob_type"),
+            start_date=r.get("date_start") or None,
+            end_date=r.get("date_end") or None,
             duration_hours=r.get("duration_hours"),
             state=r.get("state"),
+            location=r.get("location") or None,
+            cause_description=r.get("cause_description") or None,
+        )
+
+
+class WorkflowHistoryOut(BaseModel):
+    id: int
+    step: str | None
+    date_entered: datetime | None
+    date_exited: datetime | None
+    duration_hours: float | None
+    user: str | None
+    note: str | None
+
+    @classmethod
+    def from_odoo(cls, r: dict) -> "WorkflowHistoryOut":
+        return cls(
+            id=r["id"],
+            step=_m2o_name(r.get("step_id")),
+            date_entered=r.get("date_entered") or None,
+            date_exited=r.get("date_exited") or None,
+            duration_hours=r.get("duration_hours"),
+            user=_m2o_name(r.get("user_id")),
+            note=r.get("note") or None,
         )
 
 
@@ -79,6 +107,7 @@ class WorkflowStepOut(BaseModel):
     template: str | None
     current_step: str | None
     state: str | None
+    history: list[WorkflowHistoryOut] = []
 
 
 # ── Voyage ────────────────────────────────────────────────────────────────────
@@ -96,8 +125,8 @@ class VoyageListItem(BaseModel):
     vehicle_subtype: str | None
     origin_location: str | None
     destination_location: str | None
-    date_departure: date | None
-    date_arrival_dest: date | None
+    date_departure: datetime | None
+    date_arrival_dest: datetime | None
     actual_qty_weighed: float | None
     distance_km: float | None
     fuel_allowance: float | None
