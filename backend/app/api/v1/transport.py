@@ -24,6 +24,7 @@ from app.api.v1.schemas.transport import (
     VoyageListItem,
     VoyageListOut,
     WorkflowHistoryOut,
+    WorkflowStepItemOut,
     WorkflowStepOut,
 )
 from app.core.logging import get_logger
@@ -71,6 +72,8 @@ WORKFLOW_FIELDS = [
 WORKFLOW_HISTORY_FIELDS = [
     "id", "instance_id", "step_id", "date_entered", "date_exited", "duration_hours", "user_id", "note",
 ]
+
+WORKFLOW_STEP_FIELDS = ["id", "name", "code", "sequence", "template_id"]
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -193,17 +196,36 @@ async def get_shipment(shipment_id: int) -> ShipmentDetail:
         )
         if wf_records:
             wf = wf_records[0]  # type: ignore[index]
-            history_records = await _safe_read(
-                client,
-                "transport.workflow.history",
-                WORKFLOW_HISTORY_FIELDS,
-                [("instance_id", "=", wf.get("id"))],
+            template_raw = wf.get("template_id")
+            template_id_val: int | None = template_raw[0] if isinstance(template_raw, list) else None
+            current_step_raw = wf.get("current_step_id")
+            current_step_id_val: int | None = current_step_raw[0] if isinstance(current_step_raw, list) else None
+
+            history_records, step_records = await asyncio.gather(
+                _safe_read(
+                    client,
+                    "transport.workflow.history",
+                    WORKFLOW_HISTORY_FIELDS,
+                    [("instance_id", "=", wf.get("id"))],
+                ),
+                _safe_read(
+                    client,
+                    "transport.workflow.step",
+                    WORKFLOW_STEP_FIELDS,
+                    [("template_id", "=", template_id_val)] if template_id_val else [],
+                ),
             )
+            step_records_sorted = sorted(step_records, key=lambda s: (s.get("sequence") or 0))
             workflow_out = WorkflowStepOut(
                 instance_id=wf.get("id"),
-                template=wf["template_id"][1] if isinstance(wf.get("template_id"), list) else None,
-                current_step=wf["current_step_id"][1] if isinstance(wf.get("current_step_id"), list) else None,
+                template=template_raw[1] if isinstance(template_raw, list) else None,
+                current_step=current_step_raw[1] if isinstance(current_step_raw, list) else None,
+                current_step_id=current_step_id_val,
                 state=wf.get("state"),
+                steps=[
+                    WorkflowStepItemOut.from_odoo(s, current_step_id=current_step_id_val)
+                    for s in step_records_sorted
+                ],
                 history=[WorkflowHistoryOut.from_odoo(h) for h in history_records],
             )
 
