@@ -208,7 +208,7 @@ export default function ProspectsPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-5 gap-3 sm:gap-4">
         <div className="min-w-0 flex-1">
           <h1 className="font-display text-xl sm:text-2xl md:text-[26px] font-bold text-foreground tracking-tight leading-tight truncate">
-            Prospects
+            Prospections
           </h1>
         </div>
 
