@@ -58,13 +58,13 @@ function buildNav(locale: string): NavSection[] {
       items: [
         { href: `/${locale}/page/documents`, label: 'Documents', Icon: FilesIcon },
         { href: `/${locale}/page/comptes-rendus`, label: 'Comptes-rendus', Icon: FileTextIcon },
-        { href: `/${locale}/page/offres`, label: 'Offres', Icon: DiamondIcon },
       ],
-    },
+    }, 
     {
       title: 'TRANSPORT',
       items: [
         { href: `/${locale}/page/transport`, label: 'Envois & voyages', Icon: FolderOpenIcon },
+        { href: `/${locale}/page/offres`, label: 'Offres', Icon: DiamondIcon },
       ],
     },
     {
