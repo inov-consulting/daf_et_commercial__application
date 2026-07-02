@@ -62,9 +62,10 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Stocke les rôles du token pour les dépendances d'autorisation
+    # Stocke les rôles et le payload complet (groupes, claims) pour les dépendances
     roles = set(kc.extract_roles(payload))
     request.state.keycloak_roles = roles
+    request.state.keycloak_payload = payload
 
     # Identité depuis le token (source de vérité = Keycloak)
     keycloak_sub = kc.extract_sub(payload)

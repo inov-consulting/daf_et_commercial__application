@@ -41,6 +41,7 @@ _PERMISSIONS: dict[Role, frozenset[str]] = {
         "meeting_report:create", "meeting_report:read_own",
         "offer:create_draft", "offer:read_own",
         "opportunity:read_own",
+        "kpi:read_transport",
     }),
     Role.MANAGER_PAYS: frozenset({
         "prospect:read_country", "prospect:update_country",
@@ -48,6 +49,7 @@ _PERMISSIONS: dict[Role, frozenset[str]] = {
         "offer:validate", "offer:read_country",
         "opportunity:read_country", "opportunity:update_country",
         "user:read_country",
+        "kpi:read_finance", "kpi:read_transport",
     }),
     Role.DIRECTION: frozenset({
         "prospect:read_all",
@@ -65,6 +67,7 @@ _PERMISSIONS: dict[Role, frozenset[str]] = {
         _PERM_INVOICE_READ_ALL,
         "treasury:read_all",
         _PERM_REPORT_READ_ALL,
+        "kpi:read_finance", "kpi:read_transport",
     }),
     Role.ADMIN_INOV: frozenset({
         "user:create", "user:read", "user:update", "user:delete",
