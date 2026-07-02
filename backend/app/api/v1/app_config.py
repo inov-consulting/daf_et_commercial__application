@@ -1,15 +1,20 @@
 """Router API : configuration applicative Portalis.
 
 Endpoints :
-  GET  /config/app                    → lire la configuration complète
-  PATCH /config/app/validators        → définir les validateurs métier
-  PATCH /config/app/smtp              → configurer le serveur SMTP
+  GET  /config/app                          → lire la configuration complète
+  PATCH /config/app/validators              → définir les validateurs métier
+  PATCH /config/app/smtp                    → configurer le serveur SMTP
+  GET  /config/app/kpi/groups               → lire les mappings groupe ↔ KPIs
+  PUT  /config/app/kpi/groups/{group_id}    → assigner des KPIs à un groupe
+  DELETE /config/app/kpi/groups/{group_id}  → supprimer le mapping d'un groupe
+  GET  /config/app/kpi/available            → catalogue complet des KPIs disponibles
 """
 from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 
 from app.api.deps import require_permission
 from app.api.v1.schemas.app_config import (
@@ -20,8 +25,10 @@ from app.api.v1.schemas.app_config import (
     ValidatorInfo,
     ValidatorsConfigOut,
 )
+from app.domain.shared import kpi_catalog
 from app.domain.shared.app_config import SmtpConfig, ValidatorsConfig
 from app.infrastructure.db.repositories.app_config import AppConfigRepository
+from app.infrastructure.db.repositories.kpi_group_access import KpiGroupAccessRepository
 
 router = APIRouter(prefix="/config/app", tags=["configuration"])
 
@@ -119,3 +126,93 @@ async def update_smtp(body: AppConfigSmtpIn) -> AppConfigOut:
         )
     )
     return await _to_out(config)
+
+
+# ── Configuration KPI : mapping groupe ↔ KPIs ─────────────────────────────────
+
+
+class GroupKpiAccessIn(BaseModel):
+    group_name: str = Field(description="Nom lisible du groupe (pour affichage)")
+    kpi_keys: list[str] = Field(description="Liste des clés KPI autorisées pour ce groupe")
+
+
+class GroupKpiAccessOut(BaseModel):
+    group_id: str
+    group_name: str
+    kpi_keys: list[str]
+
+
+class KpiAvailableOut(BaseModel):
+    key: str
+    label: str
+    category: str
+    description: str | None = None
+    unit: str | None = None
+
+
+@router.get("/kpi/available", dependencies=_read_deps)
+async def list_available_kpis() -> list[KpiAvailableOut]:
+    """Liste tous les KPIs disponibles dans l'application (catalogue complet).
+
+    Utile pour connaître les clés à assigner aux groupes.
+    """
+    return [
+        KpiAvailableOut(
+            key=k.key,
+            label=k.label,
+            category=k.category,
+            description=k.description,
+            unit=k.unit,
+        )
+        for k in kpi_catalog.get_all()
+    ]
+
+
+@router.get("/kpi/groups", dependencies=_read_deps)
+async def list_group_kpi_access() -> list[GroupKpiAccessOut]:
+    """Liste tous les mappings groupe ↔ KPIs configurés."""
+    repo = KpiGroupAccessRepository()
+    records = await repo.get_all()
+    return [
+        GroupKpiAccessOut(
+            group_id=r.group_id,
+            group_name=r.group_name,
+            kpi_keys=r.kpi_keys or [],
+        )
+        for r in records
+    ]
+
+
+@router.put("/kpi/groups/{group_id}", dependencies=_write_deps)
+async def set_group_kpi_access(group_id: str, body: GroupKpiAccessIn) -> GroupKpiAccessOut:
+    """Assigne une liste de KPIs à un groupe Keycloak.
+
+    - `group_id`   : ID du groupe dans Keycloak
+    - `group_name` : nom lisible (pour affichage)
+    - `kpi_keys`   : clés KPI autorisées (ex: ["ca_mois", "marge_globale"])
+
+    Les clés inconnues sont ignorées silencieusement.
+    """
+    valid_keys = kpi_catalog.get_all_keys()
+    filtered_keys = [k for k in body.kpi_keys if k in valid_keys]
+
+    repo = KpiGroupAccessRepository()
+    record = await repo.set_group_access(
+        group_id=group_id,
+        group_name=body.group_name,
+        kpi_keys=filtered_keys,
+    )
+    return GroupKpiAccessOut(
+        group_id=record.group_id,
+        group_name=record.group_name,
+        kpi_keys=record.kpi_keys or [],
+    )
+
+
+@router.delete("/kpi/groups/{group_id}", dependencies=_write_deps, status_code=204)
+async def delete_group_kpi_access(group_id: str) -> None:
+    """Supprime le mapping KPI d'un groupe."""
+    repo = KpiGroupAccessRepository()
+    deleted = await repo.delete_group_access(group_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Groupe '{group_id}' non configuré.")
