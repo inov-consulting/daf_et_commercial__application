@@ -33,6 +33,7 @@ from app.infrastructure.ai.transport_offer_agent import (
     generate_offer_document,
     run_offer_chat,
 )
+from app.infrastructure.db.repositories.app_config import AppConfigRepository
 from app.infrastructure.db.repositories.transport_offer import TransportOfferRepository
 
 logger = get_logger(__name__)
@@ -97,7 +98,10 @@ async def offer_chat(
 # ── Génération du document ────────────────────────────────────────────────────
 
 @router.post("/{offer_id}/generate", dependencies=_write_deps)
-async def generate_document(offer_id: UUID) -> OfferDocumentOut:
+async def generate_document(
+    offer_id: UUID,
+    current_user=Depends(get_current_user),
+) -> OfferDocumentOut:
     """Génère le document d'offre officiel via Claude.
 
     À appeler après que l'agent a confirmé avoir collecté toutes les informations.
@@ -134,18 +138,44 @@ async def generate_document(offer_id: UUID) -> OfferDocumentOut:
     markdown = json.dumps(doc, ensure_ascii=False, indent=2)
     offer = await repo.set_document(offer_id, markdown)
 
-    return _doc_to_out(offer_id, offer.status if offer else "generated", doc)  # type: ignore[union-attr]
+    # Notifier le validateur désigné — les warnings sont remontés dans la réponse
+    from app.services.notification_email import notify_offer_generated
+    notif_warnings = await notify_offer_generated(
+        offer_id=offer_id,
+        offer_title=doc.get("title"),
+        author_name=current_user.display_name,
+    )
+
+    out = _doc_to_out(offer_id, offer.status if offer else "generated", doc)  # type: ignore[union-attr]
+    out.warnings = notif_warnings
+    return out
 
 
 # ── Validation (côté Portalis uniquement) ────────────────────────────────────
 
 @router.post("/{offer_id}/validate", dependencies=_write_deps)
-async def validate_offer(offer_id: UUID) -> OfferSummaryOut:
+async def validate_offer(
+    offer_id: UUID,
+    current_user=Depends(get_current_user),
+) -> OfferSummaryOut:
     """Valide l'offre côté Portalis (statut generated → validated).
 
-    Ne crée rien dans Odoo. Appeler `send-to-odoo` ensuite pour créer le dossier.
+    Ne crée rien dans Odoo. Appeler `confirm` ensuite pour créer le dossier.
     Prérequis : l'offre doit être au statut `generated`.
+    Si un validateur est configuré dans AppConfig, seul cet utilisateur peut valider.
     """
+    # Vérifier si un validateur est explicitement désigné dans la configuration
+    app_cfg = await AppConfigRepository().get()
+    designated = app_cfg.validators.offer_validator_user_id
+    if designated and current_user.id != designated:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "NOT_DESIGNATED_VALIDATOR",
+                "message": "Un validateur désigné est configuré. Seul cet utilisateur peut valider les offres.",
+            },
+        )
+
     repo = TransportOfferRepository()
     offer = await repo.get(offer_id)
     if offer is None:
@@ -190,6 +220,10 @@ async def send_offer_to_odoo(offer_id: UUID) -> OfferConfirmOut:
         doc = json.loads(offer.document_markdown or "{}")
     except json.JSONDecodeError:
         doc = {}
+
+    # Injecter collected_data (marchandise, etc.) dans doc pour la création Odoo
+    if offer.collected_data:
+        doc["collected_data"] = offer.collected_data
 
     try:
         odoo_id, odoo_name = await create_odoo_shipment_from_offer(doc)
@@ -246,6 +280,7 @@ async def list_offers(
             id=o.id,
             session_id=o.session_id,
             status=o.status,
+            **_extract_doc_summary(o.document_markdown),
             odoo_shipment_id=o.odoo_shipment_id,
             odoo_shipment_name=o.odoo_shipment_name,
             created_at=o.created_at,
@@ -266,6 +301,7 @@ async def cancel_offer(offer_id: UUID) -> OfferSummaryOut:
         id=offer.id,
         session_id=offer.session_id,
         status=offer.status,
+        **_extract_doc_summary(offer.document_markdown),
         odoo_shipment_id=offer.odoo_shipment_id,
         odoo_shipment_name=offer.odoo_shipment_name,
         created_at=offer.created_at,
@@ -274,6 +310,22 @@ async def cancel_offer(offer_id: UUID) -> OfferSummaryOut:
 
 
 # ── Helper ────────────────────────────────────────────────────────────────────
+
+def _extract_doc_summary(document_markdown: str | None) -> dict:
+    """Extrait title, reference, date, validity_days du document JSON sérialisé."""
+    import json
+    if not document_markdown:
+        return {}
+    try:
+        doc = json.loads(document_markdown)
+        return {
+            k: doc[k]
+            for k in ("title", "reference", "date", "validity_days")
+            if doc.get(k) is not None
+        }
+    except (json.JSONDecodeError, AttributeError):
+        return {}
+
 
 def _doc_to_out(
     offer_id: UUID,

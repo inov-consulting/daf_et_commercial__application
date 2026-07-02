@@ -66,6 +66,10 @@ class OfferDocumentOut(BaseModel):
     footer: str | None = None
     document_generated_at: datetime | None = None
     parse_error: bool = False
+    warnings: list[str] = Field(
+        default_factory=list,
+        description="Avertissements non bloquants (ex: email de notification non envoyé)",
+    )
 
 
 class OfferConfirmOut(BaseModel):
@@ -80,6 +84,10 @@ class OfferSummaryOut(BaseModel):
     id: UUID
     session_id: UUID
     status: str
+    title: str | None = None
+    reference: str | None = None
+    date: str | None = None
+    validity_days: int | None = None
     odoo_shipment_id: int | None
     odoo_shipment_name: str | None
     created_at: datetime | None

@@ -354,6 +354,10 @@ class CompteRenduOut(BaseModel):
     note_ids: list[str] | None
     created_at: datetime
     created_by: UUID | None
+    warnings: list[str] = Field(
+        default_factory=list,
+        description="Avertissements non bloquants (ex: email de notification non envoyé)",
+    )
 
 
 class CompteRenduListOut(BaseModel):
