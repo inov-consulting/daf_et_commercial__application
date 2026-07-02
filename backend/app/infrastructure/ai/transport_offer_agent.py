@@ -12,11 +12,11 @@ import json
 import logging
 from uuid import UUID, uuid4
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
 
-from app.infrastructure.ai.agent import _get_all_tools, _get_llm
+from app.infrastructure.ai.agent import _get_llm
 from app.infrastructure.db.repositories.ai_config import AiConfigRepository
 
 logger = logging.getLogger(__name__)
@@ -264,8 +264,83 @@ async def generate_offer_document(collected_data: dict) -> dict:
         return {"raw": content, "parse_error": True}
 
 
+async def _resolve_partner_id(client_name: str, known_id: int | None) -> int:
+    """Résout le partner_id Odoo depuis le nom du client via XML-RPC.
+
+    Raises:
+        RuntimeError: si aucun partenaire trouvé
+    """
+    import asyncio
+    from app.infrastructure.odoo.client import OdooClient
+
+    if known_id:
+        return known_id
+
+    odoo = OdooClient()
+    records = await asyncio.to_thread(
+        odoo.execute,
+        "res.partner",
+        "search_read",
+        [[("name", "ilike", client_name), ("is_company", "=", True)]],
+        {"fields": ["id", "name"], "limit": 5},
+    )
+    if not records:
+        # Essayer sans le filtre is_company
+        records = await asyncio.to_thread(
+            odoo.execute,
+            "res.partner",
+            "search_read",
+            [[("name", "ilike", client_name)]],
+            {"fields": ["id", "name"], "limit": 5},
+        )
+    if not records:
+        raise RuntimeError(
+            f"Client '{client_name}' introuvable dans Odoo. "
+            "Créez d'abord le partenaire dans l'ERP."
+        )
+    partner = records[0]  # type: ignore[index]
+    logger.info("offer.partner_resolved name=%s id=%s", partner["name"], partner["id"])
+    return int(partner["id"])
+
+
+async def _resolve_vehicle_subtype(vehicle_type: str) -> int:
+    """Résout le vehicle_subtype_id depuis le nom du type de véhicule.
+
+    Mapping texte libre → ID Odoo (Benne=1, Citerne=2, Plateau=3).
+    Fallback sur le premier enregistrement disponible.
+    """
+    import asyncio
+    from app.infrastructure.odoo.client import OdooClient
+
+    _SUBTYPE_MAP = {
+        "citerne": 2, "tanker": 2, "tank": 2,
+        "benne": 1, "dumper": 1, "benne basculante": 1,
+        "plateau": 3, "flatbed": 3, "porte-char": 3,
+    }
+    key = vehicle_type.lower().strip()
+    for k, v in _SUBTYPE_MAP.items():
+        if k in key:
+            return v
+
+    # Fallback : premier sous-type disponible dans Odoo
+    odoo = OdooClient()
+    records = await asyncio.to_thread(
+        odoo.execute,
+        "transport.vehicle.subtype",
+        "search_read",
+        [[]],
+        {"fields": ["id", "name"], "limit": 1},
+    )
+    if records:
+        return int(records[0]["id"])  # type: ignore[index]
+    raise RuntimeError("Aucun type de véhicule trouvé dans Odoo.")
+
+
 async def create_odoo_shipment_from_offer(offer_data: dict) -> tuple[int, str]:
     """Crée le dossier transport.shipment dans Odoo via MCP.
+
+    Le partner_id est résolu en Python (XML-RPC) avant l'appel agent
+    pour garantir qu'il est toujours fourni.
 
     Returns:
         (odoo_shipment_id, odoo_shipment_name)
@@ -273,65 +348,95 @@ async def create_odoo_shipment_from_offer(offer_data: dict) -> tuple[int, str]:
     Raises:
         RuntimeError: si la création échoue
     """
-    config_repo = AiConfigRepository()
-    _, model_domain, _ = await config_repo.get()
-    llm = await _get_llm(model_domain.provider, model_domain.name)
-    tools = await _get_all_tools()
-
     route = offer_data.get("route", {})
     client = offer_data.get("client", {})
     pricing = {p["label"]: p["value"] for p in offer_data.get("pricing", [])}
 
-    instruction = f"""Tu dois créer un dossier de transport dans l'ERP en utilisant l'outil odoo__create_record.
+    # Résolution déterministe du partner_id AVANT l'appel agent
+    client_name = client.get("name") or offer_data.get("collected_data", {}).get("client_name", "")
+    if not client_name:
+        raise RuntimeError("Nom du client manquant dans les données de l'offre.")
 
-Voici les informations de l'offre validée :
-- Client : {client.get('name')} (partner_id Odoo : {client.get('odoo_partner_id')})
-- Origine : {route.get('origin')}
-- Destination : {route.get('destination')}
-- Mode de transport : {route.get('transport_mode')}
-- Type de véhicule : {route.get('vehicle_type')}
-- Date prévue : {route.get('planned_date')}
-- Quantité : {pricing.get('Quantité')}
-- Prix unitaire : {pricing.get('Prix unitaire')}
-- Référence offre : {offer_data.get('reference')}
+    partner_id = await _resolve_partner_id(client_name, client.get("odoo_partner_id"))
 
-Étapes :
-1. Si partner_id est null, cherche d'abord le client avec odoo__search_records("res.partner", ...)
-2. Crée le dossier avec odoo__create_record("transport.shipment", {{
-   "partner_id": <id_client>,
-   "origin_location": "<origine>",
-   "destination_location": "<destination>",
-   "transport_mode": "<terrestre|maritime|aerien|multimodal>",
-   "sale_price_unit": <prix_unitaire>,
-   "planned_qty": <quantité>,
-   "date_order": "<date>",
-   "product_description": "<description produit>"
-}})
-3. Retourne EXACTEMENT cette réponse (rien d'autre) :
-ODOO_CREATED:{{id}}:{{name}}
+    # Normaliser transport_mode vers les valeurs exactes acceptées par l'ERP
+    _MODE_MAP = {
+        "terrestre": "terrestre", "road": "terrestre", "route": "terrestre",
+        "maritime": "maritime", "sea": "maritime", "mer": "maritime",
+        "aérien": "aerien", "aerien": "aerien", "aerian": "aerien", "air": "aerien",
+        "multimodal": "multimodal", "multi": "multimodal",
+    }
+    raw_mode = str(route.get("transport_mode", "terrestre")).lower().strip()
+    transport_mode = _MODE_MAP.get(raw_mode, "terrestre")
 
-où {{id}} est l'ID Odoo retourné et {{name}} est la référence (name) du dossier créé."""
+    # Résoudre vehicle_subtype_id (obligatoire pour le mode terrestre)
+    vehicle_subtype_id: int | None = None
+    if transport_mode == "terrestre":
+        vehicle_subtype_id = await _resolve_vehicle_subtype(route.get("vehicle_type") or "")
 
-    agent = create_react_agent(
-        model=llm,
-        tools=tools,
-        prompt="Tu es un assistant qui crée des dossiers dans l'ERP. Suis les instructions exactement.",
+    # Extraire les valeurs numériques brutes du pricing
+    qty = pricing.get("Quantité") or pricing.get("quantity") or 0
+    price = pricing.get("Prix unitaire") or pricing.get("price_unit") or 0
+    try:
+        qty = float(str(qty).replace(" ", "").replace(",", ".").split("/")[0])
+        price = float(str(price).replace(" ", "").replace(",", ".").split("/")[0])
+    except (ValueError, AttributeError):
+        qty = 0.0
+        price = 0.0
+
+    # Normaliser la date au format YYYY-MM-DD attendu par Odoo
+    import re
+    raw_date = str(route.get("planned_date", "")).strip()
+    date_match = re.search(r"(\d{4}-\d{2}-\d{2})", raw_date)
+    date_order = date_match.group(1) if date_match else raw_date
+
+    # Création directe via XML-RPC — pas besoin d'agent pour un simple create
+    import asyncio
+    from app.infrastructure.odoo.client import OdooClient
+
+    values = {
+        "partner_id": partner_id,
+        "origin_location": route.get("origin", ""),
+        "destination_location": route.get("destination", ""),
+        "transport_mode": transport_mode,
+        "date_order": date_order,
+    }
+    if price:
+        values["sale_price_unit"] = price
+    if qty:
+        values["planned_qty"] = qty
+
+    # product_description = marchandise transportée (ce que l'utilisateur a spécifié)
+    collected = offer_data.get("collected_data") or {}
+    goods = (
+        collected.get("product_description")
+        or collected.get("goods_description")
+        or collected.get("merchandise")
+        or collected.get("product")
     )
-    config = {"configurable": {"thread_id": str(uuid4())}}
-    result = await agent.ainvoke({"messages": [("human", instruction)]}, config=config)
+    if goods:
+        values["product_description"] = str(goods)
 
-    messages = result.get("messages", [])
-    response = str(messages[-1].content) if messages else ""
+    # notes = titre de l'offre (référence commerciale) en HTML pour Odoo
+    title = offer_data.get("title") or offer_data.get("reference")
+    if title:
+        values["notes"] = f"<p>{title}</p>"
 
-    # Parser la réponse structurée
-    for line in response.split("\n"):
-        if line.startswith("ODOO_CREATED:"):
-            parts = line.replace("ODOO_CREATED:", "").split(":", 1)
-            if len(parts) == 2:
-                try:
-                    return int(parts[0]), parts[1].strip()
-                except ValueError:
-                    pass
+    if vehicle_subtype_id:
+        values["vehicle_subtype_id"] = vehicle_subtype_id
 
-    logger.error("odoo_shipment.create_failed", response=response[:500])
-    raise RuntimeError(f"Impossible de parser la réponse Odoo : {response[:200]}")
+    odoo = OdooClient()
+    new_id = await asyncio.to_thread(odoo.execute, "transport.shipment", "create", [values])
+    new_id = int(new_id)  # type: ignore[arg-type]
+
+    # Récupérer la référence générée par Odoo
+    records = await asyncio.to_thread(
+        odoo.execute,
+        "transport.shipment",
+        "search_read",
+        [[("id", "=", new_id)]],
+        {"fields": ["id", "name"], "limit": 1},
+    )
+    name = records[0]["name"] if records else str(new_id)  # type: ignore[index]
+    logger.info("odoo_shipment.created id=%s name=%s", new_id, name)
+    return new_id, name

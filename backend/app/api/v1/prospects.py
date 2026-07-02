@@ -732,6 +732,16 @@ async def generate_compte_rendu(
     storage = StorageService()
     download_url = storage.get_url(cr.minio_path, expires_in=3600)
 
+    # Notifier le validateur désigné — les warnings sont remontés dans la réponse
+    from app.services.notification_email import notify_compte_rendu_generated
+    prospect_name = prospect.erp_metadata.get("name") if prospect.erp_metadata else None
+    notif_warnings = await notify_compte_rendu_generated(
+        cr_id=cr.id,
+        prospect_name=prospect_name,
+        author_name=current_user.display_name,
+        download_url=download_url,
+    )
+
     return CompteRenduOut(
         id=cr.id,
         parent_type=cr.parent_type,
@@ -744,6 +754,7 @@ async def generate_compte_rendu(
         note_ids=cr.note_ids,
         created_at=cr.created_at,
         created_by=cr.created_by_id,
+        warnings=notif_warnings,
     )
 
 
