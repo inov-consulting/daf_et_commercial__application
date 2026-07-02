@@ -290,3 +290,20 @@ class DashboardOut(BaseModel):
     total_revenue: float
     total_margin: float
     by_mode: list[DashboardModeStats]
+
+
+# ── Workflow next-step ────────────────────────────────────────────────────────
+
+class NextStepIn(BaseModel):
+    note: str | None = Field(None, description="Note optionnelle pour l'historique du workflow")
+
+
+class NextStepOut(BaseModel):
+    shipment_id: int
+    shipment_name: str
+    previous_step: str | None = Field(None, description="Étape quittée")
+    current_step: str = Field(description="Étape active après la transition")
+    current_step_code: str | None = None
+    next_step: str | None = Field(None, description="Prochaine étape disponible (null si dernière)")
+    next_step_code: str | None = None
+    workflow_state: str = Field(description="État du workflow : running | done | cancelled")
