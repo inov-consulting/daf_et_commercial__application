@@ -386,9 +386,62 @@ async def create_odoo_shipment_from_offer(offer_data: dict) -> tuple[int, str]:
 
     # Normaliser la date au format YYYY-MM-DD attendu par Odoo
     import re
+    from datetime import date as _date, timedelta
     raw_date = str(route.get("planned_date", "")).strip()
-    date_match = re.search(r"(\d{4}-\d{2}-\d{2})", raw_date)
-    date_order = date_match.group(1) if date_match else raw_date
+
+    def _parse_date(raw: str) -> str:
+        """Tente de convertir une date brute (ISO ou relative FR) en YYYY-MM-DD.
+
+        Exemples acceptés : '2026-07-10', 'demain', 'lundi', 'dans 3 jours'.
+        Fallback : aujourd'hui si le format est non reconnu.
+        """
+        # 1. Format ISO déjà correct
+        iso = re.search(r"(\d{4}-\d{2}-\d{2})", raw)
+        if iso:
+            return iso.group(1)
+
+        today = _date.today()
+        raw_lower = raw.lower()
+
+        # 2. Mots-clés relatifs
+        if "aujourd" in raw_lower or "today" in raw_lower:
+            return today.isoformat()
+        if "demain" in raw_lower or "tomorrow" in raw_lower:
+            return (today + timedelta(days=1)).isoformat()
+        if "après-demain" in raw_lower or "apres-demain" in raw_lower:
+            return (today + timedelta(days=2)).isoformat()
+
+        # 3. "dans N jours/semaines"
+        m = re.search(r"dans\s+(\d+)\s+(jour|semaine)", raw_lower)
+        if m:
+            n = int(m.group(1))
+            if "semaine" in m.group(2):
+                n *= 7
+            return (today + timedelta(days=n)).isoformat()
+
+        # 4. Jour de la semaine → prochain occurrence
+        _JOURS = {
+            "lundi": 0, "mardi": 1, "mercredi": 2, "jeudi": 3,
+            "vendredi": 4, "samedi": 5, "dimanche": 6,
+            "monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
+            "friday": 4, "saturday": 5, "sunday": 6,
+        }
+        for name, weekday in _JOURS.items():
+            if name in raw_lower:
+                days_ahead = (weekday - today.weekday()) % 7 or 7
+                return (today + timedelta(days=days_ahead)).isoformat()
+
+        # 5. Format DD/MM/YYYY ou DD-MM-YYYY
+        m2 = re.search(r"(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})", raw)
+        if m2:
+            d, mo, y = m2.group(1), m2.group(2), m2.group(3)
+            return f"{y}-{mo.zfill(2)}-{d.zfill(2)}"
+
+        # 6. Fallback : aujourd'hui pour ne pas bloquer la création
+        logger.warning("offer.date_parse_failed raw=%r → fallback today=%s", raw, today.isoformat())
+        return today.isoformat()
+
+    date_order = _parse_date(raw_date)
 
     # Création directe via XML-RPC — pas besoin d'agent pour un simple create
     import asyncio
