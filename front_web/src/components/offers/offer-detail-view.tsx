@@ -146,7 +146,7 @@ export function OfferDetailView({ offer, onBack, onEdit, onDuplicate, onSend, on
 
   // Timeline events
   const tlEvents: TlEvent[] = [
-    { label: 'Générée par IA', meta: `${fmtOfferDate(offer.created_at)} · Claude Haiku 4.5`, color: 'gold' },
+    { label: "Générée par l'IA", meta: `${fmtOfferDate(offer.created_at)}`, color: 'gold' },
   ];
   if (status === 'signee') {
     tlEvents.push({ label: 'Offre signée', meta: 'Confirmée par le client', color: 'ok' });
@@ -381,18 +381,6 @@ export function OfferDetailView({ offer, onBack, onEdit, onDuplicate, onSend, on
           </div>
 
         </div>
-      </div>
-
-      {/* ── Footer ─────────────────────────────────────────────────────── */}
-      <div
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          marginTop: 32, paddingTop: 16, borderTop: '1px solid #DDE5EF',
-          fontSize: 11, color: '#9EB0C4',
-        }}
-      >
-        <span>W-05 · Offres Commerciales Web · Sprint S5</span>
-        <span>PortaLis MVP V1.0 · INOV Consulting · INOV–PGH–PC–2026</span>
       </div>
 
     </div>
