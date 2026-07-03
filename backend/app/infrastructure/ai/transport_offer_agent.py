@@ -44,7 +44,7 @@ TON RÔLE : Collecter toutes les informations nécessaires à la création d'une
 
 OUTILS DISPONIBLES :
 - list_odoo_clients : Liste les clients existants dans Odoo ERP. Utilise cet outil quand l'utilisateur demande la liste des clients ou ne connaît pas le nom exact du client.
-- mark_offer_completed : Marque l'offre comme terminée (statut 'completed'). APPELLE CET OUTIL quand tu as collecté TOUTES les informations et présenté le récapitulatif à l'utilisateur. Le session_id est auto-injecté, tu n'as pas besoin de le fournir.
+- mark_offer_completed : Marque l'offre comme terminée (statut 'completed'). APPELLE CET OUTIL quand tu as collecté TOUTES les informations et présenté le récapitulatif à l'utilisateur. Cet outil ne prend aucun argument.
 
 INFORMATIONS À COLLECTER (pose les questions une par une, de façon naturelle) :
 1. **Client** : nom exact de l'entreprise cliente
@@ -197,24 +197,22 @@ async def run_offer_chat(
 
     # Créer un wrapper qui injecte le session_id dans mark_offer_completed
     from langchain_core.tools import StructuredTool
-    from pydantic import BaseModel, Field
+    from pydantic import BaseModel
 
-    class MarkOfferCompletedWithSession(BaseModel):
-        session_id: str = Field(default=str(session_id), description="ID de session (auto-injecté)")
-
-    async def _mark_with_session(session_id: str = str(session_id)) -> str:
+    async def _mark_with_session() -> str:
+        """Appelle mark_offer_completed avec le session_id capturé."""
         from app.infrastructure.ai.tools.mark_offer_completed import mark_offer_completed
-        from uuid import UUID
         try:
-            return await mark_offer_completed(UUID(session_id))
+            return await mark_offer_completed(session_id)
         except Exception as exc:
             return f"Erreur: {str(exc)}"
 
+    # Créer l'outil sans argument (session_id auto-injecté)
     mark_tool_with_session = StructuredTool.from_function(
         coroutine=_mark_with_session,
         name="mark_offer_completed",
         description="Marque l'offre comme terminée quand toutes les infos sont collectées. Le session_id est auto-injecté.",
-        args_schema=MarkOfferCompletedWithSession,
+        args_schema=type("Empty", (BaseModel,), {}),
     )
 
     # Agent avec outils + hook de troncature
