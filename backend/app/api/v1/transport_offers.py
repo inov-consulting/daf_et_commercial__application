@@ -87,6 +87,9 @@ async def offer_chat(
     except Exception as exc:
         logger.warning("offer.chat.extract_failed", offer_id=str(offer.id), error=str(exc))
 
+    # Le statut 'completed' est maintenant géré par l'IA via l'outil mark_offer_completed
+    # Plus besoin de détection par mots-clés
+
     return OfferChatOut(
         offer_id=offer.id,
         session_id=session_id,
@@ -115,6 +118,8 @@ async def generate_document(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Offre déjà confirmée")
     if offer.status == "cancelled":
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Offre annulée")
+    if offer.status == "generated":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Offre déjà générée")
 
     # Si collected_data est vide, tenter une extraction depuis la session
     collected = offer.collected_data
@@ -185,7 +190,9 @@ async def validate_offer(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"L'offre doit être au statut 'generated' (actuel: {offer.status}). Générez d'abord le document.",
         )
-    offer = await repo.set_status(offer_id, "validated")
+    # Note: cet endpoint n'est plus utilisé avec le nouveau flux draft → completed → generated → confirmed
+    # Gardé pour compatibilité mais ne change plus le statut
+    offer = await repo.set_status(offer_id, "generated")
     return OfferSummaryOut(
         id=offer.id,  # type: ignore[union-attr]
         session_id=offer.session_id,  # type: ignore[union-attr]
@@ -203,16 +210,16 @@ async def validate_offer(
 async def send_offer_to_odoo(offer_id: UUID) -> OfferConfirmOut:
     """Crée le dossier transport dans Odoo via MCP et lie l'offre.
 
-    Prérequis : l'offre doit être au statut `validated`.
+    Prérequis : l'offre doit être au statut `generated`.
     """
     repo = TransportOfferRepository()
     offer = await repo.get(offer_id)
     if offer is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Offre non trouvée")
-    if offer.status != "validated":
+    if offer.status != "generated":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"L'offre doit être au statut 'validated' (actuel: {offer.status}). Validez d'abord l'offre.",
+            detail=f"L'offre doit être au statut 'generated' (actuel: {offer.status}). Générez d'abord le document.",
         )
 
     import json
