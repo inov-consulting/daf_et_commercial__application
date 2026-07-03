@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PortaLis - Plateforme Commerciale & Transport</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: #1e293b;
+            line-height: 1.7;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white;
+            padding: 80px 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            transform: rotate(45deg);
+        }
+
+        .header h1 {
+            font-size: 3.5em;
+            margin-bottom: 15px;
+            font-weight: 800;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header .subtitle {
+            font-size: 1.4em;
+            opacity: 0.95;
+            position: relative;
+            z-index: 1;
+            font-weight: 300;
+        }
+
+        .header .tagline {
+            margin-top: 20px;
+            font-size: 1.1em;
+            opacity: 0.8;
+            position: relative;
+            z-index: 1;
+        }
+
+        .content {
+            padding: 50px;
+        }
+
+        .section {
+            margin-bottom: 60px;
+        }
+
+        .section h2 {
+            color: #1e3a8a;
+            font-size: 2.2em;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 4px solid #3b82f6;
+            font-weight: 700;
+        }
+
+        .section h3 {
+            color: #3b82f6;
+            font-size: 1.6em;
+            margin: 30px 0 20px 0;
+            font-weight: 600;
+        }
+
+        .intro-box {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            border-left: 6px solid #3b82f6;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 25px;
+            margin-top: 25px;
+        }
+
+        .feature-card {
+            background: #f8fafc;
+            border-left: 5px solid #3b82f6;
+            padding: 25px;
+            border-radius: 12px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 40px rgba(59, 130, 246, 0.2);
+        }
+
+        .feature-card h4 {
+            color: #1e3a8a;
+            font-size: 1.3em;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .feature-card p {
+            color: #475569;
+            font-size: 0.95em;
+        }
+
+        .mvp-badge {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9em;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+
+        .value-proposition {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border: 2px solid #f59e0b;
+            padding: 30px;
+            border-radius: 16px;
+            margin: 30px 0;
+        }
+
+        .value-proposition h3 {
+            color: #92400e;
+            margin-bottom: 15px;
+        }
+
+        .value-proposition ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .value-proposition li {
+            padding: 10px 0;
+            padding-left: 30px;
+            position: relative;
+            color: #78350f;
+        }
+
+        .value-proposition li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #059669;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .roadmap {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            padding: 35px;
+            border-radius: 16px;
+            margin: 30px 0;
+        }
+
+        .roadmap-item {
+            display: flex;
+            align-items: flex-start;
+            margin: 20px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .roadmap-icon {
+            font-size: 2em;
+            margin-right: 20px;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .roadmap-content h4 {
+            color: #1e3a8a;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+
+        .roadmap-content p {
+            color: #64748b;
+            font-size: 0.9em;
+        }
+
+        .tech-highlights {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 25px;
+        }
+
+        .tech-badge {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-card .number {
+            font-size: 2.5em;
+            font-weight: 800;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .footer {
+            background: #0f172a;
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .footer p {
+            opacity: 0.7;
+        }
+
+        .footer .contact {
+            margin-top: 15px;
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2.2em;
+            }
+            .content {
+                padding: 25px;
+            }
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>PortaLis</h1>
+            <div class="subtitle">Plateforme Commerciale & Transport</div>
+            <div class="tagline">Synchronisation ERP Odoo • Intelligence Artificielle • Tableau de Bord KPI</div>
+        </div>
+
+        <div class="content">
+            <!-- Section Introduction -->
+            <div class="section">
+                <span class="mvp-badge">MVP Disponible</span>
+                <h2>🎯 Présentation de la Solution</h2>
+                <div class="intro-box">
+                    <p>
+                        <strong>PortaLis</strong> est une plateforme web moderne de gestion commerciale et de transport, 
+                        conçue pour les entreprises utilisant Odoo comme ERP. Elle centralise la gestion des opportunités 
+                        commerciales, automatise la génération d'offres de transport via IA, et fournit un tableau de bord 
+                        KPI performant pour piloter l'activité.
+                    </p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="number">4</div>
+                        <div class="label">Modules Actifs</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number">100%</div>
+                        <div class="label">Sync Odoo</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number">IA</div>
+                        <div class="label">Offres Transport</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number">5+</div>
+                        <div class="label">KPIs Configurables</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Valeur Ajoutée -->
+            <div class="section">
+                <h2>💎 Valeur Ajoutée</h2>
+                <div class="value-proposition">
+                    <h3>Pourquoi choisir PortaLis ?</h3>
+                    <ul>
+                        <li><strong>Synchronisation bidirectionnelle avec Odoo</strong> — Vos données commerciales restent synchronisées en temps réel avec votre ERP</li>
+                        <li><strong>Génération d'offres assistée par IA</strong> — Réduisez le temps de préparation des offres de 70% grâce à Claude AI</li>
+                        <li><strong>Tableau de bord KPI en temps réel</strong> — Visualisez vos indicateurs clés avec calculs parallèles optimisés</li>
+                        <li><strong>Pipeline commercial structuré</strong> — Suivez chaque opportunité de la qualification à la conversion</li>
+                        <li><strong>Architecture moderne et évolutive</strong> — Stack technique robuste (FastAPI, Next.js, PostgreSQL) prête pour la croissance</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Section MVP -->
+            <div class="section">
+                <h2>🚀 Fonctionnalités du MVP</h2>
+                
+                <h3>1. Gestion des Opportunités Commerciales</h3>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>Pipeline Structuré</h4>
+                        <p>Suivi complet : Nouveau → Contacté → Qualifié → Converti / Perdu avec synchronisation automatique vers Odoo</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Recherche Intelligente</h4>
+                        <p>Recherche multi-champs sur entreprise, contact, email, notes et secteur pour retrouver rapidement vos opportunités</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Actions Synchronisées</h4>
+                        <p>Chaque action (contact, qualify, convert, lose) est répercutée en temps réel dans Odoo crm.lead</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Notes & Compte-rendus</h4>
+                        <p>Annotation des opportunités et génération de compte-rendus PDF stockés sur MinIO</p>
+                    </div>
+                </div>
+
+                <h3>2. Offres de Transport Assistées par IA</h3>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>Conversation Naturelle</h4>
+                        <p>Interagissez avec Claude AI pour collecter les données (client, trajet, produit) en langage naturel</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Génération Automatique</h4>
+                        <p>Création automatique de dossiers transport.shipment dans Odoo après validation de l'offre</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Modes Multiples</h4>
+                        <p>Support terrestre, maritime, aérien et multimodal avec calculs automatiques de prix</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Parsing Dates Intelligent</h4>
+                        <p>Compréhension des dates en français (demain, vendredi, dans 3 jours) pour une expérience fluide</p>
+                    </div>
+                </div>
+
+                <h3>3. Tableau de Bord KPI</h3>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>Indicateurs Prédéfinis</h4>
+                        <p>CA mensuel, marge globale, ponctualité, dossiers par statut, statistiques globales</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Calcul Parallèle</h4>
+                        <p>Optimisation performance via calculs asynchrones pour un affichage instantané</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Gestion des Accès</h4>
+                        <p>Contrôle d'accès par groupes Keycloak avec bypass admin pour les super-administrateurs</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Configuration Flexible</h4>
+                        <p>Interface dédiée pour configurer les KPIs accessibles par chaque groupe d'utilisateurs</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Architecture -->
+            <div class="section">
+                <h2>🏗️ Architecture Technique</h2>
+                <p>Stack moderne et robuste, conçue pour l'évolutivité et la performance :</p>
+                <div class="tech-highlights">
+                    <span class="tech-badge">FastAPI (Backend)</span>
+                    <span class="tech-badge">Next.js (Frontend)</span>
+                    <span class="tech-badge">Odoo ERP (Intégration)</span>
+                    <span class="tech-badge">Keycloak (Auth)</span>
+                    <span class="tech-badge">PostgreSQL (BD)</span>
+                    <span class="tech-badge">MinIO (Stockage)</span>
+                    <span class="tech-badge">Celery (Tâches)</span>
+                    <span class="tech-badge">Claude AI (IA)</span>
+                </div>
+            </div>
+
+            <!-- Section Roadmap -->
+            <div class="section">
+                <h2>🗺️ Axes d'Amélioration</h2>
+                <div class="roadmap">
+                    <div class="roadmap-item">
+                        <div class="roadmap-icon">📊</div>
+                        <div class="roadmap-content">
+                            <h4>Tableau de Bord Avancé</h4>
+                            <p>Graphiques interactifs, filtres dynamiques, export Excel/PDF, alertes personnalisées</p>
+                        </div>
+                    </div>
+                    <div class="roadmap-item">
+                        <div class="roadmap-icon">🤖</div>
+                        <div class="roadmap-content">
+                            <h4>IA Étendue</h4>
+                            <p>Prédiction de conversion, scoring automatique des opportunités, recommandations de prix</p>
+                        </div>
+                    </div>
+                    <div class="roadmap-item">
+                        <div class="roadmap-icon">📱</div>
+                        <div class="roadmap-content">
+                            <h4>Application Mobile</h4>
+                            <p>Version mobile native pour accéder aux opportunités et KPIs en déplacement</p>
+                        </div>
+                    </div>
+                    <div class="roadmap-item">
+                        <div class="roadmap-icon">🔗</div>
+                        <div class="roadmap-content">
+                            <h4>Intégrations Tiers</h4>
+                            <p>Connecteurs additionnels (CRM Salesforce, ERP SAP, outils de communication)</p>
+                        </div>
+                    </div>
+                    <div class="roadmap-item">
+                        <div class="roadmap-icon">📈</div>
+                        <div class="roadmap-content">
+                            <h4>Reporting Avancé</h4>
+                            <p>Rapports personnalisables, comparaisons périodiques, drill-down sur les données</p>
+                        </div>
+                    </div>
+                    <div class="roadmap-item">
+                        <div class="roadmap-icon">🔒</div>
+                        <div class="roadmap-content">
+                            <h4>Sécurité Renforcée</h4>
+                            <p>Audit trail complet, chiffrement des données sensibles, conformité RGPD</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Conclusion -->
+            <div class="section">
+                <h2>🎯 Conclusion</h2>
+                <div class="intro-box">
+                    <p>
+                        <strong>PortaLis MVP</strong> offre aujourd'hui une base solide pour la gestion commerciale et transport 
+                        synchronisée avec Odoo. L'architecture moderne, l'intégration IA et le tableau de bord KPI positionnent 
+                        la solution comme un levier de productivité immédiat. Les axes d'amélioration identifiés permettent 
+                        d'envisager une évolution progressive vers une plateforme commerciale de référence.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>© 2026 Inov Consulting - PortaLis Platform</p>
+            <p class="contact">Contact : contact@inov-consulting.com</p>
+        </div>
+    </div>
+</body>
+</html>
