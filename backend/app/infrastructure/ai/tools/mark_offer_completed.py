@@ -36,7 +36,7 @@ async def mark_offer_completed(session_id: UUID) -> str:
             return f"Info : l'offre est déjà générée (statut 'generated'), pas besoin de la marquer comme terminée."
         
         # Mettre à jour le statut
-        await repo.update_status(offer_id, "completed")
+        await repo.set_status(offer_id, "completed")
         
         return f"✅ Offre marquée comme terminée. L'utilisateur peut maintenant générer le document de l'offre."
         
