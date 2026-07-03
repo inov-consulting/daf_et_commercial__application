@@ -9,10 +9,11 @@ class TransportOfferOrm(BaseModel):
     """Offre commerciale transport générée par conversation IA.
 
     Cycle de vie :
-      draft     → en cours de collecte (conversation active)
-      generated → document Markdown généré par Claude, en attente de validation
-      confirmed → validée par l'utilisateur, dossier Odoo créé
-      cancelled → abandonnée
+      draft      → en cours de collecte (conversation active)
+      completed  → collecte terminée par l'IA, en attente de génération du document
+      generated  → document Markdown généré par Claude, en attente de validation
+      confirmed  → validée par l'utilisateur, dossier Odoo créé
+      cancelled  → abandonnée
     """
 
     session_id = fields.UUIDField(index=True)
@@ -22,7 +23,7 @@ class TransportOfferOrm(BaseModel):
     """Utilisateur Portalis qui a initié l'offre."""
 
     status = fields.CharField(max_length=16, default="draft")
-    """draft | generated | confirmed | cancelled"""
+    """draft | completed | generated | confirmed | cancelled"""
 
     # ── Données collectées pendant la conversation ─────────────────────────────
     collected_data: dict = fields.JSONField(default=dict)
