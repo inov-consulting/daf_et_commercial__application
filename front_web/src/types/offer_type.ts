@@ -5,6 +5,10 @@ export interface TransportOfferListItem {
   id: string;
   session_id: string;
   status: string;
+  title: string | null;
+  reference: string | null;
+  date: string | null;
+  validity_days: number | null;
   odoo_shipment_id: number | null;
   odoo_shipment_name: string | null;
   created_at: string;
@@ -61,21 +65,39 @@ export function mapTransportStatus(status: string): OfferStatus {
   return 'brouillon';
 }
 
+// Extrait le client depuis un titre "Offre de transport N°REF — Client"
+function clientFromTitle(title: string | null | undefined): string {
+  if (!title) return '–';
+  const parts = title.split(' — ');
+  return parts.length > 1 ? parts.at(-1)!.trim() : '–';
+}
+
+// Calcule la date d'expiry depuis date d'émission + validité en jours
+function computeExpiryDate(date: string | null, validityDays: number | null): string {
+  if (!date || !validityDays) return new Date(0).toISOString(); // passé lointain → expiré
+  const d = new Date(date);
+  d.setDate(d.getDate() + validityDays);
+  return d.toISOString();
+}
+
 // Convertit un TransportOfferListItem en Offer pour le composant de liste
 export function transportListItemToOffer(item: TransportOfferListItem): Offer {
+  const clientName = item.odoo_shipment_name ?? clientFromTitle(item.title);
+  const expiryDate = computeExpiryDate(item.created_at, item.validity_days);
+
   return {
     id:                   item.id,
-    name:                 item.odoo_shipment_name ?? `OFF-${item.id.slice(0, 8).toUpperCase()}`,
-    client_name:          item.odoo_shipment_name ?? '–',
+    name:                 item.reference ?? item.odoo_shipment_name ?? `OFF-${item.id.slice(0, 8).toUpperCase()}`,
+    client_name:          clientName,
     origin_location:      '–',
     destination_location: '–',
     unit_price:           0,
     amount_untaxed:       0,
     amount_tax:           0,
     amount_total:         0,
-    validity_days:        0,
-    date_emission:        item.created_at,
-    date_expiry:          item.confirmed_at ?? item.created_at,
+    validity_days:        item.validity_days ?? 0,
+    date_emission:        item.date ?? item.created_at,
+    date_expiry:          expiryDate,
     state:                mapTransportStatus(item.status),
     created_at:           item.created_at,
     odoo_linked:          !!item.odoo_shipment_id,
@@ -89,6 +111,8 @@ export function transportDetailToOffer(detail: TransportOfferDetail): Offer {
   const amount = price
     ? Number(price['unit_price'] ?? price['price_per_unit'] ?? price['amount'] ?? price['price'] ?? 0)
     : 0;
+
+  const expiryDate = computeExpiryDate(detail.document_generated_at, detail.validity_days);
 
   return {
     id:                   detail.offer_id,
@@ -106,7 +130,7 @@ export function transportDetailToOffer(detail: TransportOfferDetail): Offer {
     amount_total:         amount,
     validity_days:        detail.validity_days ?? 0,
     date_emission:        detail.date ?? detail.document_generated_at,
-    date_expiry:          detail.document_generated_at,
+    date_expiry:          expiryDate,
     date_planned:         detail.route?.planned_date,
     state:                mapTransportStatus(detail.status),
     created_at:           detail.document_generated_at,
@@ -181,6 +205,37 @@ export interface SendOfferBody {
   channel: 'whatsapp' | 'email';
   recipient: string;
   message?: string;
+}
+
+export interface OfferListViewProps {
+  offers: Offer[];
+  loading: boolean;
+  onRefresh: () => void;
+  onNew: () => void;
+  onView: (offer: Offer) => void;
+  onEdit: (offer: Offer) => void;
+  onDuplicate: (offer: Offer) => void;
+  onSend: (offer: Offer) => void;
+  onDelete: (offer: Offer) => void;
+}
+
+export interface RowPopupProps {
+  offer: Offer;
+  status: OfferStatus;
+  onView: () => void;
+  onEdit: () => void;
+  onDuplicate: () => void;
+  onSend: () => void;
+  onDelete: () => void;
+}
+
+export interface PaginationProps {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  perPage: number;
+  onPerPageChange: (perPage: number) => void;
+  totalItems: number;
 }
 
 // ── Config statuts ─────────────────────────────────────────────────────────────

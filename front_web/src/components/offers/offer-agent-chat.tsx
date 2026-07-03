@@ -278,13 +278,16 @@ export function OfferAgentChat({ onOfferGenerated, onCancel }: OfferAgentChatPro
     }
   }, [onOfferGenerated]);
 
+  const INIT_MESSAGE = 'Bonjour je voudrais créer une nouvelle offre.';
+
   async function startConversation() {
     setPhase('chatting');
+    addUserMsg(INIT_MESSAGE);
     setIsTyping(true);
 
     const res = await PostData<ChatApiResponse, { message: string; session_id: null; offer_id: null }>({
       url: ApiRoutes.TRANSPORT_OFFERS_CHAT,
-      data: { message: '', session_id: null, offer_id: null },
+      data: { message: INIT_MESSAGE, session_id: null, offer_id: null },
       protected: true,
     });
 
@@ -347,7 +350,7 @@ export function OfferAgentChat({ onOfferGenerated, onCancel }: OfferAgentChatPro
   // ── Render ────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ width: '500px', background: '#FFFFFF', border: '1px solid #DDE5EF', borderRadius: 14, boxShadow: '0 2px 8px rgba(18,58,38,.08)', overflow: 'hidden' }}>
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', background: '#FFFFFF', border: '1px solid #DDE5EF', borderRadius: 14, boxShadow: '0 2px 8px rgba(18,58,38,.08)', overflow: 'hidden' }}>
       
       {/* ── Panel header ──────────────────────────────────────────────── */}
       <div
@@ -386,7 +389,8 @@ export function OfferAgentChat({ onOfferGenerated, onCancel }: OfferAgentChatPro
           style={{
             flex: 1, display: 'flex', flexDirection: 'column',
             alignItems: 'center', justifyContent: 'center',
-            padding: '32px 24px', gap: 0,
+            padding: 'clamp(20px, 4vw, 32px) clamp(16px, 5vw, 24px)', gap: 0,
+            minHeight: 280,
           }}
         >
           {/* Icon */}
@@ -434,7 +438,8 @@ export function OfferAgentChat({ onOfferGenerated, onCancel }: OfferAgentChatPro
             style={{
               flex: 1, overflowY: 'auto', padding: 12,
               display: 'flex', flexDirection: 'column', gap: 8,
-              minHeight: 320,
+              minHeight: 260,
+              maxHeight: 'min(55vh, 520px)',
             }}
           >
             {messages.map(msg => (
@@ -563,7 +568,7 @@ export function OfferAgentChat({ onOfferGenerated, onCancel }: OfferAgentChatPro
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder={phase === 'generating' ? 'Génération en cours…' : 'Ex : Société Cotonnière du Faso'}
+              placeholder={phase === 'generating' ? 'Génération en cours…' : 'Saisissez votre message…'}
               disabled={phase === 'generating' || isTyping}
               style={{
                 flex: 1, minHeight: 38, maxHeight: 120,
