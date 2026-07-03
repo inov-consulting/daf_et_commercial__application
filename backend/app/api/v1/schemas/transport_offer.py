@@ -25,7 +25,7 @@ class OfferChatOut(BaseModel):
     offer_id: UUID = Field(description="ID de l'offre Portalis")
     session_id: UUID = Field(description="ID de session LangGraph à conserver")
     response: str = Field(description="Réponse de l'agent IA")
-    status: str = Field(description="Statut de l'offre : draft | generated | confirmed | cancelled")
+    status: str = Field(description="Statut de l'offre : draft | completed | generated | confirmed | cancelled")
 
 
 class PricingLine(BaseModel):

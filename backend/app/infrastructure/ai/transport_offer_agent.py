@@ -12,7 +12,7 @@ import json
 import logging
 from uuid import UUID, uuid4
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
 
@@ -23,16 +23,32 @@ logger = logging.getLogger(__name__)
 
 _offer_checkpointer = MemorySaver()
 
+# Nombre maximum de messages conservés dans le contexte pour l'agent d'offre
+OFFER_MAX_CONTEXT_MESSAGES = 30
+
+
+def _offer_trim_hook(state: dict) -> dict:
+    """Garde les OFFER_MAX_CONTEXT_MESSAGES derniers messages + le SystemMessage initial."""
+    messages = state.get("messages", [])
+    if len(messages) <= OFFER_MAX_CONTEXT_MESSAGES:
+        return {"messages": messages}
+    system_msgs = [m for m in messages if isinstance(m, SystemMessage)]
+    non_system = [m for m in messages if not isinstance(m, SystemMessage)]
+    return {"messages": system_msgs + non_system[-OFFER_MAX_CONTEXT_MESSAGES:]}
+
 # ── Prompts ───────────────────────────────────────────────────────────────────
 
 OFFER_COLLECTION_PROMPT = """Tu es un assistant commercial spécialisé dans la création d'offres de transport pour INOV Consulting.
 
 TON RÔLE : Collecter toutes les informations nécessaires à la création d'une offre commerciale de transport.
 
-IMPORTANT : Tu n'as accès à AUCUN outil externe. Tu ne dois PAS créer, modifier ou consulter quoi que ce soit dans un système tiers. Tu collectes uniquement les informations par la conversation.
+OUTILS DISPONIBLES :
+- list_odoo_clients : Liste les clients existants dans Odoo ERP. Utilise cet outil quand l'utilisateur demande la liste des clients ou ne connaît pas le nom exact du client.
+- mark_offer_completed : Marque l'offre comme terminée (statut 'completed'). APPELLE CET OUTIL quand tu as collecté TOUTES les informations et présenté le récapitulatif à l'utilisateur. Le session_id est auto-injecté, tu n'as pas besoin de le fournir.
 
 INFORMATIONS À COLLECTER (pose les questions une par une, de façon naturelle) :
 1. **Client** : nom exact de l'entreprise cliente
+   - Si l'utilisateur ne connaît pas le nom exact, utilise l'outil list_odoo_clients pour lui présenter les options
 2. **Produit transporté** : nature et description du produit
 3. **Quantité** : volume/poids et unité (litres, tonnes, m³, etc.)
 4. **Trajet** : lieu de chargement (origine) → lieu de livraison (destination)
@@ -45,7 +61,8 @@ INFORMATIONS À COLLECTER (pose les questions une par une, de façon naturelle) 
 COMPORTEMENT :
 - Pose les questions progressivement, ne surcharge pas l'utilisateur
 - Si l'utilisateur donne plusieurs infos en une fois, enregistre-les toutes
-- Quand tu as TOUTES les informations, présente un récapitulatif structuré et demande confirmation
+- Quand l'utilisateur ne connaît pas le nom du client, utilise list_odoo_clients pour l'aider
+- Quand tu as TOUTES les informations, présente un récapitulatif structuré, demande confirmation, ET APPELLE L'OUTIL mark_offer_completed
 
 FORMAT DU RÉCAPITULATIF (quand toutes les infos sont collectées) :
 ```
@@ -162,7 +179,7 @@ async def run_offer_chat(
 ) -> tuple[str, UUID]:
     """Exécute un tour de conversation pour la collecte d'informations de l'offre.
 
-    IMPORTANT : Aucun tool MCP n'est utilisé ici. L'agent collecte uniquement par la conversation.
+    L'agent peut utiliser les outils list_odoo_clients et mark_offer_completed.
 
     Returns:
         (réponse_agent, session_id)
@@ -174,12 +191,39 @@ async def run_offer_chat(
     _, model_domain, _ = await config_repo.get()
     llm = await _get_llm(model_domain.provider, model_domain.name)
 
-    # Aucun tool — conversation pure pour la collecte
+    # Import des outils
+    from app.infrastructure.ai.tools.odoo_client_list_tool import list_odoo_clients_tool
+    from app.infrastructure.ai.tools.mark_offer_completed_tool import mark_offer_completed_tool
+
+    # Créer un wrapper qui injecte le session_id dans mark_offer_completed
+    from langchain_core.tools import StructuredTool
+    from pydantic import BaseModel, Field
+
+    class MarkOfferCompletedWithSession(BaseModel):
+        session_id: str = Field(default=str(session_id), description="ID de session (auto-injecté)")
+
+    async def _mark_with_session(session_id: str = str(session_id)) -> str:
+        from app.infrastructure.ai.tools.mark_offer_completed import mark_offer_completed
+        from uuid import UUID
+        try:
+            return await mark_offer_completed(UUID(session_id))
+        except Exception as exc:
+            return f"Erreur: {str(exc)}"
+
+    mark_tool_with_session = StructuredTool.from_function(
+        coroutine=_mark_with_session,
+        name="mark_offer_completed",
+        description="Marque l'offre comme terminée quand toutes les infos sont collectées. Le session_id est auto-injecté.",
+        args_schema=MarkOfferCompletedWithSession,
+    )
+
+    # Agent avec outils + hook de troncature
     agent = create_react_agent(
         model=llm,
-        tools=[],
+        tools=[list_odoo_clients_tool, mark_tool_with_session],
         prompt=OFFER_COLLECTION_PROMPT,
         checkpointer=_offer_checkpointer,
+        pre_model_hook=_offer_trim_hook,
     )
     config = {"configurable": {"thread_id": str(session_id)}}
     result = await agent.ainvoke({"messages": [("human", message)]}, config=config)

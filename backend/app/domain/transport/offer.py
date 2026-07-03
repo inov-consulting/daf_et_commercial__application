@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-OfferStatus = Literal["draft", "generated", "validated", "confirmed", "cancelled"]
+OfferStatus = Literal["draft", "completed", "generated", "confirmed", "cancelled"]
 
 
 @dataclass(slots=True, kw_only=True)
