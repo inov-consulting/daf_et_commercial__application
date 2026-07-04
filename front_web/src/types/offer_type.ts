@@ -15,6 +15,17 @@ export interface TransportOfferListItem {
   confirmed_at: string | null;
 }
 
+export interface OfferSection {
+  heading: string;
+  content: string;
+}
+
+export interface OfferPricingRow {
+  label: string;
+  value: number | string;
+  unit: string;
+}
+
 export interface TransportOfferDetail {
   offer_id: string;
   status: string;
@@ -22,8 +33,8 @@ export interface TransportOfferDetail {
   reference: string;
   date: string;
   validity_days: number;
-  sections: Array<Record<string, unknown>>;
-  pricing: Array<Record<string, unknown>>;
+  sections: OfferSection[];
+  pricing: OfferPricingRow[];
   route: {
     origin: string;
     destination: string;
@@ -31,10 +42,11 @@ export interface TransportOfferDetail {
     vehicle_type: string;
     planned_date: string;
   };
-  client: { name: string; odoo_partner_id: number };
+  client: { name: string; odoo_partner_id: number | null };
   footer: string;
-  document_generated_at: string;
+  document_generated_at: string | null;
   parse_error: boolean;
+  warnings?: string[];
 }
 
 export interface TransportOfferValidateResponse {
@@ -107,35 +119,67 @@ export function transportListItemToOffer(item: TransportOfferListItem): Offer {
 
 // Convertit un TransportOfferDetail en Offer pour la vue détail
 export function transportDetailToOffer(detail: TransportOfferDetail): Offer {
-  const price = detail.pricing?.[0];
-  const amount = price
-    ? Number(price['unit_price'] ?? price['price_per_unit'] ?? price['amount'] ?? price['price'] ?? 0)
-    : 0;
+  // Cherche une ligne de tarification par mots-clés (insensible à la casse)
+  function findRow(keywords: string[]): OfferPricingRow | undefined {
+    return detail.pricing?.find(p =>
+      keywords.some(k => String(p.label).toLowerCase().includes(k))
+    );
+  }
 
-  const expiryDate = computeExpiryDate(detail.document_generated_at, detail.validity_days);
+  const prodRow = findRow(['produit']);
+  const qteRow  = findRow(['quantit']);
+  const puRow   = findRow(['prix unitaire', 'unit price', 'price_per_unit']);
+  const htRow   = findRow(['montant ht', 'hors taxe', 'ht']);
+  const tvaRow  = findRow(['tva', 'tax']);
+  const ttcRow  = findRow(['montant ttc', 'total ttc', 'ttc']);
+
+  const product   = prodRow ? String(prodRow.value)   : '';
+  const quantity  = qteRow  ? Number(qteRow.value)  || 0 : 0;
+  const qtyUnit   = qteRow?.unit ?? 'tonnes';
+  const unitPrice = puRow   ? Number(puRow.value)   || 0 : 0;
+  const amountHT  = htRow   ? Number(htRow.value)   || unitPrice * quantity : unitPrice * quantity;
+  const amountTVA = tvaRow  ? Number(tvaRow.value)  || 0 : 0;
+  const amountTTC = ttcRow  ? Number(ttcRow.value)  || amountHT + amountTVA : amountHT + amountTVA;
+
+  // Extrait le taux TVA depuis le label "TVA (19.25%)"
+  let tvaRatePct = 19.25;
+  if (tvaRow?.label) {
+    const m = String(tvaRow.label).match(/([\d.]+)\s*%/);
+    if (m) tvaRatePct = parseFloat(m[1]);
+  }
+
+  // date_emission = date de l'offre (ex: "2025-01-16")
+  const emissionDate  = detail.date || detail.document_generated_at?.split('T')[0] || '';
+  // validité calculée depuis document_generated_at (date de génération du document)
+  const generatedDate = detail.document_generated_at?.split('T')[0] || emissionDate;
+  const expiryDate    = computeExpiryDate(generatedDate, detail.validity_days);
 
   return {
     id:                   detail.offer_id,
     name:                 detail.reference || `OFF-${detail.offer_id.slice(0, 8).toUpperCase()}`,
     client_name:          detail.client?.name ?? '–',
-    partner_id:           detail.client?.odoo_partner_id,
+    partner_id:           detail.client?.odoo_partner_id ?? undefined,
     origin_location:      detail.route?.origin ?? '–',
     destination_location: detail.route?.destination ?? '–',
     transport_mode:       detail.route?.transport_mode,
     vehicle_type:         detail.route?.vehicle_type,
-    product_description:  (detail.sections?.[0] as Record<string, unknown>)?.['content'] as string ?? '',
-    unit_price:           amount,
-    amount_untaxed:       amount,
-    amount_tax:           0,
-    amount_total:         amount,
+    product_description:  product,
+    quantity,
+    quantity_unit:        qtyUnit,
+    unit_price:           unitPrice,
+    amount_untaxed:       amountHT,
+    amount_tax:           amountTVA,
+    amount_total:         amountTTC,
+    tva_rate:             tvaRatePct,
     validity_days:        detail.validity_days ?? 0,
-    date_emission:        detail.date ?? detail.document_generated_at,
+    date_emission:        emissionDate,
     date_expiry:          expiryDate,
     date_planned:         detail.route?.planned_date,
     state:                mapTransportStatus(detail.status),
-    created_at:           detail.document_generated_at,
-    odoo_linked:          false,
+    created_at:           detail.document_generated_at ?? new Date().toISOString(),
+    odoo_linked:          !!detail.client?.odoo_partner_id,
     ai_generated:         true,
+    currency:             'FCFA',
   };
 }
 
@@ -227,6 +271,8 @@ export interface RowPopupProps {
   onDuplicate: () => void;
   onSend: () => void;
   onDelete: () => void;
+  onValidate?: () => void;
+  onConfirm?: () => void;
 }
 
 export interface PaginationProps {

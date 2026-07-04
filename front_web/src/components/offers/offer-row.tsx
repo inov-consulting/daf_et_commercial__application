@@ -8,6 +8,8 @@ import { formatRelativeDate } from '@/lib/utils';
 
 interface OfferRowProps {
   offer: Offer;
+  checked?: boolean;
+  onCheck?: (id: string, checked: boolean) => void;
   onView: (offer: Offer) => void;
   onEdit: (offer: Offer) => void;
   onDuplicate: (offer: Offer) => void;
@@ -15,7 +17,7 @@ interface OfferRowProps {
   onDelete: (offer: Offer) => void;
 }
 
-export function OfferRow({ offer, onView, onEdit, onDuplicate, onSend, onDelete }: OfferRowProps) {
+export function OfferRow({ offer, checked = false, onCheck, onView, onEdit, onDuplicate, onSend, onDelete }: OfferRowProps) {
   const status = computeOfferStatus(offer);
   const clientColor = hashColor(offer.client_name);
   const initials = toInitials(offer.client_name) || '–';
@@ -28,9 +30,11 @@ export function OfferRow({ offer, onView, onEdit, onDuplicate, onSend, onDelete 
     >
       {/* Checkbox */}
       <td className="p-3.5" onClick={e => e.stopPropagation()}>
-        <input 
-          type="checkbox" 
-          className="w-4 h-4 cursor-pointer accent-emerald-800" 
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={e => onCheck?.(offer.id, e.target.checked)}
+          className="w-4 h-4 cursor-pointer accent-emerald-800"
         />
       </td>
       

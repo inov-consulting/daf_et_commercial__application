@@ -73,17 +73,43 @@ function preprocessMarkdown(raw: string): string {
     .trim();
 }
 
-/** Convertit **gras** en <strong> */
-function parseBold(text: string): React.ReactNode[] {
-  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
-    part.startsWith('**') && part.endsWith('**')
-      ? <strong key={i} style={{ fontWeight: 700, color: '#1B2633' }}>{part.slice(2, -2)}</strong>
-      : (part || null)
-  );
+/**
+ * Convertit **gras** en <strong> et "confirmer" en bouton cliquable.
+ * onConfirmClick est appelé quand l'utilisateur clique sur le mot.
+ */
+function parseInline(text: string, onConfirmClick?: () => void): React.ReactNode[] {
+  const TOKEN = /(\*\*[^*]+\*\*|"confirmer")/g;
+  return text.split(TOKEN).map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i} style={{ fontWeight: 700, color: '#1B2633' }}>{part.slice(2, -2)}</strong>;
+    }
+    if (part === '"confirmer"' && onConfirmClick) {
+      return (
+        <button
+          key={i}
+          onClick={onConfirmClick}
+          title="Cliquez pour envoyer « confirmer »"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 3,
+            padding: '1px 8px 2px', borderRadius: 5,
+            background: '#1E5B3C', color: '#fff',
+            border: 'none', cursor: 'pointer',
+            fontSize: 11.5, fontWeight: 700,
+            verticalAlign: 'middle', margin: '0 2px',
+            boxShadow: '0 1px 4px rgba(18,58,38,.25)',
+            fontFamily: 'inherit', lineHeight: 1.5,
+          }}
+        >
+          confirmer ✓
+        </button>
+      );
+    }
+    return part || null;
+  });
 }
 
 /** Dans un bloc IA : détecte "**Clé** : valeur" et le rend comme une ligne info */
-function BulletItem({ text, inBlock }: { text: string; inBlock: boolean }) {
+function BulletItem({ text, inBlock, onConfirmClick }: { text: string; inBlock: boolean; onConfirmClick?: () => void }) {
   if (inBlock) {
     const kv = text.match(/^\*\*(.+?)\*\*\s*:\s*(.*)$/);
     if (kv) {
@@ -99,11 +125,11 @@ function BulletItem({ text, inBlock }: { text: string; inBlock: boolean }) {
       );
     }
   }
-  return <span style={{ lineHeight: 1.6 }}>{parseBold(text)}</span>;
+  return <span style={{ lineHeight: 1.6 }}>{parseInline(text, onConfirmClick)}</span>;
 }
 
 /** Rend un segment de texte (avec ou sans contexte de bloc IA) */
-function renderLines(raw: string, inBlock = false): React.ReactNode {
+function renderLines(raw: string, inBlock = false, onConfirmClick?: () => void): React.ReactNode {
   const lines  = raw.split('\n');
   const result: React.ReactNode[] = [];
   let bullets: string[] = [];
@@ -130,7 +156,7 @@ function renderLines(raw: string, inBlock = false): React.ReactNode {
                 <span style={{ color: '#C3D0DF', fontSize: 9, flexShrink: 0, marginTop: 6, fontWeight: 900 }}>●</span>
               )}
               <span style={{ flex: 1 }}>
-                <BulletItem text={item} inBlock={inBlock} />
+                <BulletItem text={item} inBlock={inBlock} onConfirmClick={onConfirmClick} />
               </span>
             </div>
           );
@@ -156,13 +182,13 @@ function renderLines(raw: string, inBlock = false): React.ReactNode {
             paddingBottom: 8, marginBottom: 4, borderBottom: '1px solid #F3E2B0',
             lineHeight: 1.4,
           }}>
-            {parseBold(trimmed)}
+            {parseInline(trimmed, onConfirmClick)}
           </div>
         );
       } else {
         result.push(
           <div key={key++} style={{ fontSize: 13, color: '#435869', lineHeight: 1.65, marginTop: isFirst ? 0 : 4 }}>
-            {parseBold(trimmed)}
+            {parseInline(trimmed, onConfirmClick)}
           </div>
         );
       }
@@ -174,7 +200,7 @@ function renderLines(raw: string, inBlock = false): React.ReactNode {
 }
 
 /** Composant principal : découpe le texte en segments texte / bloc IA */
-function AgentMessageBody({ text }: { text: string }) {
+function AgentMessageBody({ text, onConfirmClick }: { text: string; onConfirmClick?: () => void }) {
   const normalized = preprocessMarkdown(text);
   const lines  = normalized.split('\n');
   const parts: Array<{ type: 'text' | 'block'; content: string }> = [];
@@ -217,10 +243,10 @@ function AgentMessageBody({ text }: { text: string }) {
               borderRadius: 8, padding: '10px 12px',
             }}
           >
-            {renderLines(p.content, true)}
+            {renderLines(p.content, true, onConfirmClick)}
           </div>
         ) : (
-          <div key={idx}>{renderLines(p.content, false)}</div>
+          <div key={idx}>{renderLines(p.content, false, onConfirmClick)}</div>
         )
       )}
     </div>
@@ -306,11 +332,11 @@ export function OfferAgentChat({ onOfferGenerated, onCancel }: OfferAgentChatPro
     inputRef.current?.focus();
   }
 
-  async function sendMessage() {
-    const msg = input.trim();
+  async function sendMessage(overrideMsg?: string) {
+    const msg = (overrideMsg ?? input).trim();
     if (!msg || isTyping || phase !== 'chatting') return;
 
-    setInput('');
+    if (!overrideMsg) setInput('');
     addUserMsg(msg);
     setIsTyping(true);
 
@@ -473,7 +499,7 @@ export function OfferAgentChat({ onOfferGenerated, onCancel }: OfferAgentChatPro
                         padding: '10px 13px', fontSize: 13, color: '#1B2633',
                       }}
                     >
-                      <AgentMessageBody text={msg.text} />
+                      <AgentMessageBody text={msg.text} onConfirmClick={() => sendMessage('confirmer')} />
                     </div>
                   </div>
                 )}
@@ -580,7 +606,7 @@ export function OfferAgentChat({ onOfferGenerated, onCancel }: OfferAgentChatPro
               }}
             />
             <button
-              onClick={sendMessage}
+              onClick={() => sendMessage()}
               disabled={!input.trim() || isTyping || phase === 'generating'}
               style={{
                 width: 38, height: 38, border: 'none', borderRadius: 10,

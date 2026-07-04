@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
   FunnelSimpleIcon, PlusIcon, DownloadSimpleIcon, CaretRightIcon,
 } from '@phosphor-icons/react';
@@ -24,9 +24,11 @@ export function OfferListView({
   const [tabKey, setTabKey] = useState<OfferStatus | 'tous'>('tous');
   const [perPage, setPerPage] = useState(20);
   const [page, setPage] = useState(1);
-  
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const headerCheckboxRef = useRef<HTMLInputElement>(null);
   const today = formatTodayDate();
-  
+
   // Comptage par statut
   const countsByStatus = useMemo(() => {
     const counts: Partial<Record<OfferStatus | 'tous', number>> = { tous: offers.length };
@@ -36,15 +38,13 @@ export function OfferListView({
     });
     return counts;
   }, [offers]);
-  
+
   // Filtrage
   const filtered = useMemo(() => {
     let list = offers;
-    
     if (tabKey !== 'tous') {
       list = list.filter(offer => computeOfferStatus(offer) === tabKey);
     }
-    
     if (search.trim()) {
       const query = search.toLowerCase();
       list = list.filter(offer =>
@@ -52,18 +52,49 @@ export function OfferListView({
         offer.name.toLowerCase().includes(query)
       );
     }
-    
     return list;
   }, [offers, tabKey, search]);
-  
+
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
-  
-  // Réinitialiser la page lors du changement de filtre
+
+  // Réinitialiser la page et la sélection lors du changement de filtre
   useEffect(() => {
     setPage(1);
+    setSelectedIds(new Set());
   }, [tabKey, search, perPage]);
+
+  // États de sélection pour la page courante
+  const allOnPageSelected = paged.length > 0 && paged.every(o => selectedIds.has(o.id));
+  const someOnPageSelected = paged.some(o => selectedIds.has(o.id)) && !allOnPageSelected;
+
+  // Synchronise l'état indeterminate du checkbox header (ne peut être fait qu'en JS)
+  useEffect(() => {
+    if (headerCheckboxRef.current) {
+      headerCheckboxRef.current.indeterminate = someOnPageSelected;
+    }
+  }, [someOnPageSelected]);
+
+  const handleSelectAll = useCallback(() => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (allOnPageSelected) {
+        paged.forEach(o => next.delete(o.id));
+      } else {
+        paged.forEach(o => next.add(o.id));
+      }
+      return next;
+    });
+  }, [allOnPageSelected, paged]);
+
+  const handleToggleRow = useCallback((id: string, checked: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      checked ? next.add(id) : next.delete(id);
+      return next;
+    });
+  }, []);
   
   const hasSearch = !!search.trim();
   const hasFilter = tabKey !== 'tous';
@@ -152,9 +183,12 @@ export function OfferListView({
             <thead>
               <tr>
                 <th className="bg-gray-50 px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200 whitespace-nowrap">
-                  <input 
-                    type="checkbox" 
-                    className="w-4 h-4 cursor-pointer accent-emerald-800" 
+                  <input
+                    ref={headerCheckboxRef}
+                    type="checkbox"
+                    checked={allOnPageSelected}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 cursor-pointer accent-emerald-800"
                   />
                 </th>
                 <th className="bg-gray-50 px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200 whitespace-nowrap">
@@ -193,6 +227,8 @@ export function OfferListView({
                   <OfferRow
                     key={offer.id}
                     offer={offer}
+                    checked={selectedIds.has(offer.id)}
+                    onCheck={handleToggleRow}
                     onView={onView}
                     onEdit={onEdit}
                     onDuplicate={onDuplicate}
@@ -220,12 +256,6 @@ export function OfferListView({
       
       {/* Legend */}
       <Legend />
-      
-      {/* Footer */}
-      <footer className="flex items-center justify-between mt-8 pt-4 border-t border-gray-200 text-xs text-gray-400">
-        <span>W-05 · Offres Commerciales Web · Sprint S5</span>
-        <span>PortaLis MVP V1.0 · INOV Consulting · INOV–PGH–PC–2026</span>
-      </footer>
     </div>
   );
 }
