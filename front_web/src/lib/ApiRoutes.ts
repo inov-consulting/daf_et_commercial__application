@@ -1,4 +1,4 @@
-const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
+﻿const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
 
 export const ApiRoutes = {
   // ── Auth (Keycloak) ─────────────────────────────────────────────────
@@ -82,4 +82,12 @@ export const ApiRoutes = {
   API_LOGS:        `${BASE}/api/v1/api-logs`,
   API_LOG:         (id: string) => `${BASE}/api/v1/api-logs/${id}`,
   API_LOG_DETAILS: (id: string) => `${BASE}/api/v1/api-logs/${id}/details`,
+
+  // ── App Config ───────────────────────────────────────────────────────────
+  CONFIG_APP:            `${BASE}/api/v1/config/app`,
+  CONFIG_APP_VALIDATORS: `${BASE}/api/v1/config/app/validators`,
+  CONFIG_APP_SMTP:       `${BASE}/api/v1/config/app/smtp`,
+  CONFIG_KPI_AVAILABLE:  `${BASE}/api/v1/config/app/kpi/available`,
+  CONFIG_KPI_GROUPS:     `${BASE}/api/v1/config/app/kpi/groups`,
+  CONFIG_KPI_GROUP:      (groupId: string) => `${BASE}/api/v1/config/app/kpi/groups/${groupId}`,
 } as const;

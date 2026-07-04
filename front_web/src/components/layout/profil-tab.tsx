@@ -7,6 +7,9 @@ import { InformationsGenerales } from "./informations-generales";
 import { InformationsLegales } from "./informations-legales";
 import { PreferencesRegionales } from "./preferences-regionales";
 import { Responsables } from "./responsables";
+import { ValidatorsSection } from "./validators-section";
+import { SmtpSection } from "./smtp-section";
+import { KpiGroupsSection } from "./kpi-groups-section";
 
 interface ProfilTabProps {
   showToast: (message: string, type?: 'success' | 'error' | 'warning' | 'info') => void;
@@ -23,6 +26,9 @@ export function ProfilTab({ showToast }: ProfilTabProps) {
         <Adresse />
         <Coordonnees />
         <Responsables />
+        <ValidatorsSection showToast={showToast} />
+        <SmtpSection showToast={showToast} />
+        <KpiGroupsSection showToast={showToast} />
       </div>
       
       {/* Sidebar - Préférences régionales */}
