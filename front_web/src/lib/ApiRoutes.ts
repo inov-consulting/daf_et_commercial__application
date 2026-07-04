@@ -55,6 +55,25 @@ export const ApiRoutes = {
   TRANSPORT_SHIPMENT_VOYAGES:   (id: string) => `${BASE}/api/v1/transport/shipments/${id}/voyages`,
   TRANSPORT_VOYAGE:             (id: string) => `${BASE}/api/v1/transport/voyages/${id}`,
 
+  // ── Offers ────────────────────────────────────────────────────────────
+  OFFERS_LIST:     `${BASE}/api/v1/transport/offers`,
+  OFFERS_CREATE:   `${BASE}/api/v1/commercial/offers`,
+  OFFERS_GET:      (id: string) => `${BASE}/api/v1/commercial/offers/${id}`,
+  OFFERS_UPDATE:   (id: string) => `${BASE}/api/v1/commercial/offers/${id}`,
+  OFFERS_ACTION:   (id: string) => `${BASE}/api/v1/commercial/offers/${id}/actions`,
+  OFFERS_SEND:     (id: string) => `${BASE}/api/v1/commercial/offers/${id}/send`,
+  OFFERS_GENERATE: (id: string) => `${BASE}/api/v1/commercial/offers/${id}/generate`,
+  OFFERS_SYNC:     `${BASE}/api/v1/commercial/offers/sync`,
+
+  // ── Transport Offers IA ──────────────────────────────────────────────
+  TRANSPORT_OFFERS_LIST:     `${BASE}/api/v1/transport/offers/`,
+  TRANSPORT_OFFERS_CHAT:     `${BASE}/api/v1/transport/offers/chat`,
+  TRANSPORT_OFFERS_GET:      (id: string) => `${BASE}/api/v1/transport/offers/${id}`,
+  TRANSPORT_OFFERS_GENERATE: (id: string) => `${BASE}/api/v1/transport/offers/${id}/generate`,
+  TRANSPORT_OFFERS_VALIDATE: (id: string) => `${BASE}/api/v1/transport/offers/${id}/validate`,
+  TRANSPORT_OFFERS_CONFIRM:  (id: string) => `${BASE}/api/v1/transport/offers/${id}/confirm`,
+  TRANSPORT_OFFERS_CANCEL:   (id: string) => `${BASE}/api/v1/transport/offers/${id}/cancel`,
+
   // ── Comptes-rendus (global) ──────────────────────────────────────────
   COMPTE_RENDUS:       `${BASE}/api/v1/compte-rendus`,
   COMPTE_RENDU_DETAIL: (id: string) => `${BASE}/api/v1/compte-rendus/${id}`,
