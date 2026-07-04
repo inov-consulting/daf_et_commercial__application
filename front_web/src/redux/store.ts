@@ -11,6 +11,7 @@ import notesReducer from "./features/notes/notesSlice";
 import apiLogsReducer from "./features/api-logs/apiLogsSlice";
 import compteRendusReducer from "./features/compte-rendus/compteRendusSlice";
 import offersReducer from "./features/offers/offersSlice";
+import appConfigReducer from "./features/app-config/appConfigSlice";
 
 const persistConfig = {
   key: "root",
@@ -29,6 +30,7 @@ const rootReducer = {
   apiLogs: apiLogsReducer,
   compteRendus: compteRendusReducer,
   offers: offersReducer,
+  appConfig: appConfigReducer,
 };
 
 const persistedReducer = persistReducer(persistConfig, combineReducers(rootReducer));
