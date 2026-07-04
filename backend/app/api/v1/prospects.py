@@ -4,6 +4,8 @@ Architecture: Table prospects locale dans FastAPI + sync avec Odoo crm.lead.
 Aucune modification Odoo requise.
 """
 
+import asyncio
+from datetime import datetime
 from decimal import Decimal
 from typing import Annotated, Any
 from uuid import UUID
@@ -47,6 +49,8 @@ router = APIRouter(prefix="/commercial/prospects", tags=["prospects"])
 
 _prospect_deps = [Depends(require_permission("prospects:read"))]
 _prospect_write_deps = [Depends(require_permission("prospects:write"))]
+_prospect_delete_deps = [Depends(require_permission("prospects:delete"))]
+
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -232,8 +236,30 @@ async def list_prospects(
     if filters.status:
         query = query.filter(status=filters.status)
 
-    total = await query.count()
-    prospects = await query.offset(filters.offset).limit(filters.limit).all()
+    if filters.search:
+        # La recherche porte sur des champs JSON (erp_metadata) non filtrables côté DB.
+        # On récupère tous les enregistrements filtrés par statut, puis on filtre en Python.
+        all_candidates = await query.all()
+        s = filters.search.lower()
+        matched = []
+        for p in all_candidates:
+            meta = p.erp_metadata or {}
+            haystack = " ".join(filter(None, [
+                meta.get("name", ""),
+                meta.get("partner_name", ""),
+                meta.get("contact_name", ""),
+                meta.get("email_from", ""),
+                meta.get("phone", ""),
+                p.portalis_sector or "",
+                p.portalis_notes or "",
+            ])).lower()
+            if s in haystack:
+                matched.append(p)
+        total = len(matched)
+        prospects = matched[filters.offset: filters.offset + filters.limit]
+    else:
+        total = await query.count()
+        prospects = await query.offset(filters.offset).limit(filters.limit).all()
 
     # Enrichissement optionnel (une seule fois par prospect)
     items = []
@@ -505,6 +531,46 @@ async def update_prospect(
     return ProspectOut(**enriched)
 
 
+@router.delete("/{prospect_id}", dependencies=_prospect_delete_deps, status_code=status.HTTP_204_NO_CONTENT)
+async def delete_prospect(
+    user: CurrentUser,
+    prospect_id: UUID,
+) -> None:
+    """Supprime un prospect dans Portalis ET dans Odoo (crm.lead).
+
+    Odoo est prioritaire : la suppression Odoo est vérifiée en premier.
+    Si Odoo échoue, la suppression est entièrement annulée — rien n'est touché en base.
+    """
+    prospect = await ProspectOrm.get_or_none(id=prospect_id)
+    if not prospect:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Prospect non trouvé")
+
+    # 1. Suppression dans Odoo — DOIT réussir avant toute modification locale
+    if prospect.odoo_lead_id:
+        try:
+            client = OdooClient()
+            await asyncio.to_thread(
+                client.execute,
+                "crm.lead",
+                "unlink",
+                [[prospect.odoo_lead_id]],
+            )
+            logger.info("prospect.odoo_deleted lead_id=%s by=%s", prospect.odoo_lead_id, user.id)
+        except Exception as exc:
+            logger.error("prospect.odoo_delete_failed lead_id=%s error=%s", prospect.odoo_lead_id, exc)
+            raise HTTPException(
+                status.HTTP_502_BAD_GATEWAY,
+                detail=f"Échec suppression dans Odoo (lead #{prospect.odoo_lead_id}) : {exc}. Aucune donnée locale supprimée.",
+            )
+
+    # 2. Odoo OK → suppression locale en cascade
+    # Notes et activités : ON DELETE CASCADE via FK directe → supprimées automatiquement
+    # CompteRenduOrm : utilise parent_id (UUID générique, pas de FK) → suppression manuelle
+    await CompteRenduOrm.filter(parent_type="prospect", parent_id=prospect_id).delete()
+    await prospect.delete()
+    logger.info("prospect.deleted prospect_id=%s by=%s", prospect_id, user.id)
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Actions Pipeline (Transitions)
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -530,7 +596,14 @@ async def execute_action(
 
     match payload.action:
         case ProspectAction.CONTACT:
+            # Sync Odoo : lead actif, visible dans le pipeline
+            if prospect.odoo_lead_id:
+                await sync_service.update_in_odoo(
+                    prospect.odoo_lead_id,
+                    {"active": True, "type": "lead"},
+                )
             prospect.status = "contacte"
+            prospect.status_changed_at = datetime.utcnow()
             await prospect.save()
             await ProspectActivityOrm.create(
                 prospect_id=prospect.id,
@@ -540,7 +613,14 @@ async def execute_action(
             )
 
         case ProspectAction.QUALIFY:
+            # Sync Odoo : promouvoir en opportunité, toujours actif
+            if prospect.odoo_lead_id:
+                await sync_service.update_in_odoo(
+                    prospect.odoo_lead_id,
+                    {"active": True, "type": "opportunity"},
+                )
             prospect.status = "qualifie"
+            prospect.status_changed_at = datetime.utcnow()
             await prospect.save()
             await ProspectActivityOrm.create(
                 prospect_id=prospect.id,
@@ -732,6 +812,16 @@ async def generate_compte_rendu(
     storage = StorageService()
     download_url = storage.get_url(cr.minio_path, expires_in=3600)
 
+    # Notifier le validateur désigné — les warnings sont remontés dans la réponse
+    from app.services.notification_email import notify_compte_rendu_generated
+    prospect_name = prospect.erp_metadata.get("name") if prospect.erp_metadata else None
+    notif_warnings = await notify_compte_rendu_generated(
+        cr_id=cr.id,
+        prospect_name=prospect_name,
+        author_name=current_user.display_name,
+        download_url=download_url,
+    )
+
     return CompteRenduOut(
         id=cr.id,
         parent_type=cr.parent_type,
@@ -744,6 +834,7 @@ async def generate_compte_rendu(
         note_ids=cr.note_ids,
         created_at=cr.created_at,
         created_by=cr.created_by_id,
+        warnings=notif_warnings,
     )
 
 

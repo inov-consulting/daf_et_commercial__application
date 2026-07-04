@@ -18,8 +18,10 @@ logger = get_logger(__name__)
 
 # Champs Odoo crm.lead qu'on synchronise
 ODOO_LEAD_FIELDS = [
+    "active",  # False = archivé (perdu) dans Odoo
     "id",
     "name",  # Nom de l'opportunité/lead
+    "stage_id",  # Étape du pipeline Odoo
     "partner_name",  # Nom de l'entreprise/client
     "contact_name",
     "email_from",
@@ -132,7 +134,7 @@ class ProspectSyncService:
             oc = self._get_odoo_client()
             leads = await asyncio.to_thread(
                 oc.execute, "crm.lead", "search_read",
-                [[("id", "in", lead_ids)]],
+                [[("id", "in", lead_ids), ("active", "in", [True, False])]],
                 {"fields": ODOO_LEAD_FIELDS, "limit": len(lead_ids)},
             )
             
@@ -157,7 +159,7 @@ class ProspectSyncService:
             oc = self._get_odoo_client()
             leads = await asyncio.to_thread(
                 oc.execute, "crm.lead", "search_read",
-                [[("id", "=", prospect.odoo_lead_id)]],
+                [[("id", "=", prospect.odoo_lead_id), ("active", "in", [True, False])]],
                 {"fields": ODOO_LEAD_FIELDS, "limit": 1},
             )
 
@@ -229,6 +231,7 @@ class ProspectSyncService:
         values: dict[str, Any] = {
             "name": name,
             "type": lead_type,
+            "active": True,  # Garantit la visibilité dans Odoo (non archivé)
         }
         
         if partner_name:
