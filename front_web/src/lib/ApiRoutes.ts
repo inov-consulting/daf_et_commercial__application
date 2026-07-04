@@ -83,6 +83,10 @@ export const ApiRoutes = {
   API_LOG:         (id: string) => `${BASE}/api/v1/api-logs/${id}`,
   API_LOG_DETAILS: (id: string) => `${BASE}/api/v1/api-logs/${id}/details`,
 
+  // ── KPI ──────────────────────────────────────────────────────────────────
+  KPI_CATALOG: `${BASE}/api/v1/kpi/catalog`,
+  KPI_DETAIL:  (key: string) => `${BASE}/api/v1/kpi/${key}`,
+
   // ── App Config ───────────────────────────────────────────────────────────
   CONFIG_APP:            `${BASE}/api/v1/config/app`,
   CONFIG_APP_VALIDATORS: `${BASE}/api/v1/config/app/validators`,
