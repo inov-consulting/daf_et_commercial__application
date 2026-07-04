@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   DownloadSimpleIcon, CopyIcon, PaperPlaneTiltIcon, MagicWandIcon,
   LightbulbIcon, MapPinIcon, ArrowRightIcon, CurrencyCircleDollarIcon,
   UserCircleIcon, PrinterIcon, ArrowsOutIcon, ArrowsInIcon,
   WarningCircleIcon, InfoIcon, ArrowsClockwiseIcon,
-  CaretRightIcon, FileTextIcon, ArrowLeftIcon, ListIcon, CheckCircleIcon,
+  FileTextIcon, ArrowLeftIcon, ListIcon, CheckCircleIcon,
 } from '@phosphor-icons/react';
-import type { Offer, CreateOfferBody } from '@/types/offer_type';
+import type { Offer, CreateOfferBody, OfferSection, OfferPricingRow } from '@/types/offer_type';
 import { computeOfferStatus, fmtOfferAmount } from '@/types/offer_type';
 import { OfferAgentChat, type OfferFromChat } from './offer-agent-chat';
 import { Button } from '../ui';
@@ -33,6 +33,17 @@ interface OfferCreateViewProps {
 
 const TVA_RATE = 0.1925;
 
+function extractPricingField(pricing: OfferPricingRow[], keywords: string[]): OfferPricingRow | undefined {
+  return pricing.find(p => keywords.some(k => p.label?.toLowerCase().includes(k)));
+}
+
+function extractTvaRate(pricing: OfferPricingRow[]): number {
+  const row = pricing.find(p => p.label?.toLowerCase().includes('tva'));
+  if (!row) return TVA_RATE;
+  const match = String(row.label).match(/([\d.]+)\s*%/);
+  return match ? parseFloat(match[1]) / 100 : TVA_RATE;
+}
+
 function fmt(n: number) {
   return n.toLocaleString('fr-FR', { maximumFractionDigits: 1 });
 }
@@ -52,23 +63,6 @@ const STAT_COLORS: Record<string, { bg: string; color: string; label: string }> 
   refusee:   { bg: '#FEF2F2', color: '#DC2626', label: 'Refusée'    },
   expiree:   { bg: '#F3F4F6', color: '#6B7280', label: 'Expirée'    },
 };
-
-// ── Hook personnalisé pour le responsive ─────────────────────────────────────
-
-function useMediaQuery(query: string) {
-  const [matches, setMatches] = useState(false);
-
-  useEffect(() => {
-    const media = window.matchMedia(query);
-    setMatches(media.matches);
-    
-    const listener = (e: MediaQueryListEvent) => setMatches(e.matches);
-    media.addEventListener('change', listener);
-    return () => media.removeEventListener('change', listener);
-  }, [query]);
-
-  return matches;
-}
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
@@ -96,6 +90,290 @@ function Sel({ value, onChange, options }: { value: string; onChange: (v: string
   );
 }
 
+// ── Formatage inline (gras) ────────────────────────────────────────────────────
+
+function inlineBold(text: string): React.ReactNode[] {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith('**') && part.endsWith('**')
+      ? <strong key={i} style={{ fontWeight: 700, color: '#1B2633' }}>{part.slice(2, -2)}</strong>
+      : (part || null)
+  );
+}
+
+// ── Renderer de contenu de section IA ─────────────────────────────────────────
+
+/**
+ * Rend le contenu d'une section qui peut contenir :
+ *   **Clé :** valeur  → ligne info (label muted + valeur bold)
+ *   **Remarques :** texte long → label en-tête + paragraphe
+ *   Texte ordinaire  → paragraphe
+ */
+function SectionContentBody({ content }: { content: string }) {
+  interface KvRow { label: string; value: string }
+
+  const lines = content.split('\n');
+  const nodes: React.ReactNode[] = [];
+  let nodeKey = 0;
+  let kvBatch: KvRow[] = [];
+
+  function flushKv() {
+    if (!kvBatch.length) return;
+    nodes.push(
+      <div
+        key={nodeKey++}
+        style={{ background: '#F7F9FC', border: '1px solid #DDE5EF', borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}
+      >
+        {kvBatch.map((kv, bi) => {
+          const isLong = kv.value.length > 70;
+          const lastRow = bi === kvBatch.length - 1;
+          return isLong ? (
+            <div key={bi} style={{ padding: '8px 12px', borderBottom: lastRow ? 'none' : '1px solid #EEF2F7' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#5A738A', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+                {kv.label}
+              </div>
+              <div style={{ fontSize: 12, color: '#1B2633', lineHeight: 1.65 }}>{kv.value}</div>
+            </div>
+          ) : (
+            <div key={bi} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '6px 12px', borderBottom: lastRow ? 'none' : '1px solid #EEF2F7' }}>
+              <span style={{ fontSize: 11, color: '#7691A8', flexShrink: 0, minWidth: 150 }}>{kv.label}</span>
+              <span style={{ fontSize: 12, color: '#1B2633', fontWeight: 600, flex: 1 }}>{kv.value}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+    kvBatch = [];
+  }
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) { flushKv(); continue; }
+
+    // Détecte **Clé :** valeur  ou  **Clé** : valeur  ou  **Clé:** valeur
+    const m = line.match(/^\*\*([^*]+?)\s*:?\s*\*\*\s*:?\s*(.+)?$/);
+    if (m) {
+      const label = m[1].replace(/\s*:$/, '').trim();
+      const value = (m[2] ?? '').trim();
+      if (label) { kvBatch.push({ label, value }); continue; }
+    }
+
+    flushKv();
+    nodes.push(
+      <p key={nodeKey++} style={{ fontSize: 12, color: '#435869', lineHeight: 1.7, marginBottom: 4 }}>
+        {inlineBold(line)}
+      </p>
+    );
+  }
+  flushKv();
+  return <div>{nodes}</div>;
+}
+
+// ── Impression du document ─────────────────────────────────────────────────────
+
+function escHtml(s: string): string {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function sectionContentHtml(content: string): string {
+  const lines = content.split('\n');
+  const parts: string[] = [];
+  const kvBatch: Array<{ label: string; value: string }> = [];
+
+  function flushKv() {
+    if (!kvBatch.length) return;
+    const rows = kvBatch.map(kv => {
+      if (kv.value.length > 70) {
+        return `<div class="kv-long"><div class="kv-label-long">${escHtml(kv.label)}</div><div class="kv-value-long">${escHtml(kv.value)}</div></div>`;
+      }
+      return `<div class="kv-row"><span class="kv-label">${escHtml(kv.label)}</span><span class="kv-value">${escHtml(kv.value)}</span></div>`;
+    }).join('');
+    parts.push(`<div class="kv-card">${rows}</div>`);
+    kvBatch.length = 0;
+  }
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) { flushKv(); continue; }
+    const m = line.match(/^\*\*([^*]+?)\s*:?\s*\*\*\s*:?\s*(.+)?$/);
+    if (m) {
+      const label = m[1].replace(/\s*:$/, '').trim();
+      const value = (m[2] ?? '').trim();
+      if (label) { kvBatch.push({ label, value }); continue; }
+    }
+    flushKv();
+    const boldLine = escHtml(line).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    parts.push(`<p class="text-para">${boldLine}</p>`);
+  }
+  flushKv();
+  return parts.join('');
+}
+
+function printOffer(props: DocPreviewProps) {
+  const {
+    client, origine, destination, produit, quantite, unite,
+    mode, vehicule, ht, tva, ttc, pu, tvaRate,
+    dateDepart, validite, sections, footer, offerRef, pricingRows,
+  } = props;
+
+  const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const fmtN = (n: number) => n.toLocaleString('fr-FR', { maximumFractionDigits: 1 });
+
+  // Sections
+  const sectionsHtml = sections.length > 0
+    ? sections.map(s => `
+        <div class="section">
+          <div class="section-header">
+            <span class="section-title">${escHtml(s.heading)}</span>
+            <div class="section-line"></div>
+          </div>
+          <div class="section-body">${sectionContentHtml(s.content)}</div>
+        </div>`).join('')
+    : '';
+
+  // Tarification
+  const pricingRowsHtml = pricingRows.length > 0
+    ? pricingRows.map(row => {
+        const isTotal = /ttc|total/i.test(String(row.label));
+        const valStr = typeof row.value === 'number' && row.value > 0
+          ? fmtN(row.value) + (row.unit ? ` ${row.unit}` : '')
+          : `${row.value}${row.unit ? ' ' + row.unit : ''}`;
+        return `<tr class="${isTotal ? 'total' : ''}"><td>${escHtml(String(row.label))}</td><td>${escHtml(valStr)}</td></tr>`;
+      }).join('')
+    : [
+        ['Quantité',       `${quantite} ${unite}`],
+        ['Prix unitaire',  `${fmtN(pu)} FCFA`],
+        ['Montant HT',     `${fmtN(ht)} FCFA`],
+        [`TVA (${(tvaRate * 100).toFixed(2)}%)`, `${fmtN(tva)} FCFA`],
+        ['Montant TTC',    `${fmtN(ttc)} FCFA`],
+      ].map(([label, val], i) =>
+        `<tr class="${i === 4 ? 'total' : ''}"><td>${escHtml(label)}</td><td>${escHtml(val)}</td></tr>`
+      ).join('');
+
+  const footerHtml = footer
+    ? `<div class="footer-text">${escHtml(footer)}</div>`
+    : '';
+
+  const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Offre de transport${offerRef ? ' – ' + offerRef : ''}</title>
+  <style>
+    @page { margin: 22mm 18mm; size: A4 portrait; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, Helvetica, sans-serif; font-size: 12px; color: #1B2633; line-height: 1.5; }
+
+    .letterhead { text-align: center; margin-bottom: 28px; padding-bottom: 18px; border-bottom: 2px solid #1E5B3C; }
+    .company-name { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.12em; color: #1E5B3C; margin-bottom: 8px; }
+    .offer-title { font-size: 20px; font-weight: 700; color: #1B2633; margin-bottom: 4px; letter-spacing: -0.3px; }
+    .offer-ref { font-family: monospace; font-size: 11px; color: #7691A8; }
+
+    .meta { display: flex; gap: 32px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #EEF2F7; }
+    .meta-col { flex: 1; }
+    .meta-cap { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #9EB0C4; margin-bottom: 5px; }
+    .meta-name { font-size: 13px; font-weight: 700; color: #1B2633; margin-bottom: 2px; }
+    .meta-sub { font-size: 11px; color: #7691A8; }
+
+    .objet { background: #F7F9FC; border: 1px solid #DDE5EF; border-radius: 5px; padding: 10px 14px; margin-bottom: 22px; font-size: 12px; color: #1B2633; }
+
+    .section { margin-bottom: 18px; }
+    .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .section-title { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: #1E5B3C; white-space: nowrap; }
+    .section-line { flex: 1; height: 1px; background: #EEF2F7; }
+
+    .kv-card { border: 1px solid #DDE5EF; border-radius: 5px; overflow: hidden; margin-bottom: 8px; }
+    .kv-row { display: flex; align-items: center; gap: 12px; padding: 6px 12px; border-bottom: 1px solid #EEF2F7; }
+    .kv-row:last-child { border-bottom: none; }
+    .kv-label { font-size: 11px; color: #7691A8; min-width: 150px; flex-shrink: 0; }
+    .kv-value { font-size: 12px; font-weight: 600; color: #1B2633; flex: 1; }
+    .kv-long { padding: 8px 12px; border-bottom: 1px solid #EEF2F7; }
+    .kv-long:last-child { border-bottom: none; }
+    .kv-label-long { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #5A738A; margin-bottom: 4px; }
+    .kv-value-long { font-size: 12px; color: #1B2633; line-height: 1.65; }
+    .text-para { font-size: 12px; color: #435869; line-height: 1.7; margin-bottom: 5px; }
+
+    .pricing-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .pricing-title { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: #1E5B3C; }
+    .pricing-line { flex: 1; height: 1px; background: #EEF2F7; }
+    .pricing-table { width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #DDE5EF; border-radius: 5px; overflow: hidden; margin-bottom: 18px; }
+    .pricing-table td { padding: 7px 12px; border-bottom: 1px solid #EEF2F7; }
+    .pricing-table tr:last-child td { border-bottom: none; }
+    .pricing-table td:first-child { color: #5A738A; }
+    .pricing-table td:last-child { text-align: right; font-weight: 500; color: #1B2633; }
+    .pricing-table tr.total td { font-weight: 700; background: #F7F9FC; }
+    .pricing-table tr.total td:last-child { color: #1E5B3C; }
+
+    .validity { font-size: 11px; color: #7691A8; border-top: 1px solid #EEF2F7; padding-top: 14px; margin-top: 14px; }
+    .footer-text { font-size: 11px; color: #7691A8; font-style: italic; margin-top: 14px; padding-top: 14px; border-top: 1px solid #EEF2F7; line-height: 1.65; }
+
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="letterhead">
+    <div class="company-name">INOV Consulting / PortaLis Group Holding</div>
+    <div class="offer-title">Offre de Transport</div>
+    <div class="offer-ref">${offerRef ? 'Réf : ' + escHtml(offerRef) + ' · ' : ''}${today}</div>
+  </div>
+
+  <div class="meta">
+    <div class="meta-col">
+      <div class="meta-cap">Émetteur</div>
+      <div class="meta-name">INOV Consulting</div>
+      <div class="meta-sub">commercial@inov-consulting.com</div>
+    </div>
+    <div class="meta-col">
+      <div class="meta-cap">Destinataire</div>
+      <div class="meta-name">${escHtml(client || 'Client')}</div>
+    </div>
+  </div>
+
+  <div class="objet">
+    <strong>Objet :</strong> Transport de ${escHtml(produit || 'marchandises')} –
+    ${escHtml(origine || '–')} → ${escHtml(destination || '–')}
+    (${quantite} ${escHtml(unite)} · ${escHtml(vehicule)} · ${escHtml(mode)})
+  </div>
+
+  ${sectionsHtml}
+
+  <div class="pricing-header">
+    <span class="pricing-title">Tarification</span>
+    <div class="pricing-line"></div>
+  </div>
+  <table class="pricing-table">
+    <tbody>${pricingRowsHtml}</tbody>
+  </table>
+
+  <div class="validity">
+    Valide ${validite} jour${validite > 1 ? 's' : ''} à compter de la date d'émission
+    ${dateDepart !== '–' ? '· Chargement prévu le ' + escHtml(dateDepart) : ''}
+  </div>
+
+  ${footerHtml}
+
+</body>
+</html>`;
+
+  const win = window.open('', '_blank', 'width=900,height=700');
+  if (!win) return;
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  // Légère pause pour laisser le navigateur rendre avant d'ouvrir la boîte d'impression
+  setTimeout(() => {
+    win.print();
+    win.onafterprint = () => win.close();
+  }, 400);
+}
+
 function DocSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-3.5">
@@ -117,59 +395,146 @@ interface DocPreviewProps {
   produit: string; quantite: number; unite: string;
   mode: string; vehicule: string;
   ht: number; tva: number; ttc: number; pu: number;
+  tvaRate: number;
   dateDepart: string; validite: number;
   generated: boolean;
-  genPresentation: string; genDetail: string;
+  sections: OfferSection[];
+  footer: string;
   offerRef: string;
+  pricingRows: OfferPricingRow[];
 }
 
 function OfferDocPreview({
   client, origine, destination, produit, quantite, unite,
-  mode, vehicule, ht, tva, ttc, pu, dateDepart, validite,
-  generated, genPresentation, offerRef,
+  mode, vehicule, ht, tva, ttc, pu, tvaRate,
+  dateDepart, validite, generated, sections, footer, offerRef, pricingRows,
 }: DocPreviewProps) {
   const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const hasSections = sections.length > 0;
+  const hasPricing  = pricingRows.length > 0;
 
   return (
     <div className="text-[13px] text-gray-900 leading-relaxed">
       {/* Letterhead */}
       <div className="text-center mb-5 pb-4 border-b border-gray-100">
         <div className="text-xs font-extrabold text-emerald-800 uppercase tracking-[0.12em] mb-1.5">
-          PortaLis Group Holding
+          INOV Consulting / PortaLis Group Holding
         </div>
         <div className="w-15 h-0.5 bg-emerald-800 mx-auto mb-3" />
         <div className="text-lg font-bold text-gray-900 tracking-tight mb-1">
-          Proposition Commerciale
+          Offre de Transport
         </div>
         <div className="font-mono text-[11px] text-gray-400">
           {offerRef ? `Réf : ${offerRef}` : 'Réf : –'} · {today}
         </div>
       </div>
 
-      {/* Meta */}
+      {/* Meta — émetteur / destinataire */}
       <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mb-4 pb-4 border-b border-gray-100">
         <div className="flex-1">
           <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Émetteur</div>
-          <div className="text-[13px] font-bold text-gray-900 mb-0.5">PortaLis Sénégal</div>
+          <div className="text-[13px] font-bold text-gray-900 mb-0.5">INOV Consulting</div>
           <div className="text-[11px] text-gray-500 leading-relaxed">
-            BP 5421, Zone Portuaire<br />Dakar, Sénégal<br />commercial@portalis-sn.com<br />+221 33 820 XX XX
+            commercial@inov-consulting.com
           </div>
         </div>
         <div className="flex-1">
           <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Destinataire</div>
           <div className="text-[13px] font-bold text-gray-900 mb-0.5">{client || 'Client'}</div>
-          <div className="text-[11px] text-gray-500">Client non lié à un partenaire Odoo</div>
         </div>
       </div>
 
       {/* Objet */}
-      <div className="text-xs font-semibold text-gray-900 bg-gray-50 border border-gray-200 rounded-lg p-2.5 mb-3.5 flex items-center gap-1.5">
-        <FileTextIcon size={14} className="text-emerald-800 flex-shrink-0" />
-        <span><strong>Objet :</strong>&nbsp;Transport de {produit || 'marchandises'} – {origine || '–'} → {destination || '–'} ({quantite} {unite} · {vehicule})</span>
+      <div className="text-xs font-semibold text-gray-900 bg-gray-50 border border-gray-200 rounded-lg p-2.5 mb-4 flex items-start gap-1.5">
+        <FileTextIcon size={14} className="text-emerald-800 flex-shrink-0 mt-0.5" />
+        <span>
+          <strong>Objet :</strong>&nbsp;Transport de {produit || 'marchandises'} – {origine || '–'} → {destination || '–'}&nbsp;({quantite}&nbsp;{unite} · {vehicule} · {mode})
+        </span>
       </div>
 
-      {/* Reste du document identique mais avec classes Tailwind */}
-      {/* ... (garder la même structure que l'original mais avec des classes responsive) ... */}
+      {/* Sections IA */}
+      {hasSections ? (
+        sections.map((s, i) => (
+          <div key={i} className="mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 whitespace-nowrap">
+                {s.heading}
+              </span>
+              <div className="flex-1 h-px bg-gray-100" />
+            </div>
+            <SectionContentBody content={s.content} />
+          </div>
+        ))
+      ) : (
+        <div className="mb-4 text-[12px] text-gray-400 italic text-center py-4">
+          {generated
+            ? 'Contenu généré par l\'IA — sections non disponibles'
+            : 'L\'aperçu du document apparaîtra après génération par l\'IA'}
+        </div>
+      )}
+
+      {/* Tableau de tarification */}
+      {hasPricing ? (
+        <div className="mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">Tarification</span>
+            <div className="flex-1 h-px bg-gray-100" />
+          </div>
+          <table className="w-full text-[12px] border-collapse">
+            <tbody>
+              {pricingRows.map((row, i) => {
+                const isTotal = row.label?.toLowerCase().includes('ttc') || row.label?.toLowerCase().includes('total');
+                return (
+                  <tr key={i} className={`border-b border-gray-100 ${isTotal ? 'font-bold bg-gray-50' : ''}`}>
+                    <td className="py-1.5 pr-3 text-gray-600">{row.label}</td>
+                    <td className="py-1.5 text-right font-medium text-gray-900">
+                      {typeof row.value === 'number' && row.value > 0
+                        ? row.value.toLocaleString('fr-FR') + (row.unit ? ` ${row.unit}` : '')
+                        : `${row.value}${row.unit ? ' ' + row.unit : ''}`}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : generated ? (
+        <div className="mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">Tarification</span>
+            <div className="flex-1 h-px bg-gray-100" />
+          </div>
+          <table className="w-full text-[12px] border-collapse">
+            <tbody>
+              {[
+                ['Quantité', `${quantite} ${unite}`],
+                ['Prix unitaire', `${fmt(pu)} FCFA`],
+                ['Montant HT', `${fmt(ht)} FCFA`],
+                [`TVA (${(tvaRate * 100).toFixed(2)}%)`, `${fmt(tva)} FCFA`],
+                ['Montant TTC', `${fmt(ttc)} FCFA`],
+              ].map(([label, val], i) => (
+                <tr key={i} className={`border-b border-gray-100 ${label === 'Montant TTC' ? 'font-bold bg-gray-50' : ''}`}>
+                  <td className="py-1.5 pr-3 text-gray-600">{label}</td>
+                  <td className="py-1.5 text-right font-medium text-gray-900">{val}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
+      {/* Validité */}
+      <div className="text-[11px] text-gray-500 border-t border-gray-100 pt-3 mt-2">
+        Valide {validite} jour{validite > 1 ? 's' : ''} à compter de la date d&apos;émission
+        {dateDepart !== '–' && ` · Chargement prévu le ${dateDepart}`}
+      </div>
+
+      {/* Footer */}
+      {footer && (
+        <div className="mt-3 pt-3 border-t border-gray-100 text-[11px] text-gray-500 italic leading-relaxed">
+          {footer}
+        </div>
+      )}
     </div>
   );
 }
@@ -203,15 +568,20 @@ export function OfferCreateView({
   const [validating,        setValidating]        = useState(false);
   const [savedOffer,        setSavedOffer]        = useState<Offer | null>(editingOffer ?? null);
   const [fullscreen,        setFullscreen]        = useState(false);
-  const [genPresentation,   setGenPresentation]   = useState('');
-  const [genDetail,         setGenDetail]         = useState('');
   const [createPhase,       setCreatePhase]       = useState<'chat' | 'form'>(editingOffer ? 'form' : 'chat');
   const [generationSuccess, setGenerationSuccess] = useState(false);
+
+  // Données IA enrichies
+  const [sections,    setSections]    = useState<OfferSection[]>([]);
+  const [footer,      setFooter]      = useState('');
+  const [warnings,    setWarnings]    = useState<string[]>([]);
+  const [tvaRate,     setTvaRate]     = useState(TVA_RATE);
+  const [pricingRows, setPricingRows] = useState<OfferPricingRow[]>([]);
 
   // Computed pricing
   const pu  = parseFloat(prixStr.replace(/\s/g, '')) || 0;
   const ht  = quantite * pu;
-  const tva = ht * TVA_RATE;
+  const tva = ht * tvaRate;
   const ttc = ht + tva;
 
   const departFmt = dateDepart ? fmtDateFr(dateDepart) : '–';
@@ -240,10 +610,6 @@ export function OfferCreateView({
         const result = await onGenerate(offer.id);
         setSavedOffer(result);
       }
-      setGenPresentation(
-        `INOV Consulting a le plaisir de vous proposer une solution de transport ${mode.toLowerCase()} adaptée à vos besoins logistiques.`
-      );
-      setGenDetail(`${origine} → ${destination}`);
       setGenerated(true);
     } finally {
       setGenerating(false);
@@ -251,6 +617,7 @@ export function OfferCreateView({
   }
 
   async function handleOfferGenerated({ offerId, data }: OfferFromChat) {
+    // Champs de base
     setClient(data.client.name || '');
     setOrigine(data.route.origin || '');
     setDestination(data.route.destination || '');
@@ -259,18 +626,26 @@ export function OfferCreateView({
     setDateDepart(data.route.planned_date || '');
     setValidite(String(data.validity_days || 7));
 
-    if (data.pricing.length > 0) {
-      const p = data.pricing[0];
-      const px = p['unit_price'] ?? p['price_per_unit'] ?? p['amount'] ?? p['price'];
-      if (typeof px === 'number' && px > 0) setPrixStr(String(px));
-    }
+    // Extraction depuis le tableau pricing
+    const pricing = (data.pricing ?? []) as unknown as OfferPricingRow[];
+    const produitRow = extractPricingField(pricing, ['produit', 'product']);
+    const qteRow     = extractPricingField(pricing, ['quantit']);
+    const puRow      = extractPricingField(pricing, ['prix unitaire', 'unit price', 'price_per_unit']);
 
-    if (data.sections.length > 0) {
-      const s = data.sections[0];
-      const c = s['content'] ?? s['text'] ?? s['body'];
-      if (typeof c === 'string') setGenPresentation(c);
+    if (produitRow) setProduit(String(produitRow.value));
+    if (qteRow) {
+      setQuantite(Number(qteRow.value) || 1);
+      setUnite(qteRow.unit || 'tonnes');
     }
-    setGenDetail(`${data.route.origin} → ${data.route.destination}`);
+    if (puRow) setPrixStr(String(puRow.value));
+    setTvaRate(extractTvaRate(pricing));
+    setPricingRows(pricing);
+
+    // Sections et footer
+    setSections((data.sections ?? []) as unknown as OfferSection[]);
+    setFooter((data as unknown as { footer?: string }).footer ?? '');
+    setWarnings((data as unknown as { warnings?: string[] }).warnings ?? []);
+
     setGenerated(true);
 
     setSavedOffer({
@@ -283,10 +658,10 @@ export function OfferCreateView({
       destination_location: data.route.destination,
       transport_mode: data.route.transport_mode,
       vehicle_type: data.route.vehicle_type,
-      product_description: '',
-      quantity: 1,
-      quantity_unit: 'unité',
-      unit_price: 0,
+      product_description: produitRow ? String(produitRow.value) : '',
+      quantity: qteRow ? Number(qteRow.value) || 1 : 1,
+      quantity_unit: qteRow?.unit || 'tonnes',
+      unit_price: puRow ? Number(puRow.value) || 0 : 0,
       amount_untaxed: 0,
       amount_tax: 0,
       amount_total: 0,
@@ -298,13 +673,7 @@ export function OfferCreateView({
       currency: 'XOF',
       state: 'genere',
       created_at: new Date().toISOString(),
-      sent_at: undefined,
-      signed_at: undefined,
-      refused_at: undefined,
-      updated_at: undefined,
       odoo_linked: false,
-      commercial_name: undefined,
-      activity: 'transport',
     } as Offer);
 
     setGenerationSuccess(true);
@@ -417,13 +786,13 @@ export function OfferCreateView({
           </button>
           <button
             onClick={() => setShowMobilePanel('preview')}
-            className={`flex-1 h-10 rounded-lg text-sm font-medium transition-colors ${
+            className={`h-[34px] flex-1 rounded-lg text-sm font-medium transition-colors ${
               showMobilePanel === 'preview' 
                 ? 'bg-emerald-800 text-white' 
                 : 'border border-gray-200 text-gray-700'
             }`}
           >
-            Aperçu
+            Imprimer
           </button>
         </div>
       )}
@@ -580,6 +949,51 @@ export function OfferCreateView({
               <FormField label="Validité de l'offre">
                 <Sel value={validite} onChange={setValidite} options={['30 jours', '15 jours', '7 jours', '60 jours']} />
               </FormField>
+
+              {/* ── Avertissements SMTP / IA ─────────────────────────────── */}
+              {warnings.length > 0 && (
+                <div className="flex flex-col gap-1.5">
+                  {warnings.map((w, i) => (
+                    <div key={i} className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+                      <WarningCircleIcon size={13} weight="fill" className="text-amber-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-[11px] text-amber-700 leading-relaxed">{w}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── Sections IA (éditables) ───────────────────────────────── */}
+              {sections.length > 0 && (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Contenu de l&apos;offre</span>
+                    <div className="flex-1 h-px bg-gray-100" />
+                  </div>
+                  {sections.map((s, i) => (
+                    <div key={i} className="flex flex-col gap-1">
+                      <label className="text-[11px] font-semibold text-emerald-800 truncate">{s.heading}</label>
+                      <textarea
+                        value={s.content}
+                        onChange={e => setSections(prev => prev.map((sec, idx) => idx === i ? { ...sec, content: e.target.value } : sec))}
+                        rows={4}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[12px] text-gray-900 outline-none focus:border-emerald-300 focus:bg-emerald-50 resize-y leading-relaxed"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── Pied de page ─────────────────────────────────────────── */}
+              {footer !== '' && (
+                <FormField label="Pied de page">
+                  <textarea
+                    value={footer}
+                    onChange={e => setFooter(e.target.value)}
+                    rows={3}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[12px] text-gray-900 outline-none focus:border-emerald-300 focus:bg-emerald-50 resize-y leading-relaxed"
+                  />
+                </FormField>
+              )}
             </div>
 
             {/* Panel footer */}
@@ -642,14 +1056,14 @@ export function OfferCreateView({
               <div className="flex items-center gap-2">
                 <button 
                   onClick={() => setFullscreen(v => !v)} 
-                  className="h-7.5 px-3 border border-gray-200 rounded-md bg-white text-gray-700 text-[11px] font-medium inline-flex items-center gap-1.5 hover:bg-gray-50 transition-colors"
+                  className="h-[34px] px-3 border border-gray-200 rounded-md bg-white text-gray-700 text-[11px] font-medium inline-flex items-center gap-1.5 hover:bg-gray-50 transition-colors"
                 >
                   {fullscreen ? <ArrowsInIcon size={12} /> : <ArrowsOutIcon size={12} />}
                   <span className="hidden sm:inline">{fullscreen ? 'Réduire' : 'Plein écran'}</span>
                 </button>
                 <button 
                   onClick={() => savedOffer && onSend?.(savedOffer)} 
-                  className="h-7.5 px-3.5 bg-emerald-800 text-white text-[11px] font-semibold rounded-md inline-flex items-center gap-1.5 shadow-sm hover:bg-emerald-900 transition-colors"
+                  className="h-[34px] px-3.5 bg-emerald-800 text-white text-[11px] font-semibold rounded-md inline-flex items-center gap-1.5 shadow-sm hover:bg-emerald-900 transition-colors"
                 >
                   <PaperPlaneTiltIcon size={12} weight="fill" /> 
                   <span className="hidden sm:inline">Envoyer</span>
@@ -693,9 +1107,12 @@ export function OfferCreateView({
                   produit={produit} quantite={quantite} unite={unite}
                   mode={mode} vehicule={vehicule}
                   ht={ht} tva={tva} ttc={ttc} pu={pu}
+                  tvaRate={tvaRate}
                   dateDepart={departFmt} validite={validiteJours}
                   generated={generated}
-                  genPresentation={genPresentation} genDetail={genDetail}
+                  sections={sections}
+                  footer={footer}
+                  pricingRows={pricingRows}
                   offerRef={offerRef}
                 />
               )}
@@ -707,8 +1124,19 @@ export function OfferCreateView({
                 <WarningCircleIcon size={14} weight="fill" className="text-amber-500" />
                 Généré par IA – réviser avant envoi au client
               </div>
-              <button className="h-7.5 px-3 border border-gray-200 rounded-md bg-white text-gray-700 text-[11px] font-medium inline-flex items-center gap-1.5 hover:bg-gray-50 transition-colors">
-                <PrinterIcon size={12} /> <span className="hidden sm:inline">Aperçu</span>
+              <button
+                disabled={createPhase === 'chat' && !generationSuccess}
+                onClick={() => printOffer({
+                  client, origine, destination, produit, quantite, unite,
+                  mode, vehicule, ht, tva, ttc, pu, tvaRate,
+                  dateDepart: departFmt, validite: validiteJours,
+                  generated, sections, footer, offerRef, pricingRows,
+                })}
+                className={`h-[34px] px-3 border border-gray-200 rounded-md bg-white text-gray-700 
+                  text-[11px] font-medium inline-flex items-center gap-1.5 hover:bg-gray-50 transition-colors
+                  ${createPhase === 'chat' && !generationSuccess ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <PrinterIcon size={12} /> <span className="hidden sm:inline">Imprimer</span>
               </button>
             </div>
           </div>

@@ -2,11 +2,12 @@ import { useState, useRef, useEffect } from 'react';
 import {
   DotsThreeVerticalIcon, EyeIcon, PencilSimpleIcon, CopyIcon,
   DownloadSimpleIcon, PaperPlaneTiltIcon, TrashIcon,
+  ShieldCheckIcon, CheckSquareIcon,
 } from '@phosphor-icons/react';
 import type { RowPopupProps } from '@/types/offer_type';
 
-export function OfferRowPopup({ 
-  offer, status, onView, onEdit, onDuplicate, onSend, onDelete 
+export function OfferRowPopup({
+  offer, status, onView, onEdit, onDuplicate, onSend, onDelete, onValidate, onConfirm,
 }: RowPopupProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [position, setPosition] = useState({ top: 0, right: 0 });
@@ -77,13 +78,35 @@ export function OfferRowPopup({
           style={{ top: position.top, right: position.right }}
         >
           {/* Voir le détail */}
-          <button 
+          <button
             className={menuItemClass}
             onClick={() => handleAction(onView)}
           >
             <EyeIcon size={14} className="text-gray-500 w-3.5" />
             Voir le détail
           </button>
+
+          {/* Valider (genere) */}
+          {status === 'genere' && onValidate && (
+            <button
+              className={`${menuItemClass} !text-[#1E5B3C] hover:!bg-[#ECFDF5]`}
+              onClick={() => handleAction(onValidate)}
+            >
+              <ShieldCheckIcon size={14} weight="fill" className="w-3.5 text-[#1E5B3C]" />
+              Valider l&apos;offre
+            </button>
+          )}
+
+          {/* Confirmer Odoo (envoyee = validated) */}
+          {status === 'envoyee' && onConfirm && (
+            <button
+              className={`${menuItemClass} !text-[#085499] hover:!bg-[#EBF5FD]`}
+              onClick={() => handleAction(onConfirm)}
+            >
+              <CheckSquareIcon size={14} weight="fill" className="w-3.5 text-[#085499]" />
+              Confirmer → Odoo
+            </button>
+          )}
           
           {/* Modifier (désactivé) */}
           <button 

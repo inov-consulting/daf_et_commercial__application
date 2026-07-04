@@ -1,4 +1,4 @@
-import type { PaginationProps } from '@/types';
+import type { PaginationProps } from '@/types/offer_type';
 import { getPageNumbers } from '@/lib/utils';
 
 export function Pagination({ 
