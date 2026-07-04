@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -102,12 +102,35 @@ class WorkflowHistoryOut(BaseModel):
         )
 
 
+class WorkflowStepItemOut(BaseModel):
+    """Une étape définie dans le template de workflow associé au dossier."""
+
+    name: str | None = Field(None, description="Libellé de l'étape (ex: 'En transit')")
+    code: str | None = Field(None, description="Code technique de l'étape (ex: 'in_transit')")
+    sequence: int | None = Field(None, description="Ordre d'apparition de l'étape dans le workflow")
+    is_current: bool = Field(description="Indique si c'est l'étape active du dossier")
+    
+
+    @classmethod
+    def from_odoo(cls, r: dict, *, current_step_id: int | None = None) -> "WorkflowStepItemOut":
+        return cls(
+            name=r.get("name") or None,
+            code=r.get("code") or None,
+            sequence=r.get("sequence"),
+            is_current=(r["id"] == current_step_id),
+        )
+
+
 class WorkflowStepOut(BaseModel):
-    instance_id: int | None
-    template: str | None
-    current_step: str | None
-    state: str | None
-    history: list[WorkflowHistoryOut] = []
+    """Workflow associé au dossier de transport : instance, étape courante, toutes les étapes et l'historique."""
+
+    instance_id: int | None = Field(None, description="ID de l'instance de workflow")
+    template: str | None = Field(None, description="Nom du template de workflow utilisé")
+    current_step: str | None = Field(None, description="Libellé de l'étape courante")
+    current_step_id: int | None = Field(None, description="ID de l'étape courante")
+    state: str | None = Field(None, description="État global du workflow (running, done, cancelled)")
+    steps: list[WorkflowStepItemOut] = Field(default=[], description="Liste ordonnée de toutes les étapes du workflow, avec indication de l'étape active")
+    history: list[WorkflowHistoryOut] = Field(default=[], description="Historique des transitions entre étapes")
 
 
 # ── Voyage ────────────────────────────────────────────────────────────────────
@@ -267,3 +290,20 @@ class DashboardOut(BaseModel):
     total_revenue: float
     total_margin: float
     by_mode: list[DashboardModeStats]
+
+
+# ── Workflow next-step ────────────────────────────────────────────────────────
+
+class NextStepIn(BaseModel):
+    note: str | None = Field(None, description="Note optionnelle pour l'historique du workflow")
+
+
+class NextStepOut(BaseModel):
+    shipment_id: int
+    shipment_name: str
+    previous_step: str | None = Field(None, description="Étape quittée")
+    current_step: str = Field(description="Étape active après la transition")
+    current_step_code: str | None = None
+    next_step: str | None = Field(None, description="Prochaine étape disponible (null si dernière)")
+    next_step_code: str | None = None
+    workflow_state: str = Field(description="État du workflow : running | done | cancelled")

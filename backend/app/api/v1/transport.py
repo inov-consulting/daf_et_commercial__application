@@ -17,6 +17,8 @@ from app.api.v1.schemas.transport import (
     DashboardModeStats,
     DashboardOut,
     ImmobilizationOut,
+    NextStepIn,
+    NextStepOut,
     ShipmentDetail,
     ShipmentListItem,
     ShipmentListOut,
@@ -24,6 +26,7 @@ from app.api.v1.schemas.transport import (
     VoyageListItem,
     VoyageListOut,
     WorkflowHistoryOut,
+    WorkflowStepItemOut,
     WorkflowStepOut,
 )
 from app.core.logging import get_logger
@@ -34,6 +37,7 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/transport", tags=["transport"])
 
 _read_deps = [Depends(require_permission("transport:read"))]
+_write_deps = [Depends(require_permission("transport:write"))]
 
 # ── Champs à lire depuis Odoo ─────────────────────────────────────────────────
 
@@ -71,6 +75,8 @@ WORKFLOW_FIELDS = [
 WORKFLOW_HISTORY_FIELDS = [
     "id", "instance_id", "step_id", "date_entered", "date_exited", "duration_hours", "user_id", "note",
 ]
+
+WORKFLOW_STEP_FIELDS = ["id", "name", "code", "sequence", "template_id"]
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -193,17 +199,36 @@ async def get_shipment(shipment_id: int) -> ShipmentDetail:
         )
         if wf_records:
             wf = wf_records[0]  # type: ignore[index]
-            history_records = await _safe_read(
-                client,
-                "transport.workflow.history",
-                WORKFLOW_HISTORY_FIELDS,
-                [("instance_id", "=", wf.get("id"))],
+            template_raw = wf.get("template_id")
+            template_id_val: int | None = template_raw[0] if isinstance(template_raw, list) else None
+            current_step_raw = wf.get("current_step_id")
+            current_step_id_val: int | None = current_step_raw[0] if isinstance(current_step_raw, list) else None
+
+            history_records, step_records = await asyncio.gather(
+                _safe_read(
+                    client,
+                    "transport.workflow.history",
+                    WORKFLOW_HISTORY_FIELDS,
+                    [("instance_id", "=", wf.get("id"))],
+                ),
+                _safe_read(
+                    client,
+                    "transport.workflow.step",
+                    WORKFLOW_STEP_FIELDS,
+                    [("template_id", "=", template_id_val)] if template_id_val else [],
+                ),
             )
+            step_records_sorted = sorted(step_records, key=lambda s: (s.get("sequence") or 0))
             workflow_out = WorkflowStepOut(
                 instance_id=wf.get("id"),
-                template=wf["template_id"][1] if isinstance(wf.get("template_id"), list) else None,
-                current_step=wf["current_step_id"][1] if isinstance(wf.get("current_step_id"), list) else None,
+                template=template_raw[1] if isinstance(template_raw, list) else None,
+                current_step=current_step_raw[1] if isinstance(current_step_raw, list) else None,
+                current_step_id=current_step_id_val,
                 state=wf.get("state"),
+                steps=[
+                    WorkflowStepItemOut.from_odoo(s, current_step_id=current_step_id_val)
+                    for s in step_records_sorted
+                ],
                 history=[WorkflowHistoryOut.from_odoo(h) for h in history_records],
             )
 
@@ -220,7 +245,200 @@ async def get_shipment(shipment_id: int) -> ShipmentDetail:
     return detail
 
 
-# ── Voyages ───────────────────────────────────────────────────────────────────
+@router.post("/shipments/{shipment_id}/next-step", dependencies=_write_deps)
+async def shipment_next_step(
+    shipment_id: int,
+    body: NextStepIn,
+) -> NextStepOut:
+    """Avance le dossier transport à l'étape suivante du workflow.
+
+    Retourne l'étape précédente, l'étape courante et la prochaine étape disponible.
+    Erreurs formatées si la transition est impossible (dossier annulé, déjà terminé, etc.).
+    """
+    client = OdooClient()
+
+    # 1. Vérifier que le dossier existe et récupérer son état actuel
+    records = await asyncio.to_thread(
+        client.execute, "transport.shipment", "search_read",
+        [["id", "=", shipment_id]],
+        {"fields": ["id", "name", "state", "workflow_instance_id"]},
+    )
+    if not records:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dossier non trouvé")
+
+    shipment = records[0]  # type: ignore[index]
+    shipment_name = shipment.get("name", str(shipment_id))
+
+    # 2. Gardes : états terminaux
+    current_state = shipment.get("state", "")
+    if current_state == "cancelled":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "SHIPMENT_CANCELLED",
+                "message": f"Le dossier {shipment_name} est annulé. Impossible d'avancer dans le workflow.",
+                "current_state": current_state,
+            },
+        )
+    if current_state == "done":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "SHIPMENT_DONE",
+                "message": f"Le dossier {shipment_name} est déjà terminé.",
+                "current_state": current_state,
+            },
+        )
+
+    # 3. Récupérer l'instance de workflow
+    wf_raw = shipment.get("workflow_instance_id")
+    wf_instance_id = wf_raw[0] if isinstance(wf_raw, list) else None
+    if not wf_instance_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "NO_WORKFLOW",
+                "message": f"Aucun workflow actif sur le dossier {shipment_name}.",
+            },
+        )
+
+    wf_records = await asyncio.to_thread(
+        client.execute, "transport.workflow.instance", "search_read",
+        [["id", "=", wf_instance_id]],
+        {"fields": WORKFLOW_FIELDS},
+    )
+    if not wf_records:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "WORKFLOW_NOT_FOUND", "message": "Instance de workflow introuvable."},
+        )
+
+    wf = wf_records[0]  # type: ignore[index]
+    current_step_raw = wf.get("current_step_id")
+    current_step_id = current_step_raw[0] if isinstance(current_step_raw, list) else None
+    previous_step_name = current_step_raw[1] if isinstance(current_step_raw, list) else None
+    template_raw = wf.get("template_id")
+    template_id = template_raw[0] if isinstance(template_raw, list) else None
+
+    # 4. Récupérer toutes les étapes triées
+    step_records = await _safe_read(
+        client, "transport.workflow.step",
+        WORKFLOW_STEP_FIELDS,
+        [("template_id", "=", template_id)] if template_id else [],
+    )
+    steps_sorted = sorted(step_records, key=lambda s: (s.get("sequence") or 0))
+
+    # Ignorer l'étape CANCELLED (sequence 999) pour le flux normal
+    normal_steps = [s for s in steps_sorted if s.get("code") != "CANCELLED"]
+
+    # Trouver l'index de l'étape courante
+    current_idx = next(
+        (i for i, s in enumerate(normal_steps) if s.get("id") == current_step_id), None
+    )
+    if current_idx is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "STEP_NOT_FOUND",
+                "message": "L'étape courante est introuvable dans le template de workflow.",
+                "current_step_id": current_step_id,
+            },
+        )
+
+    if current_idx >= len(normal_steps) - 1:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "ALREADY_LAST_STEP",
+                "message": f"Le dossier {shipment_name} est déjà à la dernière étape « {previous_step_name} ».",
+                "current_step": previous_step_name,
+            },
+        )
+
+    next_step = normal_steps[current_idx + 1]
+    next_step_id = next_step.get("id")
+
+    # 5. Transition : write direct sur current_step_id + gestion historique
+    from datetime import datetime as _dt
+    now_iso = _dt.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+    try:
+        # a) Clôturer l'entrée d'historique courante (date_exited = maintenant)
+        open_history = await asyncio.to_thread(
+            client.execute, "transport.workflow.history", "search_read",
+            [[("instance_id", "=", wf_instance_id), ("step_id", "=", current_step_id), ("date_exited", "=", False)]],
+            {"fields": ["id"], "limit": 1},
+        )
+        if open_history:
+            await asyncio.to_thread(
+                client.execute, "transport.workflow.history", "write",
+                [[open_history[0]["id"]], {"date_exited": now_iso}],  # type: ignore[index]
+            )
+
+        # b) Avancer l'étape courante sur l'instance
+        await asyncio.to_thread(
+            client.execute, "transport.workflow.instance", "write",
+            [[wf_instance_id], {"current_step_id": next_step_id}],
+        )
+
+        # c) Créer la nouvelle entrée d'historique
+        history_vals: dict = {
+            "instance_id": wf_instance_id,
+            "step_id": next_step_id,
+            "date_entered": now_iso,
+        }
+        if body.note:
+            history_vals["note"] = body.note
+        await asyncio.to_thread(
+            client.execute, "transport.workflow.history", "create",
+            [history_vals],
+        )
+
+    except Exception as exc:
+        err_msg = str(exc)
+        if "Missing required" in err_msg or "mandatory" in err_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"code": "MISSING_REQUIRED_FIELD", "message": err_msg},
+            )
+        if "access" in err_msg.lower() or "permission" in err_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"code": "ODOO_ACCESS_DENIED", "message": "Droits insuffisants pour cette transition."},
+            )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"code": "ODOO_ERROR", "message": err_msg},
+        )
+
+    # 6. Relire l'état réel après la transition
+    wf_after = await asyncio.to_thread(
+        client.execute, "transport.workflow.instance", "search_read",
+        [["id", "=", wf_instance_id]],
+        {"fields": WORKFLOW_FIELDS},
+    )
+    wf_new = wf_after[0] if wf_after else wf  # type: ignore[index]
+    new_step_raw = wf_new.get("current_step_id")
+    new_step_name = new_step_raw[1] if isinstance(new_step_raw, list) else next_step.get("name", "")
+    new_step_id = new_step_raw[0] if isinstance(new_step_raw, list) else next_step_id
+
+    # Prochaine étape après la transition
+    new_idx = next((i for i, s in enumerate(normal_steps) if s.get("id") == new_step_id), current_idx + 1)
+    after_next = normal_steps[new_idx + 1] if new_idx + 1 < len(normal_steps) else None
+
+    return NextStepOut(
+        shipment_id=shipment_id,
+        shipment_name=shipment_name,
+        previous_step=previous_step_name,
+        current_step=str(new_step_name),
+        current_step_code=next_step.get("code"),
+        next_step=after_next.get("name") if after_next else None,
+        next_step_code=after_next.get("code") if after_next else None,
+        workflow_state=str(wf_new.get("state") or "running"),
+    )
+
+
+# ── Voyages ────────────────────────────────────────────────────────────────────
 
 @router.get("/shipments/{shipment_id}/voyages", dependencies=_read_deps)
 async def list_voyages(
