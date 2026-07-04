@@ -141,6 +141,7 @@ export default function OffresPage() {
         {view === 'detail' && selectedOffer && (
           <OfferDetailView
             offer={selectedOffer}
+            detail={detail}
             onBack={backToList}
             onEdit={() => {/* pas d'édition manuelle */}}
             onDuplicate={() => {/* pas de duplication */}}
@@ -148,6 +149,9 @@ export default function OffresPage() {
             onRegenerate={async (offer) => {
               await dispatch(fetchOfferDetail(offer.id));
             }}
+            onValidate={handleValidate}
+            onConfirm={handleConfirm}
+            onCancel={handleCancel}
           />
         )}
 
