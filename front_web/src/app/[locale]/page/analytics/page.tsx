@@ -2,73 +2,155 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  ArrowsClockwiseIcon, CaretRightIcon, FunnelSimpleIcon,
-  ChartBarIcon, XCircleIcon,
+  CaretRightIcon, MagnifyingGlassIcon, ChartLineIcon, XIcon
 } from '@phosphor-icons/react';
 import { useAppDispatch, useAppSelector } from '@/redux/store';
-import {
-  fetchKpiCatalog,
-  fetchKpiCatalogWithFilter,
-  resetFilter,
-} from '@/redux/features/kpi/kpiSlice';
-import { KpiChartCard, KpiChartCardSkeleton } from '@/components/kpi/kpi-chart-card';
+import { fetchKpiAvailable } from '@/redux/features/app-config/appConfigSlice';
+import { clearSelectedKpi, fetchKpiDetail } from '@/redux/features/kpi/kpiSlice';
+import { KpiDetailView } from '@/components/kpi/kpi-detail-view';
 import { formatTodayDate } from '@/lib/utils';
+import type { KpiDefinition } from '@/types/app_config_type';
+
+// ── Couleurs catégories ───────────────────────────────────────────────────────
+
+const CATEGORY_COLORS: Record<string, { bg: string; color: string; dot: string }> = {
+  commercial: { bg: '#ECFDF5', color: '#1E5B3C', dot: '#10B981' },
+  transport:  { bg: '#EBF5FD', color: '#085499', dot: '#3B82F6' },
+  finance:    { bg: '#FBF3DE', color: '#725A0A', dot: '#F59E0B' },
+  operations: { bg: '#F3EFFE', color: '#5829A8', dot: '#8B5CF6' },
+  default:    { bg: '#F3F4F6', color: '#6B7280', dot: '#9CA3AF' },
+};
+
+function catColor(cat: string) {
+  return CATEGORY_COLORS[cat?.toLowerCase()] ?? CATEGORY_COLORS.default;
+}
+
+// ── Composant item de liste ───────────────────────────────────────────────────
+
+function KpiListItem({
+  definition,
+  selected,
+  onClick,
+}: {
+  definition: KpiDefinition;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const cc = catColor(definition.category);
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full text-left px-3 py-2.5 rounded-xl transition-all flex items-start gap-2.5 group ${
+        selected
+          ? 'bg-primary shadow-sm'
+          : 'hover:bg-[#F7F9FC]'
+      }`}
+    >
+      <span
+        className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5"
+        style={{ background: selected ? '#fff' : cc.dot }}
+      />
+      <div className="min-w-0 flex-1">
+        <div
+          className={`text-[12px] font-semibold leading-snug truncate ${
+            selected ? 'text-white' : 'text-[#1B2633]'
+          }`}
+        >
+          {definition.label}
+        </div>
+        {definition.description && (
+          <div
+            className={`text-[10px] mt-0.5 truncate ${
+              selected ? 'text-[#A7F3D0]' : 'text-[#9EB0C4]'
+            }`}
+          >
+            {definition.description}
+          </div>
+        )}
+        <span
+          className={`inline-block text-[9px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wide mt-1 ${
+            selected ? 'bg-white/20 text-white' : ''
+          }`}
+          style={!selected ? { background: cc.bg, color: cc.color } : undefined}
+        >
+          {definition.category}
+        </span>
+      </div>
+    </button>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
   const dispatch = useAppDispatch();
-  const { displayed, catalog, catalogLoading, catalogError, filterLoading } =
-    useAppSelector(s => s.kpi);
+  const today    = formatTodayDate();
 
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo,   setDateTo]   = useState('');
-  const [filtered, setFiltered] = useState(false);
+  // Données Redux
+  const { kpiAvailable, kpiLoading } = useAppSelector(s => s.appConfig);
+  const { kpiDetailLoading }          = useAppSelector(s => s.kpi);
 
-  const today = formatTodayDate();
+  // État local
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [search,      setSearch]      = useState('');
 
-  // Chargement initial du catalogue
-  const loadCatalog = useCallback(() => {
-    dispatch(fetchKpiCatalog());
-  }, [dispatch]);
-
+  // Charge la liste au montage si vide
   useEffect(() => {
-    loadCatalog();
-  }, [loadCatalog]);
+    if (kpiAvailable.length === 0) {
+      dispatch(fetchKpiAvailable());
+    }
+  }, [dispatch, kpiAvailable.length]);
+
+  // Sélectionne le premier KPI par défaut
+  useEffect(() => {
+    if (kpiAvailable.length > 0 && !selectedKey) {
+      const first = kpiAvailable[0];
+      setSelectedKey(first.key);
+      dispatch(fetchKpiDetail({ key: first.key }));
+    }
+  }, [kpiAvailable, selectedKey, dispatch]);
+
+  // Nettoyage à la sortie
+  useEffect(() => () => { dispatch(clearSelectedKpi()); }, [dispatch]);
+
+  // Filtrage par recherche
+  const filtered = useMemo(() => {
+    if (!search.trim()) return kpiAvailable;
+    const q = search.toLowerCase();
+    return kpiAvailable.filter(
+      k =>
+        k.label.toLowerCase().includes(q) ||
+        k.category.toLowerCase().includes(q) ||
+        k.description?.toLowerCase().includes(q),
+    );
+  }, [kpiAvailable, search]);
 
   // Groupement par catégorie
   const groups = useMemo(() => {
-    const map = new Map<string, typeof displayed>();
-    for (const kpi of displayed) {
+    const map = new Map<string, KpiDefinition[]>();
+    for (const kpi of filtered) {
       const cat = kpi.category || 'Autres';
       if (!map.has(cat)) map.set(cat, []);
       map.get(cat)!.push(kpi);
     }
     return Array.from(map.entries());
-  }, [displayed]);
+  }, [filtered]);
 
-  // Applique le filtre date
-  async function applyFilter() {
-    if (!dateFrom && !dateTo) return;
-    const keys = catalog.map(k => k.key);
-    await dispatch(fetchKpiCatalogWithFilter({ keys, date_from: dateFrom, date_to: dateTo }));
-    setFiltered(true);
-  }
+  // Sélection d'un KPI
+  const handleSelect = useCallback(
+    (kpi: KpiDefinition) => {
+      setSelectedKey(kpi.key);
+      dispatch(fetchKpiDetail({ key: kpi.key }));
+    },
+    [dispatch],
+  );
 
-  // Réinitialise le filtre
-  function clearDateFilter() {
-    setDateFrom('');
-    setDateTo('');
-    setFiltered(false);
-    dispatch(resetFilter());
-  }
-
-  const loading = catalogLoading || filterLoading;
-  const isEmpty = !loading && displayed.length === 0;
+  const selectedDefinition = kpiAvailable.find(k => k.key === selectedKey) ?? null;
 
   return (
-    <div className="p-7 px-8 pb-16 min-h-full overflow-y-auto">
-
-      {/* Breadcrumb */}
-      <div className="text-xs text-gray-400 mb-2.5 flex items-center gap-1">
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* ── Breadcrumb ─────────────────────────────────────────────── */}
+      <div className="px-7 pt-5 pb-0 text-xs text-gray-400 flex items-center gap-1 flex-shrink-0">
         <span className="text-gray-500">Tableau de bord</span>
         <CaretRightIcon size={10} className="text-gray-300" />
         <span className="text-gray-500">Analytiques</span>
@@ -76,140 +158,102 @@ export default function AnalyticsPage() {
         <span>{today}</span>
       </div>
 
-      {/* Header */}
-      <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight leading-tight">
-            Analytiques
-          </h1>
-          <p className="text-sm text-[#7691A8] mt-1">
-            Indicateurs clés générés en temps réel depuis les données opérationnelles
-          </p>
-        </div>
+      {/* ── Layout master-detail ────────────────────────────────────── */}
+      <div className="flex flex-1 min-h-0 gap-0 mt-4 px-6 pb-6">
 
-        <button
-          onClick={loadCatalog}
-          disabled={loading}
-          className="h-9 px-3.5 border border-gray-200 rounded-lg bg-white text-gray-700 text-xs font-medium inline-flex items-center gap-1.5 hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm disabled:opacity-50"
-        >
-          <ArrowsClockwiseIcon size={13} className={loading ? 'animate-spin' : ''} />
-          Actualiser
-        </button>
-      </div>
-
-      {/* Filtre date */}
-      <div className="bg-white border border-[#DDE5EF] rounded-xl p-4 mb-6 flex flex-wrap items-end gap-3 shadow-sm">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-[#5A738A] mr-1">
-          <FunnelSimpleIcon size={13} />
-          Période
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <label className="text-[10px] text-[#9EB0C4] font-medium uppercase tracking-wide">Début</label>
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={e => setDateFrom(e.target.value)}
-            className="h-8 px-2.5 border border-[#DDE5EF] rounded-lg text-[12px] text-[#1B2633] bg-white focus:outline-none focus:border-[#1E5B3C] focus:ring-1 focus:ring-[#1E5B3C]/20"
-          />
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <label className="text-[10px] text-[#9EB0C4] font-medium uppercase tracking-wide">Fin</label>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={e => setDateTo(e.target.value)}
-            className="h-8 px-2.5 border border-[#DDE5EF] rounded-lg text-[12px] text-[#1B2633] bg-white focus:outline-none focus:border-[#1E5B3C] focus:ring-1 focus:ring-[#1E5B3C]/20"
-          />
-        </div>
-        <button
-          onClick={applyFilter}
-          disabled={loading || (!dateFrom && !dateTo)}
-          className="h-8 px-4 bg-[#1E5B3C] text-white text-xs font-semibold rounded-lg inline-flex items-center gap-1.5 hover:bg-[#174A30] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-        >
-          {filterLoading ? (
-            <ArrowsClockwiseIcon size={12} className="animate-spin" />
-          ) : (
-            <FunnelSimpleIcon size={12} />
-          )}
-          Filtrer
-        </button>
-        {filtered && (
-          <button
-            onClick={clearDateFilter}
-            className="h-8 px-3 border border-[#DDE5EF] rounded-lg text-xs text-[#7691A8] inline-flex items-center gap-1 hover:bg-[#F7F9FC] transition-colors"
-          >
-            <XCircleIcon size={12} />
-            Réinitialiser
-          </button>
-        )}
-        {filtered && (
-          <span className="text-[11px] text-[#1E5B3C] bg-[#ECFDF5] px-2.5 py-1 rounded-full font-medium">
-            Filtre actif · {dateFrom} → {dateTo}
-          </span>
-        )}
-      </div>
-
-      {/* Erreur */}
-      {catalogError && (
-        <div className="flex items-center gap-3 bg-[#FEF2F2] border border-[#FCA5A5] rounded-xl p-4 mb-5 text-sm text-[#DC2626]">
-          <XCircleIcon size={16} weight="fill" className="flex-shrink-0" />
-          {catalogError}
-        </div>
-      )}
-
-      {/* Skeleton */}
-      {catalogLoading && (
-        <div className="space-y-8">
-          {[1, 2].map(g => (
-            <div key={g}>
-              <div className="h-5 w-32 bg-[#EEF2F7] rounded animate-pulse mb-4" />
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {[1, 2, 3].map(i => <KpiChartCardSkeleton key={i} />)}
-              </div>
+        {/* ── Panneau gauche — liste KPIs ─────────────────────────── */}
+        <aside className="w-[260px] flex-shrink-0 flex flex-col bg-white border border-[#DDE5EF] rounded-2xl shadow-sm overflow-hidden mr-4">
+          {/* Header liste */}
+          <div className="px-4 pt-4 pb-3 border-b border-[#EEF2F7]">
+            <h1 className="font-space-grotesk text-[15px] font-bold text-[#1B2633] mb-3">
+              Indicateurs
+            </h1>
+            {/* Recherche */}
+            <div className="relative">
+              <MagnifyingGlassIcon
+                size={12}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#C5D0DC]"
+              />
+              <input
+                type="text"
+                placeholder="Rechercher…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full h-7 pl-7 pr-2.5 border border-[#DDE5EF] rounded-lg text-[11px] text-[#1B2633] bg-[#F7F9FC] placeholder:text-[#C5D0DC] focus:outline-none focus:border-primary"
+              />
+              <XIcon
+                size={12}
+                className={`absolute right-2.5 top-1/2 -translate-y-1/2 text-[#C5D0DC] cursor-pointer ${
+                  search ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                }`}
+                onClick={() => setSearch('')}
+              />
             </div>
-          ))}
-        </div>
-      )}
+          </div>
 
-      {/* État vide */}
-      {isEmpty && !catalogError && (
-        <div className="flex flex-col items-center justify-center py-24 text-[#9EB0C4]">
-          <ChartBarIcon size={48} className="mb-3 opacity-40" />
-          <div className="text-sm font-medium">Aucun indicateur disponible</div>
-          <div className="text-xs mt-1">Vérifiez vos permissions ou actualisez la page</div>
-        </div>
-      )}
-
-      {/* Groupes de KPIs */}
-      {!catalogLoading && groups.length > 0 && (
-        <div className="space-y-8">
-          {groups.map(([category, items]) => (
-            <section key={category}>
-              {/* Titre de catégorie */}
-              <div className="flex items-center gap-3 mb-4">
-                <h2 className="text-sm font-bold text-[#1B2633] uppercase tracking-wider">
-                  {category}
-                </h2>
-                <div className="flex-1 h-px bg-[#EEF2F7]" />
-                <span className="text-[11px] text-[#9EB0C4] font-medium">
-                  {items.length} indicateur{items.length !== 1 ? 's' : ''}
-                </span>
-              </div>
-
-              {/* Grille de cartes */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {items.map(kpi => (
-                  <KpiChartCard
-                    key={kpi.key}
-                    kpi={kpi}
-                    loading={filterLoading}
-                  />
+          {/* Liste scrollable */}
+          <div className="flex-1 overflow-y-auto p-2">
+            {kpiLoading && (
+              <div className="space-y-1.5 p-1">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <div key={i} className="h-14 rounded-xl bg-[#F3F6F9] animate-pulse" />
                 ))}
               </div>
-            </section>
-          ))}
+            )}
+
+            {!kpiLoading && filtered.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-8 text-[#C5D0DC]">
+                <span className="text-[11px]">Aucun résultat</span>
+              </div>
+            )}
+
+            {!kpiLoading &&
+              groups.map(([category, items]) => (
+                <div key={category} className="mb-3">
+                  <div className="text-[9px] font-bold text-[#B0BCC9] uppercase tracking-widest px-2 mb-1.5">
+                    {category}
+                  </div>
+                  <div className="space-y-0.5">
+                    {items.map(kpi => (
+                      <KpiListItem
+                        key={kpi.key}
+                        definition={kpi}
+                        selected={selectedKey === kpi.key}
+                        onClick={() => handleSelect(kpi)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+          </div>
+
+          {/* Footer */}
+          <div className="px-4 py-2.5 border-t border-[#EEF2F7] text-[10px] text-[#C5D0DC]">
+            {kpiAvailable.length} indicateur{kpiAvailable.length !== 1 ? 's' : ''} disponible{kpiAvailable.length !== 1 ? 's' : ''}
+          </div>
+        </aside>
+
+        {/* ── Panneau droit — détail KPI ──────────────────────────── */}
+        <div className="flex-1 min-w-0 bg-white border border-[#DDE5EF] rounded-2xl shadow-sm overflow-hidden">
+          {selectedDefinition ? (
+            <KpiDetailView
+              key={selectedDefinition.key}
+              definition={selectedDefinition}
+            />
+          ) : (
+            /* État vide */
+            <div className="flex flex-col items-center justify-center h-full text-[#C5D0DC] gap-3">
+              <ChartLineIcon size={48} className="opacity-40" />
+              <div className="text-[13px] font-medium text-[#9EB0C4]">
+                Sélectionnez un indicateur
+              </div>
+              <div className="text-[11px]">
+                {kpiLoading ? 'Chargement des indicateurs…' : 'Choisissez un KPI dans la liste à gauche'}
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
