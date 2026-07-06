@@ -8,7 +8,7 @@ import {
   setGroupKpiAccess,
   deleteGroupKpiAccess,
 } from '@/redux/features/app-config/appConfigSlice';
-import type { KpiGroupConfig } from '@/redux/features/app-config/appConfigSlice';
+import { KpiGroupConfig } from '@/types/app_config_type';
 import { fetchGroups } from '@/redux/features/groups/groupsSlice';
 import {
   ChartBarIcon,
@@ -41,7 +41,7 @@ export function KpiGroupsSection({ showToast }: KpiGroupsSectionProps) {
     dispatch(fetchKpiAvailable());
     dispatch(fetchKpiGroups());
     if (allGroups.length === 0) dispatch(fetchGroups());
-  }, [dispatch]);
+  }, [dispatch, allGroups.length]);
 
   // Initialise editKeys quand les groupes sont chargés
   useEffect(() => {
