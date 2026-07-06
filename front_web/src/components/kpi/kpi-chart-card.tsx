@@ -74,6 +74,26 @@ function buildSeries(series: KpiChartSeries[]): Record<string, unknown>[] {
   });
 }
 
+// ── Skeleton ──────────────────────────────────────────────────────────────────
+
+export function KpiChartCardSkeleton() {
+  return (
+    <div className="bg-white border border-[#DDE5EF] rounded-2xl shadow-sm overflow-hidden animate-pulse">
+      <div className="px-4 pt-4 pb-3 border-b border-[#F0F4F8]">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="h-4 w-20 bg-[#EEF2F7] rounded-full" />
+          <div className="h-4 w-16 bg-[#EEF2F7] rounded-full" />
+        </div>
+        <div className="h-4 w-3/4 bg-[#EEF2F7] rounded mb-1.5" />
+        <div className="h-3 w-1/2 bg-[#EEF2F7] rounded" />
+      </div>
+      <div className="px-2 py-2 flex items-center justify-center" style={{ minHeight: 200 }}>
+        <div className="h-[160px] w-full bg-[#F7F9FC] rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
 // ── Badge catégorie ───────────────────────────────────────────────────────────
 
 const CATEGORY_COLORS: Record<string, { bg: string; color: string }> = {
