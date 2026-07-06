@@ -325,17 +325,40 @@ async def cancel_offer(offer_id: UUID) -> OfferSummaryOut:
 # ── Helper ────────────────────────────────────────────────────────────────────
 
 def _extract_doc_summary(document_markdown: str | None) -> dict:
-    """Extrait title, reference, date, validity_days du document JSON sérialisé."""
+    """Extrait les champs de résumé du document JSON sérialisé."""
     import json
     if not document_markdown:
         return {}
     try:
         doc = json.loads(document_markdown)
-        return {
+        result: dict = {
             k: doc[k]
             for k in ("title", "reference", "date", "validity_days")
             if doc.get(k) is not None
         }
+
+        # Trajet origine → destination
+        route_raw = doc.get("route") or {}
+        if route_raw:
+            from app.api.v1.schemas.transport_offer import OfferRoute
+            result["route"] = OfferRoute(
+                origin=route_raw.get("origin"),
+                destination=route_raw.get("destination"),
+                transport_mode=route_raw.get("transport_mode"),
+                vehicle_type=route_raw.get("vehicle_type"),
+                planned_date=route_raw.get("planned_date"),
+            )
+
+        # Montant TTC depuis la liste pricing
+        for line in doc.get("pricing", []):
+            if "ttc" in line.get("label", "").lower():
+                try:
+                    result["amount_ttc"] = float(line["value"])
+                except (TypeError, ValueError):
+                    pass
+                break
+
+        return result
     except (json.JSONDecodeError, AttributeError):
         return {}
 
