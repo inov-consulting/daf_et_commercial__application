@@ -73,7 +73,7 @@ export const fetchOfferDetail = createAsyncThunk(
 );
 
 /** POST /api/v1/transport/offers/{offer_id}/validate
- *  Statut generated → validated */
+ *  Prérequis : statut validated (après confirm). Finalise l'offre. */
 export const validateOffer = createAsyncThunk(
   'offers/validate',
   async (offerId: string, { rejectWithValue }) => {
@@ -88,7 +88,8 @@ export const validateOffer = createAsyncThunk(
 );
 
 /** POST /api/v1/transport/offers/{offer_id}/confirm
- *  Crée le dossier dans Odoo. Prérequis : statut validated */
+ *  Crée le dossier dans Odoo. Prérequis : statut generated (ÉTAPE 1).
+ *  À appeler AVANT validate — une fois validé, le confirm est bloqué par l'API. */
 export const confirmOffer = createAsyncThunk(
   'offers/confirm',
   async (offerId: string, { rejectWithValue }) => {
@@ -155,7 +156,8 @@ const offersSlice = createSlice({
       .addCase(fetchOfferDetail.pending, state => {
         state.detailLoading = true;
         state.detailError   = null;
-        state.detail        = null;
+        // On ne remet PAS detail à null pour éviter un flash de skeleton
+        // lors des re-fetches (après validate/confirm)
       })
       .addCase(fetchOfferDetail.fulfilled, (state, action) => {
         state.detailLoading = false;
