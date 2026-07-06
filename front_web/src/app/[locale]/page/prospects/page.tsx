@@ -234,7 +234,7 @@ export default function ProspectsPage() {
             onClick={() => setModal({ open: true, mode: 'create', prospect: undefined })}
           >
             <PlusIcon size={14} weight="bold" />
-            <span className="hidden xs:inline">Nouveau prospect</span>
+            <span className="hidden xs:inline">Nouvelle prospection</span>
             <span className="xs:hidden">Nouveau</span>
           </Button>
         </div>
