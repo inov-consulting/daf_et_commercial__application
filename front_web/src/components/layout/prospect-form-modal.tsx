@@ -242,7 +242,7 @@ export function ProspectFormModal({
         {/* Header */}
         <div className="sticky top-0 bg-white flex items-center justify-between px-6 py-4 border-b border-[var(--bd-def)] z-10">
           <h2 className="font-display text-[16px] font-bold text-[var(--tx-1)]">
-            {mode === 'create' ? 'Nouveau prospect' : 'Modifier le prospect'}
+            {mode === 'create' ? 'Nouvelle prospection' : 'Modifier le prospect'}
           </h2>
           <button
             type="button"
