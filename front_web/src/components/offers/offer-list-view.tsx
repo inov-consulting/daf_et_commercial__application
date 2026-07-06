@@ -102,15 +102,6 @@ export function OfferListView({
   return (
     <div className="p-7 px-8 pb-16 min-h-full overflow-y-auto">
       
-      {/* Breadcrumb */}
-      <div className="text-xs text-gray-400 mb-2.5 flex items-center gap-1">
-        <span className="text-gray-500">Tableau de bord</span>
-        <CaretRightIcon size={10} className="text-gray-300" />
-        <span className="text-gray-500">Offres</span>
-        <CaretRightIcon size={10} className="text-gray-300" />
-        <span>{today}</span>
-      </div>
-      
       {/* Page header */}
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3.5">
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight leading-tight">
@@ -155,7 +146,7 @@ export function OfferListView({
                 {tab.label}
                 {count > 0 && (
                   <span className={`text-xs font-semibold ${
-                    isActive ? 'text-gray-600' : 'text-gray-400'
+                    isActive ? 'text-white bg-primary p-1 rounded-full' : 'text-gray-400 rounded-full border border-gray-200 bg-gray-100 p-1'
                   }`}>
                     {count}
                   </span>
@@ -199,6 +190,9 @@ export function OfferListView({
                 </th>
                 <th className="bg-gray-50 px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200 whitespace-nowrap">
                   Statut
+                </th>
+                <th className="bg-gray-50 px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200 whitespace-nowrap">
+                  Dossier Odoo
                 </th>
                 <th className="bg-gray-50 px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200 whitespace-nowrap">
                   Montant TTC (FCFA)

@@ -10,7 +10,7 @@ import {
   ArrowLeftIcon, ShieldCheckIcon, CheckSquareIcon, XCircleIcon,
   LinkSimpleIcon, CaretDownIcon, CaretUpIcon,
 } from '@phosphor-icons/react';
-import type { Offer, OfferStatus, TransportOfferDetail } from '@/types/offer_type';
+import type { Offer, OfferStatus, Route, TransportOfferDetail } from '@/types/offer_type';
 import {
   computeOfferStatus, isOfferExpired, offerDaysLeft,
   fmtOfferAmount, fmtOfferDate, OFFER_MODE_CONFIG,
@@ -25,6 +25,7 @@ import { useAppSelector } from '@/redux/store';
 interface OfferDetailViewProps {
   offer: Offer;
   detail?: TransportOfferDetail | null;
+  loading?: boolean;
   onBack: () => void;
   onEdit: (offer: Offer) => void;
   onDuplicate: (offer: Offer) => void;
@@ -33,6 +34,119 @@ interface OfferDetailViewProps {
   onValidate?: (offer: Offer) => Promise<void>;
   onConfirm?: (offer: Offer) => Promise<void>;
   onCancel?: (offer: Offer) => Promise<void>;
+}
+
+// ── Skeleton ──────────────────────────────────────────────────────────────────
+
+function SkeletonBlock({ w, h, rounded = 'rounded' }: { w: string; h: string; rounded?: string }) {
+  return <div className={`bg-[#EEF2F7] animate-pulse ${w} ${h} ${rounded}`} />;
+}
+
+function OfferDetailSkeleton({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="overflow-auto min-h-full">
+      <div className="p-4 sm:p-5 md:p-7 lg:px-8 pb-16 max-w-full">
+
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Button variant="ghost" size="md" onClick={onBack} className="!w-9 !h-9 !p-0">
+                <ArrowLeftIcon size={14} />
+              </Button>
+              <SkeletonBlock w="w-48" h="h-7" rounded="rounded-lg" />
+              <SkeletonBlock w="w-20" h="h-6" rounded="rounded-full" />
+            </div>
+            <div className="mt-2 ml-11">
+              <SkeletonBlock w="w-64" h="h-3.5" rounded="rounded" />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <SkeletonBlock w="w-9" h="h-9" rounded="rounded-lg" />
+            <SkeletonBlock w="w-9" h="h-9" rounded="rounded-lg" />
+            <SkeletonBlock w="w-24" h="h-9" rounded="rounded-lg" />
+            <SkeletonBlock w="w-28" h="h-9" rounded="rounded-lg" />
+          </div>
+        </div>
+
+        {/* Alert banner */}
+        <div className="bg-[#F7F9FC] border border-[#EEF2F7] rounded-xl p-4 mb-4 animate-pulse">
+          <SkeletonBlock w="w-3/4" h="h-3.5" rounded="rounded" />
+        </div>
+
+        {/* Main grid */}
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-5 items-start">
+          {/* Document card */}
+          <div className="w-full lg:flex-1 min-w-0 bg-white border border-[#DDE5EF] rounded-2xl shadow-sm overflow-hidden">
+            <div className="flex items-center gap-2 px-4 sm:px-[18px] py-3.5 border-b border-[#DDE5EF]">
+              <SkeletonBlock w="w-4" h="h-4" rounded="rounded" />
+              <SkeletonBlock w="w-40" h="h-4" rounded="rounded" />
+            </div>
+            <div className="p-6 sm:p-10 space-y-4 animate-pulse">
+              {/* Letterhead */}
+              <div className="flex justify-between items-start mb-8">
+                <SkeletonBlock w="w-32" h="h-8" rounded="rounded-lg" />
+                <div className="space-y-1.5 text-right">
+                  <SkeletonBlock w="w-24" h="h-3" />
+                  <SkeletonBlock w="w-32" h="h-3" />
+                </div>
+              </div>
+              {/* Title */}
+              <SkeletonBlock w="w-56" h="h-6" rounded="rounded-lg" />
+              <SkeletonBlock w="w-40" h="h-3.5" />
+              {/* Address block */}
+              <div className="mt-6 space-y-1.5">
+                <SkeletonBlock w="w-48" h="h-3.5" />
+                <SkeletonBlock w="w-36" h="h-3" />
+                <SkeletonBlock w="w-32" h="h-3" />
+              </div>
+              {/* Table header */}
+              <div className="mt-8 h-10 bg-[#F7F9FC] rounded-lg" />
+              {/* Table rows */}
+              {[1, 2, 3].map(i => (
+                <div key={i} className="flex gap-4 py-3 border-b border-[#EEF2F7]">
+                  <SkeletonBlock w="flex-1" h="h-3" />
+                  <SkeletonBlock w="w-16" h="h-3" />
+                  <SkeletonBlock w="w-16" h="h-3" />
+                  <SkeletonBlock w="w-20" h="h-3" />
+                </div>
+              ))}
+              {/* Total */}
+              <div className="mt-4 flex justify-end gap-8">
+                <div className="space-y-2">
+                  <SkeletonBlock w="w-32" h="h-3" />
+                  <SkeletonBlock w="w-32" h="h-3" />
+                  <SkeletonBlock w="w-36" h="h-5" rounded="rounded-lg" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Rail */}
+          <div className="w-full lg:w-[320px] flex-shrink-0 flex flex-col gap-4">
+            {[
+              { rows: 2 }, { rows: 5 }, { rows: 4 }, { rows: 3 },
+            ].map((card, i) => (
+              <div key={i} className="bg-white border border-[#DDE5EF] rounded-2xl shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2 px-4 sm:px-[18px] py-3.5 border-b border-[#DDE5EF]">
+                  <SkeletonBlock w="w-4" h="h-4" rounded="rounded" />
+                  <SkeletonBlock w="w-24" h="h-3.5" rounded="rounded" />
+                </div>
+                <div className="p-4 sm:p-[18px] space-y-3 animate-pulse">
+                  {Array.from({ length: card.rows }).map((_, j) => (
+                    <div key={j} className="flex justify-between items-center py-1.5 border-b border-[#EEF2F7] last:border-0">
+                      <SkeletonBlock w="w-20" h="h-3" />
+                      <SkeletonBlock w="w-28" h="h-3" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── Info Row ──────────────────────────────────────────────────────────────────
@@ -146,24 +260,26 @@ function Timeline({ events }: { events: TlEvent[] }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function OfferDetailView({
-  offer, detail, onBack, onEdit, onDuplicate, onSend, onRegenerate,
+  offer, detail, loading = false, onBack, onEdit, onDuplicate, onSend, onRegenerate,
   onValidate, onConfirm, onCancel,
 }: OfferDetailViewProps) {
+  // ── Hooks (must come before any conditional return) ───────────────────────────
+  const { me } = useAppSelector(s => s.me);
+  const { config } = useAppSelector(s => s.appConfig);
+  const [validating,  setValidating]  = useState(false);
+  const [confirming,  setConfirming]  = useState(false);
+  const [cancelling,  setCancelling]  = useState(false);
+
+  if (loading) return <OfferDetailSkeleton onBack={onBack} />;
+
   const status   = computeOfferStatus(offer);
   const expired  = isOfferExpired(offer);
   const daysLeft = !expired ? offerDaysLeft(offer) : null;
   const modeCfg  = offer.transport_mode ? OFFER_MODE_CONFIG[offer.transport_mode.toLowerCase()] : undefined;
 
   // ── Validator check ──────────────────────────────────────────────────────────
-  const { me } = useAppSelector(s => s.me);
-  const { config } = useAppSelector(s => s.appConfig);
   const offerValidator = config?.validators?.offer_validator ?? null;
   const canValidate = !offerValidator || me?.id === offerValidator.id;
-
-  // ── Local action states ──────────────────────────────────────────────────────
-  const [validating,  setValidating]  = useState(false);
-  const [confirming,  setConfirming]  = useState(false);
-  const [cancelling,  setCancelling]  = useState(false);
 
   async function doValidate() {
     if (!onValidate || validating || !canValidate) return;
@@ -186,24 +302,28 @@ export function OfferDetailView({
   // ── Pricing ──────────────────────────────────────────────────────────────────
   const p = {
     ht:  offer.amount_untaxed || offer.unit_price * (offer.quantity ?? 1),
-    ttc: offer.amount_total,
+    ttc: offer.amount_ttc,
   };
 
   // ── Timeline ─────────────────────────────────────────────────────────────────
+  // Flow : genere → confirm (Odoo, pendant generated) → validate → validated/confirmed
   const tlEvents: TlEvent[] = [
     { label: "Générée par l'IA", meta: fmtOfferDate(offer.created_at), color: 'gold' },
   ];
-  if (status === 'envoyee') {
-    tlEvents.push({ label: 'Validée par l\'équipe', meta: 'En attente de confirmation Odoo', color: 'ok' });
+  if (status === 'genere' && offer.odoo_linked) {
+    tlEvents.push({ label: 'Dossier Odoo créé', meta: 'En attente de validation', color: 'ok' });
+  } else if (status === 'envoyee') {
+    tlEvents.push({ label: 'Dossier Odoo créé', meta: 'Dossier transport créé', color: 'ok' });
+    tlEvents.push({ label: 'En attente de validation finale', color: 'warn' });
   } else if (status === 'signee') {
+    tlEvents.push({ label: 'Dossier Odoo créé', color: 'ok' });
     tlEvents.push({ label: 'Validée par l\'équipe', color: 'ok' });
-    tlEvents.push({ label: 'Confirmée dans Odoo', meta: 'Dossier transport créé', color: 'ok' });
   } else if (status === 'refusee') {
-    tlEvents.push({ label: 'Offre annulée', meta: 'Annulée avant confirmation', color: 'err' });
+    tlEvents.push({ label: 'Offre annulée', meta: 'Annulée avant validation', color: 'err' });
   } else if (expired) {
     tlEvents.push(
       { label: 'Validité expirée', meta: fmtOfferDate(offer.date_expiry), color: 'gray' },
-      { label: 'Non validée', meta: 'L\'offre n\'a pas été validée à temps', color: 'gray' },
+      { label: 'Non confirmée', meta: "L'offre n'a pas été confirmée à temps", color: 'gray' },
     );
   }
 
@@ -289,8 +409,24 @@ export function OfferDetailView({
               />
             )}
 
-            {/* Valider */}
-            {status === 'genere' && onValidate && (
+            {/* Étape 1 — Confirmer → Odoo
+                Disponible uniquement sur generated + pas encore lié à Odoo.
+                Confirm échoue si l'offre est déjà validated → doit passer avant validate. */}
+            {status === 'genere' && !offer.odoo_linked && onConfirm && (
+              <ActionButton
+                onClick={doConfirm}
+                loading={confirming}
+                disabled={confirming}
+                icon={<CheckSquareIcon size={13} weight="fill" />}
+                label={confirming ? 'Envoi…' : 'Confirmer → Odoo'}
+                variant="info"
+              />
+            )}
+
+            {/* Étape 2 — Valider l'offre
+                Affiché quand l'offre est liée à Odoo (confirm fait) sur generated,
+                OU quand le statut est envoyee (si confirm a produit validated côté API). */}
+            {((status === 'genere' && offer.odoo_linked) || status === 'envoyee') && onValidate && (
               <ActionButton
                 onClick={doValidate}
                 loading={validating}
@@ -298,19 +434,7 @@ export function OfferDetailView({
                 icon={<ShieldCheckIcon size={13} weight="fill" />}
                 label={validating ? 'Validation…' : 'Valider l\'offre'}
                 variant="primary"
-                title={!canValidate ? `Seul ${offerValidator?.display_name} peut valider cette offre` : 'Valider l\'offre côté Portalis'}
-              />
-            )}
-
-            {/* Confirmer → Odoo */}
-            {status === 'envoyee' && onConfirm && (
-              <ActionButton
-                onClick={doConfirm}
-                loading={confirming}
-                disabled={confirming}
-                icon={<CheckSquareIcon size={13} weight="fill" />}
-                label={confirming ? 'Création…' : 'Confirmer → Odoo'}
-                variant="info"
+                title={!canValidate ? `Seul ${offerValidator?.display_name} peut valider cette offre` : undefined}
               />
             )}
 
@@ -339,15 +463,24 @@ export function OfferDetailView({
         </div>
 
         {/* ── Alertes ────────────────────────────────────────────────────────── */}
-        {status === 'genere' && (
+
+        {/* genere + pas encore confirmé → invite à confirmer d'abord */}
+        {status === 'genere' && !offer.odoo_linked && (
+          <div className="flex items-start gap-3 bg-[#EBF5FD] border border-[#7DBCEA] rounded-xl p-4 mb-4 text-[12px] sm:text-[13px] text-[#064276]">
+            <CheckSquareIcon size={18} weight="fill" className="text-[#085499] flex-shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <strong>En attente de confirmation Odoo</strong> — Confirmez d&apos;abord dans Odoo pour créer le dossier transport, puis validez l&apos;offre.
+            </div>
+          </div>
+        )}
+
+        {/* genere + déjà confirmé → invite à valider */}
+        {status === 'genere' && offer.odoo_linked && (
           <div className="flex items-start gap-3 bg-[#FBF3DE] border border-[#D4A217] rounded-xl p-4 mb-4 text-[12px] sm:text-[13px] text-[#725A0A]">
             <ShieldCheckIcon size={18} weight="fill" className="text-[#92720C] flex-shrink-0 mt-0.5" />
             <div className="min-w-0">
-              <strong>En attente de validation</strong>
-              {offerValidator
-                ? <> - seul <strong>{offerValidator.display_name}</strong> peut valider cette offre avant de la confirmer dans Odoo.</>
-                : <> - cliquez sur &ldquo;Valider l&apos;offre&rdquo; pour passer au statut <em>Validée</em>, puis confirmez dans Odoo.</>
-              }
+              <strong>Dossier Odoo créé</strong> — Cliquez sur <strong>&ldquo;Valider l&apos;offre&rdquo;</strong> pour finaliser.
+              {offerValidator && <> Seul <strong>{offerValidator.display_name}</strong> peut valider.</>}
               {!canValidate && (
                 <div className="mt-1.5 text-[#B91C1C] text-[11px] sm:text-xs">
                   Vous n&apos;êtes pas le validateur désigné pour cette offre.
@@ -357,11 +490,18 @@ export function OfferDetailView({
           </div>
         )}
 
+        {/* envoyee → statut produit par confirm selon l'API → invite à valider */}
         {status === 'envoyee' && (
-          <div className="flex items-start gap-3 bg-[#EBF5FD] border border-[#7DBCEA] rounded-xl p-4 mb-4 text-[12px] sm:text-[13px] text-[#064276]">
-            <CheckSquareIcon size={18} weight="fill" className="text-[#085499] flex-shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 bg-[#FBF3DE] border border-[#D4A217] rounded-xl p-4 mb-4 text-[12px] sm:text-[13px] text-[#725A0A]">
+            <ShieldCheckIcon size={18} weight="fill" className="text-[#92720C] flex-shrink-0 mt-0.5" />
             <div className="min-w-0">
-              <strong>Offre validée</strong> - Cliquez sur <strong>&ldquo;Confirmer → Odoo&rdquo;</strong> pour créer le dossier transport dans Odoo et lier cette offre.
+              <strong>Confirmée dans Odoo</strong> — Cliquez sur <strong>&ldquo;Valider l&apos;offre&rdquo;</strong> pour finaliser.
+              {offerValidator && <> Seul <strong>{offerValidator.display_name}</strong> peut valider.</>}
+              {!canValidate && (
+                <div className="mt-1.5 text-[#B91C1C] text-[11px] sm:text-xs">
+                  Vous n&apos;êtes pas le validateur désigné pour cette offre.
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -397,7 +537,7 @@ export function OfferDetailView({
           <div className="w-full lg:flex-1 min-w-0">
             <CollapsibleCard icon={<FileTextIcon size={15} />} title="Document de l'offre">
               <div className="p-2 sm:p-4 md:p-7">
-                <OfferDocument offer={offer} detail={detail} />
+                <OfferDocument offer={{ ...offer, route: offer.route as Route }} detail={detail} />
               </div>
             </CollapsibleCard>
           </div>
@@ -415,21 +555,21 @@ export function OfferDetailView({
 
             {/* Trajet & transport */}
             <CollapsibleCard icon={<TruckIcon size={15} />} title="Trajet & transport">
-              {offer.origin_location !== '–' && offer.destination_location !== '–' && (
+              {offer.route?.origin !== '–' && offer.route?.destination !== '–' && (
                 <div className="flex items-center gap-2 p-2.5 rounded-lg mb-3 bg-[#F7F9FC] border border-[#DDE5EF]">
                   <div className="flex items-center gap-1 text-[11px] text-[#1B2633] font-semibold flex-1 min-w-0">
                     <MapPinIcon size={11} className="text-[#1E5B3C] flex-shrink-0" />
-                    <span className="truncate">{offer.origin_location.split(',')[0].trim()}</span>
+                    <span className="truncate">{offer.route?.origin.split(',')[0].trim()}</span>
                   </div>
                   <ArrowRightIcon size={10} className="text-[#9EB0C4] flex-shrink-0" />
                   <div className="flex items-center gap-1 text-[11px] text-[#1B2633] font-semibold flex-1 min-w-0">
                     <MapPinIcon size={11} className="text-[#DC2626] flex-shrink-0" />
-                    <span className="truncate">{offer.destination_location.split(',')[0].trim()}</span>
+                    <span className="truncate">{offer.route?.destination.split(',')[0].trim()}</span>
                   </div>
                 </div>
               )}
-              <InfoRow label="Origine" value={offer.origin_location !== '–' ? offer.origin_location : '–'} />
-              <InfoRow label="Destination" value={offer.destination_location !== '–' ? offer.destination_location : '–'} />
+              <InfoRow label="Origine" value={offer.route?.origin !== '–' ? offer.route?.origin : '–'} />
+              <InfoRow label="Destination" value={offer.route?.destination !== '–' ? offer.route?.destination : '–'} />
               <InfoRow label="Mode" value={
                 modeCfg
                   ? <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold" style={{ background: modeCfg.bg, color: modeCfg.color }}>{modeCfg.label}</span>
