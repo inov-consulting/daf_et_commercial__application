@@ -88,6 +88,8 @@ class OfferSummaryOut(BaseModel):
     reference: str | None = None
     date: str | None = None
     validity_days: int | None = None
+    route: OfferRoute | None = None
+    amount_ttc: float | None = None
     odoo_shipment_id: int | None
     odoo_shipment_name: str | None
     created_at: datetime | None
