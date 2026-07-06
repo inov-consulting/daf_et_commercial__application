@@ -22,12 +22,11 @@ async def compute(date_from: date | None = None, date_to: date | None = None) ->
         domain.append(("date_order", "<=", str(date_to)))
 
     records: list[dict] = await asyncio.to_thread(
-        client.execute,
+        client.fetch_all,
         "transport.shipment",
-        "search_read",
-        [domain],
-        {"fields": ["date_order", "sale_amount", "margin_amount"], "limit": 5000},
-    )  # type: ignore[assignment]
+        domain,
+        ["date_order", "sale_amount", "margin_amount"],
+    )
 
     monthly_ca: dict[str, float] = defaultdict(float)
     monthly_marge: dict[str, float] = defaultdict(float)

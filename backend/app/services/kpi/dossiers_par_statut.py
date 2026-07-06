@@ -29,12 +29,11 @@ async def compute(date_from: date | None = None, date_to: date | None = None) ->
         domain.append(("date_order", "<=", str(date_to)))
 
     records: list[dict] = await asyncio.to_thread(
-        client.execute,
+        client.fetch_all,
         "transport.shipment",
-        "search_read",
-        [domain],
-        {"fields": ["state"], "limit": 10000},
-    )  # type: ignore[assignment]
+        domain,
+        ["state"],
+    )
 
     counts: dict[str, int] = {}
     for r in records:
