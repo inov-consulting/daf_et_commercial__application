@@ -167,7 +167,7 @@ export function OfferListView({
         
         {/* Search & Filters */}
         <div className="flex items-center gap-2">
-          <SearchInput value={search} onChange={setSearch} />
+          <SearchInput value={search} setValue={setSearch} onChange={setSearch} />
           
           <button className="h-9 px-3 border border-gray-200 rounded-lg bg-white text-gray-700 text-xs font-medium inline-flex items-center gap-1.5 hover:bg-gray-50 transition-colors">
             <FunnelSimpleIcon size={13} />
