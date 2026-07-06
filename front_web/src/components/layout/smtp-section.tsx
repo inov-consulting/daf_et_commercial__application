@@ -41,7 +41,7 @@ export function SmtpSection({ showToast }: SmtpSectionProps) {
 
   useEffect(() => {
     if (!config) dispatch(fetchAppConfig());
-  }, [dispatch]);
+  }, [config, dispatch]);
 
   useEffect(() => {
     if (config?.smtp) {

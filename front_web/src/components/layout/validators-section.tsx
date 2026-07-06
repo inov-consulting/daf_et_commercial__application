@@ -21,8 +21,11 @@ export function ValidatorsSection({ showToast }: ValidatorsSectionProps) {
 
   useEffect(() => {
     dispatch(fetchAppConfig());
-    if (users.length === 0) dispatch(fetchUsers());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (users.length === 0) dispatch(fetchUsers());
+  }, [dispatch, users.length]);
 
   useEffect(() => {
     if (config) {

@@ -173,8 +173,18 @@ const offersSlice = createSlice({
       })
       .addCase(validateOffer.fulfilled, (state, action) => {
         state.validating = false;
-        const idx = state.list.findIndex(o => o.id === action.payload.id);
-        if (idx !== -1) state.list[idx] = action.payload;
+        const { id, status, odoo_shipment_id, odoo_shipment_name, created_at, confirmed_at } = action.payload;
+        const idx = state.list.findIndex(o => o.id === id);
+        if (idx !== -1) {
+          state.list[idx] = {
+            ...state.list[idx],
+            status,
+            odoo_shipment_id:   odoo_shipment_id ?? null,
+            odoo_shipment_name: odoo_shipment_name ?? null,
+            created_at,
+            confirmed_at:       confirmed_at ?? null,
+          };
+        }
       })
       .addCase(validateOffer.rejected, (state, action) => {
         state.validating    = false;
@@ -212,8 +222,18 @@ const offersSlice = createSlice({
       })
       .addCase(cancelOffer.fulfilled, (state, action) => {
         state.cancelling = false;
-        const idx = state.list.findIndex(o => o.id === action.payload.id);
-        if (idx !== -1) state.list[idx] = action.payload;
+        const { id, status, odoo_shipment_id, odoo_shipment_name, created_at, confirmed_at } = action.payload;
+        const idx = state.list.findIndex(o => o.id === id);
+        if (idx !== -1) {
+          state.list[idx] = {
+            ...state.list[idx],
+            status,
+            odoo_shipment_id:   odoo_shipment_id ?? null,
+            odoo_shipment_name: odoo_shipment_name ?? null,
+            created_at,
+            confirmed_at:       confirmed_at ?? null,
+          };
+        }
       })
       .addCase(cancelOffer.rejected, (state, action) => {
         state.cancelling  = false;
