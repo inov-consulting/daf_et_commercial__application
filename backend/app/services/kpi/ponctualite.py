@@ -23,12 +23,11 @@ async def compute(date_from: date | None = None, date_to: date | None = None) ->
         domain.append(("date_departure", "<=", str(date_to)))
 
     voyages: list[dict] = await asyncio.to_thread(
-        client.execute,
+        client.fetch_all,
         "transport.voyage",
-        "search_read",
-        [domain],
-        {"fields": ["date_departure", "date_arrival_dest", "shipment_id"], "limit": 5000},
-    )  # type: ignore[assignment]
+        domain,
+        ["date_departure", "date_arrival_dest", "shipment_id"],
+    )
 
     if not voyages:
         return KpiChartData(
@@ -43,12 +42,11 @@ async def compute(date_from: date | None = None, date_to: date | None = None) ->
     })
 
     shipments_raw: list[dict] = await asyncio.to_thread(
-        client.execute,
+        client.fetch_all,
         "transport.shipment",
-        "search_read",
-        [[("id", "in", shipment_ids)]],
-        {"fields": ["id", "date_end"], "limit": len(shipment_ids) + 1},
-    )  # type: ignore[assignment]
+        [("id", "in", shipment_ids)],
+        ["id", "date_end"],
+    )
 
     shipment_date_end: dict[int, str] = {
         s["id"]: s.get("date_end") or ""

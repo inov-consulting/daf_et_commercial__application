@@ -272,46 +272,51 @@ async def stream_chat_session(
         pre_model_hook=_trim_hook,
     )
     config = {"configurable": {"thread_id": str(session_id)}}
-    
+
     # Stream en utilisant astream_events pour vrai streaming token par token
     collected_thinking = ""
-    collected_response = ""
-    thinking_yielded = False
-    
+
     async for event in agent.astream_events(
         {"messages": [("human", message)]},
         config=config,
         version="v2",
     ):
         event_type = event.get("event")
-        
-        # Gestion du raisonnement pour Claude (thinking blocks)
-        if reasoning and event_type == "on_chat_model_stream":
-            data = event.get("data", {})
-            chunk = data.get("chunk", {})
-            # Vérifier s'il y a du thinking dans additional_kwargs
-            if hasattr(chunk, 'additional_kwargs') and chunk.additional_kwargs:
-                thinking = chunk.additional_kwargs.get('thinking')
+
+        if event_type != "on_chat_model_stream":
+            continue
+
+        data = event.get("data", {})
+        chunk = data.get("chunk", {})
+        if not (hasattr(chunk, "content") and chunk.content):
+            continue
+
+        content = chunk.content
+
+        # Anthropic renvoie une liste de blocs typés
+        if isinstance(content, list):
+            for block in content:
+                if not isinstance(block, dict):
+                    continue
+                if block.get("type") == "thinking" and reasoning:
+                    collected_thinking += block.get("thinking", "")
+                elif block.get("type") == "text":
+                    text = block.get("text", "")
+                    if text:
+                        yield text
+        # OpenAI / Groq renvoient un string delta directement
+        elif isinstance(content, str) and content:
+            # Ignorer les blocs thinking injectés dans additional_kwargs
+            if reasoning and hasattr(chunk, "additional_kwargs"):
+                thinking = chunk.additional_kwargs.get("thinking", "")
                 if thinking:
                     collected_thinking += thinking
-                    continue  # Ne pas afficher le thinking comme texte normal
-        
-        # Streaming des tokens de réponse
-        if event_type == "on_chat_model_stream":
-            data = event.get("data", {})
-            chunk = data.get("chunk", {})
-            if hasattr(chunk, "content") and chunk.content:
-                content = str(chunk.content)
-                # Yield seulement les nouveaux caractères (delta)
-                if len(content) > len(collected_response):
-                    delta = content[len(collected_response):]
-                    yield delta
-                    collected_response = content
-    
-    # Afficher le raisonnement à la fin s'il existe
-    if reasoning and collected_thinking and not thinking_yielded:
+                    continue
+            yield content
+
+    if reasoning and collected_thinking:
         yield f"\n\n🤔 **Raisonnement:**\n{collected_thinking}\n"
-    
+
     yield f"[SESSION:{session_id}]"
 
 

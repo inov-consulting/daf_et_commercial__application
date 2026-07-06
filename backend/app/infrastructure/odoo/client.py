@@ -74,7 +74,7 @@ class OdooClient:
 
     def execute(self, model: str, method: str, args: list, kwargs: dict | None = None) -> object:
         """Exécute un appel XML-RPC Odoo de manière synchrone.
-        
+
         À utiliser dans asyncio.to_thread() pour les appels async.
         Exemple: await asyncio.to_thread(oc.execute, "crm.lead", "search_read", [...], {...})
         """
@@ -83,6 +83,29 @@ class OdooClient:
         return self._object_proxy().execute_kw(
             self._db, uid, pwd, model, method, args, kwargs or {},
         )
+
+    def fetch_all(self, model: str, domain: list, fields: list, page_size: int = 1000) -> list[dict]:
+        """Récupère tous les enregistrements en paginant automatiquement.
+
+        À utiliser dans asyncio.to_thread() pour les appels async.
+        Évite la troncature silencieuse des appels avec limit fixe.
+        """
+        records: list[dict] = []
+        offset = 0
+        while True:
+            batch: list[dict] = self.execute(  # type: ignore[assignment]
+                model,
+                "search_read",
+                [domain],
+                {"fields": fields, "limit": page_size, "offset": offset},
+            )
+            if not batch:
+                break
+            records.extend(batch)
+            if len(batch) < page_size:
+                break
+            offset += page_size
+        return records
 
     def list_companies(self) -> list[OdooCompany]:
         """Récupère toutes les entreprises actives depuis Odoo."""

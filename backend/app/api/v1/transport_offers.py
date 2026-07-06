@@ -78,17 +78,21 @@ async def offer_chat(
 
     response, _ = await run_offer_chat(body.message, session_id=session_id)
 
-    # Extraire et persister les données collectées en BDD après chaque tour
-    try:
-        extracted = await extract_collected_data(session_id)
-        if extracted:
-            await repo.update_collected_data(offer.id, extracted)
-            offer = await repo.get(offer.id) or offer
-    except Exception as exc:
-        logger.warning("offer.chat.extract_failed", offer_id=str(offer.id), error=str(exc))
+    # Rafraîchir pour détecter un changement de statut (ex: mark_offer_completed appelé par l'agent)
+    refreshed = await repo.get(offer.id)
+    if refreshed:
+        offer = refreshed
 
-    # Le statut 'completed' est maintenant géré par l'IA via l'outil mark_offer_completed
-    # Plus besoin de détection par mots-clés
+    # Extraction des données uniquement quand l'agent a terminé la collecte —
+    # évite un appel LLM supplémentaire à chaque tour de conversation.
+    if offer.status == "completed" and not offer.collected_data:
+        try:
+            extracted = await extract_collected_data(session_id)
+            if extracted:
+                await repo.update_collected_data(offer.id, extracted)
+                offer = await repo.get(offer.id) or offer
+        except Exception as exc:
+            logger.warning("offer.chat.extract_failed", offer_id=str(offer.id), error=str(exc))
 
     return OfferChatOut(
         offer_id=offer.id,
@@ -190,9 +194,9 @@ async def validate_offer(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"L'offre doit être au statut 'generated' (actuel: {offer.status}). Générez d'abord le document.",
         )
-    # Note: cet endpoint n'est plus utilisé avec le nouveau flux draft → completed → generated → confirmed
+   
     # Gardé pour compatibilité mais ne change plus le statut
-    offer = await repo.set_status(offer_id, "generated")
+    offer = await repo.set_status(offer_id, "validated")
     return OfferSummaryOut(
         id=offer.id,  # type: ignore[union-attr]
         session_id=offer.session_id,  # type: ignore[union-attr]
@@ -242,8 +246,10 @@ async def send_offer_to_odoo(offer_id: UUID) -> OfferConfirmOut:
         )
 
     offer = await repo.confirm(offer_id, odoo_id, odoo_name)
+   
     if offer is None:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erreur lors de la liaison Odoo")
+        
 
     return OfferConfirmOut(
         offer_id=offer_id,
