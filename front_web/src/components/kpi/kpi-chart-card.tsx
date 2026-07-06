@@ -9,7 +9,7 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 // ── Palette Portalis pour AG Charts ──────────────────────────────────────────
 
-const PORTALIS_THEME = {
+export const PORTALIS_THEME = {
   baseTheme: "ag-default",
   palette: {
     fills: [
@@ -62,7 +62,7 @@ function chartHeight(series: KpiChartSeries[]): number {
 
 // ── Construction des series AG Charts ────────────────────────────────────────
 
-function buildSeries(series: KpiChartSeries[]): Record<string, unknown>[] {
+export function buildSeries(series: KpiChartSeries[]): Record<string, unknown>[] {
   return series.map((s) => {
     const out: Record<string, any> = { type: s.type };
     if (s.xKey) out.xKey = s.xKey;
@@ -113,20 +113,22 @@ function categoryColor(cat: string) {
 interface KpiChartCardProps {
   kpi: KpiItem;
   loading?: boolean;
-  /** Utilise une hauteur plus grande pour la vue détail */
+  /** Hauteur étendue pour la vue détail (header masqué) */
   fullHeight?: boolean;
+  /** Mise en vedette : pleine largeur, chart plus grand, header enrichi */
+  featured?: boolean;
 }
 
 export function KpiChartCard({
   kpi,
   loading = false,
   fullHeight = false,
+  featured = false,
 }: KpiChartCardProps) {
   const hasData = kpi.chart.data.length > 0 && kpi.chart.series.length > 0;
   const catColor = categoryColor(kpi.category);
-  const h = fullHeight ? 380 : chartHeight(kpi.chart.series);
+  const h = fullHeight ? 380 : featured ? 260 : chartHeight(kpi.chart.series);
 
-  // Options AG Charts — axes auto-détectés par la lib depuis les series
   const options: any = {
     theme: PORTALIS_THEME,
     data: kpi.chart.data,
@@ -138,10 +140,10 @@ export function KpiChartCard({
       className="bg-white border border-[#DDE5EF] rounded-2xl shadow-sm overflow-hidden flex flex-col"
       style={{ minWidth: 0 }}
     >
-      {/* Header — masqué en mode fullHeight car KpiDetailView fournit déjà les métadonnées */}
+      {/* Header */}
       {!fullHeight && (
-        <div className="px-4 pt-4 pb-3 border-b border-[#F0F4F8]">
-          <div className="flex items-center justify-between gap-2 mb-1.5">
+        <div className={featured ? 'px-5 pt-5 pb-4 border-b border-[#F0F4F8]' : 'px-4 pt-4 pb-3 border-b border-[#F0F4F8]'}>
+          <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
             <span
               className="text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide"
               style={{ background: catColor.bg, color: catColor.color }}
@@ -154,16 +156,25 @@ export function KpiChartCard({
               </span>
             )}
           </div>
-          <div className="font-space-grotesk text-[13px] font-semibold text-[#1B2633] leading-snug">
+          <div className={featured
+            ? 'font-space-grotesk text-[16px] font-bold text-[#1B2633] leading-snug'
+            : 'font-space-grotesk text-[13px] font-semibold text-[#1B2633] leading-snug'
+          }>
             {kpi.label}
           </div>
           {kpi.description && (
             <div
-              className="text-[11px] text-[#7691A8] mt-0.5 truncate"
+              className="text-[11px] text-[#7691A8] mt-0.5"
+              style={featured ? undefined : { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
               title={kpi.description}
             >
               {kpi.description}
             </div>
+          )}
+          {featured && kpi.unit && (
+            <p className="text-[11px] text-[#9EB0C4] mt-1">
+              Unité : <span className="font-medium text-[#7691A8]">{kpi.unit}</span>
+            </p>
           )}
         </div>
       )}
