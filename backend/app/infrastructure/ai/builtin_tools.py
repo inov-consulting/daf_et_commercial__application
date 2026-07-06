@@ -506,33 +506,30 @@ async def check_odoo_lead(lead_id: int) -> str:
 
 async def search_odoo_partner(name: str) -> str:
     """Recherche un client (res.partner) dans l'ERP Odoo par nom.
-    
+
     Args:
         name: Nom du client/entreprise à rechercher
     """
     import logging
     import asyncio
     from app.infrastructure.odoo.client import OdooClient
-    
+
     logger = logging.getLogger(__name__)
     logger.info(f"[AI Tool] Recherche client Odoo: {name}")
-    
+
     try:
         oc = OdooClient()
-        partners = await asyncio.to_thread(
-            oc._object_proxy().execute_kw,
-            oc._db,
-            oc._authenticate(),
-            oc._password,
+        partners: list[dict] = await asyncio.to_thread(
+            oc.execute,
             "res.partner",
             "search_read",
             [[("name", "ilike", name), ("is_company", "=", True)]],
             {"fields": ["id", "name", "email", "phone", "mobile", "street", "city", "country_id"], "limit": 5},
-        )
-        
+        )  # type: ignore[assignment]
+
         if not partners:
             return f"🔍 Aucun client trouvé dans l'ERP pour '{name}'"
-        
+
         lines = [f"## 🔍 Clients trouvés dans l'ERP pour '{name}'", ""]
         for p in partners:
             lines.extend([
@@ -544,7 +541,7 @@ async def search_odoo_partner(name: str) -> str:
             ])
         lines.append("*Utilisez l'ID pour assigner ce client à une opportunité.*")
         return "\n".join(lines)
-        
+
     except Exception as exc:
         logger.error(f"[AI Tool] Erreur recherche client: {exc}")
         return f"❌ Erreur lors de la recherche: {exc}"
@@ -560,7 +557,7 @@ async def create_odoo_partner(
     country_code: str | None = None,
 ) -> str:
     """Crée un nouveau client (res.partner) dans l'ERP Odoo.
-    
+
     Args:
         name: Nom de l'entreprise (obligatoire)
         email: Email
@@ -573,11 +570,12 @@ async def create_odoo_partner(
     import logging
     import asyncio
     from app.infrastructure.odoo.client import OdooClient
-    
+
     logger = logging.getLogger(__name__)
     logger.info(f"[AI Tool] Création client Odoo: {name}")
-    
-    values = {"name": name, "is_company": True, "customer_rank": 1}
+
+    oc = OdooClient()
+    values: dict = {"name": name, "is_company": True, "customer_rank": 1}
     if email:
         values["email"] = email
     if phone:
@@ -589,31 +587,22 @@ async def create_odoo_partner(
     if city:
         values["city"] = city
     if country_code:
-        # Chercher l'ID du pays par code
         try:
-            oc = OdooClient()
-            countries = await asyncio.to_thread(
-                oc._object_proxy().execute_kw,
-                oc._db,
-                oc._authenticate(),
-                oc._password,
+            countries: list[dict] = await asyncio.to_thread(
+                oc.execute,
                 "res.country",
                 "search_read",
                 [[("code", "=", country_code.upper())]],
                 {"fields": ["id"], "limit": 1},
-            )
+            )  # type: ignore[assignment]
             if countries:
                 values["country_id"] = countries[0]["id"]
-        except:
-            pass
-    
+        except Exception as exc:
+            logger.warning(f"[AI Tool] Résolution pays '{country_code}' échouée: {exc}")
+
     try:
-        oc = OdooClient()
         partner_id = await asyncio.to_thread(
-            oc._object_proxy().execute_kw,
-            oc._db,
-            oc._authenticate(),
-            oc._password,
+            oc.execute,
             "res.partner",
             "create",
             [values],
@@ -731,4 +720,7 @@ BUILTIN_REGISTRY: dict[str, object] = {
     "get_prospect_details": get_prospect_details,
     "create_prospect": create_prospect,
     "check_odoo_lead": check_odoo_lead,
+    "search_odoo_partner": search_odoo_partner,
+    "create_odoo_partner": create_odoo_partner,
+    "create_prospect_with_partner": create_prospect_with_partner,
 }

@@ -1,4 +1,4 @@
-const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
+﻿const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
 
 export const ApiRoutes = {
   // ── Auth (Keycloak) ─────────────────────────────────────────────────
@@ -55,6 +55,25 @@ export const ApiRoutes = {
   TRANSPORT_SHIPMENT_VOYAGES:   (id: string) => `${BASE}/api/v1/transport/shipments/${id}/voyages`,
   TRANSPORT_VOYAGE:             (id: string) => `${BASE}/api/v1/transport/voyages/${id}`,
 
+  // ── Offers ────────────────────────────────────────────────────────────
+  OFFERS_LIST:     `${BASE}/api/v1/transport/offers`,
+  OFFERS_CREATE:   `${BASE}/api/v1/commercial/offers`,
+  OFFERS_GET:      (id: string) => `${BASE}/api/v1/commercial/offers/${id}`,
+  OFFERS_UPDATE:   (id: string) => `${BASE}/api/v1/commercial/offers/${id}`,
+  OFFERS_ACTION:   (id: string) => `${BASE}/api/v1/commercial/offers/${id}/actions`,
+  OFFERS_SEND:     (id: string) => `${BASE}/api/v1/commercial/offers/${id}/send`,
+  OFFERS_GENERATE: (id: string) => `${BASE}/api/v1/commercial/offers/${id}/generate`,
+  OFFERS_SYNC:     `${BASE}/api/v1/commercial/offers/sync`,
+
+  // ── Transport Offers IA ──────────────────────────────────────────────
+  TRANSPORT_OFFERS_LIST:     `${BASE}/api/v1/transport/offers/`,
+  TRANSPORT_OFFERS_CHAT:     `${BASE}/api/v1/transport/offers/chat`,
+  TRANSPORT_OFFERS_GET:      (id: string) => `${BASE}/api/v1/transport/offers/${id}`,
+  TRANSPORT_OFFERS_GENERATE: (id: string) => `${BASE}/api/v1/transport/offers/${id}/generate`,
+  TRANSPORT_OFFERS_VALIDATE: (id: string) => `${BASE}/api/v1/transport/offers/${id}/validate`,
+  TRANSPORT_OFFERS_CONFIRM:  (id: string) => `${BASE}/api/v1/transport/offers/${id}/confirm`,
+  TRANSPORT_OFFERS_CANCEL:   (id: string) => `${BASE}/api/v1/transport/offers/${id}/cancel`,
+
   // ── Comptes-rendus (global) ──────────────────────────────────────────
   COMPTE_RENDUS:       `${BASE}/api/v1/compte-rendus`,
   COMPTE_RENDU_DETAIL: (id: string) => `${BASE}/api/v1/compte-rendus/${id}`,
@@ -63,4 +82,16 @@ export const ApiRoutes = {
   API_LOGS:        `${BASE}/api/v1/api-logs`,
   API_LOG:         (id: string) => `${BASE}/api/v1/api-logs/${id}`,
   API_LOG_DETAILS: (id: string) => `${BASE}/api/v1/api-logs/${id}/details`,
+
+  // ── KPI ──────────────────────────────────────────────────────────────────
+  KPI_CATALOG: `${BASE}/api/v1/kpi/catalog`,
+  KPI_DETAIL:  (key: string) => `${BASE}/api/v1/kpi/${key}`,
+
+  // ── App Config ───────────────────────────────────────────────────────────
+  CONFIG_APP:            `${BASE}/api/v1/config/app`,
+  CONFIG_APP_VALIDATORS: `${BASE}/api/v1/config/app/validators`,
+  CONFIG_APP_SMTP:       `${BASE}/api/v1/config/app/smtp`,
+  CONFIG_KPI_AVAILABLE:  `${BASE}/api/v1/config/app/kpi/available`,
+  CONFIG_KPI_GROUPS:     `${BASE}/api/v1/config/app/kpi/groups`,
+  CONFIG_KPI_GROUP:      (groupId: string) => `${BASE}/api/v1/config/app/kpi/groups/${groupId}`,
 } as const;
