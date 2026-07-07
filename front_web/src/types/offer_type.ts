@@ -9,6 +9,8 @@ export interface TransportOfferListItem {
   reference: string | null;
   date: string | null;
   validity_days: number | null;
+  route: Route | null;
+  amount_ttc: number | null;
   odoo_shipment_id: number | null;
   odoo_shipment_name: string | null;
   created_at: string;
@@ -26,6 +28,14 @@ export interface OfferPricingRow {
   unit: string;
 }
 
+export interface Route {
+    origin: string;
+    destination: string;
+    transport_mode: string;
+    vehicle_type: string;
+    planned_date: string;
+  }
+
 export interface TransportOfferDetail {
   offer_id: string;
   status: string;
@@ -35,13 +45,7 @@ export interface TransportOfferDetail {
   validity_days: number;
   sections: OfferSection[];
   pricing: OfferPricingRow[];
-  route: {
-    origin: string;
-    destination: string;
-    transport_mode: string;
-    vehicle_type: string;
-    planned_date: string;
-  };
+  route: Route;
   client: { name: string; odoo_partner_id: number | null };
   footer: string;
   document_generated_at: string | null;
@@ -94,19 +98,26 @@ function computeExpiryDate(date: string | null, validityDays: number | null): st
 
 // Convertit un TransportOfferListItem en Offer pour le composant de liste
 export function transportListItemToOffer(item: TransportOfferListItem): Offer {
-  const clientName = item.odoo_shipment_name ?? clientFromTitle(item.title);
+  // client_name = nom extrait du titre IA, jamais remplacé par odoo_shipment_name
+  const clientName = clientFromTitle(item.title) !== '–'
+    ? clientFromTitle(item.title)
+    : item.odoo_shipment_name ?? '–';
   const expiryDate = computeExpiryDate(item.created_at, item.validity_days);
 
   return {
     id:                   item.id,
-    name:                 item.reference ?? item.odoo_shipment_name ?? `OFF-${item.id.slice(0, 8).toUpperCase()}`,
+    name:                 item.reference ?? `OFF-${item.id.slice(0, 8).toUpperCase()}`,
     client_name:          clientName,
-    origin_location:      '–',
-    destination_location: '–',
+    odoo_shipment_name:   item.odoo_shipment_name ?? null,
+    origin_location:      item.route?.origin      ?? '–',
+    destination_location: item.route?.destination ?? '–',
+    route:                item.route ?? undefined,
+    transport_mode:       item.route?.transport_mode ?? undefined,
+    vehicle_type:         item.route?.vehicle_type   ?? undefined,
     unit_price:           0,
     amount_untaxed:       0,
     amount_tax:           0,
-    amount_total:         0,
+    amount_ttc:           item.amount_ttc ?? 0,
     validity_days:        item.validity_days ?? 0,
     date_emission:        item.date ?? item.created_at,
     date_expiry:          expiryDate,
@@ -159,6 +170,7 @@ export function transportDetailToOffer(detail: TransportOfferDetail): Offer {
     name:                 detail.reference || `OFF-${detail.offer_id.slice(0, 8).toUpperCase()}`,
     client_name:          detail.client?.name ?? '–',
     partner_id:           detail.client?.odoo_partner_id ?? undefined,
+    route:                detail.route ?? undefined,
     origin_location:      detail.route?.origin ?? '–',
     destination_location: detail.route?.destination ?? '–',
     transport_mode:       detail.route?.transport_mode,
@@ -169,7 +181,7 @@ export function transportDetailToOffer(detail: TransportOfferDetail): Offer {
     unit_price:           unitPrice,
     amount_untaxed:       amountHT,
     amount_tax:           amountTVA,
-    amount_total:         amountTTC,
+    amount_ttc:         amountTTC,
     tva_rate:             tvaRatePct,
     validity_days:        detail.validity_days ?? 0,
     date_emission:        emissionDate,
@@ -194,8 +206,10 @@ export interface Offer {
   client_name: string;
   partner_id?: number;
   odoo_linked?: boolean;
-  origin_location: string;
-  destination_location: string;
+  odoo_shipment_name?: string | null;
+  origin_location?: string;
+  destination_location?: string;
+  route?: Route;
   transport_mode?: string;
   vehicle_type?: string;
   product_description?: string;
@@ -204,7 +218,7 @@ export interface Offer {
   unit_price: number;
   amount_untaxed: number;       // HT
   amount_tax: number;           // TVA
-  amount_total: number;         // TTC
+  amount_ttc: number;         // TTC
   tva_rate?: number;            // ex: 19.25
   date_emission: string;        // ISO
   validity_days: number;
@@ -292,7 +306,7 @@ export const OFFER_STATUS_CONFIG: Record<OfferStatus, {
   brouillon: { label: 'Brouillon', bg: '#F3F4F6', color: '#374151', dot: '#9CA3AF' },
   genere:    { label: 'Généré',    bg: '#FBF3DE', color: '#725A0A', dot: '#92720C' },
   envoyee:   { label: 'Envoyée',   bg: '#FFFBEB', color: '#D97706', dot: '#F59E0B' },
-  signee:    { label: 'Signée',    bg: '#ECFDF5', color: '#059669', dot: '#10B981' },
+  signee:    { label: 'Validée',    bg: '#ECFDF5', color: '#059669', dot: '#10B981' },
   refusee:   { label: 'Refusée',   bg: '#FEF2F2', color: '#DC2626', dot: '#EF4444' },
   expiree:   { label: 'Expirée',   bg: '#F3F4F6', color: '#6B7280', dot: '#9CA3AF' },
 };
@@ -310,7 +324,7 @@ export const OFFER_STATUS_TABS: { key: OfferStatus | 'tous'; label: string }[] =
   { key: 'brouillon', label: 'Brouillon' },
   { key: 'genere',    label: 'Généré' },
   { key: 'envoyee',   label: 'Envoyée' },
-  { key: 'signee',    label: 'Signée' },
+  { key: 'signee',    label: 'Validée' },
   { key: 'refusee',   label: 'Refusée' },
   { key: 'expiree',   label: 'Expirée' },
 ];
