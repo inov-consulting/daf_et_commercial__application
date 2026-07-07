@@ -23,14 +23,14 @@ import WorkflowSection from './workfow-section';
 
 /* ── Types locaux ─────────────────────────────────────────────────────────── */
 
-type StateFilter = 'all' | 'draft' | 'confirmed' | 'in_transit' | 'delivered' | 'cancelled';
+type StateFilter = 'all' | 'draft' | 'confirmed' | 'in_transit' | 'done' | 'cancelled';
 type DrawerTab = 'apercu' | 'voyages' | 'charges' | 'immobilisations' | 'workflow';
 
 const STATE_PILLS: { key: StateFilter; label: string }[] = [
   { key: 'all', label: 'Tous' },
   { key: 'in_transit', label: 'En transit' },
   { key: 'confirmed', label: 'Confirmés' },
-  { key: 'delivered', label: 'Livrés' },
+  { key: 'done', label: 'Livrés' },
   { key: 'draft', label: 'Brouillons' },
   { key: 'cancelled', label: 'Annulés' },
 ];
