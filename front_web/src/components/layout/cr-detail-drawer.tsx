@@ -4,6 +4,44 @@ import { GlobalCR, GlobalCRDetail } from '@/types/prospect_note_type';
 import { CircleNotchIcon, CodeIcon, DownloadSimpleIcon, XIcon } from '@phosphor-icons/react';
 import React, { useEffect } from 'react'
 
+/* ── Drawer responsive override ─────────────────────────────────── */
+const DRAWER_CSS = `
+<style id="drawer-overrides">
+  .shell { padding: 16px 16px 40px !important; max-width: 100% !important; }
+  .status-bar { flex-wrap: wrap !important; gap: 8px 12px !important; padding: 10px 14px !important; }
+  .status-bar-left { flex: 1 1 100% !important; min-width: 0; }
+  .status-steps { flex-wrap: wrap !important; gap: 2px !important; }
+  .doc-meta-sm { margin-left: 0 !important; }
+  .toolbar { flex-wrap: wrap !important; gap: 8px !important; }
+  .toolbar-right { flex-wrap: wrap !important; }
+  .doc-cover { padding: 24px 20px !important; border-radius: 8px 8px 0 0 !important; }
+  .cover-meta-grid { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+  .doc-inner { padding: 24px 20px !important; }
+  .sig-grid { grid-template-columns: 1fr !important; }
+  @media (max-width: 600px) {
+    .cover-meta-grid { grid-template-columns: 1fr !important; }
+    .cover-title { font-size: 18px !important; }
+    .cover-subtitle { font-size: 13px !important; }
+    .status-steps { display: none !important; }
+  }
+</style>
+`;
+
+/* Override exportPDF() dans l'iframe → postMessage vers le parent React */
+const DRAWER_BRIDGE = `
+<script id="drawer-bridge">
+  window.exportPDF = function() {
+    window.parent.postMessage({ type: 'cr-export-pdf' }, '*');
+  };
+</script>
+`;
+
+function injectDrawerStyles(html: string): string {
+  let result = html.includes('</head>') ? html.replace('</head>', `${DRAWER_CSS}</head>`) : DRAWER_CSS + html;
+  result = result.includes('</body>') ? result.replace('</body>', `${DRAWER_BRIDGE}</body>`) : result + DRAWER_BRIDGE;
+  return result;
+}
+
 /* ── Status config ──────────────────────────────────────────────── */
 const STATUS_CFG: Record<string, { label: string; bg: string; text: string; border: string; dot: string }> = {
   final: {
@@ -63,6 +101,15 @@ const CRDetailDrawer = ({ crId, items, downloading, onClose, onDownload }: {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
+
+  /* Écoute le postMessage envoyé par exportPDF() dans l'iframe */
+  useEffect(() => {
+    function onMsg(e: MessageEvent) {
+      if (e.data?.type === 'cr-export-pdf' && cr) onDownload(cr);
+    }
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, [cr, onDownload]);
 
   const open = !!crId;
 
@@ -127,20 +174,21 @@ const CRDetailDrawer = ({ crId, items, downloading, onClose, onDownload }: {
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-h-0 flex flex-col">
           {detailLoading ? (
-            <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--tx-3)]">
+            <div className="flex flex-col items-center justify-center flex-1 gap-3 text-[var(--tx-3)]">
               <CircleNotchIcon size={22} className="animate-spin text-[var(--p500)]" />
               <p className="text-[13px]">Chargement du contenu…</p>
             </div>
           ) : (detail as GlobalCRDetail | undefined)?.content ? (
-            <div
-              className="p-6 prose prose-sm max-w-none text-[var(--tx-1)]"
-              /* eslint-disable-next-line react/no-danger */
-              dangerouslySetInnerHTML={{ __html: (detail as GlobalCRDetail).content }}
+            <iframe
+              srcDoc={injectDrawerStyles((detail as GlobalCRDetail).content)}
+              className="flex-1 w-full border-0"
+              sandbox="allow-scripts allow-same-origin"
+              title="Contenu du compte-rendu"
             />
           ) : detail && !(detail as GlobalCRDetail).content ? (
-            <div className="flex flex-col items-center justify-center h-full gap-2 text-[var(--tx-3)]">
+            <div className="flex flex-col items-center justify-center flex-1 gap-2 text-[var(--tx-3)]">
               <CodeIcon size={28} className="opacity-40" />
               <p className="text-[13px]">Aucun contenu HTML disponible pour ce CR.</p>
             </div>
