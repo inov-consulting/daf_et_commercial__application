@@ -59,18 +59,16 @@ async def list_compte_rendus(
 
         if cr.parent_type in ("prospect", "prospections", "prospection"):
             prospect = await ProspectOrm.get_or_none(id=cr.parent_id)
-            if prospect:
-                # Données Odoo sont dans erp_metadata (cache local)
-                erp_data = prospect.erp_metadata or {}
-                cr_data["parent"] = CompteRenduParentInfo(
-                    type="prospect",
-                    id=prospect.id,
-                    name=erp_data.get("name") or erp_data.get("partner_name") or "Prospect sans nom",
-                    status=prospect.status,
-                    email=erp_data.get("email"),
-                    phone=erp_data.get("phone"),
-                    company_name=erp_data.get("partner_name"),
-                )
+            erp_data = (prospect.erp_metadata or {}) if prospect else {}
+            cr_data["parent"] = CompteRenduParentInfo(
+                type="prospect",
+                id=cr.parent_id,
+                name=erp_data.get("name") or erp_data.get("partner_name") or "Prospect sans nom",
+                status=prospect.status if prospect else None,
+                email=erp_data.get("email_from"),
+                phone=erp_data.get("phone"),
+                company_name=erp_data.get("partner_name"),
+            )
 
         items.append(CompteRenduListItemOut.model_validate(cr_data))
 
