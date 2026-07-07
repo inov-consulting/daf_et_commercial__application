@@ -214,16 +214,16 @@ async def validate_offer(
 async def send_offer_to_odoo(offer_id: UUID) -> OfferConfirmOut:
     """Crée le dossier transport dans Odoo via MCP et lie l'offre.
 
-    Prérequis : l'offre doit être au statut `generated`.
+    Prérequis : l'offre doit être au statut `validated`.
     """
     repo = TransportOfferRepository()
     offer = await repo.get(offer_id)
     if offer is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Offre non trouvée")
-    if offer.status != "generated":
+    if offer.status != "validated":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"L'offre doit être au statut 'generated' (actuel: {offer.status}). Générez d'abord le document.",
+            detail=f"L'offre doit être au statut 'validated' (actuel: {offer.status}). Validez d'abord le document.",
         )
 
     import json
