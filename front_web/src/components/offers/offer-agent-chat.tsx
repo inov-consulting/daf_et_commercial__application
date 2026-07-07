@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ChatCircleIcon, PaperPlaneTiltIcon } from '@phosphor-icons/react';
+import { ChatCircleIcon, PaperPlaneTiltIcon, MicrophoneIcon, SquareIcon, CircleNotchIcon } from '@phosphor-icons/react';
 import { PostData } from '@/lib/ApiService';
 import { ApiRoutes } from '@/lib/ApiRoutes';
 
@@ -272,15 +272,21 @@ interface OfferAgentChatProps {
 // ── Composant ─────────────────────────────────────────────────────────────────
 
 export function OfferAgentChat({ onOfferGenerated, onCancel }: OfferAgentChatProps) {
-  const [phase,     setPhase]     = useState<ChatPhase>('welcome');
-  const [messages,  setMessages]  = useState<ChatMessage[]>([]);
-  const [input,     setInput]     = useState('');
-  const [isTyping,  setIsTyping]  = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [offerId,   setOfferId]   = useState<string | null>(null);
+  const [phase,      setPhase]      = useState<ChatPhase>('welcome');
+  const [messages,   setMessages]   = useState<ChatMessage[]>([]);
+  const [input,      setInput]      = useState('');
+  const [isTyping,   setIsTyping]   = useState(false);
+  const [sessionId,  setSessionId]  = useState<string | null>(null);
+  const [offerId,    setOfferId]    = useState<string | null>(null);
+  const [voiceState, setVoiceState] = useState<'idle' | 'recording' | 'transcribing'>('idle');
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [recordTimer,setRecordTimer]= useState(0);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef       = useRef<HTMLTextAreaElement>(null);
+  const messagesEndRef   = useRef<HTMLDivElement>(null);
+  const inputRef         = useRef<HTMLTextAreaElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef   = useRef<Blob[]>([]);
+  const timerRef         = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -303,6 +309,57 @@ export function OfferAgentChat({ onOfferGenerated, onCancel }: OfferAgentChatPro
       onOfferGenerated({ offerId: res.data.offer_id ?? oid, data: res.data });
     }
   }, [onOfferGenerated]);
+
+  // ── Voice recording ─────────────────────────────────────────────────────────
+
+  async function startVoiceRecording() {
+    setVoiceError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = ['audio/webm', 'audio/mp4'].find(t => MediaRecorder.isTypeSupported(t)) ?? '';
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current   = [];
+      recorder.ondataavailable = e => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+      recorder.start(100);
+      setRecordTimer(0);
+      setVoiceState('recording');
+      timerRef.current = setInterval(() => setRecordTimer(s => s + 1), 1000);
+    } catch {
+      setVoiceError('Microphone non disponible ou accès refusé.');
+    }
+  }
+
+  function stopVoiceRecording() {
+    if (!mediaRecorderRef.current) return;
+    if (timerRef.current) clearInterval(timerRef.current);
+    setVoiceState('transcribing');
+
+    mediaRecorderRef.current.onstop = async () => {
+      const rawMime  = audioChunksRef.current[0]?.type ?? 'audio/webm';
+      const mimeType = rawMime.split(';')[0];
+      const ext      = mimeType.includes('mp4') ? 'm4a' : 'webm';
+      const blob     = new Blob(audioChunksRef.current, { type: mimeType });
+      mediaRecorderRef.current?.stream.getTracks().forEach(t => t.stop());
+
+      const audioFile = new File([blob], `recording.${ext}`, { type: mimeType });
+      const res = await PostData<{ text: string }>({
+        url: ApiRoutes.VOCAL_TRANSCRIBE,
+        data: { file: audioFile } as unknown as Record<string, unknown>,
+        isMultipart: true,
+        protected: true,
+      });
+
+      setVoiceState('idle');
+      if (!res.ok || !res.data) {
+        setVoiceError(res.error ?? 'Erreur lors de la transcription.');
+        return;
+      }
+      setInput(prev => prev.trim() ? `${prev.trim()}\n${res.data!.text}` : res.data!.text);
+    };
+
+    mediaRecorderRef.current.stop();
+  }
 
   const INIT_MESSAGE = 'Bonjour je voudrais créer une nouvelle offre.';
 
@@ -581,43 +638,97 @@ export function OfferAgentChat({ onOfferGenerated, onCancel }: OfferAgentChatPro
           </div>
 
           {/* Input footer */}
-          <div
-            style={{
-              padding: '10px 12px', borderTop: '1px solid #DDE5EF',
-              background: '#FAFBFD', flexShrink: 0,
-              display: 'flex', alignItems: 'flex-end', gap: 8,
-            }}
-          >
-            <textarea
-              ref={inputRef}
-              rows={1}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={onKeyDown}
-              placeholder={phase === 'generating' ? 'Génération en cours…' : 'Saisissez votre message…'}
-              disabled={phase === 'generating' || isTyping}
-              style={{
-                flex: 1, minHeight: 38, maxHeight: 120,
-                border: '1px solid #DDE5EF', borderRadius: 10,
-                padding: '9px 14px', fontSize: 13, fontFamily: 'inherit', color: '#1B2633',
-                background: phase === 'generating' ? '#F7F9FC' : '#fff',
-                outline: 'none', resize: 'none', lineHeight: 1.5,
-                overflowY: 'auto',
-              }}
-            />
-            <button
-              onClick={() => sendMessage()}
-              disabled={!input.trim() || isTyping || phase === 'generating'}
-              style={{
-                width: 38, height: 38, border: 'none', borderRadius: 10,
-                background: (!input.trim() || isTyping || phase === 'generating') ? '#DDE5EF' : '#1E5B3C',
-                color: '#fff', cursor: (!input.trim() || isTyping || phase === 'generating') ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'background .15s',
-              }}
-            >
-              <PaperPlaneTiltIcon size={15} weight="fill" />
-            </button>
+          <div style={{ borderTop: '1px solid #DDE5EF', background: '#FAFBFD', flexShrink: 0 }}>
+
+            {/* Recording status bar */}
+            {voiceState === 'recording' && (
+              <div style={{ padding: '5px 12px 0', display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#EF4444' }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444', display: 'inline-block', animation: 'pulse 1s infinite' }} />
+                {String(Math.floor(recordTimer / 60)).padStart(2, '0')}:{String(recordTimer % 60).padStart(2, '0')} — Parlez, puis cliquez sur ■ pour arrêter
+              </div>
+            )}
+
+            {/* Voice error */}
+            {voiceError && (
+              <div style={{ padding: '5px 12px 0', fontSize: 11, color: '#B91C1C' }}>{voiceError}</div>
+            )}
+
+            <div style={{ padding: '10px 12px', display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+
+              {/* Textarea wrapper with mic inside */}
+              <div style={{ flex: 1, position: 'relative' }}>
+                <textarea
+                  ref={inputRef}
+                  rows={1}
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={onKeyDown}
+                  placeholder={
+                    phase === 'generating'       ? 'Génération en cours…'       :
+                    voiceState === 'recording'   ? '🔴 Enregistrement en cours…' :
+                    voiceState === 'transcribing'? 'Transcription en cours…'    :
+                    'Saisissez ou dictez votre message…'
+                  }
+                  disabled={phase === 'generating' || isTyping || voiceState !== 'idle'}
+                  style={{
+                    width: '100%', minHeight: 38, maxHeight: 120,
+                    border: `1px solid ${voiceState === 'recording' ? '#FCA5A5' : '#DDE5EF'}`,
+                    borderRadius: 10,
+                    padding: '9px 36px 9px 14px',
+                    fontSize: 13, fontFamily: 'inherit', color: '#1B2633',
+                    background: (phase === 'generating' || voiceState !== 'idle') ? '#F7F9FC' : '#fff',
+                    outline: 'none', resize: 'none', lineHeight: 1.5,
+                    overflowY: 'auto', boxSizing: 'border-box',
+                    transition: 'border-color .15s',
+                  }}
+                />
+
+                {/* Mic / Stop / Spinner */}
+                <button
+                  type="button"
+                  onClick={
+                    voiceState === 'recording'    ? stopVoiceRecording    :
+                    voiceState === 'idle'          ? startVoiceRecording  :
+                    undefined
+                  }
+                  disabled={voiceState === 'transcribing' || phase === 'generating' || isTyping}
+                  title={voiceState === 'recording' ? "Arrêter l'enregistrement" : 'Dicter un message'}
+                  style={{
+                    position: 'absolute', bottom: 6, right: 6,
+                    width: 26, height: 26, border: 'none', borderRadius: 6,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: voiceState === 'transcribing' ? 'wait' : 'pointer',
+                    transition: 'all .15s',
+                    background: voiceState === 'recording' ? '#EF4444' : 'transparent',
+                    color: voiceState === 'recording' ? '#fff' : voiceState === 'transcribing' ? '#9EB0C4' : '#9EB0C4',
+                  }}
+                >
+                  {voiceState === 'transcribing' ? (
+                    <CircleNotchIcon size={13} className="animate-spin" />
+                  ) : voiceState === 'recording' ? (
+                    <SquareIcon size={10} weight="fill" />
+                  ) : (
+                    <MicrophoneIcon size={13} />
+                  )}
+                </button>
+              </div>
+
+              {/* Send button */}
+              <button
+                onClick={() => sendMessage()}
+                disabled={!input.trim() || isTyping || phase === 'generating' || voiceState !== 'idle'}
+                style={{
+                  width: 38, height: 38, border: 'none', borderRadius: 10,
+                  background: (!input.trim() || isTyping || phase === 'generating' || voiceState !== 'idle') ? '#DDE5EF' : '#1E5B3C',
+                  color: '#fff',
+                  cursor: (!input.trim() || isTyping || phase === 'generating' || voiceState !== 'idle') ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'background .15s', flexShrink: 0,
+                }}
+              >
+                <PaperPlaneTiltIcon size={15} weight="fill" />
+              </button>
+            </div>
           </div>
         </>
       )}
