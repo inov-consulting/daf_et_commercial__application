@@ -956,13 +956,13 @@ export function OfferCreateView({
     setGenerationSuccess(false);
   }
 
-  // Nouveau flow : confirmer d'abord (send to Odoo), valider ensuite dans la page détail
-  async function handleConfirmToOdoo() {
+  // Étape 1 : valider l'offre (generated → validated). Confirm vers Odoo se fait depuis la page détail.
+  async function handleValidate() {
     if (!savedOffer || validating) return;
     setValidating(true);
     try {
       await PostData<Record<string, unknown>, Record<string, never>>({
-        url: ApiRoutes.TRANSPORT_OFFERS_CONFIRM(savedOffer.id),
+        url: ApiRoutes.TRANSPORT_OFFERS_VALIDATE(savedOffer.id),
         data: {},
         protected: true,
       });
@@ -1352,35 +1352,20 @@ export function OfferCreateView({
               {generated && savedOffer ? (
                 <>
                   <div className="flex items-start gap-2 bg-[#EBF5FD] border border-[#7DBCEA] rounded-lg p-2.5">
-                    <CheckCircleIcon
-                      size={14}
-                      weight="fill"
-                      className="text-[#085499] flex-shrink-0 mt-0.5"
-                    />
-                    <div className="text-[11px] text-[#064276] leading-relaxed">
-                      <strong>Offre générée par l&apos;IA</strong> — Vérifiez
-                      les informations, puis confirmez dans Odoo. La validation
-                      finale se fait depuis la page détail.
+                    <CheckCircleIcon size={14} weight="fill" className="text-emerald-700 flex-shrink-0 mt-0.5" />
+                    <div className="text-[11px] text-emerald-700 leading-relaxed">
+                      <strong>Offre générée par l&apos;IA</strong> — Vérifiez et ajustez les informations si nécessaire, puis validez. La confirmation Odoo se fera depuis la page détail.
                     </div>
                   </div>
                   <button
-                    onClick={handleConfirmToOdoo}
+                    onClick={handleValidate}
                     disabled={validating}
-                    className="w-full h-11 border-none rounded-lg bg-[#085499] text-white text-sm font-bold inline-flex items-center justify-center gap-2 shadow-lg hover:bg-[#064276] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full h-11 border-none rounded-lg bg-emerald-800 text-white text-sm font-bold inline-flex items-center justify-center gap-2 shadow-lg hover:bg-emerald-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {validating ? (
-                      <>
-                        <ArrowsClockwiseIcon
-                          size={18}
-                          className="animate-spin"
-                        />{" "}
-                        Envoi vers Odoo…
-                      </>
+                      <><ArrowsClockwiseIcon size={18} className="animate-spin" /> Validation en cours…</>
                     ) : (
-                      <>
-                        <CheckCircleIcon size={18} weight="fill" /> Confirmer →
-                        Odoo
-                      </>
+                      <><CheckCircleIcon size={18} weight="fill" /> Valider l&apos;offre</>
                     )}
                   </button>
                 </>

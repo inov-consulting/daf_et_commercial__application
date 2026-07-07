@@ -73,7 +73,8 @@ export const fetchOfferDetail = createAsyncThunk(
 );
 
 /** POST /api/v1/transport/offers/{offer_id}/validate
- *  Prérequis : statut validated (après confirm). Finalise l'offre. */
+ *  Prérequis : statut generated. generated → validated (ÉTAPE 1).
+ *  Ne crée rien dans Odoo. Appeler confirm ensuite. */
 export const validateOffer = createAsyncThunk(
   'offers/validate',
   async (offerId: string, { rejectWithValue }) => {
@@ -88,8 +89,7 @@ export const validateOffer = createAsyncThunk(
 );
 
 /** POST /api/v1/transport/offers/{offer_id}/confirm
- *  Crée le dossier dans Odoo. Prérequis : statut generated (ÉTAPE 1).
- *  À appeler AVANT validate — une fois validé, le confirm est bloqué par l'API. */
+ *  Prérequis : statut validated (ÉTAPE 2). Crée le dossier transport dans Odoo. */
 export const confirmOffer = createAsyncThunk(
   'offers/confirm',
   async (offerId: string, { rejectWithValue }) => {

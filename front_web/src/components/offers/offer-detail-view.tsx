@@ -306,24 +306,21 @@ export function OfferDetailView({
   };
 
   // ── Timeline ─────────────────────────────────────────────────────────────────
-  // Flow : genere → confirm (Odoo, pendant generated) → validate → validated/confirmed
+  // Flow : generated → validate → validated → confirm (Odoo) → confirmed
   const tlEvents: TlEvent[] = [
     { label: "Générée par l'IA", meta: fmtOfferDate(offer.created_at), color: 'gold' },
   ];
-  if (status === 'genere' && offer.odoo_linked) {
-    tlEvents.push({ label: 'Dossier Odoo créé', meta: 'En attente de validation', color: 'ok' });
-  } else if (status === 'envoyee') {
-    tlEvents.push({ label: 'Dossier Odoo créé', meta: 'Dossier transport créé', color: 'ok' });
-    tlEvents.push({ label: 'En attente de validation finale', color: 'warn' });
+  if (status === 'envoyee') {
+    tlEvents.push({ label: 'Validée par l\'équipe', meta: 'En attente de confirmation Odoo', color: 'ok' });
   } else if (status === 'signee') {
-    tlEvents.push({ label: 'Dossier Odoo créé', color: 'ok' });
     tlEvents.push({ label: 'Validée par l\'équipe', color: 'ok' });
+    tlEvents.push({ label: 'Confirmée dans Odoo', meta: 'Dossier transport créé', color: 'ok' });
   } else if (status === 'refusee') {
-    tlEvents.push({ label: 'Offre annulée', meta: 'Annulée avant validation', color: 'err' });
+    tlEvents.push({ label: 'Offre annulée', meta: 'Annulée avant confirmation', color: 'err' });
   } else if (expired) {
     tlEvents.push(
       { label: 'Validité expirée', meta: fmtOfferDate(offer.date_expiry), color: 'gray' },
-      { label: 'Non confirmée', meta: "L'offre n'a pas été confirmée à temps", color: 'gray' },
+      { label: 'Non validée', meta: "L'offre n'a pas été validée à temps", color: 'gray' },
     );
   }
 
@@ -409,24 +406,9 @@ export function OfferDetailView({
               />
             )}
 
-            {/* Étape 1 — Confirmer → Odoo
-                Disponible uniquement sur generated + pas encore lié à Odoo.
-                Confirm échoue si l'offre est déjà validated → doit passer avant validate. */}
-            {status === 'genere' && !offer.odoo_linked && onConfirm && (
-              <ActionButton
-                onClick={doConfirm}
-                loading={confirming}
-                disabled={confirming}
-                icon={<CheckSquareIcon size={13} weight="fill" />}
-                label={confirming ? 'Envoi…' : 'Confirmer → Odoo'}
-                variant="info"
-              />
-            )}
-
-            {/* Étape 2 — Valider l'offre
-                Affiché quand l'offre est liée à Odoo (confirm fait) sur generated,
-                OU quand le statut est envoyee (si confirm a produit validated côté API). */}
-            {((status === 'genere' && offer.odoo_linked) || status === 'envoyee') && onValidate && (
+            {/* Étape 1 — Valider l'offre (generated → validated)
+                Prérequis API : statut generated. Si un validateur est configuré, seul lui peut valider. */}
+            {status === 'genere' && onValidate && (
               <ActionButton
                 onClick={doValidate}
                 loading={validating}
@@ -435,6 +417,19 @@ export function OfferDetailView({
                 label={validating ? 'Validation…' : 'Valider l\'offre'}
                 variant="primary"
                 title={!canValidate ? `Seul ${offerValidator?.display_name} peut valider cette offre` : undefined}
+              />
+            )}
+
+            {/* Étape 2 — Confirmer → Odoo (validated → confirmed)
+                Prérequis API : statut validated. Crée le dossier transport dans Odoo. */}
+            {status === 'envoyee' && onConfirm && (
+              <ActionButton
+                onClick={doConfirm}
+                loading={confirming}
+                disabled={confirming}
+                icon={<CheckSquareIcon size={13} weight="fill" />}
+                label={confirming ? 'Envoi…' : 'Confirmer → Odoo'}
+                variant="info"
               />
             )}
 
@@ -464,44 +459,31 @@ export function OfferDetailView({
 
         {/* ── Alertes ────────────────────────────────────────────────────────── */}
 
-        {/* genere + pas encore confirmé → invite à confirmer d'abord */}
-        {status === 'genere' && !offer.odoo_linked && (
+        {/* genere → valider d'abord (generated → validated), confirm ensuite */}
+        {status === 'genere' && (
+          <div className="flex items-start gap-3 bg-[#FBF3DE] border border-[#D4A217] rounded-xl p-4 mb-4 text-[12px] sm:text-[13px] text-[#725A0A]">
+            <ShieldCheckIcon size={18} weight="fill" className="text-[#92720C] flex-shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <strong>En attente de validation</strong>
+              {offerValidator
+                ? <> — seul <strong>{offerValidator.display_name}</strong> peut valider cette offre avant l&apos;envoi vers Odoo.</>
+                : <> — cliquez sur <strong>&ldquo;Valider l&apos;offre&rdquo;</strong> pour passer au statut <em>Validée</em>, puis confirmez dans Odoo.</>
+              }
+              {!canValidate && (
+                <div className="mt-1.5 text-[#B91C1C] text-[11px] sm:text-xs">
+                  Vous n&apos;êtes pas le validateur désigné pour cette offre.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* envoyee (validated) → prêt à confirmer dans Odoo */}
+        {status === 'envoyee' && (
           <div className="flex items-start gap-3 bg-[#EBF5FD] border border-[#7DBCEA] rounded-xl p-4 mb-4 text-[12px] sm:text-[13px] text-[#064276]">
             <CheckSquareIcon size={18} weight="fill" className="text-[#085499] flex-shrink-0 mt-0.5" />
             <div className="min-w-0">
-              <strong>En attente de confirmation Odoo</strong> — Confirmez d&apos;abord dans Odoo pour créer le dossier transport, puis validez l&apos;offre.
-            </div>
-          </div>
-        )}
-
-        {/* genere + déjà confirmé → invite à valider */}
-        {status === 'genere' && offer.odoo_linked && (
-          <div className="flex items-start gap-3 bg-[#FBF3DE] border border-[#D4A217] rounded-xl p-4 mb-4 text-[12px] sm:text-[13px] text-[#725A0A]">
-            <ShieldCheckIcon size={18} weight="fill" className="text-[#92720C] flex-shrink-0 mt-0.5" />
-            <div className="min-w-0">
-              <strong>Dossier Odoo créé</strong> — Cliquez sur <strong>&ldquo;Valider l&apos;offre&rdquo;</strong> pour finaliser.
-              {offerValidator && <> Seul <strong>{offerValidator.display_name}</strong> peut valider.</>}
-              {!canValidate && (
-                <div className="mt-1.5 text-[#B91C1C] text-[11px] sm:text-xs">
-                  Vous n&apos;êtes pas le validateur désigné pour cette offre.
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* envoyee → statut produit par confirm selon l'API → invite à valider */}
-        {status === 'envoyee' && (
-          <div className="flex items-start gap-3 bg-[#FBF3DE] border border-[#D4A217] rounded-xl p-4 mb-4 text-[12px] sm:text-[13px] text-[#725A0A]">
-            <ShieldCheckIcon size={18} weight="fill" className="text-[#92720C] flex-shrink-0 mt-0.5" />
-            <div className="min-w-0">
-              <strong>Confirmée dans Odoo</strong> — Cliquez sur <strong>&ldquo;Valider l&apos;offre&rdquo;</strong> pour finaliser.
-              {offerValidator && <> Seul <strong>{offerValidator.display_name}</strong> peut valider.</>}
-              {!canValidate && (
-                <div className="mt-1.5 text-[#B91C1C] text-[11px] sm:text-xs">
-                  Vous n&apos;êtes pas le validateur désigné pour cette offre.
-                </div>
-              )}
+              <strong>Offre validée</strong> — Cliquez sur <strong>&ldquo;Confirmer → Odoo&rdquo;</strong> pour créer le dossier transport dans Odoo et lier cette offre.
             </div>
           </div>
         )}

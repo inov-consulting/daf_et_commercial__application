@@ -21,7 +21,7 @@ export function OfferRow({ offer, checked = false, onCheck, onView, onEdit, onDu
   const status = computeOfferStatus(offer);
   const clientColor = hashColor(offer.client_name);
   const initials = toInitials(offer.client_name) || '–';
-  const hasRoute = offer.route?.origin !== '–' && offer.route?.destination !== '–';
+  const hasRoute = offer.route !== undefined && offer.route?.origin !== 'À préciser' && offer.route?.destination !== 'À préciser';
   
   return (
     <tr
