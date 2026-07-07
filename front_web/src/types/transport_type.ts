@@ -82,7 +82,7 @@ export const DOSSIER_ETAPES: DossierEtape[] = ['A', 'B', 'C', 'D', 'E'];
 
 // ── Shipments ──────────────────────────────────────────────────────────────
 
-export type ShipmentState = 'draft' | 'confirmed' | 'in_transit' | 'delivered' | 'cancelled';
+export type ShipmentState = 'draft' | 'confirmed' | 'in_transit' | 'done' | 'cancelled';
 
 export interface Shipment {
   id: number;
@@ -223,7 +223,7 @@ export const SHIPMENT_STATE_CONFIG: Record<ShipmentState, { label: string; bg: s
   draft:      { label: 'Brouillon',  bg: '#F3F4F6', color: '#374151', dot: '#9CA3AF' },
   confirmed:  { label: 'Confirmé',   bg: '#EBF5FD', color: '#085499', dot: '#0E86E8' },
   in_transit: { label: 'En transit', bg: '#FFFBEB', color: '#D97706', dot: '#F59E0B' },
-  delivered:  { label: 'Livré',      bg: '#ECFDF5', color: '#059669', dot: '#10B981' },
+  done:  { label: 'Livré',      bg: '#ECFDF5', color: '#059669', dot: '#10B981' },
   cancelled:  { label: 'Annulé',     bg: '#FEF2F2', color: '#DC2626', dot: '#EF4444' },
 };
 
