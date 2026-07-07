@@ -1,13 +1,12 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { type Offer, type OfferPricingRow, type TransportOfferDetail, fmtOfferDate, fmtOfferAmount } from '@/types/offer_type';
+import { type Offer, type OfferPricingRow, type TransportOfferDetail, Route, fmtOfferDate, fmtOfferAmount } from '@/types/offer_type';
 
 interface OfferDocumentProps {
   offer: Partial<Offer> & {
     client_name: string;
-    origin_location: string;
-    destination_location: string;
+    route: Route | null;
     unit_price: number;
   };
   detail?: TransportOfferDetail | null;
@@ -129,7 +128,7 @@ export function OfferDocument({ offer, detail, preview = false }: OfferDocumentP
   const tvaRate  = offer.tva_rate ?? 19.25;
   const ht       = offer.amount_untaxed ?? offer.unit_price ?? 0;
   const tva      = offer.amount_tax ?? Math.round(ht * tvaRate) / 100;
-  const ttc      = offer.amount_total ?? ht + tva;
+  const ttc      = offer.amount_ttc ?? ht + tva;
   const today    = fmtOfferDate(offer.date_emission ?? new Date().toISOString());
   const expiry   = fmtOfferDate(offer.date_expiry);
   const planned  = fmtOfferDate(offer.date_planned);
@@ -215,7 +214,7 @@ export function OfferDocument({ offer, detail, preview = false }: OfferDocumentP
       <div className="mb-5 py-2 px-3 rounded" style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
         <span className="font-semibold text-[#374151]">Objet : </span>
         <span className="text-[#111827]">
-          Offre de transport - {offer.origin_location} → {offer.destination_location}
+          Offre de transport - {offer.route?.origin} → {offer.route?.destination}
           {offer.transport_mode ? ` (${offer.transport_mode})` : ''}
         </span>
       </div>
@@ -258,7 +257,7 @@ export function OfferDocument({ offer, detail, preview = false }: OfferDocumentP
               </thead>
               <tbody>
                 {[
-                  ['Trajet',         `${offer.origin_location} → ${offer.destination_location}`],
+                  ['Trajet',         `${offer.route?.origin} → ${offer.route?.destination}`],
                   ['Mode',           offer.transport_mode ?? '-'],
                   ['Véhicule',       offer.vehicle_type ?? '-'],
                   ['Date prévue',    planned],
