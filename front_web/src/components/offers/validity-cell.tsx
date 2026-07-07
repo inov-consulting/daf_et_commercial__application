@@ -8,7 +8,7 @@ interface ValidityCellProps {
 export function ValidityCell({ offer }: ValidityCellProps) {
   const status = computeOfferStatus(offer);
   
-  if (!offer.validity_days || status === 'signee' || status === 'refusee') {
+  if (!offer.validity_days || status === 'validee' || status === 'refusee') {
     return <span className="text-xs text-gray-400">–</span>;
   }
   

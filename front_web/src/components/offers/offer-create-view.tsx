@@ -89,8 +89,8 @@ const STAT_COLORS: Record<
 > = {
   brouillon: { bg: "#FBF3DE", color: "#725A0A", label: "Brouillon" },
   genere: { bg: "#EEF7F1", color: "#184A31", label: "Généré" },
-  envoyee: { bg: "#FFFBEB", color: "#D97706", label: "Envoyée" },
-  signee: { bg: "#ECFDF5", color: "#059669", label: "Validée ✓" },
+  envoyee: { bg: "#FFFBEB", color: "#D97706", label: "Validée"    },
+  validee: { bg: "#ECFDF5", color: "#059669", label: "Lié à Odoo" },
   refusee: { bg: "#FEF2F2", color: "#DC2626", label: "Refusée" },
   expiree: { bg: "#F3F4F6", color: "#6B7280", label: "Expirée" },
 };

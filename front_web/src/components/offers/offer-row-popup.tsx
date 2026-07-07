@@ -14,7 +14,7 @@ export function OfferRowPopup({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   
-  const canSend = !(['signee', 'refusee', 'expiree'].includes(status));
+  const canSend = !(['validee', 'refusee', 'expiree'].includes(status));
   
   useEffect(() => {
     if (!isOpen) return;
