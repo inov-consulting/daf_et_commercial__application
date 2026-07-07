@@ -76,7 +76,7 @@ export function mapTransportStatus(status: string): OfferStatus {
   const s = status?.toLowerCase() ?? '';
   if (s === 'generated')  return 'genere';
   if (s === 'validated')  return 'envoyee';
-  if (s === 'confirmed')  return 'signee';
+  if (s === 'confirmed')  return 'validee';
   if (s === 'cancelled' || s === 'canceled') return 'refusee';
   return 'brouillon';
 }
@@ -197,7 +197,7 @@ export function transportDetailToOffer(detail: TransportOfferDetail): Offer {
 
 // ── Offres commerciales ────────────────────────────────────────────────────────
 
-export type OfferStatus = 'brouillon' | 'genere' | 'envoyee' | 'signee' | 'refusee' | 'expiree';
+export type OfferStatus = 'brouillon' | 'genere' | 'envoyee' | 'validee' | 'refusee' | 'expiree';
 export type OfferMode   = 'terrestre' | 'maritime' | 'aerien' | 'routier' | 'multimodal';
 
 export interface Offer {
@@ -305,8 +305,8 @@ export const OFFER_STATUS_CONFIG: Record<OfferStatus, {
 }> = {
   brouillon: { label: 'Brouillon', bg: '#F3F4F6', color: '#374151', dot: '#9CA3AF' },
   genere:    { label: 'Généré',    bg: '#FBF3DE', color: '#725A0A', dot: '#92720C' },
-  envoyee:   { label: 'Envoyée',   bg: '#FFFBEB', color: '#D97706', dot: '#F59E0B' },
-  signee:    { label: 'Validée',    bg: '#ECFDF5', color: '#059669', dot: '#10B981' },
+  envoyee:   { label: 'Validée',    bg: '#FFFBEB', color: '#D97706', dot: '#F59E0B' },
+  validee:   { label: 'Lié à Odoo', bg: '#ECFDF5', color: '#059669', dot: '#10B981' },
   refusee:   { label: 'Refusée',   bg: '#FEF2F2', color: '#DC2626', dot: '#EF4444' },
   expiree:   { label: 'Expirée',   bg: '#F3F4F6', color: '#6B7280', dot: '#9CA3AF' },
 };
@@ -323,8 +323,8 @@ export const OFFER_STATUS_TABS: { key: OfferStatus | 'tous'; label: string }[] =
   { key: 'tous',      label: 'Tous' },
   { key: 'brouillon', label: 'Brouillon' },
   { key: 'genere',    label: 'Généré' },
-  { key: 'envoyee',   label: 'Envoyée' },
-  { key: 'signee',    label: 'Validée' },
+  { key: 'envoyee',   label: 'Validée'    },
+  { key: 'validee',   label: 'Lié à Odoo' },
   { key: 'refusee',   label: 'Refusée' },
   { key: 'expiree',   label: 'Expirée' },
 ];
@@ -351,7 +351,7 @@ export const OFFER_VALIDITY_OPTIONS: { value: number; label: string }[] = [
 // ── Fonctions utilitaires ──────────────────────────────────────────────────────
 
 export function isOfferExpired(offer: Pick<Offer, 'state' | 'date_expiry'>): boolean {
-  if (offer.state === 'signee' || offer.state === 'refusee') return false;
+  if (offer.state === 'validee' || offer.state === 'refusee') return false;
   return new Date(offer.date_expiry) < new Date();
 }
 
@@ -360,7 +360,7 @@ export function offerDaysLeft(offer: Pick<Offer, 'date_expiry'>): number {
 }
 
 export function computeOfferStatus(offer: Pick<Offer, 'state' | 'date_expiry'>): OfferStatus {
-  if (offer.state === 'signee' || offer.state === 'refusee') return offer.state;
+  if (offer.state === 'validee' || offer.state === 'refusee') return offer.state;
   if (isOfferExpired(offer)) return 'expiree';
   return offer.state;
 }
