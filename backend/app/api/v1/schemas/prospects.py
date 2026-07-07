@@ -82,7 +82,7 @@ class ProspectCreate(BaseModel):
     expected_revenue: int = Field(0, description="Montant pipeline estimé FCFA")
     
     # Type et opportunité (crm.lead.type = 'lead' ou 'opportunity')
-    lead_type: str = Field(default="lead", pattern="^(lead|opportunity)$", description="Type: lead ou opportunity")
+    lead_type: str = Field(default="opportunity", pattern="^(lead|opportunity)$", description="Type: lead ou opportunity")
     probability: float | None = Field(None, ge=0, le=100, description="Probabilité conversion % (opportunités)")
     date_deadline: str | None = Field(None, description="Date butoir YYYY-MM-DD (opportunités)")
 
