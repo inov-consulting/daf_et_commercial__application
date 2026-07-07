@@ -82,11 +82,11 @@ def _format_prospect_status(status: str | ProspectStatus) -> str:
 
 def _compute_pipeline_age_days(prospect: ProspectOrm) -> int:
     """Calcule l'âge dans le statut actuel."""
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     if not prospect.status_changed_at:
         return 0
-    return (datetime.utcnow() - prospect.status_changed_at).days
+    return (datetime.now(timezone.utc) - prospect.status_changed_at).days
 
 
 # Cache global pour éviter de recréer le service à chaque appel
