@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { GetData, PatchData, PostData, PutData } from '@/lib/ApiService';
+import { GetData, PatchData, PostData, PutData, DeleteData } from '@/lib/ApiService';
 import { ApiRoutes } from '@/lib/ApiRoutes';
 import type {
   ApiProspect, ProspectsListResponse, CreateProspectBody,
@@ -26,6 +26,9 @@ interface ProspectsState {
   actioning: boolean;
   actionError: string | null;
   _actionSnapshot: { id: string; prevStatus: ProspectStatus } | null;
+  // delete
+  deleting: boolean;
+  deleteError: string | null;
   // sync
   syncing: boolean;
   syncError: string | null;
@@ -45,6 +48,8 @@ const initialState: ProspectsState = {
   actioning: false,
   actionError: null,
   _actionSnapshot: null,
+  deleting: false,
+  deleteError: null,
   syncing: false,
   syncError: null,
 };
@@ -138,6 +143,15 @@ export const executeProspectAction = createAsyncThunk(
     });
     if (!res.ok) return rejectWithValue(res.error ?? "Erreur lors de l'exécution de l'action");
     return res.data!;
+  },
+);
+
+export const deleteProspect = createAsyncThunk(
+  'prospects/delete',
+  async (id: string, { rejectWithValue }) => {
+    const res = await DeleteData({ url: ApiRoutes.PROSPECTS_DELETE(id), protected: true });
+    if (!res.ok) return rejectWithValue(res.error ?? 'Erreur lors de la suppression');
+    return id;
   },
 );
 
@@ -244,6 +258,21 @@ const prospectsSlice = createSlice({
           if (idx !== -1) state.list[idx] = { ...state.list[idx], status: prevStatus };
           state._actionSnapshot = null;
         }
+      })
+
+      // ── deleteProspect ─────────────────────────────────────────────────
+      .addCase(deleteProspect.pending, state => {
+        state.deleting = true;
+        state.deleteError = null;
+      })
+      .addCase(deleteProspect.fulfilled, (state, action) => {
+        state.deleting = false;
+        state.list = state.list.filter(p => p.id !== action.payload);
+        state.total = Math.max(0, state.total - 1);
+      })
+      .addCase(deleteProspect.rejected, (state, action) => {
+        state.deleting = false;
+        state.deleteError = action.payload as string;
       })
 
       // ── syncProspects ──────────────────────────────────────────────────

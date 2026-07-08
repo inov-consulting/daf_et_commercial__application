@@ -34,6 +34,7 @@ export const ApiRoutes = {
   PROSPECTS_CREATE: `${BASE}/api/v1/commercial/prospects`,
   PROSPECTS_GET:    (id: string) => `${BASE}/api/v1/commercial/prospects/${id}`,
   PROSPECTS_UPDATE: (id: string) => `${BASE}/api/v1/commercial/prospects/${id}`,
+  PROSPECTS_DELETE: (id: string) => `${BASE}/api/v1/commercial/prospects/${id}`,
   PROSPECTS_ACTION: (id: string) => `${BASE}/api/v1/commercial/prospects/${id}/actions`,
   PROSPECTS_SYNC:   `${BASE}/api/v1/commercial/prospects/sync`,
 
