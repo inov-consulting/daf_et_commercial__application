@@ -440,7 +440,7 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={inputState === 'processing' ? '' : "Posez une question à l&apos;IA…"}
+                  placeholder={inputState === 'processing' ? '' : 'Écrivez un message ou dictez-le…'}
                   disabled={inputState !== 'idle'}
                   rows={1}
                   className="flex-1 bg-transparent text-xs sm:text-sm leading-relaxed text-[var(--tx-1)] placeholder:text-[var(--tx-3)] outline-none border-none resize-none overflow-hidden disabled:opacity-40 transition-opacity duration-300 py-0 px-0"
