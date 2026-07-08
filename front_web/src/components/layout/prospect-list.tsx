@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CaretUpDownIcon, CaretUpIcon, CaretDownIcon, DotsThreeVerticalIcon } from '@phosphor-icons/react';
+import {
+  CaretUpDownIcon, CaretUpIcon, CaretDownIcon, DotsThreeVerticalIcon,
+  TrashIcon, WarningCircleIcon, CircleNotchIcon, XIcon,
+} from '@phosphor-icons/react';
 import {
   STATUS_CONFIG, SECTOR_STYLES, PROSPECT_STATUSES,
   formatFcfa, pipelineAgeInfo,
@@ -25,6 +28,7 @@ interface ProspectListProps {
   onEdit?: (id: string) => void;
   onDetail?: (id: string) => void;
   onMove?: (id: string, newStatus: ProspectStatus) => void;
+  onDelete?: (id: string) => Promise<void>;
   onSelectionChange?: (selectedIds: string[]) => void;
 }
 
@@ -41,6 +45,7 @@ export function ProspectList({
   onEdit,
   onDetail,
   onMove,
+  onDelete,
   onSelectionChange,
 }: ProspectListProps) {
   const [actionOpen, setActionOpen] = useState<string | null>(null);
@@ -48,7 +53,12 @@ export function ProspectList({
   const [statusOpen, setStatusOpen]   = useState<string | null>(null);
   const [statusPos,  setStatusPos]    = useState<{ top: number; left: number } | null>(null);
   const [pendingStatuses, setPendingStatuses] = useState<Record<string, ProspectStatus>>({});
-  
+
+  // Delete confirmation
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting]               = useState(false);
+  const [deleteError, setDeleteError]         = useState<string | null>(null);
+
   // État pour les sélections
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -113,6 +123,24 @@ export function ProspectList({
       }
       return next;
     });
+  }
+
+  const confirmProspect = confirmDeleteId
+    ? prospects.find(p => p.id === confirmDeleteId)
+    : null;
+
+  async function handleConfirmDelete() {
+    if (!confirmDeleteId || !onDelete) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await onDelete(confirmDeleteId);
+      setConfirmDeleteId(null);
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : 'Erreur lors de la suppression');
+    } finally {
+      setDeleting(false);
+    }
   }
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -509,7 +537,7 @@ export function ProspectList({
         </div>
       )}
 
-      {/* Dropdown portal - inchangé */}
+      {/* Dropdown portal */}
       {actionOpen && dropdownPos && (
         <div
           className="fixed z-[200] bg-white border border-[var(--bd-def)] rounded-xl shadow-lg py-1 min-w-[152px]"
@@ -528,7 +556,95 @@ export function ProspectList({
           >
             Modifier
           </button>
+          {onDelete && (
+            <>
+              <div className="my-1 border-t border-[var(--bd-def)]" />
+              <button
+                onClick={() => {
+                  const id = actionOpen;
+                  setActionOpen(null);
+                  setDropdownPos(null);
+                  setDeleteError(null);
+                  setConfirmDeleteId(id);
+                }}
+                className="w-full px-3.5 py-2 text-left text-[13px] text-[#DC2626] hover:bg-red-50 transition-colors flex items-center gap-2"
+              >
+                <TrashIcon size={13} />
+                Supprimer
+              </button>
+            </>
+          )}
         </div>
+      )}
+
+      {/* Modal de confirmation de suppression */}
+      {confirmDeleteId && (
+        <>
+          <div
+            className="fixed inset-0 z-[210] bg-black/40 backdrop-blur-[2px]"
+            onClick={() => { if (!deleting) setConfirmDeleteId(null); }}
+          />
+          <div className="fixed inset-0 z-[211] flex items-center justify-center p-4 pointer-events-none">
+            <div
+              className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-[var(--bd-def)] overflow-hidden pointer-events-auto"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="h-[3px] w-full bg-[#EF4444]" />
+              <div className="p-5">
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="w-9 h-9 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center flex-shrink-0">
+                    <TrashIcon size={16} className="text-[#DC2626]" weight="bold" />
+                  </div>
+                  <div>
+                    <h3 className="text-[14px] font-bold text-[var(--tx-1)]">Supprimer ce prospect</h3>
+                    <p className="text-[12px] text-[var(--tx-3)] mt-0.5">
+                      <span className="font-semibold text-[var(--tx-2)]">
+                        {confirmProspect?.company_name ?? confirmProspect?.lead_name ?? '–'}
+                      </span>
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => { if (!deleting) setConfirmDeleteId(null); }}
+                    className="ml-auto w-7 h-7 rounded-lg flex items-center justify-center text-[var(--tx-3)] hover:bg-[var(--bg-sink)] transition-colors flex-shrink-0"
+                  >
+                    <XIcon size={14} />
+                  </button>
+                </div>
+
+                <p className="text-[12px] text-[var(--tx-3)] leading-relaxed mb-4">
+                  Cette action est <span className="font-semibold text-[var(--tx-2)]">irréversible</span>. Le prospect et toutes ses données associées seront définitivement supprimés.
+                </p>
+
+                {deleteError && (
+                  <div className="flex items-start gap-2 p-3 mb-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
+                    <WarningCircleIcon size={14} className="flex-shrink-0 mt-0.5" />
+                    <span className="text-[12px]">{deleteError}</span>
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setConfirmDeleteId(null)}
+                    disabled={deleting}
+                    className="flex-1 h-9 rounded-xl text-[13px] font-semibold text-[var(--tx-2)] bg-[var(--bg-sink)] border border-[var(--bd-def)] hover:bg-[var(--bd-def)] disabled:opacity-50 transition-colors"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={handleConfirmDelete}
+                    disabled={deleting}
+                    className="flex-1 h-9 rounded-xl text-[13px] font-semibold text-white bg-[#DC2626] hover:bg-[#B91C1C] disabled:opacity-60 flex items-center justify-center gap-2 transition-colors"
+                  >
+                    {deleting
+                      ? <><CircleNotchIcon size={13} className="animate-spin" /> Suppression…</>
+                      : <><TrashIcon size={13} weight="bold" /> Supprimer</>
+                    }
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
