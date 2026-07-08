@@ -53,6 +53,7 @@ export const ApiRoutes = {
   TRANSPORT_SHIPMENTS:          `${BASE}/api/v1/transport/shipments`,
   TRANSPORT_SHIPMENT:           (id: string) => `${BASE}/api/v1/transport/shipments/${id}`,
   TRANSPORT_SHIPMENT_VOYAGES:   (id: string) => `${BASE}/api/v1/transport/shipments/${id}/voyages`,
+  TRANSPORT_SHIPMENT_NEXT_STEP: (id: string | number) => `${BASE}/api/v1/transport/shipments/${id}/next-step`,
   TRANSPORT_VOYAGE:             (id: string) => `${BASE}/api/v1/transport/voyages/${id}`,
 
   // ── Offers ────────────────────────────────────────────────────────────
