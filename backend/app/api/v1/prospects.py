@@ -5,7 +5,7 @@ Aucune modification Odoo requise.
 """
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Annotated, Any
 from uuid import UUID
@@ -594,16 +594,34 @@ async def execute_action(
 
     sync_service = _get_sync_service()
 
+    async def _purge_and_raise(p: ProspectOrm, pid: UUID) -> None:
+        await CompteRenduOrm.filter(parent_type="prospect", parent_id=pid).delete()
+        await NoteOrm.filter(prospect_id=pid).delete()
+        await ProspectActivityOrm.filter(prospect_id=pid).delete()
+        await p.delete()
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "ERP_RECORD_NOT_FOUND",
+                "message": (
+                    "Cette prospection n'existe plus dans l'ERP. "
+                    "L'entrée a été supprimée de Portalis."
+                ),
+            },
+        )
+
     match payload.action:
         case ProspectAction.CONTACT:
-            # Sync Odoo : lead actif, visible dans le pipeline
             if prospect.odoo_lead_id:
-                await sync_service.update_in_odoo(
-                    prospect.odoo_lead_id,
-                    {"active": True, "type": "lead"},
-                )
+                try:
+                    await sync_service.update_in_odoo(
+                        prospect.odoo_lead_id,
+                        {"active": True, "type": "lead"},
+                    )
+                except LookupError:
+                    await _purge_and_raise(prospect, prospect_id)
             prospect.status = "contacte"
-            prospect.status_changed_at = datetime.utcnow()
+            prospect.status_changed_at = datetime.now(timezone.utc)
             await prospect.save()
             await ProspectActivityOrm.create(
                 prospect_id=prospect.id,
@@ -613,14 +631,16 @@ async def execute_action(
             )
 
         case ProspectAction.QUALIFY:
-            # Sync Odoo : promouvoir en opportunité, toujours actif
             if prospect.odoo_lead_id:
-                await sync_service.update_in_odoo(
-                    prospect.odoo_lead_id,
-                    {"active": True, "type": "opportunity"},
-                )
+                try:
+                    await sync_service.update_in_odoo(
+                        prospect.odoo_lead_id,
+                        {"active": True, "type": "opportunity"},
+                    )
+                except LookupError:
+                    await _purge_and_raise(prospect, prospect_id)
             prospect.status = "qualifie"
-            prospect.status_changed_at = datetime.utcnow()
+            prospect.status_changed_at = datetime.now(timezone.utc)
             await prospect.save()
             await ProspectActivityOrm.create(
                 prospect_id=prospect.id,
@@ -630,7 +650,10 @@ async def execute_action(
             )
 
         case ProspectAction.CONVERT:
-            convert_result = await sync_service.convert_in_odoo(prospect.odoo_lead_id)
+            try:
+                convert_result = await sync_service.convert_in_odoo(prospect.odoo_lead_id)
+            except LookupError:
+                await _purge_and_raise(prospect, prospect_id)
             if not convert_result.get("success"):
                 raise HTTPException(
                     status.HTTP_502_BAD_GATEWAY,
@@ -653,11 +676,14 @@ async def execute_action(
             )
 
         case ProspectAction.LOSE:
-            success = await sync_service.mark_lost_in_odoo(
-                prospect.odoo_lead_id,
-                payload.lost_reason_id,
-                payload.custom_reason,
-            )
+            try:
+                success = await sync_service.mark_lost_in_odoo(
+                    prospect.odoo_lead_id,
+                    payload.lost_reason_id,
+                    payload.custom_reason,
+                )
+            except LookupError:
+                await _purge_and_raise(prospect, prospect_id)
             if not success:
                 raise HTTPException(
                     status.HTTP_502_BAD_GATEWAY,
