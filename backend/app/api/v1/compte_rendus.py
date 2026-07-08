@@ -22,6 +22,23 @@ router = APIRouter(prefix="/compte-rendus", tags=["compte-rendus"])
 _cr_deps = [Depends(require_permission("compte-rendus:read"))]
 
 
+def _build_prospect_parent(
+    parent_id: UUID,
+    prospect: ProspectOrm | None,
+) -> CompteRenduParentInfo:
+    """Construit le parent à partir du prospect (ou un objet minimal si introuvable)."""
+    erp_data = (prospect.erp_metadata or {}) if prospect else {}
+    return CompteRenduParentInfo(
+        type="prospect",
+        id=parent_id,
+        name=erp_data.get("name") or erp_data.get("partner_name") or "Prospect sans nom",
+        status=prospect.status if prospect else None,
+        email=erp_data.get("email_from"),
+        phone=erp_data.get("phone"),
+        company_name=erp_data.get("partner_name"),
+    )
+
+
 @router.get("", dependencies=_cr_deps)
 async def list_compte_rendus(
     parent_type: Annotated[str | None, Query(description="Filtrer par type: prospect, service, etc.")] = None,
@@ -59,6 +76,7 @@ async def list_compte_rendus(
 
         if cr.parent_type in ("prospect", "prospections", "prospection"):
             prospect = await ProspectOrm.get_or_none(id=cr.parent_id)
+<<<<<<< Updated upstream
             erp_data = (prospect.erp_metadata or {}) if prospect else {}
             cr_data["parent"] = CompteRenduParentInfo(
                 type="prospect",
@@ -69,6 +87,9 @@ async def list_compte_rendus(
                 phone=erp_data.get("phone"),
                 company_name=erp_data.get("partner_name"),
             )
+=======
+            cr_data["parent"] = _build_prospect_parent(cr.parent_id, prospect)
+>>>>>>> Stashed changes
 
         items.append(CompteRenduListItemOut.model_validate(cr_data))
 
@@ -113,16 +134,6 @@ async def get_compte_rendu(cr_id: UUID) -> CompteRenduWithParentOut:
 
     if cr.parent_type in ("prospect", "prospections", "prospection"):
         prospect = await ProspectOrm.get_or_none(id=cr.parent_id)
-        if prospect:
-            erp_data = prospect.erp_metadata or {}
-            cr_data["parent"] = CompteRenduParentInfo(
-                type="prospect",
-                id=prospect.id,
-                name=erp_data.get("name") or erp_data.get("partner_name") or "Prospect sans nom",
-                status=prospect.status,
-                email=erp_data.get("email"),
-                phone=erp_data.get("phone"),
-                company_name=erp_data.get("partner_name"),
-            )
+        cr_data["parent"] = _build_prospect_parent(cr.parent_id, prospect)
 
     return CompteRenduWithParentOut.model_validate(cr_data)
