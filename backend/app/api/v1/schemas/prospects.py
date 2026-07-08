@@ -337,6 +337,15 @@ class CompteRenduGenerate(BaseModel):
     template: str | None = Field(None, description="Template de génération (défaut: standard)")
 
 
+class CompteRenduGenerationStatus(str, Enum):
+    """Statut de la génération asynchrone d'un CR."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    DONE = "done"
+    FAILED = "failed"
+
+
 class CompteRenduOut(BaseModel):
     """Compte-rendu retourné par l'API."""
 
@@ -347,6 +356,8 @@ class CompteRenduOut(BaseModel):
     parent_id: UUID
     version: int
     status: CompteRenduStatus
+    generation_status: CompteRenduGenerationStatus = CompteRenduGenerationStatus.DONE
+    generation_error: str | None = None
     file_size: int | None
     download_url: str | None = None  # URL signée MinIO
     generated_by: str  # "ai" | "user"
@@ -365,6 +376,18 @@ class CompteRenduListOut(BaseModel):
 
     items: list[CompteRenduOut]
     total: int
+
+
+class CompteRenduPendingOut(BaseModel):
+    """Réponse immédiate 202 quand la génération est lancée en tâche de fond."""
+
+    id: UUID
+    parent_type: str
+    parent_id: UUID
+    version: int
+    generation_status: CompteRenduGenerationStatus
+    created_at: datetime
+    message: str = "Génération lancée en arrière-plan. Consultez le statut via GET .../status."
 
 
 class CompteRenduUpdate(BaseModel):

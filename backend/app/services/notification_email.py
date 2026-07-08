@@ -249,6 +249,94 @@ async def notify_offer_generated(
     return warnings
 
 
+async def notify_author_cr_ready(
+    author_id: UUID,
+    cr_id: UUID,
+    prospect_name: str | None,
+    download_url: str | None,
+) -> None:
+    """Notifie l'auteur par email que son compte-rendu est prêt (génération terminée).
+
+    Envoi best-effort : les erreurs sont loggées mais n'interrompent pas le flux.
+    """
+    try:
+        smtp = await _get_smtp_config()
+        if not smtp.host or not smtp.from_email:
+            logger.warning("notification.cr_ready.smtp_not_configured cr_id=%s", cr_id)
+            return
+
+        kc_user = await _get_keycloak_user(author_id)
+        if not kc_user:
+            logger.warning("notification.cr_ready.author_not_found author_id=%s", author_id)
+            return
+
+        to_email = kc_user.get("email")
+        first_name = kc_user.get("firstName") or "Utilisateur"
+        if not to_email:
+            logger.warning("notification.cr_ready.no_email author_id=%s", author_id)
+            return
+
+        label = prospect_name or f"Compte rendu {cr_id}"
+        subject = f"[PortaLis] Votre compte rendu est prêt : {label}"
+        html_body = _base_template(
+            recipient_name=first_name,
+            intro="Votre compte rendu a été généré avec succès et est maintenant disponible au téléchargement.",
+            rows=[
+                ("Prospection", label),
+                ("Référence", str(cr_id)),
+            ],
+            cta_label="Télécharger le compte rendu" if download_url else None,
+            cta_url=download_url,
+        )
+
+        await asyncio.to_thread(_send_smtp, smtp, to_email, subject, html_body)
+        logger.info("notification.cr_ready.sent to=%s cr_id=%s", to_email, cr_id)
+
+    except Exception as exc:
+        logger.warning("notification.cr_ready.failed cr_id=%s error=%s", cr_id, exc)
+
+
+async def notify_author_cr_failed(
+    author_id: UUID,
+    cr_id: UUID,
+    prospect_name: str | None,
+    error: str,
+) -> None:
+    """Notifie l'auteur que la génération de son compte-rendu a échoué."""
+    try:
+        smtp = await _get_smtp_config()
+        if not smtp.host or not smtp.from_email:
+            return
+
+        kc_user = await _get_keycloak_user(author_id)
+        if not kc_user:
+            return
+
+        to_email = kc_user.get("email")
+        first_name = kc_user.get("firstName") or "Utilisateur"
+        if not to_email:
+            return
+
+        label = prospect_name or f"Compte rendu {cr_id}"
+        subject = f"[PortaLis] Échec de génération : {label}"
+        html_body = _base_template(
+            recipient_name=first_name,
+            intro="La génération de votre compte rendu a échoué. Veuillez réessayer ou contacter l'administrateur.",
+            rows=[
+                ("Prospection", label),
+                ("Référence", str(cr_id)),
+                ("Erreur", error[:200]),
+            ],
+            info_box="Vous pouvez relancer la génération depuis l'interface PortaLis.",
+        )
+
+        await asyncio.to_thread(_send_smtp, smtp, to_email, subject, html_body)
+        logger.info("notification.cr_failed.sent to=%s cr_id=%s", to_email, cr_id)
+
+    except Exception as exc:
+        logger.warning("notification.cr_failed.failed cr_id=%s error=%s", cr_id, exc)
+
+
 async def notify_compte_rendu_generated(
     cr_id: UUID,
     prospect_name: str | None,
