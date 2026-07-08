@@ -13,6 +13,7 @@ import compteRendusReducer from "./features/compte-rendus/compteRendusSlice";
 import offersReducer from "./features/offers/offersSlice";
 import appConfigReducer from "./features/app-config/appConfigSlice";
 import kpiReducer from "./features/kpi/kpiSlice";
+import aiReducer from "./features/ai/aiSlice";
 
 const persistConfig = {
   key: "root",
@@ -33,6 +34,7 @@ const rootReducer = {
   offers: offersReducer,
   appConfig: appConfigReducer,
   kpi: kpiReducer,
+  ai: aiReducer,
 };
 
 const persistedReducer = persistReducer(persistConfig, combineReducers(rootReducer));
