@@ -289,8 +289,9 @@ export default function NouveauCRPage() {
   }
 
   /* ── Sauvegarde note → état draft ──────────────────────────── */
-  const saveNote = useCallback(async () => {
+  const saveNote = useCallback(async (overrideContent?: string) => {
     setGenError(null);
+    const noteContent = overrideContent ?? transcriptText;
     if (!crContext?.id) {
       setState('draft');
       return;
@@ -298,7 +299,7 @@ export default function NouveauCRPage() {
     setPreparing(true);
     const saveRes = await PostData<ProspectNote>({
       url: ApiRoutes.PROSPECT_NOTES(crContext.id),
-      data: { content: transcriptText },
+      data: { content: noteContent },
       protected: true,
     });
     setPreparing(false);
@@ -556,24 +557,17 @@ export default function NouveauCRPage() {
                         </span>
                         <span className="text-[10px] text-[var(--tx-3)]">Cliquez pour modifier</span>
                       </div>
-                      {genError && (
-                        <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl mb-3 text-[12px]"
-                          style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.25)', color: '#DC2626' }}>
-                          <WarningIcon size={14} className="flex-shrink-0 mt-0.5" />
-                          <span>{genError}</span>
-                        </div>
-                      )}
                       <Button
                         variant="gradient"
                         size="lg"
-                        onClick={() => { setTranscriptText(textContent); startProcessing(); }}
+                        onClick={() => { setTranscriptText(textContent); saveNote(textContent); }}
                         disabled={!textContent.trim() || preparing}
                         className="w-full"
                         style={{ boxShadow: preparing ? 'none' : '0 2px 12px rgba(107,53,201,0.3)' }}
                       >
                         {preparing
-                          ? <><CircleNotchIcon size={16} className="animate-spin" /> Vérification des notes…</>
-                          : <><SparkleIcon size={16} /> Analyser et structurer avec l&apos;IA</>
+                          ? <><CircleNotchIcon size={16} className="animate-spin" /> Sauvegarde en cours…</>
+                          : <><FileTextIcon size={16} /> Ajouter une note</>
                         }
                       </Button>
                     </>
