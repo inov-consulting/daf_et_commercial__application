@@ -93,5 +93,5 @@ class TransportOfferRepository:
         return [_to_domain(r) for r in rows]
 
     async def list(self, user_id: UUID, limit: int = 20) -> list[TransportOffer]:
-        rows = await TransportOfferOrm.order_by("-created_at").limit(limit)
+        rows = await TransportOfferOrm.filter().order_by("-created_at").limit(limit)
         return [_to_domain(r) for r in rows]
