@@ -82,7 +82,7 @@ export const DOSSIER_ETAPES: DossierEtape[] = ['A', 'B', 'C', 'D', 'E'];
 
 // ── Shipments ──────────────────────────────────────────────────────────────
 
-export type ShipmentState = 'draft' | 'confirmed' | 'in_transit' | 'done' | 'cancelled';
+export type ShipmentState = 'draft' | 'confirmed' | 'in_transit' | 'in_progress' | 'done' | 'cancelled';
 
 export interface Shipment {
   id: number;
@@ -237,11 +237,12 @@ export interface TransportDashboard {
 }
 
 export const SHIPMENT_STATE_CONFIG: Record<ShipmentState, { label: string; bg: string; color: string; dot: string }> = {
-  draft:      { label: 'Brouillon',  bg: '#F3F4F6', color: '#374151', dot: '#9CA3AF' },
-  confirmed:  { label: 'Confirmé',   bg: '#EBF5FD', color: '#085499', dot: '#0E86E8' },
-  in_transit: { label: 'En transit', bg: '#FFFBEB', color: '#D97706', dot: '#F59E0B' },
-  done:  { label: 'Livré',      bg: '#ECFDF5', color: '#059669', dot: '#10B981' },
-  cancelled:  { label: 'Annulé',     bg: '#FEF2F2', color: '#DC2626', dot: '#EF4444' },
+  draft:       { label: 'Brouillon',  bg: '#F3F4F6', color: '#374151', dot: '#9CA3AF' },
+  confirmed:   { label: 'Confirmé',   bg: '#EBF5FD', color: '#085499', dot: '#0E86E8' },
+  in_transit:  { label: 'En transit', bg: '#FFFBEB', color: '#D97706', dot: '#F59E0B' },
+  in_progress: { label: 'En cours',   bg: '#F3EFFE', color: '#5829A8', dot: '#6B35C9' },
+  done:        { label: 'Livré',      bg: '#ECFDF5', color: '#059669', dot: '#10B981' },
+  cancelled:   { label: 'Annulé',     bg: '#FEF2F2', color: '#DC2626', dot: '#EF4444' },
 };
 
 export const SHIPMENT_MODE_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
