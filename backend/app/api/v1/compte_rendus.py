@@ -76,7 +76,6 @@ async def list_compte_rendus(
 
         if cr.parent_type in ("prospect", "prospections", "prospection"):
             prospect = await ProspectOrm.get_or_none(id=cr.parent_id)
-<<<<<<< Updated upstream
             erp_data = (prospect.erp_metadata or {}) if prospect else {}
             cr_data["parent"] = CompteRenduParentInfo(
                 type="prospect",
@@ -87,9 +86,6 @@ async def list_compte_rendus(
                 phone=erp_data.get("phone"),
                 company_name=erp_data.get("partner_name"),
             )
-=======
-            cr_data["parent"] = _build_prospect_parent(cr.parent_id, prospect)
->>>>>>> Stashed changes
 
         items.append(CompteRenduListItemOut.model_validate(cr_data))
 
