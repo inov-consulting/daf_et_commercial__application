@@ -10,13 +10,15 @@ from decimal import Decimal
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 
 from app.api.deps import CurrentUser, require_permission
 from app.api.v1.schemas.prospects import (
     CompteRenduGenerate,
+    CompteRenduGenerationStatus,
     CompteRenduListOut,
     CompteRenduOut,
+    CompteRenduPendingOut,
     CompteRenduUpdate,
     NoteCreate,
     NoteListOut,
@@ -808,45 +810,139 @@ async def delete_note(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-@router.post("/{prospect_id}/compte-rendus", dependencies=_prospect_write_deps)
+async def _run_cr_generation_task(
+    cr_id: UUID,
+    prospect_id: UUID,
+    note_ids: list[UUID] | None,
+    author_id: UUID,
+    prospect_name: str | None,
+) -> None:
+    """Tâche de fond : génère le CR puis notifie l'auteur par email."""
+    from app.infrastructure.storage.minio import StorageService
+    from app.services.compte_rendu import CompteRenduService
+    from app.services.notification_email import (
+        notify_author_cr_failed,
+        notify_author_cr_ready,
+        notify_compte_rendu_generated,
+    )
+
+    cr = await CompteRenduOrm.get_or_none(id=cr_id)
+    if not cr:
+        logger.error("cr_generation_task.cr_not_found cr_id=%s", cr_id)
+        return
+
+    service = CompteRenduService()
+    await service.generate_into(cr, note_ids)
+
+    await cr.refresh_from_db()
+
+    if cr.generation_status == "done":
+        storage = StorageService()
+        download_url = storage.get_url(cr.minio_path, expires_in=86400)
+
+        await notify_author_cr_ready(
+            author_id=author_id,
+            cr_id=cr_id,
+            prospect_name=prospect_name,
+            download_url=download_url,
+        )
+        await notify_compte_rendu_generated(
+            cr_id=cr_id,
+            prospect_name=prospect_name,
+            author_name="",
+            download_url=download_url,
+        )
+    else:
+        await notify_author_cr_failed(
+            author_id=author_id,
+            cr_id=cr_id,
+            prospect_name=prospect_name,
+            error=cr.generation_error or "Erreur inconnue",
+        )
+
+
+@router.post(
+    "/{prospect_id}/compte-rendus",
+    dependencies=_prospect_write_deps,
+    status_code=status.HTTP_202_ACCEPTED,
+)
 async def generate_compte_rendu(
     prospect_id: UUID,
     data: CompteRenduGenerate,
     current_user: CurrentUser,
-) -> CompteRenduOut:
-    """Générer un compte-rendu PDF pour un prospect (via Claude + MinIO)."""
-    from app.services.compte_rendu import CompteRenduService
+    background_tasks: BackgroundTasks,
+) -> CompteRenduPendingOut:
+    """Lance la génération d'un compte-rendu PDF en tâche de fond.
 
+    Retourne immédiatement un 202 avec l'ID du CR.
+    Pollinez GET .../compte-rendus/{cr_id}/status pour suivre la progression.
+    Un email est envoyé automatiquement à l'auteur quand la génération est terminée.
+    """
     prospect = await ProspectOrm.get_or_none(id=prospect_id)
     if not prospect:
         raise HTTPException(status_code=404, detail="Prospect non trouvé")
 
-    try:
-        service = CompteRenduService()
-        cr = await service.generate(
-            prospect_id=prospect_id,
-            note_ids=data.note_ids,
-            author_id=current_user.id,
-            template=data.template,
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+    # Pré-calculer la version avant création
+    existing_count = await CompteRenduOrm.filter(
+        parent_type="prospect", parent_id=prospect_id
+    ).count()
+    version = existing_count + 1
 
-    # Générer URL de download
-    from app.infrastructure.storage.minio import StorageService
-
-    storage = StorageService()
-    download_url = storage.get_url(cr.minio_path, expires_in=3600)
-
-    # Notifier le validateur désigné — les warnings sont remontés dans la réponse
-    from app.services.notification_email import notify_compte_rendu_generated
-    prospect_name = prospect.erp_metadata.get("name") if prospect.erp_metadata else None
-    notif_warnings = await notify_compte_rendu_generated(
-        cr_id=cr.id,
-        prospect_name=prospect_name,
-        author_name=current_user.display_name,
-        download_url=download_url,
+    cr = await CompteRenduOrm.create(
+        parent_type="prospect",
+        parent_id=prospect_id,
+        version=version,
+        status="draft",
+        generation_status="pending",
+        minio_bucket=__import__("app.core.config", fromlist=["settings"]).settings.minio_bucket,
+        minio_path=f"cr/prospect/{prospect_id}/pending-v{version}",
+        generated_by="ai",
+        created_by_id=current_user.id,
     )
+
+    prospect_name = (prospect.erp_metadata or {}).get("partner_name") or (prospect.erp_metadata or {}).get("name")
+
+    background_tasks.add_task(
+        _run_cr_generation_task,
+        cr_id=cr.id,
+        prospect_id=prospect_id,
+        note_ids=data.note_ids,
+        author_id=current_user.id,
+        prospect_name=prospect_name,
+    )
+
+    return CompteRenduPendingOut(
+        id=cr.id,
+        parent_type=cr.parent_type,
+        parent_id=cr.parent_id,
+        version=cr.version,
+        generation_status=CompteRenduGenerationStatus.PENDING,
+        created_at=cr.created_at,
+    )
+
+
+@router.get("/{prospect_id}/compte-rendus/{cr_id}/status", dependencies=_prospect_deps)
+async def get_cr_generation_status(
+    prospect_id: UUID,
+    cr_id: UUID,
+) -> CompteRenduOut:
+    """Statut de génération d'un compte-rendu (polling).
+
+    - `generation_status: pending` — en attente de démarrage
+    - `generation_status: running` — Claude + Playwright en cours
+    - `generation_status: done` — PDF disponible, `download_url` renseigné
+    - `generation_status: failed` — erreur dans `generation_error`
+
+    Le front-end doit poller toutes les 3-5 secondes jusqu'à `done` ou `failed`.
+    """
+    cr = await CompteRenduOrm.get_or_none(id=cr_id, parent_id=prospect_id)
+    if not cr:
+        raise HTTPException(status_code=404, detail="Compte-rendu non trouvé")
+
+    download_url = None
+    if cr.generation_status == "done" and cr.minio_path:
+        from app.infrastructure.storage.minio import StorageService
+        download_url = StorageService().get_url(cr.minio_path, expires_in=3600)
 
     return CompteRenduOut(
         id=cr.id,
@@ -854,13 +950,14 @@ async def generate_compte_rendu(
         parent_id=cr.parent_id,
         version=cr.version,
         status=cr.status,
+        generation_status=cr.generation_status,
+        generation_error=cr.generation_error,
         file_size=cr.file_size,
         download_url=download_url,
         generated_by=cr.generated_by,
         note_ids=cr.note_ids,
         created_at=cr.created_at,
         created_by=cr.created_by_id,
-        warnings=notif_warnings,
     )
 
 

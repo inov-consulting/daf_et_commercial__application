@@ -64,6 +64,12 @@ class CompteRenduOrm(BaseModel):
     content: str | None = fields.TextField(null=True)  # HTML généré par Claude (modifiable)
     note_ids: list | None = fields.JSONField(null=True)  # IDs des notes utilisées (liste)
 
+    # Statut de génération asynchrone
+    generation_status: str = fields.CharField(
+        max_length=20, default="done"
+    )  # pending | running | done | failed
+    generation_error: str | None = fields.TextField(null=True)
+
     # Auteur
     created_by: fields.ForeignKeyRelation["UserOrm"] = fields.ForeignKeyField(
         "models.UserOrm",
