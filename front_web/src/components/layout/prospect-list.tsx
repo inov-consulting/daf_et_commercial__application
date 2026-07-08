@@ -581,7 +581,7 @@ export function ProspectList({
       {confirmDeleteId && (
         <>
           <div
-            className="fixed inset-0 z-[210] bg-black/40 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[210] bg-black/50"
             onClick={() => { if (!deleting) setConfirmDeleteId(null); }}
           />
           <div className="fixed inset-0 z-[211] flex items-center justify-center p-4 pointer-events-none">

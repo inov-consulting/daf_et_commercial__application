@@ -1,4 +1,4 @@
-import { fetchCompteRenduDetail } from '@/redux/features/compte-rendus/compteRendusSlice';
+﻿import { fetchCompteRenduDetail } from '@/redux/features/compte-rendus/compteRendusSlice';
 import { useAppDispatch, useAppSelector } from '@/redux/store';
 import { GlobalCR, GlobalCRDetail } from '@/types/prospect_note_type';
 import { CircleNotchIcon, CodeIcon, DownloadSimpleIcon, XIcon } from '@phosphor-icons/react';
@@ -115,10 +115,12 @@ const CRDetailDrawer = ({ crId, items, downloading, onClose, onDownload }: {
 
   return (
     <>
-      <div
-        className={`fixed inset-0 z-[70] bg-black/30 backdrop-blur-[2px] transition-opacity duration-200 ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-        onClick={onClose}
-      />
+      {open && (
+        <div
+          className="fixed inset-0 z-[70] bg-black/50"
+          onClick={onClose}
+        />
+      )}
       <aside
         className={`fixed inset-y-0 right-0 z-[71] w-full max-w-3xl flex flex-col bg-[var(--bg-surf)] border-l border-[var(--bd-def)] shadow-2xl transition-transform duration-300 ease-in-out ${open ? 'translate-x-0' : 'translate-x-full'}`}
       >

@@ -26,14 +26,82 @@ type ProcStep = 'pending' | 'active' | 'done';
 
 /* ─── Constants ────────────────────────────────────────────────── */
 
-const DRAFT_FIELDS: { label: string; value: string; confidence: 'high' | 'low' }[] = [
-  { label: 'Société', value: 'Sonatrans SA', confidence: 'high' },
-  { label: 'Contact', value: 'Ibrahima Traoré · DSI', confidence: 'high' },
-  { label: 'Objet', value: 'Transport frigorifique 40T/mois', confidence: 'high' },
-  { label: 'Points discutés', value: 'DKR–ABJ · Budget ~18M FCFA/mois · délai juillet 2026', confidence: 'low' },
-  { label: 'Actions', value: 'Envoyer devis avant le 10 juin 2026', confidence: 'high' },
-  { label: 'Prochaine étape', value: 'Décision client · 15 juin 2026', confidence: 'high' },
+const DRAFT_FIELDS: { label: string; confidence: 'high' | 'low' }[] = [
+  { label: 'Société',          confidence: 'high' },
+  { label: 'Contact',          confidence: 'high' },
+  { label: 'Date',             confidence: 'high' },
+  { label: 'Objet',            confidence: 'low'  },
+  { label: 'Points discutés',  confidence: 'low'  },
+  { label: 'Actions',          confidence: 'low'  },
+  { label: 'Prochaine étape',  confidence: 'low'  },
 ];
+
+/* ─── Markdown renderer (subset: bold, bullets, numbered headings) ── */
+function renderMarkdown(text: string): React.ReactNode[] {
+  const lines = text.split('\n');
+  const nodes: React.ReactNode[] = [];
+  let bulletBuffer: string[] = [];
+  let key = 0;
+
+  function inlineBold(line: string): React.ReactNode {
+    const parts = line.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((p, i) =>
+      p.startsWith('**') && p.endsWith('**')
+        ? <strong key={i}>{p.slice(2, -2)}</strong>
+        : p
+    );
+  }
+
+  function flushBullets() {
+    if (!bulletBuffer.length) return;
+    nodes.push(
+      <ul key={key++} className="list-disc pl-5 space-y-0.5 mb-2">
+        {bulletBuffer.map((b, i) => (
+          <li key={i} className="text-[12px] leading-relaxed text-[var(--tx-2)]">
+            {inlineBold(b)}
+          </li>
+        ))}
+      </ul>
+    );
+    bulletBuffer = [];
+  }
+
+  for (const raw of lines) {
+    const line = raw.replace(/\\$/, '').trimEnd();
+
+    if (line.startsWith('* ')) {
+      bulletBuffer.push(line.slice(2));
+      continue;
+    }
+
+    flushBullets();
+
+    if (!line.trim()) {
+      nodes.push(<div key={key++} className="h-2" />);
+      continue;
+    }
+
+    // Full-line bold = heading
+    if (/^\*\*[^*]+\*\*$/.test(line.trim())) {
+      const content = line.trim().slice(2, -2);
+      nodes.push(
+        <p key={key++} className="text-[12px] font-semibold text-[var(--tx-1)] mt-3 mb-0.5">
+          {content}
+        </p>
+      );
+      continue;
+    }
+
+    nodes.push(
+      <p key={key++} className="text-[12px] leading-relaxed text-[var(--tx-2)] mb-1">
+        {inlineBold(line)}
+      </p>
+    );
+  }
+
+  flushBullets();
+  return nodes;
+}
 
 /* ─── Main Page ────────────────────────────────────────────────── */
 export default function NouveauCRPage() {
@@ -86,11 +154,18 @@ export default function NouveauCRPage() {
 
   /* Draft */
   const [draftValues, setDraftValues] = useState<Record<string, string>>(() => {
-    const base = Object.fromEntries(DRAFT_FIELDS.map(f => [f.label, f.value]));
-    if (prospectCompany) base['Société'] = prospectCompany;
-    if (prospectContact) base['Contact'] = prospectContact;
-    return base;
+    const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    return {
+      'Société':         prospectCompany || '',
+      'Contact':         prospectContact || '',
+      'Date':            today,
+      'Objet':           '',
+      'Points discutés': '',
+      'Actions':         '',
+      'Prochaine étape': '',
+    };
   });
+  const [savedNoteId, setSavedNoteId] = useState<string | null>(null);
   const [accordOpen, setAccordOpen] = useState(false);
 
   /* CR generation */
@@ -213,10 +288,31 @@ export default function NouveauCRPage() {
     setState('idle');
   }
 
-  /* ── Processing ─────────────────────────────────────────────── */
-  const startProcessing = useCallback(async (content?: string) => {
+  /* ── Sauvegarde note → état draft ──────────────────────────── */
+  const saveNote = useCallback(async () => {
     setGenError(null);
-    const noteContent = content ?? transcriptText;
+    if (!crContext?.id) {
+      setState('draft');
+      return;
+    }
+    setPreparing(true);
+    const saveRes = await PostData<ProspectNote>({
+      url: ApiRoutes.PROSPECT_NOTES(crContext.id),
+      data: { content: transcriptText },
+      protected: true,
+    });
+    setPreparing(false);
+    if (!saveRes.ok || !saveRes.data) {
+      setGenError(saveRes.error ?? 'Impossible de sauvegarder la note.');
+      return;
+    }
+    setSavedNoteId(saveRes.data.id);
+    setState('draft');
+  }, [crContext, transcriptText]);
+
+  /* ── Génération CR depuis l'état draft ──────────────────────── */
+  const startProcessing = useCallback(async () => {
+    setGenError(null);
 
     const launchAnimation = () => {
       clearProcTimeouts();
@@ -233,36 +329,19 @@ export default function NouveauCRPage() {
       add(2000, () => { setProcSteps(['done',   'active', 'pending']); setProcPct(45); setProcEta('~5s restantes'); });
       add(5000, () => { setProcSteps(['done',   'done',   'active']); setProcPct(75); setProcEta('~2s restantes'); });
       add(7400, () => { setProcSteps(['done',   'done',   'done']);   setProcPct(100); setProcEta('Terminé'); });
-      add(7700, () => setState('draft'));
+      add(7700, () => setState('validated'));
     };
 
-    if (!crContext?.id) {
+    if (!crContext?.id || !savedNoteId) {
       launchAnimation();
       return;
     }
 
-    /* 1. Sauvegarder le contenu comme note */
-    setPreparing(true);
-    const saveRes = await PostData<ProspectNote>({
-      url: ApiRoutes.PROSPECT_NOTES(crContext.id),
-      data: { content: noteContent },
-      protected: true,
-    });
-    setPreparing(false);
-
-    if (!saveRes.ok || !saveRes.data) {
-      setGenError(saveRes.error ?? 'Impossible de sauvegarder la note.');
-      return;
-    }
-
-    const noteId = saveRes.data.id;
-
-    /* 2. Lancer l'animation + appel API en parallèle */
     launchAnimation();
 
     const crRes = await PostData<ProspectCR, GenerateCRBody>({
       url: ApiRoutes.PROSPECT_CRS(crContext.id),
-      data: { note_ids: [noteId], template: 'standard' },
+      data: { note_ids: [savedNoteId], template: 'standard' },
       protected: true,
     });
 
@@ -271,7 +350,7 @@ export default function NouveauCRPage() {
     } else {
       setGenError(crRes.error ?? 'Erreur lors de la génération du CR');
     }
-  }, [crContext, transcriptText]);
+  }, [crContext, savedNoteId]);
 
   /* ── Sync crContext → draftValues (Société / Contact) ───────── */
   useEffect(() => {
@@ -487,7 +566,7 @@ export default function NouveauCRPage() {
                       <Button
                         variant="gradient"
                         size="lg"
-                        onClick={() => { setTranscriptText(textContent); startProcessing(textContent); }}
+                        onClick={() => { setTranscriptText(textContent); startProcessing(); }}
                         disabled={!textContent.trim() || preparing}
                         className="w-full"
                         style={{ boxShadow: preparing ? 'none' : '0 2px 12px rgba(107,53,201,0.3)' }}
@@ -636,24 +715,17 @@ export default function NouveauCRPage() {
                     <span className="text-[10px] text-[var(--tx-3)]">Cliquez pour modifier</span>
                   </div>
 
-                  {genError && (
-                    <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl mb-3 text-[12px]"
-                      style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.25)', color: '#DC2626' }}>
-                      <WarningIcon size={14} className="flex-shrink-0 mt-0.5" />
-                      <span>{genError}</span>
-                    </div>
-                  )}
                   <Button
                     variant="gradient"
                     size="lg"
-                    onClick={startProcessing}
+                    onClick={saveNote}
                     disabled={preparing}
                     className="w-full mb-3"
                     style={{ boxShadow: preparing ? 'none' : '0 2px 12px rgba(107,53,201,0.3)' }}
                   >
                     {preparing
-                      ? <><CircleNotchIcon size={16} className="animate-spin" /> Vérification des notes…</>
-                      : <><SparkleIcon size={16} /> Analyser et structurer avec l&apos;IA</>
+                      ? <><CircleNotchIcon size={16} className="animate-spin" /> Sauvegarde en cours…</>
+                      : <><FileTextIcon size={16} /> Ajouter une note</>
                     }
                   </Button>
 
@@ -742,7 +814,7 @@ export default function NouveauCRPage() {
                       <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-base flex-shrink-0"
                         style={{ background: 'var(--grad)' }}>✦</div>
                       <div>
-                        <div className="text-[13px] font-bold text-[var(--tx-1)]">Brouillon CR · Sonnet 4.5</div>
+                        <div className="text-[13px] font-bold text-[var(--tx-1)]">Brouillon CR</div>
                         <div className="text-[10px] text-[var(--tx-3)] font-mono mt-0.5">
                           Généré en 7s · {wordCount} mots structurés
                         </div>
@@ -774,15 +846,16 @@ export default function NouveauCRPage() {
                           </div>
                           <div className="flex-1 px-3 py-2.5 text-[13px]"
                             style={isLow ? { background: '#FFFBEB', color: '#92400E' } : { color: 'var(--tx-1)' }}>
-                            {f.label === 'Points discutés' ? (
+                            {isLow ? (
                               <input
                                 className="w-full bg-transparent outline-none text-[13px]"
                                 style={{ color: '#92400E' }}
-                                value={draftValues[f.label]}
+                                value={draftValues[f.label] ?? ''}
+                                placeholder="—"
                                 onChange={e => setDraftValues(v => ({ ...v, [f.label]: e.target.value }))}
                               />
                             ) : (
-                              draftValues[f.label]
+                              draftValues[f.label] || '—'
                             )}
                           </div>
                           <div className="w-9 flex-shrink-0 flex items-center justify-center"
@@ -815,22 +888,32 @@ export default function NouveauCRPage() {
                       <CaretDownIcon size={13} className={cn('text-[var(--tx-3)] transition-transform', accordOpen && 'rotate-180')} />
                     </Button>
                     {accordOpen && (
-                      <div className="px-4 py-3 text-[12px] text-[var(--tx-2)] leading-relaxed border-t border-[var(--bd-def)] bg-white">
-                        {transcriptText}
+                      <div className="px-4 py-3 border-t border-[var(--bd-def)] bg-white">
+                        {renderMarkdown(transcriptText)}
                       </div>
                     )}
                   </div>
 
                   {/* CTAs */}
+                  {genError && (
+                    <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl mb-3 text-[12px]"
+                      style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.25)', color: '#DC2626' }}>
+                      <WarningIcon size={14} className="flex-shrink-0 mt-0.5" />
+                      <span>{genError}</span>
+                    </div>
+                  )}
                   <Button
                     variant="gradient"
                     size="lg"
-                    onClick={() => setState('validated')}
+                    onClick={startProcessing}
+                    disabled={preparing}
                     className="w-full mb-2.5"
-                    style={{ boxShadow: '0 2px 12px rgba(107,53,201,0.3)' }}
+                    style={{ boxShadow: preparing ? 'none' : '0 2px 12px rgba(107,53,201,0.3)' }}
                   >
-                    <CheckIcon size={16} weight="bold" />
-                    Valider et envoyer
+                    {preparing
+                      ? <><CircleNotchIcon size={16} className="animate-spin" /> Génération en cours…</>
+                      : <><SparkleIcon size={16} /> Générer le compte rendu</>
+                    }
                   </Button>
                   <div className="flex gap-2">
                     <Button variant="ghost" size="md" onClick={() => setState('transcript')} className="flex-1">

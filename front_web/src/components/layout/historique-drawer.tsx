@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect } from 'react';
 import {
@@ -60,10 +60,12 @@ export function HistoriqueDrawer({ log, onClose }: HistoriqueDrawerProps) {
   return (
     <>
       {/* Backdrop */}
-      <div
-        className={`fixed inset-0 z-[70] bg-black/30 backdrop-blur-[2px] transition-opacity duration-200 ${log ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-        onClick={onClose}
-      />
+      {log && (
+        <div
+          className="fixed inset-0 z-[70] bg-black/50"
+          onClick={onClose}
+        />
+      )}
 
       {/* Drawer */}
       <aside
