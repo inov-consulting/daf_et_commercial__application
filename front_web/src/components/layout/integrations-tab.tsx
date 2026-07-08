@@ -18,7 +18,7 @@ interface Integration {
 
 // Données mockées des intégrations
 const integrationsData: Integration[] = [
-  { id: 'claude', name: 'Claude API (Anthropic)', description: 'Moteur IA des 4 agents — extraction, CR vocal, offres, synthèse DAF', category: 'IA', icon: '🤖', status: 'connected' as const, meta: 'sk-ant-••••••••••••A4K2', lastSync: 'il y a 2 minutes' },
+  { id: 'claude', name: 'Claude API (Anthropic)', description: 'Moteur IA des agents — extraction, CR vocal, offres, synthèse DAF', category: 'IA', icon: '🤖', status: 'connected' as const, meta: 'sk-ant-••••••••••••A4K2', lastSync: 'il y a 2 minutes' },
   { id: 'twilio', name: 'Twilio SMS', description: 'Envoi de notifications SMS aux commerciaux et clients', category: 'Communication', icon: '📱', status: 'connected' as const, meta: 'AC••••••••••••7f3a', lastSync: 'il y a 14 minutes' },
   { id: 'gmail', name: 'Gmail / Google Workspace', description: 'Synchronisation des emails entrants pour extraction de contacts', category: 'Email', icon: '✉️', status: 'connected' as const, meta: 'portalis@portalis-group.sn', lastSync: 'il y a 5 minutes' },
   { id: 'wave', name: 'Wave (Orange Money)', description: 'Webhook expiré — token invalide', category: 'Paiement', icon: '💰', status: 'error' as const, meta: 'Dernière sync : il y a 3 jours', lastSync: 'il y a 3 jours' },

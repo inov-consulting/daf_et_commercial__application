@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { AgentCard } from './agent-card';
 import { InfoBanner } from './info-banner';
+import { AiModelsSection } from './ai-models-section';
 
 interface Agent {
   id: string;
@@ -146,7 +147,7 @@ export function AgentsTab({ showToast }: AgentsTabProps) {
   return (
     <div>
       <InfoBanner showToast={showToast} />
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {agents.map((agent) => (
           <AgentCard
@@ -183,6 +184,8 @@ export function AgentsTab({ showToast }: AgentsTabProps) {
           />
         ))}
       </div>
+
+      <AiModelsSection showToast={showToast} />
     </div>
   );
 }

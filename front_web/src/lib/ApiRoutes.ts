@@ -94,4 +94,11 @@ export const ApiRoutes = {
   CONFIG_KPI_AVAILABLE:  `${BASE}/api/v1/config/app/kpi/available`,
   CONFIG_KPI_GROUPS:     `${BASE}/api/v1/config/app/kpi/groups`,
   CONFIG_KPI_GROUP:      (groupId: string) => `${BASE}/api/v1/config/app/kpi/groups/${groupId}`,
+
+  // ── AI Models & Config ───────────────────────────────────────────────────
+  AI_MODELS:            `${BASE}/api/v1/ai/models`,
+  AI_CONFIG:            `${BASE}/api/v1/ai/config`,
+  AI_CONFIG_GENERATION: `${BASE}/api/v1/ai/config/generation`,
+  AI_CONFIG_EMBEDDING:  `${BASE}/api/v1/ai/config/embedding`,
+  AI_CONFIG_TEMPLATE:   `${BASE}/api/v1/ai/config/template`,
 } as const;
