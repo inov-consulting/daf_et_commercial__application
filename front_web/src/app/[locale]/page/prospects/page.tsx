@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils';
 import { useAppDispatch, useAppSelector } from '@/redux/store';
 import {
   fetchProspects, createProspect, updateProspect,
-  executeProspectAction, syncProspects,
+  executeProspectAction, syncProspects, deleteProspect,
 } from '@/redux/features/prospects/prospectsSlice';
 
 type ViewMode = 'kanban' | 'list';
@@ -295,11 +295,6 @@ export default function ProspectsPage() {
             )}
           </div>
 
-          <button className="h-8 px-2.5 sm:px-3 rounded-lg border border-[var(--bd-def)] bg-white text-[11px] sm:text-[12px] text-[var(--tx-2)] flex items-center gap-1 sm:gap-1.5 hover:bg-[var(--bg-sink)] transition-colors whitespace-nowrap flex-shrink-0">
-            <FunnelIcon size={13} />
-            <span className="hidden sm:inline">Filtres</span>
-          </button>
-
           {/* View toggle - compact on mobile */}
           <div className="flex items-center border border-[var(--bd-def)] rounded-lg overflow-hidden bg-white flex-shrink-0">
             <button
@@ -371,6 +366,7 @@ export default function ProspectsPage() {
               const p = apiProspects.find(a => a.id === id);
               if (p) setModal({ open: true, mode: 'edit', prospect: p });
             }}
+            onDelete={async (id) => { await dispatch(deleteProspect(id)).unwrap(); }}
             onMove={moveProspect}
           />
         </div>

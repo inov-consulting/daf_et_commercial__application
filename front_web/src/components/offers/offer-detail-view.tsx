@@ -541,16 +541,6 @@ export function OfferDetailView({
 
           {/* Actions */}
           <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
-            <IconBtn
-              title="Dupliquer"
-              icon={<CopyIcon size={14} />}
-              onClick={() => onDuplicate(offer)}
-            />
-            <IconBtn
-              title="Exporter PDF"
-              icon={<DownloadSimpleIcon size={14} />}
-            />
-
             <button
               onClick={() => onEdit(offer)}
               className="h-9 px-3 sm:px-3.5 rounded-lg border border-[#DDE5EF] bg-white text-[#435869] text-[11px] sm:text-xs font-medium cursor-pointer inline-flex items-center gap-1.5 hover:bg-[#F7F9FC] transition-colors shadow-sm whitespace-nowrap"

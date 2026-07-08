@@ -453,7 +453,7 @@ export function OfferAgentChat({ onOfferGenerated, onCancel }: OfferAgentChatPro
           ✦
         </div>
         <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#725A0A' }}>
-          Agent Offres — IA
+          Agent Offres - IA
         </span>
         <span
           style={{
@@ -509,6 +509,25 @@ export function OfferAgentChat({ onOfferGenerated, onCancel }: OfferAgentChatPro
           >
             <ChatCircleIcon size={15} weight="fill" />
             Démarrer la conversation
+          </button>
+
+          <button
+            onClick={onCancel}
+            style={{
+              width: '100%', maxWidth: 280, height: 36,
+              border: '1px solid #DDE5EF', borderRadius: 9,
+              background: '#fff', color: '#5A738A',
+              fontSize: 12, fontWeight: 500, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="3"/>
+              <line x1="8" y1="8" x2="16" y2="8"/>
+              <line x1="8" y1="12" x2="16" y2="12"/>
+              <line x1="8" y1="16" x2="12" y2="16"/>
+            </svg>
+            Saisir manuellement
           </button>
         </div>
       )}

@@ -46,7 +46,7 @@ const RightPanel = ({ state, wordCount }: { state: AppState; wordCount: number }
       <div className="h-px bg-[var(--bd-def)]" />
 
       {/* Dossier context */}
-      <div>
+      {/* <div>
         <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-3)] mb-2 font-mono">Dossier lié</div>
         <div className="bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-xl p-3">
           <div className="text-[10px] text-[var(--tx-3)] font-mono mb-0.5">DOS-2026-0142 · Sénégal</div>
@@ -56,7 +56,7 @@ const RightPanel = ({ state, wordCount }: { state: AppState; wordCount: number }
             Mission en cours · Créée le 2 juin 2026
           </div>
         </div>
-      </div>
+      </div> */}
 
       <div className="h-px bg-[var(--bd-def)]" />
 

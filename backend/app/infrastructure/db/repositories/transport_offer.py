@@ -91,3 +91,7 @@ class TransportOfferRepository:
     async def list_by_user(self, user_id: UUID, limit: int = 20) -> list[TransportOffer]:
         rows = await TransportOfferOrm.filter(user_id=user_id).order_by("-created_at").limit(limit)
         return [_to_domain(r) for r in rows]
+
+    async def list(self, user_id: UUID, limit: int = 20) -> list[TransportOffer]:
+        rows = await TransportOfferOrm.order_by("-created_at").limit(limit)
+        return [_to_domain(r) for r in rows]

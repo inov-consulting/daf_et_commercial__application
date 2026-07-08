@@ -204,6 +204,7 @@ export interface Offer {
   id: string;
   name: string;                 // "OFF-2026-0091"
   client_name: string;
+  company_name?: string;
   partner_id?: number;
   odoo_linked?: boolean;
   odoo_shipment_name?: string | null;

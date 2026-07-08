@@ -287,7 +287,7 @@ async def list_offers(
 ) -> list[OfferSummaryOut]:
     """Liste les offres de l'utilisateur connecté."""
     repo = TransportOfferRepository()
-    offers = await repo.list_by_user(current_user.id)
+    offers = await repo.list(current_user.id)
     return [
         OfferSummaryOut(
             id=o.id,

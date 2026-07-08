@@ -4,6 +4,7 @@ import '@blocknote/core/fonts/inter.css';
 import { useCreateBlockNote } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/mantine';
 import '@blocknote/mantine/style.css';
+import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
 export interface EditorProps {
@@ -21,17 +22,17 @@ export default function Editor({
   editable = true,
   placeholder = 'Saisissez du texte…',
 }: EditorProps) {
-  const initialBlocks = initialContent.trim()
-    ? initialContent
-        .split('\n')
-        .filter(l => l.trim())
-        .map(line => ({ type: 'paragraph' as const, content: line }))
-    : undefined;
-
   const editor = useCreateBlockNote({
-    initialContent: initialBlocks,
     placeholders: { default: placeholder },
   });
+
+  useEffect(() => {
+    if (!initialContent.trim()) return;
+    const blocks = editor.tryParseMarkdownToBlocks(initialContent);
+    editor.replaceBlocks(editor.document, blocks);
+    // only on mount — intentionally omitting deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div
