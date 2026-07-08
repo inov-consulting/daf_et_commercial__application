@@ -67,15 +67,6 @@ export default function AnalyticsPage() {
   return (
     <div className="p-7 px-8 pb-16 min-h-full overflow-y-auto">
 
-      {/* Breadcrumb */}
-      <div className="text-xs text-gray-400 mb-2.5 flex items-center gap-1">
-        <span className="text-gray-500">Tableau de bord</span>
-        <CaretRightIcon size={10} className="text-gray-300" />
-        <span className="text-gray-500">Analytiques</span>
-        <CaretRightIcon size={10} className="text-gray-300" />
-        <span>{today}</span>
-      </div>
-
       {/* Header */}
       <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
         <div>
