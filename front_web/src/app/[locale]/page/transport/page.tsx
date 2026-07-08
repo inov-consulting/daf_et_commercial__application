@@ -11,7 +11,6 @@ export default function TransportPage() {
         <h1 className="font-display text-[24px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight">
           Transport
         </h1>
-        <p className="text-[var(--tx-3)] text-[12px] mt-0.5">Finance · Envois & voyages · {dateStr}</p>
       </div>
 
       <TransportShipmentsSection />

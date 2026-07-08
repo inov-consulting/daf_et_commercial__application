@@ -21,6 +21,7 @@ import {
   ArrowLeftIcon,
   ListIcon,
   CheckCircleIcon,
+  BuildingsIcon,
 } from "@phosphor-icons/react";
 import type {
   Offer,
@@ -567,6 +568,7 @@ function DocSection({
 
 interface DocPreviewProps {
   client: string;
+  companyName: string;
   origine: string;
   destination: string;
   produit: string;
@@ -590,6 +592,7 @@ interface DocPreviewProps {
 
 function OfferDocPreview({
   client,
+  companyName,
   origine,
   destination,
   produit,
@@ -654,6 +657,9 @@ function OfferDocPreview({
           <div className="text-[13px] font-bold text-gray-900 mb-0.5">
             {client || "Client"}
           </div>
+          {companyName && (
+            <div className="text-[11px] text-gray-500">{companyName}</div>
+          )}
         </div>
       </div>
 
@@ -793,6 +799,7 @@ export function OfferCreateView({
 
   // Form state
   const [client, setClient] = useState(editingOffer?.client_name ?? "");
+  const [companyName, setCompanyName] = useState(editingOffer?.company_name ?? "");
   const [origine, setOrigine] = useState(
     editingOffer?.route?.origin?.split(",")[0]?.trim() ?? "",
   );
@@ -1007,7 +1014,7 @@ export function OfferCreateView({
         </div>
 
         {/* Actions desktop */}
-        <div className="hidden sm:flex items-center gap-2.5">
+        {/* <div className="hidden sm:flex items-center gap-2.5">
           <button className="h-[34px] px-3.5 border border-gray-200 rounded-lg bg-white text-gray-700 text-xs font-medium inline-flex items-center gap-1.5 shadow-sm hover:bg-gray-50 transition-colors">
             <DownloadSimpleIcon size={14} /> Exporter PDF
           </button>
@@ -1023,7 +1030,7 @@ export function OfferCreateView({
           >
             <PaperPlaneTiltIcon size={13} weight="fill" /> Envoyer
           </button>
-        </div>
+        </div> */}
 
         {/* Menu mobile */}
         <div className="sm:hidden">
@@ -1042,9 +1049,9 @@ export function OfferCreateView({
               <button className="w-full text-left px-4 py-2.5 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2">
                 <CopyIcon size={14} /> Dupliquer
               </button>
-              <button className="w-full text-left px-4 py-2.5 text-xs text-white bg-emerald-800 hover:bg-emerald-900 flex items-center gap-2">
+              {/* <button className="w-full text-left px-4 py-2.5 text-xs text-white bg-emerald-800 hover:bg-emerald-900 flex items-center gap-2">
                 <PaperPlaneTiltIcon size={13} /> Envoyer
-              </button>
+              </button> */}
             </div>
           )}
         </div>
@@ -1130,6 +1137,28 @@ export function OfferCreateView({
                 <div className="flex items-center gap-1 text-[11px] text-gray-400 mt-1">
                   <InfoIcon size={11} weight="fill" className="text-gray-400" />
                   Client non lié à un partenaire Odoo
+                </div>
+              </FormField>
+
+              {/* Entreprise */}
+              <FormField label="Entreprise">
+                <div className="relative">
+                  <BuildingsIcon
+                    size={16}
+                    weight="fill"
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                  />
+                  <input
+                    type="text"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    placeholder="Nom de l'entreprise (optionnel)"
+                    className={`w-full h-10 border rounded-lg pl-8 pr-3 text-[13px] text-gray-900 outline-none ${
+                      companyName
+                        ? "border-emerald-300 bg-emerald-50"
+                        : "border-gray-200 bg-white"
+                    }`}
+                  />
                 </div>
               </FormField>
 
@@ -1499,6 +1528,7 @@ export function OfferCreateView({
             ) : (
               <OfferDocPreview
                 client={client}
+                companyName={companyName}
                 origine={origine}
                 destination={destination}
                 produit={produit}
@@ -1537,6 +1567,7 @@ export function OfferCreateView({
               onClick={() =>
                 printOffer({
                   client,
+                  companyName,
                   origine,
                   destination,
                   produit,

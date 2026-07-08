@@ -60,6 +60,70 @@ function chartHeight(series: KpiChartSeries[]): number {
   return 200;
 }
 
+// ── Remplissage des mois manquants (Jan → mois courant) ───────────────────────
+
+const FR_MONTHS_SHORT = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+const FR_MONTHS_FULL  = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+
+function fillMonthlyGaps(
+  data: Record<string, unknown>[],
+  xKey: string,
+  yKeys: string[],
+): Record<string, unknown>[] {
+  if (!xKey) return data;
+
+  const now          = new Date();
+  const currentMonth = now.getMonth();       // 0-indexed
+  const currentYear  = now.getFullYear();
+
+  const sample = data.length > 0 ? String(data[0][xKey] ?? '') : '';
+
+  let allMonths: string[];
+
+  const isISO = /^\d{4}-\d{2}$/.test(sample);
+
+  if (isISO) {
+    // Format ISO "2026-01" → on génère les mois ISO puis on les traduit en noms courts
+    const isoMonths = Array.from({ length: currentMonth + 1 }, (_, i) =>
+      `${currentYear}-${String(i + 1).padStart(2, '0')}`,
+    );
+
+    const byMonth = new Map<string, Record<string, unknown>>();
+    for (const row of data) byMonth.set(String(row[xKey]), row);
+
+    return isoMonths.map((iso, i) => {
+      const label = FR_MONTHS_SHORT[i];
+      const source = byMonth.get(iso);
+      if (source) {
+        // remplace la valeur ISO par le nom court dans le résultat
+        return { ...source, [xKey]: label };
+      }
+      const empty: Record<string, unknown> = { [xKey]: label };
+      for (const yk of yKeys) empty[yk] = 0;
+      return empty;
+    });
+  }
+
+  if (FR_MONTHS_SHORT.some(m => m === sample)) {
+    allMonths = FR_MONTHS_SHORT.slice(0, currentMonth + 1);
+  } else if (FR_MONTHS_FULL.some(m => m === sample)) {
+    allMonths = FR_MONTHS_FULL.slice(0, currentMonth + 1);
+  } else {
+    // Format inconnu ou données non-mensuelles : ne pas toucher
+    return data;
+  }
+
+  const byMonth = new Map<string, Record<string, unknown>>();
+  for (const row of data) byMonth.set(String(row[xKey]), row);
+
+  return allMonths.map(month => {
+    if (byMonth.has(month)) return byMonth.get(month)!;
+    const empty: Record<string, unknown> = { [xKey]: month };
+    for (const yk of yKeys) empty[yk] = 0;
+    return empty;
+  });
+}
+
 // ── Construction des series AG Charts ────────────────────────────────────────
 
 export function buildSeries(series: KpiChartSeries[]): Record<string, unknown>[] {
@@ -125,13 +189,18 @@ export function KpiChartCard({
   fullHeight = false,
   featured = false,
 }: KpiChartCardProps) {
-  const hasData = kpi.chart.data.length > 0 && kpi.chart.series.length > 0;
   const catColor = categoryColor(kpi.category);
   const h = fullHeight ? 380 : featured ? 260 : chartHeight(kpi.chart.series);
 
+  const xKey  = kpi.chart.series[0]?.xKey ?? '';
+  const yKeys = kpi.chart.series.map(s => s.yKey).filter(Boolean) as string[];
+  const chartData = fillMonthlyGaps(kpi.chart.data, xKey, yKeys);
+
+  const hasData = chartData.length > 0 && kpi.chart.series.length > 0;
+
   const options: any = {
     theme: PORTALIS_THEME,
-    data: kpi.chart.data,
+    data: chartData,
     series: buildSeries(kpi.chart.series),
   };
 

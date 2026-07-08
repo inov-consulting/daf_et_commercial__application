@@ -122,7 +122,7 @@ export function UserFormModal({ mode, user, rawUser, groups, onClose, onSubmit }
 
   return (
     <div
-      className="fixed inset-0 z-[70] bg-black/40 backdrop-blur-sm flex items-center justify-center p-6"
+      className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-6"
       onClick={submitting ? undefined : onClose}
     >
       <div
@@ -167,7 +167,7 @@ export function UserFormModal({ mode, user, rawUser, groups, onClose, onSubmit }
                 }
               </div>
               <div
-                className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer pointer-events-none"
+                className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer pointer-events-none"
               >
                 <CameraIcon size={16} className="text-white" />
               </div>

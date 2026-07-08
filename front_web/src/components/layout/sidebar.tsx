@@ -71,7 +71,7 @@ function buildNav(locale: string, prospectCount?: number): NavSection[] {
       title: 'RAPPORTS',
       items: [
         { href: `/${locale}/page/analytics`, label: 'Analytics', Icon: ChartLineIcon },
-        { href: `/${locale}/page/exports`, label: 'Exports', Icon: DownloadSimpleIcon },
+        // { href: `/${locale}/page/exports`, label: 'Exports', Icon: DownloadSimpleIcon },
       ],
     },
     {
@@ -137,7 +137,7 @@ const isFirstRender = useRef(true);
       {/* Backdrop mobile */}
       {open && (
         <div
-          className="fixed inset-0 bg-black/40 z-[59] md:hidden backdrop-blur-sm"
+          className="fixed inset-0 bg-black/50 z-[59] md:hidden"
           onClick={onClose}
           aria-hidden="true"
         />
