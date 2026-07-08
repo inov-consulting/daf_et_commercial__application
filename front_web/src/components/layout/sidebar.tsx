@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import { useEffect, useRef } from 'react';
+import { useAppSelector } from '@/redux/store';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logoutKeycloak } from '@/lib/keycloak';
@@ -27,7 +28,7 @@ type NavItem = {
 
 type NavSection = { title: string; items: NavItem[] };
 
-function buildNav(locale: string): NavSection[] {
+function buildNav(locale: string, prospectCount?: number): NavSection[] {
   return [
     {
       title: 'PRINCIPAL',
@@ -49,8 +50,7 @@ function buildNav(locale: string): NavSection[] {
             </span>
           ),
         },
-        { href: `/${locale}/page/prospects`, label: 'Prospections', Icon: UserIcon, badge: 47 },
-        { href: `/${locale}/page/missions`, label: 'Missions', Icon: TruckIcon, badge: 4, badgeDanger: true },
+        { href: `/${locale}/page/prospects`, label: 'Prospections', Icon: UserIcon, badge: prospectCount },
       ],
     },
     {
@@ -95,7 +95,8 @@ interface SidebarProps {
 
 export default function Sidebar({ locale, open, onClose, user, rawUser }: SidebarProps) {
   const pathname = usePathname();
-  const sections = buildNav(locale);
+  const prospectTotal = useAppSelector(s => s.prospects.total);
+  const sections = buildNav(locale, prospectTotal || undefined);
   const sidebarRef = useRef<HTMLElement>(null);
 const isFirstRender = useRef(true);
 
