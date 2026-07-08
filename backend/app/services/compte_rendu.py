@@ -313,6 +313,120 @@ RAPPEL: Générer un document HTML COMPLET avec ce Design System. Respecter les 
 
         return await _render_pdf()
 
+    async def generate_into(
+        self,
+        cr: "CompteRenduOrm",
+        note_ids: list[UUID] | None,
+    ) -> None:
+        """Lance la génération Claude + PDF + MinIO sur un CR existant (statut pending).
+
+        Met à jour cr.generation_status en temps réel :
+          pending → running → done | failed
+
+        À appeler depuis une BackgroundTask — ne lève pas d'exception vers l'appelant.
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        cr.generation_status = "running"
+        await cr.save()
+
+        try:
+            # Récupérer les notes
+            if note_ids:
+                notes = await NoteOrm.filter(id__in=note_ids, prospect_id=cr.parent_id).order_by("created_at")
+            else:
+                notes = await NoteOrm.filter(prospect_id=cr.parent_id).order_by("created_at")
+
+            if not notes:
+                raise ValueError("Aucune note trouvée pour ce prospect")
+
+            notes_text = self._format_notes_for_prompt(notes)
+
+            from app.infrastructure.db.models.ai_config import AiConfigOrm
+            config = await AiConfigOrm.first()
+            style_template = config.compte_rendu_template if config else None
+
+            if not style_template or not style_template.strip():
+                raise ValueError(
+                    "Template de compte-rendu non configuré. "
+                    "Veuillez configurer le Design System dans les paramètres AI."
+                )
+
+            base_prompt = CR_GENERATION_PROMPT.format(notes=notes_text)
+            prompt = f"""{base_prompt}
+
+⚠️ DESIGN SYSTEM PORTALIS (À APPLIQUER STRICTEMENT):
+{style_template}
+
+RAPPEL: Générer un document HTML COMPLET avec ce Design System. Respecter les couleurs, typographie et espacements exacts."""
+
+            html_content = await self._call_claude(prompt)
+
+            html_content = re.sub(r'^\s*```\s*\n?', '', html_content, flags=re.IGNORECASE)
+            html_content = re.sub(r'\n?```\s*$', '', html_content, flags=re.IGNORECASE)
+            html_content = html_content.strip()
+
+            if not html_content.rstrip().endswith('</html>'):
+                if '<body>' in html_content and '</body>' not in html_content:
+                    html_content += "\n</body>\n</html>"
+                elif '</body>' in html_content and '</html>' not in html_content:
+                    html_content += "\n</html>"
+
+            if not html_content.startswith(('<!DOCTYPE', '<!doctype', '<html')):
+                html_content = f"""<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><style>body{{font-family:system-ui,sans-serif;color:#212121;margin:0;padding:0;}}</style></head>
+<body>{html_content}</body>
+</html>"""
+
+            if len(html_content) < 100:
+                raise ValueError(f"HTML généré vide ou trop court ({len(html_content)} caractères)")
+
+            pdf_bytes = await self._generate_pdf(html_content, cr.parent_id, style_template)
+
+            if not pdf_bytes or len(pdf_bytes) < 1000:
+                raise ValueError(f"PDF généré vide ou trop petit ({len(pdf_bytes) if pdf_bytes else 0} bytes)")
+
+            # Slug prospect pour le nom du fichier
+            prospect = await ProspectOrm.get_or_none(id=cr.parent_id)
+            prospect_slug = "prospect"
+            if prospect and prospect.erp_metadata:
+                name = prospect.erp_metadata.get("partner_name") or prospect.erp_metadata.get("name") or "prospect"
+                prospect_slug = re.sub(r'[^\w\s-]', '', name.lower())
+                prospect_slug = re.sub(r'[-\s]+', '-', prospect_slug)
+                prospect_slug = prospect_slug.strip('-')[:30] or "prospect"
+
+            filename = f"CR-{prospect_slug}-v{cr.version}.pdf"
+            folder = f"cr/prospect/{cr.parent_id}"
+            minio_path = f"{folder}/{filename}"
+
+            await self._storage.upload(
+                pdf_bytes,
+                filename=filename,
+                content_type="application/pdf",
+                folder=folder,
+                unique=False,
+            )
+
+            cr.minio_path = minio_path
+            cr.file_size = len(pdf_bytes)
+            cr.content = html_content
+            cr.status = "final"
+            cr.prompt_used = prompt
+            cr.note_ids = [str(n.id) for n in notes]
+            cr.generation_status = "done"
+            cr.generation_error = None
+            await cr.save()
+
+            logger.info("cr.generate_into.done cr_id=%s size=%d", cr.id, len(pdf_bytes))
+
+        except Exception as exc:
+            logger.exception("cr.generate_into.failed cr_id=%s", cr.id)
+            cr.generation_status = "failed"
+            cr.generation_error = str(exc)[:1000]
+            await cr.save()
+
     async def regenerate_pdf_from_content(
         self,
         cr: CompteRenduOrm,
