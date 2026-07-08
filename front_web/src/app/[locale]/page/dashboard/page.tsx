@@ -2,18 +2,16 @@
 
 import { useState, useEffect } from "react";
 import {
-  ArrowRight,
-  Truck,
-  User,
-  TrendUp,
-  Check,
-  PencilSimple,
-  X,
-  ArrowUpRight,
-  Warning,
-  Export,
-  Plus,
-  TrendDown,
+  ArrowRightIcon,
+  TruckIcon,
+  UserIcon,
+  TrendUpIcon,
+  CheckIcon,
+  PencilSimpleIcon,
+  XIcon,
+  ArrowUpRightIcon,
+  WarningIcon,
+  TrendDownIcon,
 } from "@phosphor-icons/react";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { Badge } from "@/components/ui/badge";
@@ -290,7 +288,7 @@ function IACenter() {
             <span className="text-[10px] sm:text-[11px] leading-none">✦</span> 3
           </span>
           <button className="text-xs sm:text-sm font-medium text-[var(--p500)] hover:underline hidden sm:flex items-center gap-1">
-            Tout voir <ArrowRight size={13} />
+            Tout voir <ArrowRightIcon size={13} />
           </button>
         </div>
       </div>
@@ -330,7 +328,7 @@ function IACenter() {
                     size="xs"
                     className="text-[10px] sm:text-xs"
                   >
-                    <Check size={12} weight="bold" />
+                    <CheckIcon size={12} weight="bold" />
                     <span className="hidden sm:inline ml-1">Valider</span>
                   </Button>
                   <Button
@@ -338,11 +336,11 @@ function IACenter() {
                     size="xs"
                     className="text-[10px] sm:text-xs"
                   >
-                    <PencilSimple size={12} />
+                    <PencilSimpleIcon size={12} />
                     <span className="hidden sm:inline ml-1">Modifier</span>
                   </Button>
                   <Button variant="ghost" size="xs" iconOnly>
-                    <X size={12} />
+                    <XIcon size={12} />
                   </Button>
                 </div>
               </div>
@@ -449,7 +447,7 @@ function KpiRow() {
         label="Pipeline commercial · valeur totale"
         value={fmtM(pipelineValue)}
         styleValue="text-gradient"
-        icon={<ArrowRight size={17} />}
+        icon={<ArrowRightIcon size={17} />}
         trend={pipelineValue > 0 ? "up" : undefined}
         trendValue={prospects.loading ? "…" : `${totalProspects} prospects`}
         accent="primary"
@@ -458,7 +456,7 @@ function KpiRow() {
       <KpiCard
         label="Offres transport générées"
         value={prospects.loading || offers.loading ? "…" : String(offersTotal)}
-        icon={<Truck size={17} />}
+        icon={<TruckIcon size={17} />}
         trend={offersTotal > 0 ? "up" : undefined}
         trendValue={offers.list?.filter(o => o.status === "confirmed").length
           ? `${offers.list.filter(o => o.status === "confirmed").length} confirmées`
@@ -468,7 +466,7 @@ function KpiRow() {
       <KpiCard
         label="Prospects dans le pipeline"
         value={prospects.loading ? "…" : String(totalProspects)}
-        icon={<User size={17} />}
+        icon={<UserIcon size={17} />}
         trend={totalProspects > 0 ? "up" : undefined}
         trendValue={prospects.byStatus?.nouveau ? `+${prospects.byStatus.nouveau} nouveaux` : undefined}
         accent="primary"
@@ -476,7 +474,7 @@ function KpiRow() {
       <KpiCard
         label="Taux de conversion"
         value={prospects.loading ? "…" : `${convRate}%`}
-        icon={<TrendUp size={17} />}
+        icon={<TrendUpIcon size={17} />}
         trend={convRate > 0 ? "up" : undefined}
         trendValue={converted > 0 ? `${converted} convertis` : undefined}
         accent="primary"
@@ -516,7 +514,7 @@ function RevenueTrendBadge({ kpi }: { kpi: KpiItem }) {
   const delta = curr - prev;
   const pct = Math.abs((delta / prev) * 100).toFixed(1);
   const isUp = delta >= 0;
-  const Icon = isUp ? TrendUp : TrendDown;
+  const Icon = isUp ? TrendUpIcon : TrendDownIcon;
 
   return (
     <span
@@ -637,7 +635,7 @@ function RecentMissions() {
           Transports récents
         </p>
         <button onClick={() => router.push(`/${locale}/page/offres`)} className="text-xs sm:text-sm font-medium text-[var(--p500)] hover:underline flex items-center gap-1">
-          Voir tout <ArrowUpRight size={13} />
+          Voir tout <ArrowUpRightIcon size={13} />
         </button>
       </div>
 
@@ -714,10 +712,10 @@ function ActiveAlerts() {
           >
             <div className="flex-shrink-0 mt-0.5">
               {a.type === "success" && (
-                <Check size={14} weight="bold" style={{ color: a.color }} />
+                <CheckIcon size={14} weight="bold" style={{ color: a.color }} />
               )}
               {a.type === "warning" && (
-                <Warning size={14} weight="fill" style={{ color: a.color }} />
+                <WarningIcon size={14} weight="fill" style={{ color: a.color }} />
               )}
               {a.type === "info" && (
                 <span
@@ -767,7 +765,7 @@ function CommercialPipeline() {
           Pipeline commercial
         </p>
         <button className="text-xs sm:text-sm font-medium text-[var(--p500)] hover:underline flex items-center gap-1">
-          Détail <ArrowRight size={13} />
+          Détail <ArrowRightIcon size={13} />
         </button>
       </div>
       <div className="flex flex-col gap-2 sm:gap-3">

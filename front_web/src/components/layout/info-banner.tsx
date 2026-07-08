@@ -15,8 +15,8 @@ export function InfoBanner({ showToast }: InfoBannerProps) {
         </div>
         
         <span className="font-inter text-[11px] sm:text-[13px] font-medium text-[#2E3D4C] truncate">
-          <span className="sm:hidden">4 agents IA — Paradigme 70/30</span>
-          <span className="hidden sm:inline">Configuration des 4 agents IA — Paradigme 70/30</span>
+          <span className="sm:hidden">Agents IA — Paradigme 70/30</span>
+          <span className="hidden sm:inline">Configuration des agents IA — Paradigme 70/30</span>
         </span>
       </div>
 

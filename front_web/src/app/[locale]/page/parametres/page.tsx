@@ -9,15 +9,15 @@ import { ProfilTab } from "@/components/layout/profil-tab";
 import { Toast } from "@/components/ui/toast";
 import { useState, useCallback, useEffect } from "react";
 import {
-  ShieldCheck,
-  Question,
-  Bell,
-  Plug,
-  CreditCard,
-  CheckCircle,
-  WarningCircle,
-  Info,
-  XCircle,
+  ShieldCheckIcon,
+  QuestionIcon,
+  BellIcon,
+  PlugIcon,
+  CreditCardIcon,
+  CheckCircleIcon,
+  WarningCircleIcon,
+  InfoIcon,
+  XCircleIcon,
 } from "@phosphor-icons/react";
 
 type TabKey = "agents" | "profil" | "notifs" | "integ" | "billing";
@@ -39,28 +39,27 @@ const tabs: {
   {
     id: "agents",
     label: "Paramètres IA",
-    icon: <ShieldCheck size={16} weight="bold" />,
-    badge: "4 agents",
+    icon: <ShieldCheckIcon size={16} weight="bold" />,
   },
   {
     id: "profil",
     label: "Paramètres systèmes",
-    icon: <Question size={16} weight="bold" />,
+    icon: <QuestionIcon size={16} weight="bold" />,
   },
   {
     id: "notifs",
     label: "Notifications",
-    icon: <Bell size={16} weight="bold" />,
+    icon: <BellIcon size={16} weight="bold" />,
   },
   {
     id: "integ",
     label: "Intégrations",
-    icon: <Plug size={16} weight="bold" />,
+    icon: <PlugIcon size={16} weight="bold" />,
   },
   {
     id: "billing",
     label: "Facturation",
-    icon: <CreditCard size={16} weight="bold" />,
+    icon: <CreditCardIcon size={16} weight="bold" />,
   },
 ];
 
@@ -69,19 +68,19 @@ const toastConfig: Record<ToastType, { title: string; icon: React.ReactNode }> =
   {
     success: {
       title: "Succès",
-      icon: <CheckCircle size={18} weight="fill" />,
+      icon: <CheckCircleIcon size={18} weight="fill" />,
     },
     error: {
       title: "Erreur",
-      icon: <XCircle size={18} weight="fill" />,
+      icon: <XCircleIcon size={18} weight="fill" />,
     },
     warning: {
       title: "Attention",
-      icon: <WarningCircle size={18} weight="fill" />,
+      icon: <WarningCircleIcon size={18} weight="fill" />,
     },
     info: {
       title: "Information",
-      icon: <Info size={18} weight="fill" />,
+      icon: <InfoIcon size={18} weight="fill" />,
     },
   };
 
