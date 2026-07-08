@@ -260,7 +260,7 @@ async def shipment_next_step(
     # 1. Vérifier que le dossier existe et récupérer son état actuel
     records = await asyncio.to_thread(
         client.execute, "transport.shipment", "search_read",
-        [["id", "=", shipment_id]],
+        [[("id", "=", shipment_id)]],
         {"fields": ["id", "name", "state", "workflow_instance_id"]},
     )
     if not records:
@@ -304,7 +304,7 @@ async def shipment_next_step(
 
     wf_records = await asyncio.to_thread(
         client.execute, "transport.workflow.instance", "search_read",
-        [["id", "=", wf_instance_id]],
+        [[("id", "=", wf_instance_id)]],
         {"fields": WORKFLOW_FIELDS},
     )
     if not wf_records:
@@ -414,7 +414,7 @@ async def shipment_next_step(
     # 6. Relire l'état réel après la transition
     wf_after = await asyncio.to_thread(
         client.execute, "transport.workflow.instance", "search_read",
-        [["id", "=", wf_instance_id]],
+        [[("id", "=", wf_instance_id)]],
         {"fields": WORKFLOW_FIELDS},
     )
     wf_new = wf_after[0] if wf_after else wf  # type: ignore[index]
