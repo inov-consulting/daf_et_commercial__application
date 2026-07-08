@@ -365,7 +365,7 @@ export function AiModelsSection({ showToast }: AiModelsSectionProps) {
                 >
                   <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${addIsEmb ? 'translate-x-4' : ''}`} />
                 </button>
-                <span className="text-[13px] text-[#2E3D4C]">Modèle d'embedding</span>
+                <span className="text-[13px] text-[#2E3D4C]">Modèle d&apos;embedding</span>
               </label>
               <div className="flex items-center gap-2">
                 <button
@@ -391,7 +391,7 @@ export function AiModelsSection({ showToast }: AiModelsSectionProps) {
       {/* CR Template */}
       <SectionCard title="Template de génération des comptes-rendus">
         <p className="text-[12px] text-[#7691A8] mb-3">
-          Ce template Markdown est utilisé par l'agent CR pour structurer les comptes-rendus générés.
+          Ce template Markdown est utilisé par l&apos;agent CR pour structurer les comptes-rendus générés.
         </p>
         <textarea
           value={template}
