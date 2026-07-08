@@ -335,9 +335,14 @@ class ProspectSyncService:
 
         Returns:
             True si succès.
+
+        Raises:
+            LookupError: Le lead n'existe plus dans l'ERP (supprimé côté Odoo).
         """
+        import asyncio
+        import xmlrpc.client
+
         try:
-            import asyncio
             oc = self._get_odoo_client()
             await asyncio.to_thread(
                 oc.execute, "crm.lead", "write", [[odoo_lead_id], values],
@@ -345,7 +350,16 @@ class ProspectSyncService:
             logger.info(f"[Sync] Lead Odoo {odoo_lead_id} mis à jour")
             return True
 
-        except Exception as exc:
+        except xmlrpc.client.Fault as exc:
+            if exc.faultCode == 2:
+                logger.warning(
+                    f"[Sync] Lead Odoo {odoo_lead_id} introuvable — sera supprimé de Portalis"
+                )
+                raise LookupError(str(odoo_lead_id)) from exc
+            logger.exception(f"[Sync] Erreur Odoo update lead {odoo_lead_id}")
+            return False
+
+        except Exception:
             logger.exception(f"[Sync] Erreur update lead Odoo {odoo_lead_id}")
             return False
 
@@ -356,10 +370,14 @@ class ProspectSyncService:
 
         Returns:
             IDs créés (opportunity_id, partner_id).
+
+        Raises:
+            LookupError: Le lead n'existe plus dans l'ERP (supprimé côté Odoo).
         """
+        import asyncio
+        import xmlrpc.client
+
         try:
-            # Appel action Odoo de conversion
-            import asyncio
             oc = self._get_odoo_client()
             await asyncio.to_thread(
                 oc.execute, "crm.lead", "action_set_won", [[odoo_lead_id]],
@@ -376,11 +394,20 @@ class ProspectSyncService:
                 partner_id = lead_data[0].get("partner_id", [None])[0]
                 return {
                     "success": True,
-                    "odoo_opportunity_id": odoo_lead_id,  # Devient opportunité
+                    "odoo_opportunity_id": odoo_lead_id,
                     "odoo_partner_id": partner_id,
                 }
 
             return {"success": True, "message": "Converti (IDs non récupérés)"}
+
+        except xmlrpc.client.Fault as exc:
+            if exc.faultCode == 2:
+                logger.warning(
+                    f"[Sync] Lead Odoo {odoo_lead_id} introuvable — sera supprimé de Portalis"
+                )
+                raise LookupError(str(odoo_lead_id)) from exc
+            logger.exception(f"[Sync] Erreur Odoo conversion lead {odoo_lead_id}")
+            return {"success": False, "error": str(exc)}
 
         except Exception as exc:
             logger.exception(f"[Sync] Erreur conversion lead {odoo_lead_id}")
@@ -395,14 +422,18 @@ class ProspectSyncService:
             odoo_lead_id: ID du lead.
             lost_reason_id: ID crm.lost.reason (optionnel).
             custom_reason: Motif texte si pas d'ID.
-        """
-        try:
-            values = {"active": False}  # Archive dans Odoo
 
+        Raises:
+            LookupError: Le lead n'existe plus dans l'ERP (supprimé côté Odoo).
+        """
+        import asyncio
+        import xmlrpc.client
+
+        try:
+            values: dict = {"active": False}
             if lost_reason_id:
                 values["lost_reason_id"] = lost_reason_id
 
-            import asyncio
             oc = self._get_odoo_client()
             await asyncio.to_thread(
                 oc.execute, "crm.lead", "write", [[odoo_lead_id], values],
@@ -410,7 +441,16 @@ class ProspectSyncService:
             logger.info(f"[Sync] Lead Odoo {odoo_lead_id} marqué perdu")
             return True
 
-        except Exception as exc:
+        except xmlrpc.client.Fault as exc:
+            if exc.faultCode == 2:
+                logger.warning(
+                    f"[Sync] Lead Odoo {odoo_lead_id} introuvable — sera supprimé de Portalis"
+                )
+                raise LookupError(str(odoo_lead_id)) from exc
+            logger.exception(f"[Sync] Erreur Odoo perte lead {odoo_lead_id}")
+            return False
+
+        except Exception:
             logger.exception(f"[Sync] Erreur perte lead {odoo_lead_id}")
             return False
 
