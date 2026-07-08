@@ -34,7 +34,7 @@ export function SendOfferModal({ offer, onClose, onSend }: SendOfferModalProps) 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* overlay */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
 
       <div
         className="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4"

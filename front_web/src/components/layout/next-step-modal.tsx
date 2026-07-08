@@ -52,7 +52,7 @@ export function NextStepModal({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[80] bg-black/40 backdrop-blur-[2px]"
+        className="fixed inset-0 z-[80] bg-black/50"
         onClick={onClose}
       />
 
