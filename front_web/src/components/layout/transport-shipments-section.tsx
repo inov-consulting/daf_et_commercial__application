@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   XIcon, CircleNotchIcon, MagnifyingGlassIcon, ArrowRightIcon,
-  WarningIcon, FolderOpenIcon, CheckIcon, ArrowsClockwiseIcon,
+  WarningIcon, FolderOpenIcon, CheckIcon, ArrowsClockwiseIcon, ArrowArcRightIcon,
 } from '@phosphor-icons/react';
 import { GetData } from '@/lib/ApiService';
 import { ApiRoutes } from '@/lib/ApiRoutes';
@@ -20,6 +20,8 @@ import VoyagesSection from './voyages-section';
 import ChargesSection from './charges-section';
 import ImmobilisationsSection from './immobilisation-section';
 import WorkflowSection from './workfow-section';
+import { NextStepModal } from './next-step-modal';
+import type { NextStepResponse } from '@/types/transport_type';
 
 /* ── Types locaux ─────────────────────────────────────────────────────────── */
 
@@ -80,6 +82,7 @@ export function TransportShipmentsSection() {
   const [detail, setDetail] = useState<ShipmentDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [drawerTab, setDrawerTab] = useState<DrawerTab>('apercu');
+  const [showNextStep, setShowNextStep] = useState(false);
 
   /* ── Fetch shipments + dashboard ── */
   const fetchTransportData = async (signal: { cancelled: boolean }) => {
@@ -167,6 +170,26 @@ export function TransportShipmentsSection() {
     currency: (shipments[0]?.currency ?? 'XOF'),
     byMode: dashboard?.by_mode ?? [],
   }), [dashboard, shipments]);
+
+  /* ── Next-step success: refresh detail + update list state ── */
+  function handleNextStepSuccess(result: NextStepResponse) {
+    // Re-fetch detail to get updated workflow
+    if (selectedId) {
+      (async () => {
+        const res = await GetData<ShipmentDetail>({
+          url: ApiRoutes.TRANSPORT_SHIPMENT(String(selectedId)),
+          protected: true,
+        });
+        if (res.ok && res.data) setDetail(res.data);
+      })();
+    }
+    // Update state in the list too
+    setShipments(prev => prev.map(s =>
+      s.id === result.shipment_id
+        ? { ...s, state: result.workflow_state as typeof s.state }
+        : s,
+    ));
+  }
 
   /* ── Render ── */
   return (
@@ -502,12 +525,25 @@ export function TransportShipmentsSection() {
                     <span className="font-mono text-[12px] font-semibold text-[#085499] bg-[#EBF5FD] px-2.5 py-1 rounded-[6px]">
                       {detail.name}
                     </span>
-                    <button
-                      onClick={() => setSelectedId(null)}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--tx-3)] hover:text-[var(--tx-1)] hover:bg-[var(--bg-sink)] transition-colors"
-                    >
-                      <XIcon size={15} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {detail.state !== 'cancelled' && detail.state !== 'done' && (
+                        <button
+                          onClick={() => setShowNextStep(true)}
+                          className="h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-[11px] font-semibold text-white transition-all hover:opacity-90"
+                          style={{ background: 'linear-gradient(135deg,#1B6B45,#8B6914)' }}
+                          title="Avancer le workflow"
+                        >
+                          <ArrowArcRightIcon size={12} weight="bold" />
+                          Étape suivante
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setSelectedId(null)}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--tx-3)] hover:text-[var(--tx-1)] hover:bg-[var(--bg-sink)] transition-colors"
+                      >
+                        <XIcon size={15} />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-2 flex-wrap mt-2">
@@ -588,6 +624,20 @@ export function TransportShipmentsSection() {
                   {drawerTab === 'immobilisations' && <ImmobilisationsSection detail={detail} />}
                   {drawerTab === 'workflow' && <WorkflowSection workflow={detail.workflow} />}
                 </div>
+
+                {/* Next-step modal */}
+                {showNextStep && (
+                  <NextStepModal
+                    shipmentId={detail.id}
+                    shipmentName={detail.name}
+                    currentStep={detail.workflow?.current_step}
+                    onClose={() => setShowNextStep(false)}
+                    onSuccess={result => {
+                      handleNextStepSuccess(result);
+                      setShowNextStep(false);
+                    }}
+                  />
+                )}
               </>
             )}
           </div>
