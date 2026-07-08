@@ -197,6 +197,23 @@ export interface ShipmentDetail extends Shipment {
   planned_qty?: number;
 }
 
+/** Corps de la requête POST /api/v1/transport/shipments/{id}/next-step */
+export interface NextStepBody {
+  note?: string;
+}
+
+/** Réponse de POST /api/v1/transport/shipments/{id}/next-step */
+export interface NextStepResponse {
+  shipment_id: number;
+  shipment_name: string;
+  previous_step: string;
+  current_step: string;
+  current_step_code: string;
+  next_step: string;
+  next_step_code: string;
+  workflow_state: string;
+}
+
 // ── Dashboard ──────────────────────────────────────────────────────────────
 
 export interface DashboardByMode {
