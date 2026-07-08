@@ -5,7 +5,7 @@ Gère le sync bidirectionnel:
 - Odoo → Portalis: enrichissement données, détection conversions
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from tortoise.expressions import Q
@@ -167,7 +167,8 @@ class ProspectSyncService:
                 raise ValueError(f"Lead Odoo {prospect.odoo_lead_id} introuvable")
 
             odoo_data = leads[0]
-            prospect.last_sync_at = datetime.utcnow()
+            prospect.last_sync_at = datetime.now(timezone.utc)
+            prospect.erp_metadata = odoo_data
             await prospect.save()
 
             return {"success": True, "odoo_data": odoo_data}

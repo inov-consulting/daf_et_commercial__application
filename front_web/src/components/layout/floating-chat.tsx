@@ -53,8 +53,8 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
     {
       id: 0,
       role: 'ai',
-      text: `Bonjour ${firstName} ! J'ai **3 éléments** en attente de validation. Voulez-vous que je vous résume les priorités du jour ?`,
-      time: '09h14',
+      text: `Bonjour ${firstName} ! Je suis votre assistant PortaLis. Je peux vous aider sur vos **prospects**, vos **offres de transport**, vos **comptes-rendus** ou toute autre question. Comment puis-je vous aider ?`,
+      time: formatTime(),
     },
   ]);
   const [inputText, setInputText] = useState('');
@@ -440,7 +440,7 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={inputState === 'processing' ? '' : "Posez une question à l&apos;IA…"}
+                  placeholder={inputState === 'processing' ? '' : 'Écrivez un message ou dictez-le…'}
                   disabled={inputState !== 'idle'}
                   rows={1}
                   className="flex-1 bg-transparent text-xs sm:text-sm leading-relaxed text-[var(--tx-1)] placeholder:text-[var(--tx-3)] outline-none border-none resize-none overflow-hidden disabled:opacity-40 transition-opacity duration-300 py-0 px-0"
@@ -486,9 +486,9 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
         >
           <SparkleIcon size={18} weight="fill" className="text-white sm:hidden" />
           <SparkleIcon size={20} weight="fill" className="text-white hidden sm:block" />
-          <span className="absolute -top-1 -right-1 w-4.5 h-4.5 sm:w-5 sm:h-5 bg-error rounded-full text-white text-[8px] sm:text-[9px] font-bold flex items-center justify-center border-2 border-white leading-none">
+          {/* <span className="absolute -top-1 -right-1 w-4.5 h-4.5 sm:w-5 sm:h-5 bg-error rounded-full text-white text-[8px] sm:text-[9px] font-bold flex items-center justify-center border-2 border-white leading-none">
             3
-          </span>
+          </span> */}
         </button>
       )}
     </>

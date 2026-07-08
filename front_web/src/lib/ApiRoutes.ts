@@ -53,6 +53,7 @@ export const ApiRoutes = {
   TRANSPORT_SHIPMENTS:          `${BASE}/api/v1/transport/shipments`,
   TRANSPORT_SHIPMENT:           (id: string) => `${BASE}/api/v1/transport/shipments/${id}`,
   TRANSPORT_SHIPMENT_VOYAGES:   (id: string) => `${BASE}/api/v1/transport/shipments/${id}/voyages`,
+  TRANSPORT_SHIPMENT_NEXT_STEP: (id: string | number) => `${BASE}/api/v1/transport/shipments/${id}/next-step`,
   TRANSPORT_VOYAGE:             (id: string) => `${BASE}/api/v1/transport/voyages/${id}`,
 
   // ── Offers ────────────────────────────────────────────────────────────
@@ -94,4 +95,11 @@ export const ApiRoutes = {
   CONFIG_KPI_AVAILABLE:  `${BASE}/api/v1/config/app/kpi/available`,
   CONFIG_KPI_GROUPS:     `${BASE}/api/v1/config/app/kpi/groups`,
   CONFIG_KPI_GROUP:      (groupId: string) => `${BASE}/api/v1/config/app/kpi/groups/${groupId}`,
+
+  // ── AI Models & Config ───────────────────────────────────────────────────
+  AI_MODELS:            `${BASE}/api/v1/ai/models`,
+  AI_CONFIG:            `${BASE}/api/v1/ai/config`,
+  AI_CONFIG_GENERATION: `${BASE}/api/v1/ai/config/generation`,
+  AI_CONFIG_EMBEDDING:  `${BASE}/api/v1/ai/config/embedding`,
+  AI_CONFIG_TEMPLATE:   `${BASE}/api/v1/ai/config/template`,
 } as const;

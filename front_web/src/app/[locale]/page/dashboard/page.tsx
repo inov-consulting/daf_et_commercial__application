@@ -2,18 +2,16 @@
 
 import { useState, useEffect } from "react";
 import {
-  ArrowRight,
-  Truck,
-  User,
-  TrendUp,
-  Check,
-  PencilSimple,
-  X,
-  ArrowUpRight,
-  Warning,
-  Export,
-  Plus,
-  TrendDown,
+  ArrowRightIcon,
+  TruckIcon,
+  UserIcon,
+  TrendUpIcon,
+  CheckIcon,
+  PencilSimpleIcon,
+  XIcon,
+  ArrowUpRightIcon,
+  WarningIcon,
+  TrendDownIcon,
 } from "@phosphor-icons/react";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +23,6 @@ import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { fetchKpiCatalog } from "@/redux/features/kpi/kpiSlice";
 import { fetchProspects, createProspect } from "@/redux/features/prospects/prospectsSlice";
 import { fetchOffers } from "@/redux/features/offers/offersSlice";
-import { ProspectFormModal } from "@/components/layout/prospect-form-modal";
 import type { UpdateProspectBody } from "@/types/prospect_type";
 import {
   KpiChartCard,
@@ -253,31 +250,8 @@ function PageHeader() {
               </button>
             ))}
           </div>
-          <Button variant="ghost" size="sm" className="text-xs sm:text-sm">
-            <Export size={14} />
-            <span className="hidden sm:inline ml-1.5">Exporter</span>
-          </Button>
-          <Button
-            variant="gradient"
-            style={{ background: "var(--grad)" }}
-            size="sm"
-            className="text-xs sm:text-sm"
-            onClick={() => setModalOpen(true)}
-          >
-            <Plus size={14} />
-            <span className="hidden sm:inline ml-1.5">Nouvelle prospection</span>
-          </Button>
         </div>
       </div>
-
-      <ProspectFormModal
-        open={modalOpen}
-        mode="create"
-        saving={creating}
-        serverError={createError}
-        onClose={() => setModalOpen(false)}
-        onSave={handleSave}
-      />
     </>
   );
 }
@@ -314,7 +288,7 @@ function IACenter() {
             <span className="text-[10px] sm:text-[11px] leading-none">✦</span> 3
           </span>
           <button className="text-xs sm:text-sm font-medium text-[var(--p500)] hover:underline hidden sm:flex items-center gap-1">
-            Tout voir <ArrowRight size={13} />
+            Tout voir <ArrowRightIcon size={13} />
           </button>
         </div>
       </div>
@@ -354,7 +328,7 @@ function IACenter() {
                     size="xs"
                     className="text-[10px] sm:text-xs"
                   >
-                    <Check size={12} weight="bold" />
+                    <CheckIcon size={12} weight="bold" />
                     <span className="hidden sm:inline ml-1">Valider</span>
                   </Button>
                   <Button
@@ -362,11 +336,11 @@ function IACenter() {
                     size="xs"
                     className="text-[10px] sm:text-xs"
                   >
-                    <PencilSimple size={12} />
+                    <PencilSimpleIcon size={12} />
                     <span className="hidden sm:inline ml-1">Modifier</span>
                   </Button>
                   <Button variant="ghost" size="xs" iconOnly>
-                    <X size={12} />
+                    <XIcon size={12} />
                   </Button>
                 </div>
               </div>
@@ -473,7 +447,7 @@ function KpiRow() {
         label="Pipeline commercial · valeur totale"
         value={fmtM(pipelineValue)}
         styleValue="text-gradient"
-        icon={<ArrowRight size={17} />}
+        icon={<ArrowRightIcon size={17} />}
         trend={pipelineValue > 0 ? "up" : undefined}
         trendValue={prospects.loading ? "…" : `${totalProspects} prospects`}
         accent="primary"
@@ -482,7 +456,7 @@ function KpiRow() {
       <KpiCard
         label="Offres transport générées"
         value={prospects.loading || offers.loading ? "…" : String(offersTotal)}
-        icon={<Truck size={17} />}
+        icon={<TruckIcon size={17} />}
         trend={offersTotal > 0 ? "up" : undefined}
         trendValue={offers.list?.filter(o => o.status === "confirmed").length
           ? `${offers.list.filter(o => o.status === "confirmed").length} confirmées`
@@ -492,7 +466,7 @@ function KpiRow() {
       <KpiCard
         label="Prospects dans le pipeline"
         value={prospects.loading ? "…" : String(totalProspects)}
-        icon={<User size={17} />}
+        icon={<UserIcon size={17} />}
         trend={totalProspects > 0 ? "up" : undefined}
         trendValue={prospects.byStatus?.nouveau ? `+${prospects.byStatus.nouveau} nouveaux` : undefined}
         accent="primary"
@@ -500,7 +474,7 @@ function KpiRow() {
       <KpiCard
         label="Taux de conversion"
         value={prospects.loading ? "…" : `${convRate}%`}
-        icon={<TrendUp size={17} />}
+        icon={<TrendUpIcon size={17} />}
         trend={convRate > 0 ? "up" : undefined}
         trendValue={converted > 0 ? `${converted} convertis` : undefined}
         accent="primary"
@@ -540,7 +514,7 @@ function RevenueTrendBadge({ kpi }: { kpi: KpiItem }) {
   const delta = curr - prev;
   const pct = Math.abs((delta / prev) * 100).toFixed(1);
   const isUp = delta >= 0;
-  const Icon = isUp ? TrendUp : TrendDown;
+  const Icon = isUp ? TrendUpIcon : TrendDownIcon;
 
   return (
     <span
@@ -559,11 +533,20 @@ function RevenueTrendBadge({ kpi }: { kpi: KpiItem }) {
 
 // ── ChartsSection : CA en vedette + autres indicateurs ───────────────────────
 
+function isFinancialKpi(kpi: KpiItem): boolean {
+  return /financ|comptab|tresor|budget|recette|depense|marge|benefice|montant|chiffre|revenue|ca_/i.test(
+    kpi.category + " " + kpi.key + " " + kpi.label,
+  );
+}
+
 function ChartsSection() {
   const { displayed, catalogLoading } = useAppSelector((s) => s.kpi);
-  const revenueKpi = findRevenueKpi(displayed);
-  const otherKpis = displayed.filter((k) => k.key !== revenueKpi?.key);
-  const hasOthers = otherKpis.length > 0;
+  const revenueKpi      = findRevenueKpi(displayed);
+  const otherKpis       = displayed.filter((k) => k.key !== revenueKpi?.key);
+  const financialOthers = otherKpis.filter(isFinancialKpi);
+  const otherIndicators = otherKpis.filter((k) => !isFinancialKpi(k));
+  const hasFinancial    = financialOthers.length > 0;
+  const hasOthers       = otherIndicators.length > 0;
 
   if (!catalogLoading && displayed.length === 0) return null;
 
@@ -582,7 +565,28 @@ function ChartsSection() {
         <KpiChartCard kpi={revenueKpi} featured />
       ) : null}
 
-      {/* ── Autres indicateurs en grille ────────────────────────────────── */}
+      {/* ── Autres graphiques financiers en colonne ──────────────────────── */}
+      {(catalogLoading || hasFinancial) && (
+        <Card className="p-4 sm:p-5">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <p className="text-xs font-semibold text-[var(--tx-3)] uppercase tracking-wider">
+              Indicateurs financiers
+            </p>
+            {!catalogLoading && (
+              <span className="text-[10px] text-[var(--tx-3)] bg-[var(--bg-sink)] px-2 py-0.5 rounded-full border border-[var(--bd-def)]">
+                {financialOthers.length} graphique{financialOthers.length !== 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-col gap-3">
+            {catalogLoading
+              ? [1, 2].map((i) => <KpiChartCardSkeleton key={i} />)
+              : financialOthers.map((kpi) => <KpiChartCard key={kpi.key} kpi={kpi} />)}
+          </div>
+        </Card>
+      )}
+
+      {/* ── Autres indicateurs en grille 2 colonnes ─────────────────────── */}
       {(catalogLoading || hasOthers) && (
         <Card className="p-4 sm:p-5">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
@@ -591,16 +595,14 @@ function ChartsSection() {
             </p>
             {!catalogLoading && (
               <span className="text-[10px] text-[var(--tx-3)] bg-[var(--bg-sink)] px-2 py-0.5 rounded-full border border-[var(--bd-def)]">
-                {otherKpis.length} graphique{otherKpis.length !== 1 ? "s" : ""}
+                {otherIndicators.length} graphique{otherIndicators.length !== 1 ? "s" : ""}
               </span>
             )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {catalogLoading
               ? [1, 2, 3, 4].map((i) => <KpiChartCardSkeleton key={i} />)
-              : otherKpis.map((kpi) => (
-                  <KpiChartCard key={kpi.key} kpi={kpi} />
-                ))}
+              : otherIndicators.map((kpi) => <KpiChartCard key={kpi.key} kpi={kpi} />)}
           </div>
         </Card>
       )}
@@ -633,7 +635,7 @@ function RecentMissions() {
           Transports récents
         </p>
         <button onClick={() => router.push(`/${locale}/page/offres`)} className="text-xs sm:text-sm font-medium text-[var(--p500)] hover:underline flex items-center gap-1">
-          Voir tout <ArrowUpRight size={13} />
+          Voir tout <ArrowUpRightIcon size={13} />
         </button>
       </div>
 
@@ -710,10 +712,10 @@ function ActiveAlerts() {
           >
             <div className="flex-shrink-0 mt-0.5">
               {a.type === "success" && (
-                <Check size={14} weight="bold" style={{ color: a.color }} />
+                <CheckIcon size={14} weight="bold" style={{ color: a.color }} />
               )}
               {a.type === "warning" && (
-                <Warning size={14} weight="fill" style={{ color: a.color }} />
+                <WarningIcon size={14} weight="fill" style={{ color: a.color }} />
               )}
               {a.type === "info" && (
                 <span
@@ -763,7 +765,7 @@ function CommercialPipeline() {
           Pipeline commercial
         </p>
         <button className="text-xs sm:text-sm font-medium text-[var(--p500)] hover:underline flex items-center gap-1">
-          Détail <ArrowRight size={13} />
+          Détail <ArrowRightIcon size={13} />
         </button>
       </div>
       <div className="flex flex-col gap-2 sm:gap-3">
