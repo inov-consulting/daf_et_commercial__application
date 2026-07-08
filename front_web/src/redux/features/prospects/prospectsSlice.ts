@@ -150,7 +150,7 @@ export const deleteProspect = createAsyncThunk(
   'prospects/delete',
   async (id: string, { rejectWithValue }) => {
     const res = await DeleteData({ url: ApiRoutes.PROSPECTS_DELETE(id), protected: true });
-    if (!res.ok) return rejectWithValue(res.error ?? 'Erreur lors de la suppression');
+    if (!res.ok) return rejectWithValue(res.error);
     return id;
   },
 );

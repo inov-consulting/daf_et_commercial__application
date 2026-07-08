@@ -71,7 +71,7 @@ function buildNav(locale: string, prospectCount?: number): NavSection[] {
       title: 'RAPPORTS',
       items: [
         { href: `/${locale}/page/analytics`, label: 'Analytics', Icon: ChartLineIcon },
-        { href: `/${locale}/page/exports`, label: 'Exports', Icon: DownloadSimpleIcon },
+        // { href: `/${locale}/page/exports`, label: 'Exports', Icon: DownloadSimpleIcon },
       ],
     },
     {

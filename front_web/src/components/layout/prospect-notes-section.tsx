@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   PlusIcon, TrashIcon, ChatCenteredTextIcon,
   MicrophoneIcon, SquareIcon, CircleNotchIcon, WarningIcon,
+  XIcon, WarningCircleIcon,
 } from '@phosphor-icons/react';
 import { useAppDispatch, useAppSelector } from '@/redux/store';
 import { fetchNotes, addNote, deleteNote } from '@/redux/features/notes/notesSlice';
@@ -46,6 +47,8 @@ export function ProspectNotesSection({ prospectId }: ProspectNotesSectionProps) 
   /* ── Text input ─────────────────────────────────────────────────────── */
   const [newContent, setNewContent] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteNoteId, setConfirmDeleteNoteId] = useState<string | null>(null);
+  const [deleteNoteError, setDeleteNoteError] = useState<string | null>(null);
 
   /* ── Voice recording ─────────────────────────────────────────────────── */
   const [voiceState, setVoiceState]   = useState<VoiceState>('idle');
@@ -74,10 +77,17 @@ export function ProspectNotesSection({ prospectId }: ProspectNotesSectionProps) 
     if (addNote.fulfilled.match(result)) setNewContent('');
   }
 
-  async function handleDeleteNote(noteId: string) {
-    setDeletingId(noteId);
-    await dispatch(deleteNote({ prospectId, noteId }));
+  async function handleConfirmDeleteNote() {
+    if (!confirmDeleteNoteId) return;
+    setDeletingId(confirmDeleteNoteId);
+    setDeleteNoteError(null);
+    const result = await dispatch(deleteNote({ prospectId, noteId: confirmDeleteNoteId }));
     setDeletingId(null);
+    if (deleteNote.rejected.match(result)) {
+      setDeleteNoteError((result.payload as string) ?? 'Erreur lors de la suppression');
+    } else {
+      setConfirmDeleteNoteId(null);
+    }
   }
 
   async function startVoiceRecording() {
@@ -283,11 +293,14 @@ export function ProspectNotesSection({ prospectId }: ProspectNotesSectionProps) 
                     <p className="text-[11px] text-[var(--tx-3)] mt-1">{timeAgo(note.created_at)}</p>
                   </div>
                   <button
-                    onClick={() => handleDeleteNote(note.id)}
+                    onClick={() => { setDeleteNoteError(null); setConfirmDeleteNoteId(note.id); }}
                     disabled={deletingId === note.id}
                     className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded flex items-center justify-center text-[var(--tx-3)] hover:text-red-500 hover:bg-red-50 transition-all flex-shrink-0 mt-0.5"
                   >
-                    <TrashIcon size={13} />
+                    {deletingId === note.id
+                      ? <CircleNotchIcon size={13} className="animate-spin" />
+                      : <TrashIcon size={13} />
+                    }
                   </button>
                 </div>
               </div>
@@ -296,6 +309,78 @@ export function ProspectNotesSection({ prospectId }: ProspectNotesSectionProps) 
         </div>
 
       </div>
+
+      {/* ── Modal de confirmation de suppression de note ── */}
+      {confirmDeleteNoteId && (() => {
+        const note = notes.find(n => n.id === confirmDeleteNoteId);
+        const preview = note?.content
+          ? note.content.length > 80 ? note.content.slice(0, 80) + '…' : note.content
+          : '–';
+        return (
+          <>
+            <div
+              className="fixed inset-0 z-[210] bg-black/40 backdrop-blur-[2px]"
+              onClick={() => { if (!deletingId) setConfirmDeleteNoteId(null); }}
+            />
+            <div className="fixed inset-0 z-[211] flex items-center justify-center p-4 pointer-events-none">
+              <div
+                className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-[var(--bd-def)] overflow-hidden pointer-events-auto"
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="h-[3px] w-full bg-[#EF4444]" />
+                <div className="p-5">
+                  <div className="flex items-start gap-3 mb-4">
+                    <div className="w-9 h-9 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center flex-shrink-0">
+                      <TrashIcon size={16} className="text-[#DC2626]" weight="bold" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-[14px] font-bold text-[var(--tx-1)]">Supprimer cette note</h3>
+                      <p className="text-[11px] text-[var(--tx-3)] mt-0.5 italic leading-relaxed line-clamp-2">&ldquo;{preview}&rdquo;</p>
+                    </div>
+                    <button
+                      onClick={() => { if (!deletingId) setConfirmDeleteNoteId(null); }}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--tx-3)] hover:bg-[var(--bg-sink)] transition-colors flex-shrink-0"
+                    >
+                      <XIcon size={14} />
+                    </button>
+                  </div>
+
+                  <p className="text-[12px] text-[var(--tx-3)] leading-relaxed mb-4">
+                    Cette action est <span className="font-semibold text-[var(--tx-2)]">irréversible</span>. La note sera définitivement supprimée.
+                  </p>
+
+                  {deleteNoteError && (
+                    <div className="flex items-start gap-2 p-3 mb-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
+                      <WarningCircleIcon size={14} className="flex-shrink-0 mt-0.5" />
+                      <span className="text-[12px]">{deleteNoteError}</span>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setConfirmDeleteNoteId(null)}
+                      disabled={!!deletingId}
+                      className="flex-1 h-9 rounded-xl text-[13px] font-semibold text-[var(--tx-2)] bg-[var(--bg-sink)] border border-[var(--bd-def)] hover:bg-[var(--bd-def)] disabled:opacity-50 transition-colors"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      onClick={handleConfirmDeleteNote}
+                      disabled={!!deletingId}
+                      className="flex-1 h-9 rounded-xl text-[13px] font-semibold text-white bg-[#DC2626] hover:bg-[#B91C1C] disabled:opacity-60 flex items-center justify-center gap-2 transition-colors"
+                    >
+                      {deletingId
+                        ? <><CircleNotchIcon size={13} className="animate-spin" /> Suppression…</>
+                        : <><TrashIcon size={13} weight="bold" /> Supprimer</>
+                      }
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        );
+      })()}
     </>
   );
 }

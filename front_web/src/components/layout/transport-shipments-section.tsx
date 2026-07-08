@@ -25,16 +25,17 @@ import type { NextStepResponse } from '@/types/transport_type';
 
 /* ── Types locaux ─────────────────────────────────────────────────────────── */
 
-type StateFilter = 'all' | 'draft' | 'confirmed' | 'in_transit' | 'done' | 'cancelled';
+type StateFilter = 'all' | 'draft' | 'confirmed' | 'in_transit' | 'in_progress' | 'done' | 'cancelled';
 type DrawerTab = 'apercu' | 'voyages' | 'charges' | 'immobilisations' | 'workflow';
 
 const STATE_PILLS: { key: StateFilter; label: string }[] = [
-  { key: 'all', label: 'Tous' },
-  { key: 'in_transit', label: 'En transit' },
-  { key: 'confirmed', label: 'Confirmés' },
-  { key: 'done', label: 'Livrés' },
-  { key: 'draft', label: 'Brouillons' },
-  { key: 'cancelled', label: 'Annulés' },
+  { key: 'all',         label: 'Tous' },
+  { key: 'in_transit',  label: 'En transit' },
+  { key: 'in_progress', label: 'En cours' },
+  { key: 'confirmed',   label: 'Confirmés' },
+  { key: 'done',        label: 'Livrés' },
+  { key: 'draft',       label: 'Brouillons' },
+  { key: 'cancelled',   label: 'Annulés' },
 ];
 
 const DRAWER_TABS: { key: DrawerTab; label: string }[] = [
