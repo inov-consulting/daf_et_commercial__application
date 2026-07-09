@@ -1,11 +1,17 @@
-"""Router API : offres transport générées par conversation IA.
+"""Router API : offres transport générées par conversation IA ou formulaire.
 
-Flux :
+Flux IA :
   POST /offers/chat              → tour de conversation (collecte ou génération)
   POST /offers/{id}/generate     → génère le document Markdown via Claude
   POST /offers/{id}/confirm      → valide + crée le dossier Odoo via MCP
+
+Flux formulaire :
+  POST /offers/form              → crée une offre directement (bypass IA, statut completed)
+  PATCH /offers/{id}/form        → modifie les données d'une offre (IA ou formulaire)
+
+Commun :
   GET  /offers/{id}              → détail d'une offre
-  GET  /offers/                  → liste des offres de l'utilisateur
+  GET  /offers/                  → liste des offres
   POST /offers/{id}/cancel       → annule une offre
 """
 from __future__ import annotations
@@ -21,8 +27,10 @@ from app.api.v1.schemas.transport_offer import (
     OfferConfirmOut,
     OfferDocumentOut,
     OfferDocumentSection,
+    OfferFormIn,
     OfferRoute,
     OfferClient,
+    OdooClientOut,
     PricingLine,
     OfferSummaryOut,
 )
@@ -100,6 +108,91 @@ async def offer_chat(
         response=response,
         status=offer.status,
     )
+
+
+# ── Formulaire (création & modification) ─────────────────────────────────────
+
+@router.post("/form", dependencies=_write_deps, status_code=status.HTTP_201_CREATED)
+async def create_offer_form(
+    body: OfferFormIn,
+    current_user=Depends(get_current_user),
+) -> OfferSummaryOut:
+    """Crée une offre transport directement via formulaire (sans IA).
+
+    Tous les champs sont optionnels pour la création — le statut est `completed`
+    dès la création, ce qui permet d'appeler immédiatement `POST /{id}/generate`
+    pour générer le document.
+
+    Règle de validation : `vehicle_type` est obligatoire si `transport_mode = terrestre`.
+    """
+    repo = TransportOfferRepository()
+    offer = await repo.create_manual(
+        collected_data=body.to_collected_data(),
+        user_id=current_user.id,
+    )
+    return OfferSummaryOut(
+        id=offer.id,
+        session_id=offer.session_id,
+        status=offer.status,
+        **_extract_doc_summary(offer.document_markdown),
+        odoo_shipment_id=offer.odoo_shipment_id,
+        odoo_shipment_name=offer.odoo_shipment_name,
+        created_at=offer.created_at,
+        confirmed_at=offer.confirmed_at,
+    )
+
+
+@router.patch("/{offer_id}/form", dependencies=_write_deps)
+async def update_offer_form(
+    offer_id: UUID,
+    body: OfferFormIn,
+) -> OfferSummaryOut:
+    """Modifie les données d'une offre via formulaire (offre IA ou manuelle).
+
+    - Fusionne les champs fournis avec les données existantes (PATCH partiel).
+    - Si l'offre avait un document déjà généré (`generated` / `validated`),
+      le document est effacé et le statut revient à `completed` : l'utilisateur
+      devra relancer `POST /{id}/generate` pour obtenir un document à jour.
+    - Les offres `confirmed` ou `cancelled` ne peuvent pas être modifiées (409).
+    """
+    repo = TransportOfferRepository()
+
+    existing = await repo.get(offer_id)
+    if not existing:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Offre non trouvée")
+    if existing.status in ("confirmed", "cancelled"):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail={
+                "code": "OFFER_NOT_EDITABLE",
+                "message": f"L'offre est en statut '{existing.status}' et ne peut plus être modifiée.",
+            },
+        )
+
+    offer = await repo.update_form(offer_id, body.to_collected_data())
+    if not offer:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Offre non trouvée")
+
+    return OfferSummaryOut(
+        id=offer.id,
+        session_id=offer.session_id,
+        status=offer.status,
+        **_extract_doc_summary(offer.document_markdown),
+        odoo_shipment_id=offer.odoo_shipment_id,
+        odoo_shipment_name=offer.odoo_shipment_name,
+        created_at=offer.created_at,
+        confirmed_at=offer.confirmed_at,
+    )
+
+
+# ── Clients Odoo (liste pour formulaire) ─────────────────────────────────────
+
+@router.get("/customers", dependencies=_read_deps)
+async def list_odoo_clients(search: str = "") -> list[OdooClientOut]:
+    """Retourne tous les clients Odoo (res.partner entreprises actives) pour la liste déroulante du formulaire."""
+    from app.infrastructure.ai.tools.odoo_client_list import list_odoo_clients as _odoo_clients
+    records = await _odoo_clients(search=search)
+    return [OdooClientOut(**r) for r in records]
 
 
 # ── Génération du document ────────────────────────────────────────────────────
