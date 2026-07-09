@@ -134,7 +134,7 @@ async def create_offer_form(
         id=offer.id,
         session_id=offer.session_id,
         status=offer.status,
-        **_extract_doc_summary(offer.document_markdown),
+        **_extract_doc_summary(offer.document_markdown, offer.collected_data),
         odoo_shipment_id=offer.odoo_shipment_id,
         odoo_shipment_name=offer.odoo_shipment_name,
         created_at=offer.created_at,
@@ -177,7 +177,7 @@ async def update_offer_form(
         id=offer.id,
         session_id=offer.session_id,
         status=offer.status,
-        **_extract_doc_summary(offer.document_markdown),
+        **_extract_doc_summary(offer.document_markdown, offer.collected_data),
         odoo_shipment_id=offer.odoo_shipment_id,
         odoo_shipment_name=offer.odoo_shipment_name,
         created_at=offer.created_at,
@@ -386,7 +386,7 @@ async def list_offers(
             id=o.id,
             session_id=o.session_id,
             status=o.status,
-            **_extract_doc_summary(o.document_markdown),
+            **_extract_doc_summary(o.document_markdown, o.collected_data),
             odoo_shipment_id=o.odoo_shipment_id,
             odoo_shipment_name=o.odoo_shipment_name,
             created_at=o.created_at,
@@ -407,7 +407,7 @@ async def cancel_offer(offer_id: UUID) -> OfferSummaryOut:
         id=offer.id,
         session_id=offer.session_id,
         status=offer.status,
-        **_extract_doc_summary(offer.document_markdown),
+        **_extract_doc_summary(offer.document_markdown, offer.collected_data),
         odoo_shipment_id=offer.odoo_shipment_id,
         odoo_shipment_name=offer.odoo_shipment_name,
         created_at=offer.created_at,
@@ -417,11 +417,57 @@ async def cancel_offer(offer_id: UUID) -> OfferSummaryOut:
 
 # ── Helper ────────────────────────────────────────────────────────────────────
 
-def _extract_doc_summary(document_markdown: str | None) -> dict:
-    """Extrait les champs de résumé du document JSON sérialisé."""
+def _extract_collected_data_summary(collected_data: dict | None) -> dict:
+    """Construit un résumé depuis collected_data quand le document n'est pas encore généré."""
+    from app.api.v1.schemas.transport_offer import OfferRoute
+
+    if not collected_data:
+        return {}
+
+    result: dict = {}
+
+    # Titre synthétique
+    client = collected_data.get("client_name")
+    product = collected_data.get("product_description")
+    if client or product:
+        parts = [p for p in [client, product] if p]
+        result["title"] = " — ".join(parts)
+
+    if collected_data.get("validity_days") is not None:
+        result["validity_days"] = collected_data["validity_days"]
+
+    if collected_data.get("planned_date"):
+        result["date"] = collected_data["planned_date"]
+
+    if any(collected_data.get(k) for k in ("origin", "destination", "transport_mode", "vehicle_type", "planned_date")):
+        result["route"] = OfferRoute(
+            origin=collected_data.get("origin"),
+            destination=collected_data.get("destination"),
+            transport_mode=collected_data.get("transport_mode"),
+            vehicle_type=collected_data.get("vehicle_type"),
+            planned_date=collected_data.get("planned_date"),
+        )
+
+    # Estimation montant total (price_unit × quantity) quand disponible
+    price = collected_data.get("price_unit")
+    qty = collected_data.get("quantity")
+    if price is not None and qty is not None:
+        try:
+            result["amount_ttc"] = float(price) * float(qty)
+        except (TypeError, ValueError):
+            pass
+
+    return result
+
+
+def _extract_doc_summary(document_markdown: str | None, collected_data: dict | None = None) -> dict:
+    """Extrait les champs de résumé du document JSON sérialisé.
+
+    Fallback sur collected_data quand le document n'est pas encore généré.
+    """
     import json
     if not document_markdown:
-        return {}
+        return _extract_collected_data_summary(collected_data)
     try:
         doc = json.loads(document_markdown)
         result: dict = {
