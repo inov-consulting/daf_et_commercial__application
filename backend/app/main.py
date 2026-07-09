@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.error_handlers import register_error_handlers
-from app.api.v1 import ai_config, api_logs, auth, chat, companies, compte_rendus, groups, health, kpi, prospects, transport, users
+from app.api.v1 import ai_config, api_logs, auth, chat, companies, compte_rendus, daf, groups, health, kpi, prospects, transport, users
 from app.api.v1 import app_config, transport_offers
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
@@ -34,9 +34,14 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     logger.info("backend.startup", environment=settings.environment)
     await init_db()
     await AiModelRepository().seed()
+
+    from app.infrastructure.scheduler.daf_scheduler import daf_scheduler
+    await daf_scheduler.start()
+
     try:
         yield
     finally:
+        await daf_scheduler.stop()
         await close_db()
         logger.info("backend.shutdown")
 
@@ -81,3 +86,4 @@ app.include_router(transport.router, prefix=API_V1_PREFIX)
 app.include_router(transport_offers.router, prefix=API_V1_PREFIX)
 app.include_router(app_config.router, prefix=API_V1_PREFIX)
 app.include_router(kpi.router, prefix=API_V1_PREFIX)
+app.include_router(daf.router, prefix=API_V1_PREFIX)
