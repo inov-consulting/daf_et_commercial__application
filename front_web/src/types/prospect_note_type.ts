@@ -63,6 +63,25 @@ export interface GenerateCRBody {
   template?: string;
 }
 
+/* ── Génération asynchrone (202 + polling) ────────────────────── */
+
+export interface CRPendingResponse {
+  id: string;
+  parent_type: string;
+  parent_id: string;
+  version: number;
+  generation_status: 'pending' | 'processing' | 'completed' | 'failed';
+  created_at: string;
+  message: string;
+}
+
+export interface CRStatusResponse {
+  id: string;
+  generation_status: 'pending' | 'processing' | 'completed' | 'failed';
+  progress_pct?: number;
+  error_message?: string | null;
+}
+
 export interface CRDownloadResponse {
   [key: string]: unknown;
 }
