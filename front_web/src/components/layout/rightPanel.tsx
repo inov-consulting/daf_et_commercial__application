@@ -2,7 +2,16 @@ import React from 'react'
 
 type AppState = 'context' | 'idle' | 'recording' | 'transcript' | 'processing' | 'draft' | 'validated' | 'error';
 
-const RightPanel = ({ state, wordCount }: { state: AppState; wordCount: number }) => {
+interface RightPanelProps {
+  state: AppState;
+  wordCount: number;
+  crContext?: { label: string; sublabel?: string; id?: string } | null;
+  generatedCR?: { id: string; version: number } | null;
+  nextStep?: string;
+  actions?: string;
+}
+
+const RightPanel = ({ state, wordCount, crContext, generatedCR, nextStep, actions }: RightPanelProps) => {
   const tipDot = <span className="w-1 h-1 rounded-full flex-shrink-0 mt-[6px]" style={{ background: '#6B35C9' }} />;
 
   return (
@@ -42,21 +51,6 @@ const RightPanel = ({ state, wordCount }: { state: AppState; wordCount: number }
           </span>
         </div>
       </div>
-
-      <div className="h-px bg-[var(--bd-def)]" />
-
-      {/* Dossier context */}
-      {/* <div>
-        <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-3)] mb-2 font-mono">Dossier lié</div>
-        <div className="bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-xl p-3">
-          <div className="text-[10px] text-[var(--tx-3)] font-mono mb-0.5">DOS-2026-0142 · Sénégal</div>
-          <div className="text-[13px] font-bold text-[var(--tx-1)]">Sonatrans SA</div>
-          <div className="text-[11px] text-[var(--tx-3)] mt-1 leading-relaxed">
-            Transport frigorifique · DKR → ABJ<br />
-            Mission en cours · Créée le 2 juin 2026
-          </div>
-        </div>
-      </div> */}
 
       <div className="h-px bg-[var(--bd-def)]" />
 
@@ -148,23 +142,35 @@ const RightPanel = ({ state, wordCount }: { state: AppState; wordCount: number }
 
       {state === 'validated' && (
         <div>
+          {/* CR archivé */}
           <div className="rounded-xl p-3 border" style={{ background: 'rgba(16,185,129,0.05)', borderColor: 'rgba(16,185,129,0.25)' }}>
-            <div className="text-[12px] font-semibold mb-1" style={{ color: '#065F46' }}>CR archivé avec succès</div>
+            <div className="text-[12px] font-semibold mb-1" style={{ color: '#065F46' }}>
+              Génération lancée en arrière-plan
+            </div>
             <div className="text-[11px] leading-relaxed" style={{ color: '#059669' }}>
-              Visible dans DOS-2026-0142 · Sonatrans SA.<br />Copie email envoyée au contact.
+              {crContext?.label
+                ? <>{crContext.label}{crContext.sublabel ? ` · ${crContext.sublabel}` : ''}<br /></>
+                : null}
+              {generatedCR
+                ? <>CR v{generatedCR.version + 1} · <span className="font-mono">{generatedCR.id.slice(0, 8).toUpperCase()}</span><br /></>
+                : null}
+              Email envoyé automatiquement à votre adresse.
             </div>
           </div>
-          <div className="mt-3 space-y-2">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-3)] font-mono">Actions suivantes</div>
-            <div className="bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-xl p-3 space-y-2">
-              {['Préparer le devis · avant 10 juin', 'Relance prévue · 15 juin 2026', 'Pipeline mis à jour automatiquement']
-                .map((t, i) => (
+
+          {/* Actions réelles depuis le brouillon */}
+          {(nextStep || actions) && (
+            <div className="mt-3 space-y-2">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-3)] font-mono">Actions suivantes</div>
+              <div className="bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-xl p-3 space-y-2">
+                {[nextStep, actions].filter(Boolean).map((t, i) => (
                   <div key={i} className="flex items-start gap-2 text-[12px] text-[var(--tx-2)]">
                     {tipDot}<span>{t}</span>
                   </div>
                 ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
