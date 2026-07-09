@@ -50,6 +50,8 @@ dependencies = [
     # ── PDF Generation ──
     "reportlab>=4.0",
     "playwright>=1.40",
+    # ── Scheduler ──
+    "apscheduler>=3.10",
 ]
 
 [dependency-groups]

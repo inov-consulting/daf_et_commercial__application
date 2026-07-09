@@ -199,6 +199,17 @@ class KeycloakAdminClient:
             resp.raise_for_status()
             return resp.json()
 
+    async def get_users_by_role(self, role_name: str) -> list[dict]:
+        """Retourne tous les utilisateurs Keycloak ayant le rôle donné."""
+        headers = await self._auth_header()
+        url = f"{self._base_url}/admin/realms/{self._realm}/roles/{role_name}/users"
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get(url, headers=headers)
+            if resp.status_code == 404:
+                return []
+            resp.raise_for_status()
+            return resp.json()
+
     # ── Groups ───────────────────────────────────────────────────────────
     async def list_groups(self) -> list[dict]:
         headers = await self._auth_header()
