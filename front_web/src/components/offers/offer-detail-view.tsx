@@ -541,18 +541,19 @@ export function OfferDetailView({
 
           {/* Actions */}
           <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
-            <button
-              onClick={() => onEdit(offer)}
-              className="h-9 px-3 sm:px-3.5 rounded-lg border border-[#DDE5EF] bg-white text-[#435869] text-[11px] sm:text-xs font-medium cursor-pointer inline-flex items-center gap-1.5 hover:bg-[#F7F9FC] transition-colors shadow-sm whitespace-nowrap"
-            >
-              <PencilSimpleIcon size={13} className="flex-shrink-0" />
-              <span className="hidden sm:inline">Modifier</span>
-              <span className="sm:hidden">Éditer</span>
-            </button>
+            {status === 'genere' && (
+              <button
+                onClick={() => onEdit(offer)}
+                className="h-9 px-3 sm:px-3.5 rounded-lg border border-[#DDE5EF] bg-white text-[#435869] text-[11px] sm:text-xs font-medium cursor-pointer inline-flex items-center gap-1.5 hover:bg-[#F7F9FC] transition-colors shadow-sm whitespace-nowrap"
+              >
+                <PencilSimpleIcon size={13} className="flex-shrink-0" />
+                <span className="hidden sm:inline">Modifier</span>
+                <span className="sm:hidden">Éditer</span>
+              </button>
+            )}
 
             {/* Annuler */}
-            {(["genere", "envoyee"] as OfferStatus[]).includes(status) &&
-              onCancel && (
+            {status === "genere" && onCancel && (
                 <ActionButton
                   onClick={doCancel}
                   loading={cancelling}

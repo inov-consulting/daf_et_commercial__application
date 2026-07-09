@@ -21,7 +21,7 @@ import {
   ArrowLeftIcon,
   ListIcon,
   CheckCircleIcon,
-  BuildingsIcon,
+  PencilSimpleIcon,
 } from "@phosphor-icons/react";
 import type {
   Offer,
@@ -31,9 +31,56 @@ import type {
 } from "@/types/offer_type";
 import { computeOfferStatus, fmtOfferAmount } from "@/types/offer_type";
 import { OfferAgentChat, type OfferFromChat } from "./offer-agent-chat";
+import { CustomerSelect } from "./customer-select";
 import { Button } from "../ui";
-import { PostData } from "@/lib/ApiService";
+import { FloatingToast } from "../ui/toast";
+import { PostData, PatchData } from "@/lib/ApiService";
 import { ApiRoutes } from "@/lib/ApiRoutes";
+
+// ── Mappings transport_mode / vehicle_type ────────────────────────────────────
+
+const MODE_TO_API: Record<string, string> = {
+  'Terrestre':  'terrestre',
+  'Maritime':   'maritime',
+  'Aérien':     'aérien',
+  'Routier':    'terrestre',
+  'Multimodal': 'multimodal',
+};
+const API_TO_MODE: Record<string, string> = {
+  terrestre:  'Terrestre',
+  maritime:   'Maritime',
+  'aérien':   'Aérien',
+  multimodal: 'Multimodal',
+};
+
+const VEHICULE_TO_API: Record<string, string> = {
+  'Benne':         'benne',
+  'Plateau':       'plateau',
+  'Citerne':       'citerne',
+  'Fourgon':       'benne',
+  'Conteneur':     'plateau',
+  'Semi-remorque': 'plateau',
+  'Frigorifique':  'benne',
+};
+const API_TO_VEHICULE: Record<string, string> = {
+  benne:   'Benne',
+  plateau: 'Plateau',
+  citerne: 'Citerne',
+};
+
+function normalizeMode(raw: string | undefined): string {
+  if (!raw) return 'Terrestre';
+  return API_TO_MODE[raw.toLowerCase()] ?? raw;
+}
+
+function normalizeVehicule(raw: string | undefined): string {
+  if (!raw) return 'Benne';
+  const s = raw.toLowerCase();
+  if (API_TO_VEHICULE[s]) return API_TO_VEHICULE[s];
+  if (s.includes('citerne')) return 'Citerne';
+  if (s.includes('plateau')) return 'Plateau';
+  return 'Benne';
+}
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -47,6 +94,8 @@ interface OfferCreateViewProps {
   onViewRecent?: (offer: Offer) => void;
   onDuplicate?: (offer: Offer) => void;
   onOfferCreated?: (offerId: string) => void;
+  /** Mode édition : rappelé avec l'id après PATCH réussi */
+  onUpdated?: (offerId: string) => void;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -791,6 +840,7 @@ export function OfferCreateView({
   onViewRecent,
   onDuplicate,
   onOfferCreated,
+  onUpdated,
 }: OfferCreateViewProps) {
   const [showMobilePanel, setShowMobilePanel] = useState<"form" | "preview">(
     "form",
@@ -799,6 +849,7 @@ export function OfferCreateView({
 
   // Form state
   const [client, setClient] = useState(editingOffer?.client_name ?? "");
+  const [partnerId, setPartnerId] = useState<number | null>(editingOffer?.partner_id ?? null);
   const [companyName, setCompanyName] = useState(editingOffer?.company_name ?? "");
   const [origine, setOrigine] = useState(
     editingOffer?.route?.origin?.split(",")[0]?.trim() ?? "",
@@ -813,10 +864,8 @@ export function OfferCreateView({
     editingOffer?.quantity ?? 20,
   );
   const [unite, setUnite] = useState(editingOffer?.quantity_unit ?? "tonnes");
-  const [mode, setMode] = useState(editingOffer?.transport_mode ?? "Terrestre");
-  const [vehicule, setVehicule] = useState(
-    editingOffer?.vehicle_type ?? "Benne",
-  );
+  const [mode, setMode] = useState(normalizeMode(editingOffer?.transport_mode));
+  const [vehicule, setVehicule] = useState(normalizeVehicule(editingOffer?.vehicle_type));
   const [prixStr, setPrixStr] = useState(
     editingOffer?.unit_price ? String(editingOffer.unit_price) : "",
   );
@@ -831,6 +880,8 @@ export function OfferCreateView({
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState(!!editingOffer?.ai_generated);
   const [validating, setValidating] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
   const [savedOffer, setSavedOffer] = useState<Offer | null>(
     editingOffer ?? null,
   );
@@ -979,6 +1030,39 @@ export function OfferCreateView({
     }
   }
 
+  // PATCH /form — modifie les données de l'offre (IA ou manuelle)
+  async function handleUpdate() {
+    if (!savedOffer || updating) return;
+    setUpdating(true);
+    setUpdateError(null);
+    const res = await PatchData({
+      url: ApiRoutes.TRANSPORT_OFFERS_FORM(savedOffer.id),
+      data: {
+        client_name:          client,
+        ...(partnerId !== null ? { partner_id: partnerId } : {}),
+        product_description:  produit,
+        quantity:             quantite,
+        quantity_unit:        unite,
+        origin:               origine,
+        destination:          destination,
+        transport_mode:       MODE_TO_API[mode]         ?? mode.toLowerCase(),
+        vehicle_type:         VEHICULE_TO_API[vehicule] ?? vehicule.toLowerCase(),
+        ...(dateDepart ? { planned_date: dateDepart } : {}),
+        price_unit:           pu,
+        validity_days:        validiteJours,
+      },
+      protected: true,
+    });
+    setUpdating(false);
+    if (!res.ok) {
+      const msg = res.error ?? 'Erreur lors de la modification de l\'offre';
+      setUpdateError(msg);
+      setTimeout(() => setUpdateError(null), 5000);
+      return;
+    }
+    onUpdated?.(savedOffer.id);
+  }
+
   const offerRef = savedOffer?.name ?? "";
   const offerStatus = savedOffer ? computeOfferStatus(savedOffer) : null;
 
@@ -986,6 +1070,7 @@ export function OfferCreateView({
 
   return (
     <div className="p-4 sm:p-5 lg:p-7 lg:px-8 pb-16 min-h-full">
+      <FloatingToast message={updateError} type="error" />
       {/* ── Page header responsive ─────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5 min-h-[56px]">
         <div className="flex items-center gap-2 flex-wrap">
@@ -998,7 +1083,7 @@ export function OfferCreateView({
             <ArrowLeftIcon size={13} />
           </Button>
           <h1 className="text-lg sm:text-[22px] font-bold text-gray-900 tracking-tight leading-tight">
-            Nouvelle offre
+            {editingOffer ? 'Modifier l\'offre' : 'Nouvelle offre'}
           </h1>
           {offerRef && (
             <span className="text-lg sm:text-[22px] font-normal text-gray-400">
@@ -1115,33 +1200,16 @@ export function OfferCreateView({
             {/* Panel body */}
             <div className="p-4 sm:p-5 flex flex-col gap-3.5 overflow-y-auto max-h-[calc(100vh-300px)]">
               {/* Client */}
-              <FormField label="Client">
-                <div className="relative">
-                  <UserCircleIcon
-                    size={16}
-                    weight="fill"
-                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-                  />
-                  <input
-                    type="text"
-                    value={client}
-                    onChange={(e) => setClient(e.target.value)}
-                    placeholder="Nom ou société"
-                    className={`w-full h-10 border rounded-lg pl-8 pr-3 text-[13px] text-gray-900 outline-none ${
-                      client
-                        ? "border-emerald-300 bg-emerald-50"
-                        : "border-gray-200 bg-white"
-                    }`}
-                  />
-                </div>
-                <div className="flex items-center gap-1 text-[11px] text-gray-400 mt-1">
-                  <InfoIcon size={11} weight="fill" className="text-gray-400" />
-                  Client non lié à un partenaire Odoo
-                </div>
+              <FormField label="Entreprise / Client">
+                <CustomerSelect
+                  value={client}
+                  partnerId={partnerId}
+                  onChange={(name, pid) => { setClient(name); setPartnerId(pid); }}
+                />
               </FormField>
 
               {/* Entreprise */}
-              <FormField label="Entreprise">
+              {/* <FormField label="Entreprise">
                 <div className="relative">
                   <BuildingsIcon
                     size={16}
@@ -1160,7 +1228,7 @@ export function OfferCreateView({
                     }`}
                   />
                 </div>
-              </FormField>
+              </FormField> */}
 
               {/* Trajet */}
               <FormField label="Trajet">
@@ -1378,7 +1446,29 @@ export function OfferCreateView({
 
             {/* Panel footer */}
             <div className="p-4 sm:p-5 border-t border-gray-200 flex flex-col gap-2.5">
-              {generated && savedOffer ? (
+              {/* ── Mode édition directe (depuis la liste) ── */}
+              {editingOffer && savedOffer ? (
+                <>
+                  <div className="flex items-start gap-2 bg-[#EBF5FD] border border-[#7DBCEA] rounded-lg p-2.5">
+                    <CheckCircleIcon size={14} weight="fill" className="text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-[11px] text-blue-700 leading-relaxed">
+                      <strong>Mode édition</strong> — Modifiez les informations puis sauvegardez. Le document sera régénéré depuis la page détail.
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleUpdate}
+                    disabled={updating}
+                    className="w-full h-11 border-none rounded-lg bg-emerald-800 text-white text-sm font-bold inline-flex items-center justify-center gap-2 shadow-lg hover:bg-emerald-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {updating ? (
+                      <><ArrowsClockwiseIcon size={18} className="animate-spin" /> Sauvegarde en cours…</>
+                    ) : (
+                      <><CheckCircleIcon size={18} weight="fill" /> Sauvegarder les modifications</>
+                    )}
+                  </button>
+                </>
+              ) : generated && savedOffer ? (
+                /* ── Après génération IA : Valider + Modifier ── */
                 <>
                   <div className="flex items-start gap-2 bg-[#EBF5FD] border border-[#7DBCEA] rounded-lg p-2.5">
                     <CheckCircleIcon size={14} weight="fill" className="text-emerald-700 flex-shrink-0 mt-0.5" />
@@ -1388,7 +1478,7 @@ export function OfferCreateView({
                   </div>
                   <button
                     onClick={handleValidate}
-                    disabled={validating}
+                    disabled={validating || updating}
                     className="w-full h-11 border-none rounded-lg bg-emerald-800 text-white text-sm font-bold inline-flex items-center justify-center gap-2 shadow-lg hover:bg-emerald-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {validating ? (
@@ -1397,8 +1487,20 @@ export function OfferCreateView({
                       <><CheckCircleIcon size={18} weight="fill" /> Valider l&apos;offre</>
                     )}
                   </button>
+                  <button
+                    onClick={handleUpdate}
+                    disabled={updating || validating}
+                    className="w-full h-10 border border-gray-300 rounded-lg bg-white text-gray-700 text-sm font-semibold inline-flex items-center justify-center gap-2 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {updating ? (
+                      <><ArrowsClockwiseIcon size={16} className="animate-spin" /> Sauvegarde…</>
+                    ) : (
+                      <><PencilSimpleIcon size={15} /> Modifier l&apos;offre</>
+                    )}
+                  </button>
                 </>
               ) : (
+                /* ── Création initiale : Générer avec l'IA ── */
                 <>
                   <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-2.5 sm:p-3">
                     <LightbulbIcon
@@ -1419,16 +1521,12 @@ export function OfferCreateView({
                   >
                     {generating ? (
                       <>
-                        <ArrowsClockwiseIcon
-                          size={18}
-                          className="animate-spin"
-                        />{" "}
+                        <ArrowsClockwiseIcon size={18} className="animate-spin" />{" "}
                         Génération en cours…
                       </>
                     ) : (
                       <>
-                        <MagicWandIcon size={18} weight="fill" /> Générer avec
-                        l&apos;IA
+                        <MagicWandIcon size={18} weight="fill" /> Générer avec l&apos;IA
                       </>
                     )}
                   </button>
