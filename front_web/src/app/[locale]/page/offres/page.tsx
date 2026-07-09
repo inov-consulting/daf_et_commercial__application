@@ -42,7 +42,7 @@ export default function OffresPage() {
           onRefresh={loadOffers}
           onNew={() => router.push(`/${locale}/page/offres/nouveau`)}
           onView={(offer) => router.push(`/${locale}/page/offres/${offer.id}`)}
-          onEdit={() => {}}
+          onEdit={(offer) => router.push(`/${locale}/page/offres/nouveau?edit=${offer.id}`)}
           onDuplicate={() => {}}
           onSend={() => {}}
           onDelete={handleCancel}
