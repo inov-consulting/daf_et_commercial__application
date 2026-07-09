@@ -347,7 +347,7 @@ export function ProspectNotesSection({ prospectId }: ProspectNotesSectionProps) 
 
                   <p className="text-[12px] text-[var(--tx-3)] leading-relaxed mb-4">
                     Cette action est <span className="font-semibold text-[var(--tx-2)]">irréversible</span>. La note sera définitivement supprimée.
-                  </p>
+                  </p> 
 
                   {deleteNoteError && (
                     <div className="flex items-start gap-2 p-3 mb-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
