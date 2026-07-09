@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { PostData, GetData } from '@/lib/ApiService';
-import { type ProspectNote, type ProspectCR, type GenerateCRBody } from '@/types/prospect_note_type';
+import { type ProspectNote, type ProspectCR, type GenerateCRBody, type CRPendingResponse } from '@/types/prospect_note_type';
 import { ApiRoutes } from '@/lib/ApiRoutes';
 import {
   MicrophoneIcon, SquareIcon, ArrowLeftIcon, CheckIcon, XIcon,
@@ -36,9 +36,9 @@ const DRAFT_FIELDS: { label: string; confidence: 'high' | 'low' }[] = [
   { label: 'Prochaine étape',  confidence: 'low'  },
 ];
 
-/* ─── Markdown renderer (subset: bold, bullets, numbered headings) ── */
+/* ─── Markdown renderer ─────────────────────────────────────────── */
 function renderMarkdown(text: string): React.ReactNode[] {
-  const lines = text.split('\n');
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
   const nodes: React.ReactNode[] = [];
   let bulletBuffer: string[] = [];
   let key = 0;
@@ -47,18 +47,20 @@ function renderMarkdown(text: string): React.ReactNode[] {
     const parts = line.split(/(\*\*[^*]+\*\*)/g);
     return parts.map((p, i) =>
       p.startsWith('**') && p.endsWith('**')
-        ? <strong key={i}>{p.slice(2, -2)}</strong>
-        : p
+        ? <strong key={i} className="font-semibold text-[var(--tx-1)]">{p.slice(2, -2)}</strong>
+        : (p || null)
     );
   }
 
   function flushBullets() {
     if (!bulletBuffer.length) return;
     nodes.push(
-      <ul key={key++} className="list-disc pl-5 space-y-0.5 mb-2">
+      <ul key={key++} className="space-y-1 mb-2 pl-1">
         {bulletBuffer.map((b, i) => (
-          <li key={i} className="text-[12px] leading-relaxed text-[var(--tx-2)]">
-            {inlineBold(b)}
+          <li key={i} className="flex items-start gap-2 text-[12px] leading-relaxed text-[var(--tx-2)]">
+            <span className="w-[5px] h-[5px] rounded-full flex-shrink-0 mt-[5px]"
+              style={{ background: 'rgba(107,53,201,0.4)' }} />
+            <span>{inlineBold(b)}</span>
           </li>
         ))}
       </ul>
@@ -68,24 +70,44 @@ function renderMarkdown(text: string): React.ReactNode[] {
 
   for (const raw of lines) {
     const line = raw.replace(/\\$/, '').trimEnd();
+    const trimmed = line.trim();
 
-    if (line.startsWith('* ')) {
+    // Bullet: * ou -
+    if (/^[*-] /.test(line)) {
       bulletBuffer.push(line.slice(2));
       continue;
     }
 
     flushBullets();
 
-    if (!line.trim()) {
-      nodes.push(<div key={key++} className="h-2" />);
+    if (!trimmed) {
+      nodes.push(<div key={key++} className="h-1.5" />);
       continue;
     }
 
-    // Full-line bold = heading
-    if (/^\*\*[^*]+\*\*$/.test(line.trim())) {
-      const content = line.trim().slice(2, -2);
+    // Heading ## ou #
+    if (trimmed.startsWith('## ')) {
       nodes.push(
-        <p key={key++} className="text-[12px] font-semibold text-[var(--tx-1)] mt-3 mb-0.5">
+        <p key={key++} className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-3)] mt-4 mb-1.5 pb-1 border-b border-[var(--bd-def)] font-mono">
+          {trimmed.slice(3)}
+        </p>
+      );
+      continue;
+    }
+    if (trimmed.startsWith('# ')) {
+      nodes.push(
+        <p key={key++} className="text-[13px] font-bold text-[var(--tx-1)] mt-4 mb-1.5">
+          {trimmed.slice(2)}
+        </p>
+      );
+      continue;
+    }
+
+    // Ligne entièrement en gras → section (ex: **INFORMATIONS GÉNÉRALES**)
+    if (/^\*\*[^*]+\*\*\s*$/.test(trimmed)) {
+      const content = trimmed.replace(/^\*\*|\*\*\s*$/g, '');
+      nodes.push(
+        <p key={key++} className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-3)] mt-4 mb-1.5 pb-1 border-b border-[var(--bd-def)] font-mono">
           {content}
         </p>
       );
@@ -223,6 +245,7 @@ export default function NouveauCRPage() {
     procTimeouts.current = [];
   }
 
+
   /* ── Recording ──────────────────────────────────────────────── */
   async function startRecording() {
     setTranscriptionError(null);
@@ -314,43 +337,37 @@ export default function NouveauCRPage() {
   /* ── Génération CR depuis l'état draft ──────────────────────── */
   const startProcessing = useCallback(async () => {
     setGenError(null);
+    clearProcTimeouts();
+    setState('processing');
 
-    const launchAnimation = () => {
-      clearProcTimeouts();
-      setProcSteps(['pending', 'pending', 'pending']);
-      setProcPct(0);
-      setProcEta('');
-      setState('processing');
-
-      const add = (ms: number, fn: () => void) => {
-        const t = setTimeout(fn, ms);
-        procTimeouts.current.push(t);
-      };
-      add(100,  () => { setProcSteps(['active', 'pending', 'pending']); setProcPct(5);  setProcEta('~8s restantes'); });
-      add(2000, () => { setProcSteps(['done',   'active', 'pending']); setProcPct(45); setProcEta('~5s restantes'); });
-      add(5000, () => { setProcSteps(['done',   'done',   'active']); setProcPct(75); setProcEta('~2s restantes'); });
-      add(7400, () => { setProcSteps(['done',   'done',   'done']);   setProcPct(100); setProcEta('Terminé'); });
-      add(7700, () => setState('validated'));
+    const add = (ms: number, fn: () => void) => {
+      const t = setTimeout(fn, ms);
+      procTimeouts.current.push(t);
     };
 
-    if (!crContext?.id || !savedNoteId) {
-      launchAnimation();
-      return;
+    /* Lance la génération si contexte disponible (202 immédiat, traitement en arrière-plan) */
+    if (crContext?.id && savedNoteId) {
+      const crRes = await PostData<CRPendingResponse, GenerateCRBody>({
+        url: ApiRoutes.PROSPECT_CRS(crContext.id),
+        data: { note_ids: [savedNoteId], template: 'standard' },
+        protected: true,
+      });
+
+      if (!crRes.ok) {
+        setGenError(crRes.error ?? 'Erreur lors du lancement de la génération');
+        setState('draft');
+        return;
+      }
     }
 
-    launchAnimation();
-
-    const crRes = await PostData<ProspectCR, GenerateCRBody>({
-      url: ApiRoutes.PROSPECT_CRS(crContext.id),
-      data: { note_ids: [savedNoteId], template: 'standard' },
-      protected: true,
-    });
-
-    if (crRes.ok && crRes.data) {
-      setGeneratedCR(crRes.data);
-    } else {
-      setGenError(crRes.error ?? 'Erreur lors de la génération du CR');
-    }
+    /* Animation locale indépendante du serveur (génération en arrière-plan) */
+    setProcSteps(['pending', 'pending', 'pending']);
+    setProcPct(0);
+    add(100,  () => { setProcSteps(['active', 'pending', 'pending']); setProcPct(10);  setProcEta('Lancement…'); });
+    add(1500, () => { setProcSteps(['done',   'active',  'pending']); setProcPct(50);  setProcEta('Traitement en cours…'); });
+    add(4000, () => { setProcSteps(['done',   'done',    'active']);  setProcPct(80);  setProcEta('Finalisation…'); });
+    add(6000, () => { setProcSteps(['done',   'done',    'done']);    setProcPct(100); setProcEta('Lancé'); });
+    add(6400, () => setState('validated'));
   }, [crContext, savedNoteId]);
 
   /* ── Sync crContext → draftValues (Société / Contact) ───────── */
@@ -375,9 +392,9 @@ export default function NouveauCRPage() {
 
   /* ── State-machine steps labels ──────────────────────────────── */
   const STEP_LABELS = [
-    { pending: 'Enregistrement reçu…', active: 'Réception en cours…', done: 'Enregistrement reçu' },
-    { pending: 'Transcription',        active: 'Transcription en cours…', done: 'Transcription complète' },
-    { pending: 'Structuration CR',     active: 'Structuration CR…',    done: 'Structuration terminée' },
+    { pending: 'Réception',             active: 'Réception en cours…',         done: 'Note reçue' },
+    { pending: 'Analyse & structuration', active: 'Analyse & structuration…',  done: 'Structuration terminée' },
+    { pending: 'Rédaction du CR',       active: 'Rédaction en cours…',         done: 'CR rédigé' },
   ];
 
   const dateStr = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -930,16 +947,23 @@ export default function NouveauCRPage() {
                     style={{ background: 'rgba(16,185,129,0.1)', border: '3px solid #10B981' }}>
                     <CheckIcon size={30} style={{ color: '#10B981' }} weight="bold" />
                   </div>
-                  <h2 className="text-[18px] font-bold text-[var(--tx-1)] font-display mb-2">CR validé et envoyé</h2>
-                  <p className="text-[13px] text-[var(--tx-3)] leading-relaxed mb-4">
+                  <h2 className="text-[18px] font-bold text-[var(--tx-1)] font-display mb-2">CR généré avec succès</h2>
+                  <p className="text-[13px] text-[var(--tx-3)] leading-relaxed mb-3">
                     {crContext?.label ?? 'Sans contexte'}{crContext?.sublabel ? ` · ${crContext.sublabel}` : ''}<br />
                     CR généré par IA{crContext?.id ? ` · lié au prospect #${crContext.id.slice(0, 8)}` : ' · archivé dans PortaLis'}
                   </p>
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[12px] font-semibold mb-6"
+                  <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] font-semibold mb-3"
                     style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10B981', color: '#065F46' }}>
                     <CheckCircleIcon size={13} />
-                    Validé · Vous · 14h32
+                    Généré · en arrière-plan
                   </div>
+                  {crContext?.id && (
+                    <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] font-semibold mb-6 ml-2"
+                      style={{ background: 'rgba(14,134,232,0.08)', border: '1px solid rgba(14,134,232,0.25)', color: '#0E86E8' }}>
+                      <InfoIcon size={13} />
+                      Email envoyé automatiquement
+                    </div>
+                  )}
 
                   {/* Paradigm box */}
                   <div className="bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-xl p-4 text-left mb-6">
@@ -951,7 +975,7 @@ export default function NouveauCRPage() {
                   </div>
 
                   {/* Export */}
-                  <div className="border-t border-[var(--bd-def)] pt-5 mb-5 text-left">
+                  {/* <div className="border-t border-[var(--bd-def)] pt-5 mb-5 text-left">
                     <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-3)] font-mono mb-3">Exporter le CR</div>
                     {genError && (
                       <p className="text-[11px] text-red-500 mb-2">{genError}</p>
@@ -1007,16 +1031,26 @@ export default function NouveauCRPage() {
                       <FolderSimpleIcon size={14} />
                       Enregistrer dans un dossier PortaLis
                     </Button>
-                  </div>
+                  </div> */}
 
-                  <Button
-                    variant="ghost"
-                    size="md"
-                    onClick={() => { setState('idle'); setTimerSec(0); setTranscriptText(''); setGeneratedCR(null); setGenError(null); }}
-                    className="w-full"
-                  >
-                    <MicrophoneIcon size={14} /> Nouveau CR
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="md"
+                      onClick={() => router.back()}
+                      className="flex-1"
+                    >
+                      <ArrowLeftIcon size={14} /> Retour
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="md"
+                      onClick={() => { setState('idle'); setTimerSec(0); setTranscriptText(''); setGeneratedCR(null); setGenError(null); }}
+                      className="flex-1"
+                    >
+                      <MicrophoneIcon size={14} /> Nouveau CR
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
@@ -1074,7 +1108,14 @@ export default function NouveauCRPage() {
 
           {/* ── Right panel ──────────────────────────────────── */}
           <div className="sticky top-6 w-[260px] flex-shrink-0 hidden lg:block">
-            <RightPanel state={state} wordCount={wordCount} />
+            <RightPanel
+              state={state}
+              wordCount={wordCount}
+              crContext={crContext}
+              generatedCR={generatedCR}
+              nextStep={draftValues['Prochaine étape'] || undefined}
+              actions={draftValues['Actions'] || undefined}
+            />
           </div>
         </div>
       </div>
