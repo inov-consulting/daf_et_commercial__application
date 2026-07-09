@@ -845,6 +845,7 @@ async def _run_cr_generation_task(
             cr_id=cr_id,
             prospect_name=prospect_name,
             download_url=download_url,
+            cr_version=cr.version,
         )
         await notify_compte_rendu_generated(
             cr_id=cr_id,
