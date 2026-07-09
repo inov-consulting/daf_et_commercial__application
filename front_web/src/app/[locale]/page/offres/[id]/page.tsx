@@ -84,7 +84,7 @@ export default function OfferDetailPage() {
       detail={hasDetail ? detail : null}
       loading={isLoading}
       onBack={backToList}
-      onEdit={() => {}}
+      onEdit={(o) => router.push(`/${locale}/page/offres/nouveau?edit=${o.id}`)}
       onDuplicate={() => {}}
       onSend={() => {}}
       onRegenerate={() => { dispatch(fetchOfferDetail(id)); }}

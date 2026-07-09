@@ -108,15 +108,16 @@ export function OfferRowPopup({
             </button>
           )}
           
-          {/* Modifier (désactivé) */}
-          <button 
-            className={`${menuItemClass} opacity-40 cursor-not-allowed`} 
-            disabled 
-            title="Non disponible dans le flux IA"
-          >
-            <PencilSimpleIcon size={14} className="text-gray-500 w-3.5" />
-            Modifier
-          </button>
+          {/* Modifier — uniquement pour les offres générées */}
+          {offer.state === 'genere' && (
+            <button
+              className={menuItemClass}
+              onClick={() => { setIsOpen(false); onEdit(offer); }}
+            >
+              <PencilSimpleIcon size={14} className="text-gray-500 w-3.5" />
+              Modifier
+            </button>
+          )}
           
           {/* Dupliquer (désactivé) */}
           <button 

@@ -282,7 +282,7 @@ export interface RowPopupProps {
   offer: Offer;
   status: OfferStatus;
   onView: () => void;
-  onEdit: () => void;
+  onEdit: (offer: Offer) => void;
   onDuplicate: () => void;
   onSend: () => void;
   onDelete: () => void;
