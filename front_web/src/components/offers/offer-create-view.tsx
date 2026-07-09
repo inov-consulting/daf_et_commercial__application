@@ -1564,13 +1564,6 @@ export function OfferCreateView({
                   {fullscreen ? "Réduire" : "Plein écran"}
                 </span>
               </button>
-              <button
-                onClick={() => savedOffer && onSend?.(savedOffer)}
-                className="h-[34px] px-3.5 bg-emerald-800 text-white text-[11px] font-semibold rounded-md inline-flex items-center gap-1.5 shadow-sm hover:bg-emerald-900 transition-colors"
-              >
-                <PaperPlaneTiltIcon size={12} weight="fill" />
-                <span className="hidden sm:inline">Envoyer</span>
-              </button>
             </div>
           </div>
 
