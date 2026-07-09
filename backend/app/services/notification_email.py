@@ -254,6 +254,7 @@ async def notify_author_cr_ready(
     cr_id: UUID,
     prospect_name: str | None,
     download_url: str | None,
+    cr_version: int | None = None,
 ) -> None:
     """Notifie l'auteur par email que son compte-rendu est prêt (génération terminée).
 
@@ -277,12 +278,14 @@ async def notify_author_cr_ready(
             return
 
         label = prospect_name or f"Compte rendu {cr_id}"
-        subject = f"[PortaLis] Votre compte rendu est prêt : {label}"
+        version_label = f"v{cr_version}" if cr_version else str(cr_id)
+        subject = f"[PortaLis] Votre compte rendu est prêt : {label} ({version_label})"
         html_body = _base_template(
             recipient_name=first_name,
             intro="Votre compte rendu a été généré avec succès et est maintenant disponible au téléchargement.",
             rows=[
                 ("Prospection", label),
+                ("Version", version_label),
                 ("Référence", str(cr_id)),
             ],
             cta_label="Télécharger le compte rendu" if download_url else None,
