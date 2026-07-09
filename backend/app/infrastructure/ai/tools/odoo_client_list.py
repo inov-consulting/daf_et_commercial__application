@@ -3,56 +3,60 @@
 from typing import Any
 
 
-async def list_odoo_clients(search: str = "") -> list[dict[str, Any]]:
-    """Liste les clients (partenaires) depuis Odoo ERP.
-
-    Cet outil permet à l'agent IA de rechercher et lister les clients existants
-    dans Odoo pour aider l'utilisateur à sélectionner le bon client lors de la
-    création d'une offre de transport.
+async def list_odoo_clients(search: str = "", limit: int | None = None) -> list[dict[str, Any]]:
+    """Liste les clients (partenaires entreprises) actifs depuis Odoo ERP.
 
     Args:
-        search: Terme de recherche optionnel pour filtrer par nom de client.
-                Si vide, retourne tous les clients actifs.
+        search: Terme de recherche pour filtrer par nom (ilike). Vide = tous.
+        limit: Nombre maximum de résultats. Si None, retourne TOUS les clients
+               (pagination automatique via fetch_all). Sinon, tronque à cette valeur.
 
     Returns:
-        Liste des clients avec leurs informations principales (id, name, email, phone).
+        Liste de dicts {id, name, email, phone, address}.
+        Retourne [] en cas d'erreur.
     """
-    from app.infrastructure.odoo.client import OdooClient
     import asyncio
+    import logging
+
+    from app.infrastructure.odoo.client import OdooClient
+
+    logger = logging.getLogger(__name__)
 
     try:
         client = OdooClient()
-        
-        # Domain : is_company=True pour les entreprises, active=True pour les actifs
-        domain = [["is_company", "=", True], ["active", "=", True]]
-        
+
+        domain: list = [("is_company", "=", True), ("active", "=", True)]
         if search:
-            domain.append(["name", "ilike", search])
-        
-        # Champs à récupérer
-        fields = ["id", "name", "email", "phone", "street", "city", "country_id"]
-        
-        partners = await asyncio.to_thread(
-            client.execute,
-            "res.partner",
-            "search_read",
-            [domain],
-            {"fields": fields, "limit": 50, "order": "name asc"},
-        )
-        
-        # Formater pour l'affichage
-        formatted = []
-        for p in partners:
-            formatted.append({
-                "id": p.get("id"),
-                "name": p.get("name"),
-                "email": p.get("email"),
-                "phone": p.get("phone"),
-                "address": f"{p.get('street', '')}, {p.get('city', '')}".strip(", "),
+            domain.append(("name", "ilike", search))
+
+        fields = ["id", "name", "email", "phone", "street", "city"]
+
+        if limit is None:
+            partners = await asyncio.to_thread(client.fetch_all, "res.partner", domain, fields)
+        else:
+            partners = await asyncio.to_thread(
+                client.execute,
+                "res.partner",
+                "search_read",
+                [domain],
+                {"fields": fields, "limit": limit, "order": "name asc"},
+            )
+
+        result = []
+        for p in sorted(partners, key=lambda x: x.get("name", "").lower()):
+            city = p.get("city") or ""
+            street = p.get("street") or ""
+            address = ", ".join(part for part in [street, city] if part) or None
+            result.append({
+                "id": p["id"],
+                "name": p.get("name", ""),
+                "email": p.get("email") or None,
+                "phone": p.get("phone") or None,
+                "address": address,
             })
-        
-        return formatted
-        
-    except Exception as exc:
-        # En cas d'erreur, retourner une liste vide avec message d'erreur
-        return [{"error": f"Erreur lors de la récupération des clients Odoo: {str(exc)}"}]
+
+        return result
+
+    except Exception:
+        logger.exception("odoo.list_clients.failed search=%s limit=%s", search, limit)
+        return []

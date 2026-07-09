@@ -95,3 +95,46 @@ class TransportOfferRepository:
     async def list(self, user_id: UUID, limit: int = 20) -> list[TransportOffer]:
         rows = await TransportOfferOrm.filter().order_by("-created_at").limit(limit)
         return [_to_domain(r) for r in rows]
+
+    async def create_manual(
+        self, collected_data: dict, user_id: UUID | None = None
+    ) -> TransportOffer:
+        """Crée une offre directement depuis un formulaire (sans passage par l'IA).
+
+        Le statut est `completed` car toutes les données sont fournies d'emblée.
+        """
+        orm = await TransportOfferOrm.create(
+            id=uuid4(),
+            session_id=uuid4(),
+            user_id=user_id,
+            status="completed",
+            collected_data=collected_data,
+        )
+        return _to_domain(orm)
+
+    async def update_form(
+        self, offer_id: UUID, collected_data_patch: dict
+    ) -> TransportOffer | None:
+        """Met à jour les données collectées d'une offre existante (formulaire).
+
+        - Fusionne les champs fournis avec les données existantes (PATCH partiel).
+        - Si l'offre avait déjà un document généré, le statut repasse à `completed`
+          pour signaler que le document doit être regénéré.
+        - Les offres `confirmed` ou `cancelled` ne sont pas modifiables.
+        """
+        orm = await TransportOfferOrm.get_or_none(id=offer_id)
+        if orm is None:
+            return None
+        if orm.status in ("confirmed", "cancelled"):
+            return None
+
+        merged = {**(orm.collected_data or {}), **collected_data_patch}
+        orm.collected_data = merged
+
+        if orm.status in ("generated", "validated"):
+            orm.document_markdown = None
+            orm.document_generated_at = None
+            orm.status = "completed"
+
+        await orm.save()
+        return _to_domain(orm)
