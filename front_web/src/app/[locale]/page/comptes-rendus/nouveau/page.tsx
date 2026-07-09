@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { PostData, GetData } from '@/lib/ApiService';
-import { type ProspectNote, type ProspectCR, type GenerateCRBody, type CRPendingResponse } from '@/types/prospect_note_type';
+import { type ProspectNote, type ProspectCR, type GenerateCRBody, type CRPendingResponse, type CRStatusResponse } from '@/types/prospect_note_type';
 import { ApiRoutes } from '@/lib/ApiRoutes';
 import {
   MicrophoneIcon, SquareIcon, ArrowLeftIcon, CheckIcon, XIcon,
@@ -173,6 +173,7 @@ export default function NouveauCRPage() {
   const [procPct, setProcPct]     = useState(0);
   const [procEta, setProcEta]     = useState('');
   const procTimeouts = useRef<NodeJS.Timeout[]>([]);
+  const pollingRef   = useRef<NodeJS.Timeout | null>(null);
 
   /* Draft */
   const [draftValues, setDraftValues] = useState<Record<string, string>>(() => {
@@ -193,7 +194,7 @@ export default function NouveauCRPage() {
   /* CR generation */
   const [generatedCR, setGeneratedCR]     = useState<ProspectCR | null>(null);
   const [preparing, setPreparing]         = useState(false);
-  const [generating, setGenerating]       = useState<'pdf' | 'word' | null>(null);
+  const [generating, setGenerating]       = useState(false);
   const [genError, setGenError]           = useState<string | null>(null);
 
   /* UI */
@@ -219,13 +220,12 @@ export default function NouveauCRPage() {
     toastTimer.current = setTimeout(() => setToast(null), 3000);
   }
 
-  async function downloadGeneratedCR(format: 'pdf' | 'word') {
+  async function downloadGeneratedCR() {
     if (!generatedCR || !crContext?.id) return;
-    setGenerating(format);
-    const directUrl = generatedCR.download_url;
-    if (directUrl) {
-      window.open(directUrl, '_blank');
-      setGenerating(null);
+    setGenerating(true);
+    if (generatedCR.download_url) {
+      window.open(generatedCR.download_url, '_blank');
+      setGenerating(false);
       return;
     }
     const res = await GetData<{ url?: string }>({
@@ -237,12 +237,19 @@ export default function NouveauCRPage() {
     } else {
       setGenError(res.error ?? 'Erreur lors du téléchargement du CR');
     }
-    setGenerating(null);
+    setGenerating(false);
   }
 
   function clearProcTimeouts() {
     procTimeouts.current.forEach(clearTimeout);
     procTimeouts.current = [];
+  }
+
+  function stopPolling() {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
   }
 
 
@@ -338,36 +345,98 @@ export default function NouveauCRPage() {
   const startProcessing = useCallback(async () => {
     setGenError(null);
     clearProcTimeouts();
+    stopPolling();
     setState('processing');
+    setProcSteps(['pending', 'pending', 'pending']);
+    setProcPct(0);
+    setProcEta('');
 
-    const add = (ms: number, fn: () => void) => {
-      const t = setTimeout(fn, ms);
-      procTimeouts.current.push(t);
-    };
+    /* Cas sans contexte : animation locale seulement */
+    if (!crContext?.id || !savedNoteId) {
+      setProcSteps(['active', 'pending', 'pending']); setProcPct(10); setProcEta('Lancement…');
+      const t1 = setTimeout(() => { setProcSteps(['done', 'active', 'pending']); setProcPct(50); setProcEta('Traitement en cours…'); }, 1500);
+      const t2 = setTimeout(() => { setProcSteps(['done', 'done', 'active']); setProcPct(80); setProcEta('Finalisation…'); }, 4000);
+      const t3 = setTimeout(() => { setProcSteps(['done', 'done', 'done']); setProcPct(100); setProcEta('Terminé'); }, 6000);
+      const t4 = setTimeout(() => setState('validated'), 6400);
+      procTimeouts.current.push(t1, t2, t3, t4);
+      return;
+    }
 
-    /* Lance la génération si contexte disponible (202 immédiat, traitement en arrière-plan) */
-    if (crContext?.id && savedNoteId) {
-      const crRes = await PostData<CRPendingResponse, GenerateCRBody>({
-        url: ApiRoutes.PROSPECT_CRS(crContext.id),
-        data: { note_ids: [savedNoteId], template: 'standard' },
+    /* Lance la génération (202 immédiat) */
+    const crRes = await PostData<CRPendingResponse, GenerateCRBody>({
+      url: ApiRoutes.PROSPECT_CRS(crContext.id),
+      data: { note_ids: [savedNoteId], template: 'standard' },
+      protected: true,
+    });
+
+    if (!crRes.ok) {
+      setGenError(crRes.error ?? 'Erreur lors du lancement de la génération');
+      setState('draft');
+      return;
+    }
+
+    const crId      = crRes.data!.id;
+    const parentId  = crContext.id;
+
+    /* Animation initiale : étape 1 active */
+    setProcSteps(['active', 'pending', 'pending']);
+    setProcPct(10);
+    setProcEta('En attente de démarrage…');
+
+    let runningPolls = 0;
+
+    /* Polling toutes les 3 secondes */
+    pollingRef.current = setInterval(async () => {
+      const statusRes = await GetData<CRStatusResponse>({
+        url: ApiRoutes.PROSPECT_CR_STATUS(parentId, crId),
         protected: true,
       });
 
-      if (!crRes.ok) {
-        setGenError(crRes.error ?? 'Erreur lors du lancement de la génération');
-        setState('draft');
-        return;
-      }
-    }
+      if (!statusRes.ok || !statusRes.data) return; // erreur transitoire, on continue
 
-    /* Animation locale indépendante du serveur (génération en arrière-plan) */
-    setProcSteps(['pending', 'pending', 'pending']);
-    setProcPct(0);
-    add(100,  () => { setProcSteps(['active', 'pending', 'pending']); setProcPct(10);  setProcEta('Lancement…'); });
-    add(1500, () => { setProcSteps(['done',   'active',  'pending']); setProcPct(50);  setProcEta('Traitement en cours…'); });
-    add(4000, () => { setProcSteps(['done',   'done',    'active']);  setProcPct(80);  setProcEta('Finalisation…'); });
-    add(6000, () => { setProcSteps(['done',   'done',    'done']);    setProcPct(100); setProcEta('Lancé'); });
-    add(6400, () => setState('validated'));
+      const { generation_status, generation_error } = statusRes.data;
+
+      if (generation_status === 'pending') {
+        setProcSteps(['active', 'pending', 'pending']);
+        setProcPct(20);
+        setProcEta('En attente de démarrage…');
+      } else if (generation_status === 'running') {
+        runningPolls++;
+        if (runningPolls <= 2) {
+          setProcSteps(['done', 'active', 'pending']);
+          setProcPct(50);
+          setProcEta('Analyse & structuration en cours…');
+        } else {
+          setProcSteps(['done', 'done', 'active']);
+          setProcPct(80);
+          setProcEta('Rédaction du CR en cours…');
+        }
+      } else if (generation_status === 'done') {
+        stopPolling();
+        setProcSteps(['done', 'done', 'done']);
+        setProcPct(100);
+        setProcEta('Terminé');
+        setGeneratedCR({
+          id:           statusRes.data.id,
+          parent_type:  statusRes.data.parent_type,
+          parent_id:    statusRes.data.parent_id,
+          version:      statusRes.data.version,
+          status:       statusRes.data.status,
+          file_size:    statusRes.data.file_size,
+          download_url: statusRes.data.download_url,
+          generated_by: statusRes.data.generated_by,
+          note_ids:     statusRes.data.note_ids,
+          created_at:   statusRes.data.created_at,
+          created_by:   statusRes.data.created_by,
+        });
+        setTimeout(() => setState('validated'), 400);
+      } else if (generation_status === 'failed') {
+        stopPolling();
+        setGenError(generation_error ?? 'La génération a échoué');
+        setState('draft');
+      }
+    }, 3000);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [crContext, savedNoteId]);
 
   /* ── Sync crContext → draftValues (Société / Contact) ───────── */
@@ -388,6 +457,7 @@ export default function NouveauCRPage() {
       mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
     }
     clearProcTimeouts();
+    stopPolling();
   }, []);
 
   /* ── State-machine steps labels ──────────────────────────────── */
@@ -926,14 +996,14 @@ export default function NouveauCRPage() {
                       : <><SparkleIcon size={16} /> Générer le compte rendu</>
                     }
                   </Button>
-                  <div className="flex gap-2">
+                  {/* <div className="flex gap-2">
                     <Button variant="ghost" size="md" onClick={() => setState('transcript')} className="flex-1">
                       <PencilSimpleIcon size={12} /> Modifier la transcription
                     </Button>
                     <Button variant="danger-ghost" size="md" onClick={() => setState('error')} className="flex-1">
                       <XIcon size={12} /> Rejeter
                     </Button>
-                  </div>
+                  </div> */}
                 </div>
               </div>
             )}
@@ -967,7 +1037,7 @@ export default function NouveauCRPage() {
 
                   {/* Paradigm box */}
                   <div className="bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-xl p-4 text-left mb-6">
-                    <div className="text-[12px] font-bold text-[var(--tx-1)] mb-2">Résumé de l&apos;action — Paradigme 70 / 30</div>
+                    <div className="text-[12px] font-bold text-[var(--tx-1)] mb-2">Résumé de l&apos;action - Paradigme 70 / 30</div>
                     <div className="text-[12px] text-[var(--tx-3)] leading-relaxed">
                       IA (70 %) : transcription + structuration + rédaction des 6 champs<br />
                       Vous (30 %) : relecture · correction champ « Points discutés » · envoi
@@ -975,7 +1045,7 @@ export default function NouveauCRPage() {
                   </div>
 
                   {/* Export */}
-                  {/* <div className="border-t border-[var(--bd-def)] pt-5 mb-5 text-left">
+                  <div className="border-t border-[var(--bd-def)] pt-5 mb-5 text-left">
                     <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-3)] font-mono mb-3">Exporter le CR</div>
                     {genError && (
                       <p className="text-[11px] text-red-500 mb-2">{genError}</p>
@@ -988,33 +1058,18 @@ export default function NouveauCRPage() {
                         {generatedCR.file_size ? `${(generatedCR.file_size / 1024).toFixed(1)} Ko` : '–'}
                       </div>
                     )}
-                    <div className="grid grid-cols-2 gap-2 mb-2">
-                      {[
-                        { fmt: 'pdf' as const, label: 'Télécharger PDF', sub: 'Format A4 · impression' },
-                        { fmt: 'word' as const, label: 'Télécharger Word', sub: '.doc · éditable' },
-                      ].map(btn => {
-                        const isLoading = generating === btn.fmt;
-                        const disabled  = !!generating || !generatedCR;
-                        return (
-                          <Button
-                            key={btn.fmt}
-                            variant="ghost"
-                            disabled={disabled}
-                            onClick={() => downloadGeneratedCR(btn.fmt)}
-                            className="flex-col !h-[60px] gap-1 w-full hover:!border-primary-500 hover:!bg-[rgba(14,134,232,0.04)]"
-                          >
-                            {isLoading
-                              ? <CircleNotchIcon size={18} className="animate-spin text-primary-500" />
-                              : <DownloadSimpleIcon size={18} className="text-primary-500" />
-                            }
-                            <span className="text-[12px] font-semibold text-[var(--tx-1)]">
-                              {isLoading ? 'Téléchargement…' : btn.label}
-                            </span>
-                            <span className="text-[10px] text-[var(--tx-3)]">{btn.sub}</span>
-                          </Button>
-                        );
-                      })}
-                    </div>
+                    <Button
+                      variant="ghost"
+                      disabled={generating || !generatedCR}
+                      onClick={() => downloadGeneratedCR()}
+                      className="w-full gap-2 mb-2 hover:!border-primary-500 hover:!bg-[rgba(14,134,232,0.04)]"
+                    >
+                      {generating
+                        ? <CircleNotchIcon size={14} className="animate-spin text-primary-500" />
+                        : <DownloadSimpleIcon size={14} className="text-primary-500" />
+                      }
+                      {generating ? 'Téléchargement…' : 'Télécharger le CR'}
+                    </Button>
                     {!generatedCR && (
                       <p className="text-[11px] text-[var(--tx-3)] text-center mb-2">
                         {crContext?.id
@@ -1022,7 +1077,7 @@ export default function NouveauCRPage() {
                           : 'Associez un prospect pour activer le téléchargement'}
                       </p>
                     )}
-                    <Button
+                    {/* <Button
                       variant="dashed"
                       size="md"
                       onClick={() => setFolderModal(true)}
@@ -1030,8 +1085,8 @@ export default function NouveauCRPage() {
                     >
                       <FolderSimpleIcon size={14} />
                       Enregistrer dans un dossier PortaLis
-                    </Button>
-                  </div> */}
+                    </Button> */}
+                  </div>
 
                   <div className="flex gap-2">
                     <Button
