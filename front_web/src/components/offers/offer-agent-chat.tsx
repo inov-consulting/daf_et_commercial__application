@@ -511,7 +511,7 @@ export function OfferAgentChat({ onOfferGenerated, onCancel }: OfferAgentChatPro
             Démarrer la conversation
           </button>
 
-          <button
+          {/* <button
             onClick={onCancel}
             style={{
               width: '100%', maxWidth: 280, height: 36,
@@ -528,7 +528,7 @@ export function OfferAgentChat({ onOfferGenerated, onCancel }: OfferAgentChatPro
               <line x1="8" y1="16" x2="12" y2="16"/>
             </svg>
             Saisir manuellement
-          </button>
+          </button> */}
         </div>
       )}
 

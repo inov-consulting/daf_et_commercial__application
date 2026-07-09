@@ -75,10 +75,13 @@ export const ApiRoutes = {
   TRANSPORT_OFFERS_VALIDATE: (id: string) => `${BASE}/api/v1/transport/offers/${id}/validate`,
   TRANSPORT_OFFERS_CONFIRM:  (id: string) => `${BASE}/api/v1/transport/offers/${id}/confirm`,
   TRANSPORT_OFFERS_CANCEL:   (id: string) => `${BASE}/api/v1/transport/offers/${id}/cancel`,
+  TRANSPORT_OFFERS_FORM:      (id: string) => `${BASE}/api/v1/transport/offers/${id}/form`,
+  TRANSPORT_OFFERS_CUSTOMERS: `${BASE}/api/v1/transport/offers/customers`,
 
   // ── Comptes-rendus (global) ──────────────────────────────────────────
-  COMPTE_RENDUS:       `${BASE}/api/v1/compte-rendus`,
-  COMPTE_RENDU_DETAIL: (id: string) => `${BASE}/api/v1/compte-rendus/${id}`,
+  COMPTE_RENDUS:        `${BASE}/api/v1/compte-rendus`,
+  COMPTE_RENDU_DETAIL:  (id: string) => `${BASE}/api/v1/compte-rendus/${id}`,
+  COMPTE_RENDU_STATUS:  (id: string) => `${BASE}/api/v1/compte-rendus/${id}/status`,
 
   // ── API Logs ─────────────────────────────────────────────────────────
   API_LOGS:        `${BASE}/api/v1/api-logs`,
