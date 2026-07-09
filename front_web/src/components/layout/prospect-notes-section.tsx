@@ -9,7 +9,7 @@ import {
 import { useAppDispatch, useAppSelector } from '@/redux/store';
 import { fetchNotes, addNote, deleteNote } from '@/redux/features/notes/notesSlice';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { Blocknote } from '@/components/ui/blocknote';
 import { PostData } from '@/lib/ApiService';
 import { ApiRoutes } from '@/lib/ApiRoutes';
 import { cn } from '@/lib/utils';
@@ -45,7 +45,8 @@ export function ProspectNotesSection({ prospectId }: ProspectNotesSectionProps) 
   const submitError = useAppSelector(s => s.notes.submitError);
 
   /* ── Text input ─────────────────────────────────────────────────────── */
-  const [newContent, setNewContent] = useState('');
+  const [newContent, setNewContent]     = useState('');
+  const [blocknoteKey, setBlocknoteKey] = useState(0);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteNoteId, setConfirmDeleteNoteId] = useState<string | null>(null);
   const [deleteNoteError, setDeleteNoteError] = useState<string | null>(null);
@@ -74,7 +75,10 @@ export function ProspectNotesSection({ prospectId }: ProspectNotesSectionProps) 
   async function handleAddNote() {
     if (!newContent.trim()) return;
     const result = await dispatch(addNote({ prospectId, content: newContent.trim() }));
-    if (addNote.fulfilled.match(result)) setNewContent('');
+    if (addNote.fulfilled.match(result)) {
+      setNewContent('');
+      setBlocknoteKey(k => k + 1);
+    }
   }
 
   async function handleConfirmDeleteNote() {
@@ -133,10 +137,9 @@ export function ProspectNotesSection({ prospectId }: ProspectNotesSectionProps) 
         setVoiceError(res.error ?? 'Erreur lors de la transcription.');
         return;
       }
-      /* Append si du texte existe déjà, sinon remplace */
-      setNewContent(prev =>
-        prev.trim() ? `${prev.trim()}\n${res.data!.text}` : res.data!.text,
-      );
+      /* Append si du texte existe déjà, sinon remplace + force remontage BlockNote */
+      setNewContent(prev => prev.trim() ? `${prev.trim()}\n${res.data!.text}` : res.data!.text);
+      setBlocknoteKey(k => k + 1);
     };
 
     mediaRecorderRef.current.stop();
@@ -170,62 +173,28 @@ export function ProspectNotesSection({ prospectId }: ProspectNotesSectionProps) 
         {/* ── Add note form ── */}
         <div className="p-4 border-b border-[var(--bd-def)] bg-[var(--bg-sink)]">
 
-          {/* Textarea + overlaid mic button */}
-          <div className="relative">
-            <Textarea
-              value={newContent}
-              onChange={e => setNewContent(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !busy) handleAddNote(); }}
-              placeholder={
-                voiceState === 'recording'    ? 'Enregistrement en cours…' :
-                voiceState === 'transcribing' ? 'Transcription en cours…'  :
-                'Ajouter une note… (Ctrl+Entrée pour enregistrer)'
-              }
-              rows={3}
-              disabled={voiceState === 'transcribing'}
-              className={cn(
-                'min-h-0 text-[13px] resize-none pr-9 pb-8',
-                voiceState === 'recording'    && '!border-red-400 focus:!shadow-[0_0_0_3px_rgba(239,68,68,.12)]',
-                voiceState === 'transcribing' && 'opacity-60 cursor-wait',
-              )}
-            />
+          {/* BlockNote editor */}
+          <Blocknote
+            key={blocknoteKey}
+            initialContent={newContent}
+            onChange={setNewContent}
+            editable={voiceState !== 'transcribing'}
+            placeholder="Ajouter une note de prospection…"
+          />
 
-            {/* REC badge — en haut à droite dans le textarea */}
-            {voiceState === 'recording' && (
-              <div
-                className="absolute top-2 right-9 flex items-center gap-1 px-1.5 py-0.5 rounded-full pointer-events-none select-none"
-                style={{ background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.25)' }}
-              >
-                <span className="w-[6px] h-[6px] rounded-full bg-red-500 note-blink" />
-                <span className="text-[10px] font-bold tabular-nums" style={{ color: '#DC2626' }}>
-                  {fmtTimer(recordTimer)}
-                </span>
-              </div>
-            )}
-
-            {/* Mic / Stop / Spinner — en bas à droite dans le textarea */}
-            <button
-              type="button"
-              onClick={voiceState === 'recording' ? stopVoiceRecording : voiceState === 'idle' ? startVoiceRecording : undefined}
-              disabled={voiceState === 'transcribing'}
-              title={voiceState === 'recording' ? "Arrêter l'enregistrement" : 'Dicter cette note'}
-              className={cn(
-                'absolute bottom-2.5 right-2 w-[26px] h-[26px] rounded-lg flex items-center justify-center',
-                'transition-all duration-150 z-10',
-                voiceState === 'idle'        && 'text-[var(--tx-3)] hover:text-red-500 hover:bg-red-50',
-                voiceState === 'recording'   && 'bg-red-500 text-white note-mic-pulse',
-                voiceState === 'transcribing' && 'text-[var(--tx-3)] cursor-wait',
-              )}
+          {/* Bandeau d'état enregistrement vocal */}
+          {voiceState === 'recording' && (
+            <div
+              className="flex items-center gap-2 mt-2 px-2.5 py-1.5 rounded-lg"
+              style={{ background: 'rgba(239,68,68,.06)', border: '1px solid rgba(239,68,68,.2)' }}
             >
-              {voiceState === 'transcribing' ? (
-                <CircleNotchIcon size={13} className="animate-spin" />
-              ) : voiceState === 'recording' ? (
-                <SquareIcon size={11} weight="fill" />
-              ) : (
-                <MicrophoneIcon size={13} />
-              )}
-            </button>
-          </div>
+              <span className="w-[6px] h-[6px] rounded-full bg-red-500 note-blink flex-shrink-0" />
+              <span className="text-[11px] text-red-600 font-mono flex-1">
+                {fmtTimer(recordTimer)}
+              </span>
+              <span className="text-[10px] text-red-400">Cliquez ■ pour terminer</span>
+            </div>
+          )}
 
           {/* Voice error */}
           {voiceError && (
@@ -240,20 +209,32 @@ export function ProspectNotesSection({ prospectId }: ProspectNotesSectionProps) 
             <p className="text-[11px] text-red-500 mt-1">{submitError ?? fetchError}</p>
           )}
 
-          {/* Bottom row : status voice à gauche, bouton Ajouter à droite */}
+          {/* Bottom row */}
           <div className="flex items-center justify-between mt-2.5">
-            <div className="text-[11px]">
-              {voiceState === 'recording' && (
-                <span className="flex items-center gap-1.5 text-red-500">
-                  <span className="w-[5px] h-[5px] rounded-full bg-red-500 note-blink" />
-                  Cliquez ■ pour terminer et transcrire
-                </span>
-              )}
+            <div className="flex items-center gap-2">
+              {/* Mic / Stop / Spinner */}
+              <button
+                type="button"
+                onClick={voiceState === 'recording' ? stopVoiceRecording : voiceState === 'idle' ? startVoiceRecording : undefined}
+                disabled={voiceState === 'transcribing'}
+                title={voiceState === 'recording' ? "Arrêter l'enregistrement" : 'Dicter cette note'}
+                className={cn(
+                  'w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-150',
+                  voiceState === 'idle'         && 'text-[var(--tx-3)] hover:text-red-500 hover:bg-red-50',
+                  voiceState === 'recording'    && 'bg-red-500 text-white note-mic-pulse',
+                  voiceState === 'transcribing' && 'text-[var(--tx-3)] cursor-wait',
+                )}
+              >
+                {voiceState === 'transcribing' ? (
+                  <CircleNotchIcon size={13} className="animate-spin" />
+                ) : voiceState === 'recording' ? (
+                  <SquareIcon size={11} weight="fill" />
+                ) : (
+                  <MicrophoneIcon size={13} />
+                )}
+              </button>
               {voiceState === 'transcribing' && (
-                <span className="flex items-center gap-1.5 text-[var(--tx-3)]">
-                  <CircleNotchIcon size={11} className="animate-spin" />
-                  Transcription en cours…
-                </span>
+                <span className="text-[11px] text-[var(--tx-3)]">Transcription…</span>
               )}
             </div>
 
