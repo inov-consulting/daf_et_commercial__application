@@ -77,9 +77,20 @@ export interface CRPendingResponse {
 
 export interface CRStatusResponse {
   id: string;
-  generation_status: 'pending' | 'processing' | 'completed' | 'failed';
-  progress_pct?: number;
-  error_message?: string | null;
+  parent_type: string;
+  parent_id: string;
+  version: number;
+  status: 'draft' | 'final' | 'processing';
+  generation_status: 'pending' | 'running' | 'done' | 'failed';
+  generation_error?: string;
+  file_size: number;
+  download_url: string;
+  generated_by: string;
+  content: string;
+  note_ids: string[];
+  created_at: string;
+  created_by: string;
+  warnings: string[];
 }
 
 export interface CRDownloadResponse {
