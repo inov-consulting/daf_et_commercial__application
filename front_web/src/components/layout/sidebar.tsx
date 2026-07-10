@@ -29,7 +29,7 @@ type NavItem = {
 
 type NavSection = { title: string; items: NavItem[] };
 
-function buildNav(locale: string, prospectCount?: number): NavSection[] {
+function buildNav(locale: string, prospectCount?: number, alerteCount?: number): NavSection[] {
   return [
     {
       title: 'PRINCIPAL',
@@ -75,7 +75,7 @@ function buildNav(locale: string, prospectCount?: number): NavSection[] {
         { href: `/${locale}/page/finances/tresorerie`,    label: 'Trésorerie',       Icon: BankIcon                 },
         { href: `/${locale}/page/finances/dso-creances`,  label: 'DSO & Créances',   Icon: ReceiptIcon              },
         { href: `/${locale}/page/finances/dettes-fournisseurs`, label: 'Dettes fournisseurs', Icon: WalletIcon              },
-        { href: `/${locale}/page/finances/alertes`,           label: 'Alertes',             Icon: BellIcon, badge: 3, badgeDanger: true },
+        { href: `/${locale}/page/finances/alertes`, label: 'Alertes', Icon: BellIcon, badge: alerteCount, badgeDanger: true },
         { href: `/${locale}/page/finances/reporting`,         label: 'Reporting',           Icon: ChartBarIcon            },
       ],
     },
@@ -107,8 +107,10 @@ interface SidebarProps {
 
 export default function Sidebar({ locale, open, onClose, user, rawUser }: SidebarProps) {
   const pathname = usePathname();
-  const prospectTotal = useAppSelector(s => s.prospects.total);
-  const sections = buildNav(locale, prospectTotal || undefined);
+  const prospectTotal    = useAppSelector(s => s.prospects.total);
+  const proposedActions  = useAppSelector(s => s.daf.proposedActions);
+  const pendingCount     = proposedActions.filter(a => a.status === 'pending').length;
+  const sections = buildNav(locale, prospectTotal || undefined, pendingCount || undefined);
   const sidebarRef = useRef<HTMLElement>(null);
 const isFirstRender = useRef(true);
 

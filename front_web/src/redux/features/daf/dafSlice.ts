@@ -94,7 +94,7 @@ export const triggerAgent = createAsyncThunk(
 
 export const fetchRuns = createAsyncThunk(
   'daf/fetchRuns',
-  async (limit = 20, { rejectWithValue }) => {
+  async (limit: number = 20, { rejectWithValue }) => {
     const res = await GetData<DafRun[]>({
       url: `${ApiRoutes.DAF_RUNS}?limit=${limit}`,
       protected: true,
@@ -124,7 +124,7 @@ export const fetchLatestSnapshot = createAsyncThunk(
 
 export const fetchSnapshots = createAsyncThunk(
   'daf/fetchSnapshots',
-  async (limit = 10, { rejectWithValue }) => {
+  async (limit: number = 10, { rejectWithValue }) => {
     const res = await GetData<DafSnapshot[]>({
       url: `${ApiRoutes.DAF_SNAPSHOTS}?limit=${limit}`,
       protected: true,
