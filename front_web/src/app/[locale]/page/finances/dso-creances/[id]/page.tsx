@@ -1,7 +1,6 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { FinSectionHeader } from '@/components/finance/fin-section-header';
 import { FinCard, FinCardHeader, SectionLabel } from '@/components/finance/fin-card';
 import { BalanceAgee } from '@/components/finance/balance-agee';
 import { FinLineChart } from '@/components/finance/fin-chart';
@@ -36,12 +35,12 @@ const BALANCE_AGEE: BalanceAgeeItem[] = [
 ];
 
 const DSO_HISTORY = [
-  { periode: 'Jan', dso: 28 },
-  { periode: 'Mar', dso: 62 },
-  { periode: 'Jun', dso: 41 },
-  { periode: 'Sep', dso: 35 },
-  { periode: 'Déc', dso: 28 },
-  { periode: 'Juin', dso: 68 },
+  { mois: 'Jan', dso: 28 },
+  { mois: 'Mar', dso: 62 },
+  { mois: 'Jun', dso: 41 },
+  { mois: 'Sep', dso: 35 },
+  { mois: 'Déc', dso: 28 },
+  { mois: 'Jun', dso: 68 },
 ];
 
 const STATUT_STYLE: Record<FactureCreance['statut'], { bg: string; text: string; border: string; label: string }> = {

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/redux/store';
 import { fetchLatestSnapshot, fetchSnapshots } from '@/redux/features/daf/dafSlice';
 import { FinSectionHeader } from '@/components/finance/fin-section-header';
-import { FinLineChart, FinBarChart } from '@/components/finance/fin-chart';
+import { FinLineChart, FinBarChart, FR_MONTHS_SHORT } from '@/components/finance/fin-chart';
 import { FinCard, FinCardHeader, SectionLabel } from '@/components/finance/fin-card';
 import { FloatingToast } from '@/components/ui/toast';
 import { DownloadSimpleIcon, SpinnerGapIcon, WarningIcon, CheckCircleIcon, ClockIcon } from '@phosphor-icons/react';
@@ -158,7 +158,7 @@ export default function DettesFournisseursPage() {
   const evoData = [...snapshots]
     .sort((a, b) => new Date(a.snapshot_at).getTime() - new Date(b.snapshot_at).getTime())
     .map(s => ({
-      mois:   s.period_label,
+      mois:   FR_MONTHS_SHORT[new Date(s.snapshot_at).getMonth()],
       dettes: +(s.total_payables   / 1_000_000).toFixed(2),
       retard: +(s.overdue_payables / 1_000_000).toFixed(2),
     }));
@@ -176,7 +176,6 @@ export default function DettesFournisseursPage() {
     <div className="p-3 sm:p-4 md:p-6 mx-auto max-w-[1600px]">
       <FinSectionHeader
         title="Dettes fournisseurs"
-        subtitle={snap ? `${snap.period_label} · Groupe INOV Consulting` : 'Groupe INOV Consulting'}
         secondaryAction={{ label: 'Exporter', icon: <DownloadSimpleIcon size={13} />, onClick: () => {} }}
         actionLabel="+ Règlement"
         onAction={() => {}}
@@ -213,7 +212,7 @@ export default function DettesFournisseursPage() {
               subtitle="Historique des snapshots · Millions FCFA"
               data={evoData}
               series={[
-                { yKey: 'dettes', yName: 'Total dettes',  stroke: '#DC2626', type: 'area' },
+                { yKey: 'dettes', yName: 'Total dettes',  stroke: '#1E5B3C', type: 'area' },
                 { yKey: 'retard', yName: 'En retard',     stroke: '#F97316', type: 'line' },
               ]}
               height={200}
@@ -225,7 +224,8 @@ export default function DettesFournisseursPage() {
             title="Balance âgée fournisseurs"
             subtitle="Répartition par ancienneté · Millions FCFA · Estimation"
             data={balanceBarData}
-            series={[{ yKey: 'montant', yName: 'Montant dû (M FCFA)', fill: '#DC2626' }]}
+            xKey="tranche"
+            series={[{ yKey: 'montant', yName: 'Montant dû (M FCFA)', fill: '#1E5B3C' }]}
             height={180}
           />
 
@@ -329,7 +329,7 @@ export default function DettesFournisseursPage() {
               </p>
             </div>
             <p className="mt-2 text-[10px] text-[var(--warn600)]">
-              ⚠ Répartition par tranche estimée. Total consolidé depuis l'API snapshot.
+              ⚠ Répartition par tranche estimée. Total consolidé depuis l&apos;API snapshot.
             </p>
           </FinCard>
 

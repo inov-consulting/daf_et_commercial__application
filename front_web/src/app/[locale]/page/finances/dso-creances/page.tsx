@@ -13,6 +13,7 @@ import {
 } from '@/redux/features/daf/dafSlice';
 import { FinSectionHeader } from '@/components/finance/fin-section-header';
 import { FinCard, FinCardHeader } from '@/components/finance/fin-card';
+import { FR_MONTHS_SHORT } from '@/components/finance/fin-chart';
 import { BalanceAgee } from '@/components/finance/balance-agee';
 import { FinLineChart } from '@/components/finance/fin-chart';
 import { FloatingToast } from '@/components/ui/toast';
@@ -149,7 +150,7 @@ export default function DsoCreancesPage() {
   // Chart : snapshots triés du plus ancien au plus récent
   const chartData = [...snapshots]
     .sort((a, b) => new Date(a.snapshot_at).getTime() - new Date(b.snapshot_at).getTime())
-    .map(s => ({ mois: s.period_label, dso: s.dso_days, objectif: dsoObjectif }));
+    .map(s => ({ mois: FR_MONTHS_SHORT[new Date(s.snapshot_at).getMonth()], dso: s.dso_days, objectif: dsoObjectif }));
 
   // Actions de relance uniquement, par priorité décroissante
   const priorityRank: Record<DafActionPriority, number> = { critical: 0, high: 1, medium: 2, low: 3 };

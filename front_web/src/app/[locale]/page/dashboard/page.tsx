@@ -1105,7 +1105,7 @@ export default function DashboardPage() {
           <RecentMissions />
         </div>
       </div>
-      <FinanceDafSection />
+      {/* <FinanceDafSection /> */}
     </div>
   );
 }
