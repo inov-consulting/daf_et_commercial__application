@@ -14,7 +14,6 @@ const ENTITIES = [
 
 interface FinSectionHeaderProps {
   title:       string;
-  subtitle?:   string;
   actionLabel?: string;
   actionIcon?:  React.ReactNode;
   onAction?:   () => void;
@@ -24,7 +23,6 @@ interface FinSectionHeaderProps {
 
 export function FinSectionHeader({
   title,
-  subtitle,
   actionLabel,
   actionIcon,
   onAction,
@@ -37,7 +35,6 @@ export function FinSectionHeader({
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
       <div className="min-w-0">
         <h1 className="font-display font-bold text-xl sm:text-2xl text-[var(--tx-1)]">{title}</h1>
-        {subtitle && <p className="text-xs text-[var(--tx-3)] mt-0.5">{subtitle}</p>}
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">

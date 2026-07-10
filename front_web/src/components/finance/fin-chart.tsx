@@ -7,6 +7,56 @@ import { FinCard } from './fin-card';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
+/* ── Même logique que analytics : Jan → mois courant, trous = 0 ──────── */
+
+const FR_MONTHS_SHORT = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+
+function fillMonthlyGaps(
+  data: Record<string, unknown>[],
+  xKey: string,
+  yKeys: string[],
+): Record<string, unknown>[] {
+  if (!data.length || !xKey) return data;
+
+  const now          = new Date();
+  const currentMonth = now.getMonth();       // 0-indexed
+  const currentYear  = now.getFullYear();
+  const sample       = String(data[0][xKey] ?? '');
+
+  // Format ISO "2026-01"
+  if (/^\d{4}-\d{2}$/.test(sample)) {
+    const isoMonths = Array.from({ length: currentMonth + 1 }, (_, i) =>
+      `${currentYear}-${String(i + 1).padStart(2, '0')}`,
+    );
+    const byMonth = new Map(data.map(row => [String(row[xKey]), row]));
+    return isoMonths.map((iso, i) => {
+      const label  = FR_MONTHS_SHORT[i];
+      const source = byMonth.get(iso);
+      if (source) return { ...source, [xKey]: label };
+      const empty: Record<string, unknown> = { [xKey]: label };
+      for (const yk of yKeys) empty[yk] = 0;
+      return empty;
+    });
+  }
+
+  // Noms courts français ("Jan", "Fév", …)
+  if (FR_MONTHS_SHORT.includes(sample)) {
+    const allMonths = FR_MONTHS_SHORT.slice(0, currentMonth + 1);
+    const byMonth   = new Map(data.map(row => [String(row[xKey]), row]));
+    return allMonths.map(month => {
+      if (byMonth.has(month)) return byMonth.get(month)!;
+      const empty: Record<string, unknown> = { [xKey]: month };
+      for (const yk of yKeys) empty[yk] = 0;
+      return empty;
+    });
+  }
+
+  // Format inconnu — ne pas toucher
+  return data;
+}
+
+export { FR_MONTHS_SHORT };
+
 const AgCharts = dynamic(
   () => import('ag-charts-react').then(m => m.AgCharts),
   { ssr: false },
@@ -15,7 +65,7 @@ const AgCharts = dynamic(
 /* ── Bar chart (CA mensuel, Flux) ────────────────────────────── */
 
 export interface BarDataPoint {
-  mois:       string;
+  mois?:      string;
   valeur?:    number;
   precedent?: number;
   entrant?:   number;
@@ -29,12 +79,15 @@ interface FinBarChartProps {
   ytd?:     string;
   data:     BarDataPoint[];
   series:   { yKey: string; yName: string; fill: string }[];
+  xKey?:    string;
   height?:  number;
   yFormatter?: (v: number) => string;
 }
 
-export function FinBarChart({ title, subtitle, ytd, data, series, height = 200, yFormatter }: FinBarChartProps) {
-  const fmt = yFormatter ?? ((v: number) => `${v}M`);
+export function FinBarChart({ title, subtitle, ytd, data, series, xKey = 'mois', height = 200, yFormatter }: FinBarChartProps) {
+  const fmt        = yFormatter ?? ((v: number) => `${v}M`);
+  const yKeys      = series.map(s => s.yKey);
+  const filledData = fillMonthlyGaps(data as Record<string, unknown>[], xKey, yKeys);
   return (
     <FinCard padding={false}>
       <div className="flex items-start justify-between px-4 sm:px-5 pt-4 pb-2">
@@ -53,10 +106,10 @@ export function FinBarChart({ title, subtitle, ytd, data, series, height = 200, 
         <AgCharts
           options={{
             theme: PORTALIS_THEME,
-            data,
+            data: filledData,
             series: series.map(s => ({
               type: 'bar',
-              xKey: 'mois',
+              xKey,
               yKey: s.yKey,
               yName: s.yName,
               fill: s.fill,
@@ -78,7 +131,7 @@ export function FinBarChart({ title, subtitle, ytd, data, series, height = 200, 
 
 export interface LineDataPoint {
   mois:   string;
-  solde:  number;
+  solde?: number;
   prev?:  number | null;
   [key: string]: string | number | null | undefined;
 }
@@ -93,7 +146,9 @@ interface FinLineChartProps {
 }
 
 export function FinLineChart({ title, subtitle, data, series, height = 200, yFormatter }: FinLineChartProps) {
-  const fmt = yFormatter ?? ((v: number) => `${v}M`);
+  const fmt        = yFormatter ?? ((v: number) => `${v}M`);
+  const yKeys      = series.map(s => s.yKey);
+  const filledData = fillMonthlyGaps(data as Record<string, unknown>[], 'mois', yKeys);
   return (
     <FinCard padding={false}>
       <div className="px-4 sm:px-5 pt-4 pb-2">
@@ -104,7 +159,7 @@ export function FinLineChart({ title, subtitle, data, series, height = 200, yFor
         <AgCharts
           options={{
             theme: PORTALIS_THEME,
-            data,
+            data: filledData,
             series: series.map(s => ({
               type: s.type ?? 'line',
               xKey: 'mois',

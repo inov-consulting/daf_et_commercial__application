@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/redux/store';
 import { fetchLatestSnapshot, fetchSnapshots } from '@/redux/features/daf/dafSlice';
 import { FinSectionHeader } from '@/components/finance/fin-section-header';
-import { FinBarChart, FinLineChart } from '@/components/finance/fin-chart';
+import { FinBarChart, FinLineChart, FR_MONTHS_SHORT } from '@/components/finance/fin-chart';
 import { FinCard, FinCardHeader, SectionLabel } from '@/components/finance/fin-card';
 import { FloatingToast } from '@/components/ui/toast';
 import { DownloadSimpleIcon, SpinnerGapIcon } from '@phosphor-icons/react';
@@ -117,7 +117,7 @@ export default function TresoreriePage() {
   // Évolution depuis les snapshots (oldest → newest)
   const evoData = [...snapshots]
     .sort((a, b) => new Date(a.snapshot_at).getTime() - new Date(b.snapshot_at).getTime())
-    .map(s => ({ mois: s.period_label, solde: +(s.cash_position / 1_000_000).toFixed(2) }));
+    .map(s => ({ mois: FR_MONTHS_SHORT[new Date(s.snapshot_at).getMonth()], solde: +(s.cash_position / 1_000_000).toFixed(2) }));
 
   // Projection J+90 calculée depuis la position réelle
   const cashM = +(cashPos / 1_000_000).toFixed(1);
@@ -341,7 +341,7 @@ export default function TresoreriePage() {
               </div>
             )}
             <p className="mt-3 pt-3 border-t border-[var(--bd-def)] text-[10px] text-[var(--warn600)] leading-relaxed">
-              ⚠ Projection estimée à partir de la position de trésorerie réelle. Les flux entrants/sortants ne sont pas encore disponibles via l'API.
+              ⚠ Projection estimée à partir de la position de trésorerie réelle. Les flux entrants/sortants ne sont pas encore disponibles via l&apos;API.
             </p>
           </FinCard>
         </div>

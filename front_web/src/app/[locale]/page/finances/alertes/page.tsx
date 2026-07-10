@@ -91,7 +91,6 @@ export default function AlertesPage() {
     <div className="p-3 sm:p-4 md:p-6 mx-auto max-w-[1600px]">
       <FinSectionHeader
         title="Alertes financières"
-        subtitle={`${visible.length} alertes actives`}
         secondaryAction={{ label: 'Archiver toutes', icon: <CheckIcon size={13} />, onClick: () => {} }}
         actionLabel="+ Règle personnalisée"
         onAction={() => {}}
@@ -144,7 +143,7 @@ export default function AlertesPage() {
                 key={e.key}
                 onClick={() => setFilterEnt(e.key)}
                 className={cn('h-6 px-2 rounded-md text-[11px] font-medium transition-colors border', filterEnt === e.key
-                  ? 'bg-[var(--tx-1)] text-[var(--bg-base)] border-[var(--tx-1)]'
+                  ? 'bg-[var(--tx-1)] text-white border-[var(--tx-1)]'
                   : 'text-[var(--tx-2)] border-[var(--bd-def)] hover:bg-[var(--bg-sink)]')}
               >{e.label}</button>
             ))}
