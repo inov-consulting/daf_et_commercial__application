@@ -71,7 +71,7 @@ function buildNav(locale: string, prospectCount?: number): NavSection[] {
     {
       title: 'FINANCES',
       items: [
-        { href: `/${locale}/page/finances/dashboard-daf`, label: 'Dashboard DAF',   Icon: CurrencyCircleDollarIcon },
+        { href: `/${locale}/page/finances/dashboard-daf`, label: 'Dashboard DAF',    Icon: CurrencyCircleDollarIcon },
         { href: `/${locale}/page/finances/tresorerie`,    label: 'Trésorerie',       Icon: BankIcon                 },
         { href: `/${locale}/page/finances/dso-creances`,  label: 'DSO & Créances',   Icon: ReceiptIcon              },
         { href: `/${locale}/page/finances/alertes`,       label: 'Alertes',          Icon: BellIcon, badge: 3, badgeDanger: true },
