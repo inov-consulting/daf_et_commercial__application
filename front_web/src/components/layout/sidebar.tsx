@@ -9,7 +9,8 @@ import {
   SquaresFourIcon, BrainIcon, UserIcon, TruckIcon, FunnelIcon,
   FilesIcon, FileTextIcon, DiamondIcon, ChartLineIcon, DownloadSimpleIcon,
   UsersIcon, GearIcon, SignOutIcon, XIcon, ClockCounterClockwiseIcon,
-  FolderOpenIcon,
+  FolderOpenIcon, BankIcon, CurrencyCircleDollarIcon, ReceiptIcon,
+  BellIcon, ChartBarIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { ApiUser, User as UserType } from '@/types/user_type';
@@ -65,6 +66,16 @@ function buildNav(locale: string, prospectCount?: number): NavSection[] {
       items: [
         { href: `/${locale}/page/transport`, label: 'Envois & voyages', Icon: FolderOpenIcon },
         { href: `/${locale}/page/offres`, label: 'Offres', Icon: DiamondIcon },
+      ],
+    },
+    {
+      title: 'FINANCES',
+      items: [
+        { href: `/${locale}/page/finances/dashboard-daf`, label: 'Dashboard DAF',   Icon: CurrencyCircleDollarIcon },
+        { href: `/${locale}/page/finances/tresorerie`,    label: 'Trésorerie',       Icon: BankIcon                 },
+        { href: `/${locale}/page/finances/dso-creances`,  label: 'DSO & Créances',   Icon: ReceiptIcon              },
+        { href: `/${locale}/page/finances/alertes`,       label: 'Alertes',          Icon: BellIcon, badge: 3, badgeDanger: true },
+        { href: `/${locale}/page/finances/reporting`,     label: 'Reporting',        Icon: ChartBarIcon             },
       ],
     },
     {
