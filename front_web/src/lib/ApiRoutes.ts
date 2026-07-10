@@ -93,6 +93,18 @@ export const ApiRoutes = {
   KPI_CATALOG: `${BASE}/api/v1/kpi/catalog`,
   KPI_DETAIL:  (key: string) => `${BASE}/api/v1/kpi/${key}`,
 
+  // ── DAF ──────────────────────────────────────────────────────────────────
+  DAF_AGENT_STATUS:     `${BASE}/api/v1/daf/agent/status`,
+  DAF_AGENT_TRIGGER:    `${BASE}/api/v1/daf/agent/trigger`,
+  DAF_RUNS:             `${BASE}/api/v1/daf/runs`,
+  DAF_RUN:              (runId: string) => `${BASE}/api/v1/daf/runs/${runId}`,
+  DAF_SNAPSHOTS_LATEST: `${BASE}/api/v1/daf/snapshots/latest`,
+  DAF_SNAPSHOTS:        `${BASE}/api/v1/daf/snapshots`,
+  DAF_PROPOSED_ACTIONS: `${BASE}/api/v1/daf/proposed-actions`,
+  DAF_PROPOSED_ACTION:  (actionId: string) => `${BASE}/api/v1/daf/proposed-actions/${actionId}`,
+  DAF_APPROVE_ACTION:   (actionId: string) => `${BASE}/api/v1/daf/proposed-actions/${actionId}/approve`,
+  DAF_REJECT_ACTION:    (actionId: string) => `${BASE}/api/v1/daf/proposed-actions/${actionId}/reject`,
+
   // ── App Config ───────────────────────────────────────────────────────────
   CONFIG_APP:            `${BASE}/api/v1/config/app`,
   CONFIG_APP_VALIDATORS: `${BASE}/api/v1/config/app/validators`,
