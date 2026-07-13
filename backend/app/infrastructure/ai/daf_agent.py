@@ -48,6 +48,14 @@ WORKFLOW OBLIGATOIRE (appelle les outils dans cet ordre) :
 8. `fetch_top_debtors` — top débiteurs
 
 Après l'analyse, pour CHAQUE problème identifié, appelle `propose_action`.
+IMPORTANT : quand tu proposes une action pour un partenaire ou des factures spécifiques,
+renseigne TOUS les champs disponibles depuis les données récupérées :
+- partner_name, partner_email, partner_phone (si présents dans les données)
+- invoice_numbers : les références lisibles (ex: ["FAC/2026/00001", "FAC/2026/00003"])
+- invoice_due_dates : les dates d'échéance (ex: ["2026-06-30"])
+- invoice_days_overdue : les jours de retard par facture (ex: [7, 15])
+- amount : le total restant à payer
+- currency : la devise (XOF, EUR…)
 Enfin, appelle `complete_analysis` avec le résumé complet de ta session.
 
 SEUILS D'ALERTE :
@@ -188,8 +196,11 @@ def _build_tools_for_run(ctx: _RunContext) -> list:
         priority: str = "medium",
         partner_id: int | None = None,
         partner_name: str | None = None,
-        invoice_ids: list[int] | None = None,
-        amount: float | None = None,
+        partner_email: str | None = None,
+        partner_phone: str | None = None,
+        invoices: list[dict] | None = None,
+        total_amount: float | None = None,
+        currency: str | None = None,
     ) -> str:
         """Propose une action à valider par le DAF humain.
 
@@ -200,11 +211,64 @@ def _build_tools_for_run(ctx: _RunContext) -> list:
             description: Description détaillée de l'action à effectuer
             reasoning: Raisonnement de l'agent (pourquoi cette action est nécessaire)
             priority: low|medium|high|critical
-            partner_id: ID Odoo du partenaire concerné (optionnel)
-            partner_name: Nom du partenaire (optionnel)
-            invoice_ids: IDs des factures concernées (optionnel)
-            amount: Montant concerné (optionnel)
+            partner_id: ID Odoo interne du partenaire
+            partner_name: Nom complet du partenaire (entreprise ou personne)
+            partner_email: Email du partenaire si disponible
+            partner_phone: Téléphone du partenaire si disponible
+            invoices: Liste des factures concernées. Chaque élément est un objet avec :
+                      id (int), number (str ex: "FAC/2026/00001"), due_date (str "YYYY-MM-DD"),
+                      days_overdue (int), amount (float)
+                      Exemple : [{"id": 1, "number": "FAC/2026/00001",
+                                  "due_date": "2026-07-02", "days_overdue": 7,
+                                  "amount": 1717200}]
+            total_amount: Montant total concerné (somme des restes à payer)
+            currency: Devise (ex: "XOF", "EUR")
         """
+        from app.infrastructure.db.models.daf_agent import DafProposedActionOrm
+
+        # Clé de déduplication basée sur les IDs techniques des factures
+        normalized_invoice_ids = sorted({inv["id"] for inv in (invoices or []) if inv.get("id")})
+
+        # Clé de déduplication :
+        # - Avec partner_id  → (action_type, partner_id, invoice_ids)
+        # - Sans partner_id  → (action_type) : alertes structurelles (DSO, trésorerie)
+        active_statuses = ["pending", "approved"]
+
+        if partner_id is not None:
+            candidates = await DafProposedActionOrm.filter(
+                action_type=action_type,
+                status__in=active_statuses,
+            )
+            duplicate = any(
+                (c.target_data or {}).get("partner_id") == partner_id
+                and sorted(
+                    inv["id"] for inv in (c.target_data or {}).get("invoices") or []
+                    if inv.get("id")
+                ) == normalized_invoice_ids
+                for c in candidates
+            )
+        else:
+            # Alerte structurelle : une seule entrée active par type suffit
+            candidates = await DafProposedActionOrm.filter(
+                action_type=action_type,
+                status__in=active_statuses,
+            )
+            duplicate = any(
+                (c.target_data or {}).get("partner_id") is None
+                for c in candidates
+            )
+
+        if duplicate:
+            ctx.log_event(
+                "info",
+                f"Action '{action_type}' déjà en attente "
+                f"(partner_id={partner_id}) — ignorée.",
+            )
+            return (
+                f"Action '{action_type}' ignorée : une proposition identique est déjà "
+                f"en attente de validation par le DAF."
+            )
+
         action = {
             "action_type": action_type,
             "title": title,
@@ -214,8 +278,11 @@ def _build_tools_for_run(ctx: _RunContext) -> list:
             "target_data": {
                 "partner_id": partner_id,
                 "partner_name": partner_name,
-                "invoice_ids": invoice_ids or [],
-                "amount": amount,
+                "partner_email": partner_email,
+                "partner_phone": partner_phone,
+                "invoices": invoices or [],
+                "total_amount": total_amount,
+                "currency": currency or "XOF",
             },
         }
         ctx.proposed_actions.append(action)

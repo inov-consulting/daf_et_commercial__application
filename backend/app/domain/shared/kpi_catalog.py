@@ -28,6 +28,81 @@ class KpiDefinition:
 # L'accès par groupe est configuré dynamiquement via la table kpi_group_access.
 
 _CATALOG: list[KpiDefinition] = [
+    # ── Agent DAF ────────────────────────────────────────────────────────────
+    KpiDefinition(
+        key="daf_cycles_activite",
+        label="Cycles de l'agent DAF",
+        category="Agent DAF",
+        source="portalis",
+        description="Nombre de cycles d'analyse exécutés par jour (complétés vs échoués).",
+        unit="cycles",
+    ),
+    KpiDefinition(
+        key="daf_taux_succes",
+        label="Taux de succès des cycles",
+        category="Agent DAF",
+        source="portalis",
+        description="Pourcentage de cycles d'analyse terminés avec succès.",
+        unit="%",
+    ),
+    KpiDefinition(
+        key="daf_actions_repartition",
+        label="Répartition des actions proposées",
+        category="Agent DAF",
+        source="portalis",
+        description="Distribution des propositions d'actions par statut (en attente, approuvées, rejetées, exécutées).",
+        unit="actions",
+    ),
+    KpiDefinition(
+        key="daf_taux_approbation",
+        label="Taux d'approbation des actions",
+        category="Agent DAF",
+        source="portalis",
+        description="Proportion d'actions approuvées par le DAF humain vs rejetées.",
+        unit="%",
+    ),
+    KpiDefinition(
+        key="daf_delai_decision",
+        label="Délai moyen de décision",
+        category="Agent DAF",
+        source="portalis",
+        description="Temps entre la proposition d'une action et la décision du DAF (approbation ou rejet).",
+        unit="heures",
+    ),
+    KpiDefinition(
+        key="daf_actions_priorite",
+        label="Actions par type et priorité",
+        category="Agent DAF",
+        source="portalis",
+        description="Répartition des propositions d'actions par type (relance, escalade…) et par niveau de priorité.",
+        unit="actions",
+    ),
+    # ── Indicateurs financiers DAF ────────────────────────────────────────────
+    KpiDefinition(
+        key="daf_dso_evolution",
+        label="Évolution du DSO",
+        category="Finance DAF",
+        source="portalis",
+        description="Days Sales Outstanding : délai moyen de recouvrement des créances clients dans le temps.",
+        unit="jours",
+    ),
+    KpiDefinition(
+        key="daf_creances_evolution",
+        label="Évolution des créances clients",
+        category="Finance DAF",
+        source="portalis",
+        description="Total des créances clients vs créances en retard de paiement au fil du temps.",
+        unit="XOF",
+    ),
+    KpiDefinition(
+        key="daf_tresorerie_evolution",
+        label="Évolution de la trésorerie",
+        category="Finance DAF",
+        source="portalis",
+        description="Position de trésorerie disponible (banques + caisse) suivie à chaque cycle DAF.",
+        unit="XOF",
+    ),
+    # ── Finance & Transport ──────────────────────────────────────────────────
     KpiDefinition(
         key="ca_mois",
         label="Chiffre d'affaires du mois",
