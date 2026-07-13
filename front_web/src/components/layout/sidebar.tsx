@@ -9,7 +9,8 @@ import {
   SquaresFourIcon, BrainIcon, UserIcon, TruckIcon, FunnelIcon,
   FilesIcon, FileTextIcon, DiamondIcon, ChartLineIcon, DownloadSimpleIcon,
   UsersIcon, GearIcon, SignOutIcon, XIcon, ClockCounterClockwiseIcon,
-  FolderOpenIcon,
+  FolderOpenIcon, BankIcon, CurrencyCircleDollarIcon, ReceiptIcon,
+  BellIcon, ChartBarIcon, WalletIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { ApiUser, User as UserType } from '@/types/user_type';
@@ -28,7 +29,7 @@ type NavItem = {
 
 type NavSection = { title: string; items: NavItem[] };
 
-function buildNav(locale: string, prospectCount?: number): NavSection[] {
+function buildNav(locale: string, prospectCount?: number, alerteCount?: number): NavSection[] {
   return [
     {
       title: 'PRINCIPAL',
@@ -68,6 +69,17 @@ function buildNav(locale: string, prospectCount?: number): NavSection[] {
       ],
     },
     {
+      title: 'FINANCES',
+      items: [
+        { href: `/${locale}/page/finances/dashboard-daf`, label: 'Dashboard DAF',    Icon: CurrencyCircleDollarIcon },
+        { href: `/${locale}/page/finances/tresorerie`,    label: 'Trésorerie',       Icon: BankIcon                 },
+        { href: `/${locale}/page/finances/dso-creances`,  label: 'DSO & Créances',   Icon: ReceiptIcon              },
+        { href: `/${locale}/page/finances/dettes-fournisseurs`, label: 'Dettes fournisseurs', Icon: WalletIcon              },
+        { href: `/${locale}/page/finances/alertes`, label: 'Alertes', Icon: BellIcon, badge: alerteCount, badgeDanger: true },
+        { href: `/${locale}/page/finances/reporting`,         label: 'Reporting',           Icon: ChartBarIcon            },
+      ],
+    },
+    {
       title: 'RAPPORTS',
       items: [
         { href: `/${locale}/page/analytics`, label: 'Analytics', Icon: ChartLineIcon },
@@ -95,8 +107,10 @@ interface SidebarProps {
 
 export default function Sidebar({ locale, open, onClose, user, rawUser }: SidebarProps) {
   const pathname = usePathname();
-  const prospectTotal = useAppSelector(s => s.prospects.total);
-  const sections = buildNav(locale, prospectTotal || undefined);
+  const prospectTotal    = useAppSelector(s => s.prospects.total);
+  const proposedActions  = useAppSelector(s => s.daf.proposedActions);
+  const pendingCount     = proposedActions.filter(a => a.status === 'pending').length;
+  const sections = buildNav(locale, prospectTotal || undefined, pendingCount || undefined);
   const sidebarRef = useRef<HTMLElement>(null);
 const isFirstRender = useRef(true);
 
