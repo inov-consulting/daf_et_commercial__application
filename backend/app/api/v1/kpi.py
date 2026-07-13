@@ -152,6 +152,25 @@ async def _compute_kpi(key: str, date_from: date | None, date_to: date | None):
             from app.services.kpi.dossiers_par_statut import compute
         elif key == "stats_dossiers":
             from app.services.kpi.stats_dossiers import compute
+        # ── Agent DAF ────────────────────────────────────────────────────────
+        elif key == "daf_cycles_activite":
+            from app.services.kpi.daf_cycles_activite import compute
+        elif key == "daf_taux_succes":
+            from app.services.kpi.daf_taux_succes import compute
+        elif key == "daf_actions_repartition":
+            from app.services.kpi.daf_actions_repartition import compute
+        elif key == "daf_taux_approbation":
+            from app.services.kpi.daf_taux_approbation import compute
+        elif key == "daf_delai_decision":
+            from app.services.kpi.daf_delai_decision import compute
+        elif key == "daf_actions_priorite":
+            from app.services.kpi.daf_actions_priorite import compute
+        elif key == "daf_dso_evolution":
+            from app.services.kpi.daf_dso_evolution import compute
+        elif key == "daf_creances_evolution":
+            from app.services.kpi.daf_creances_evolution import compute
+        elif key == "daf_tresorerie_evolution":
+            from app.services.kpi.daf_tresorerie_evolution import compute
         else:
             raise HTTPException(status_code=404, detail=f"Calcul non implémenté pour '{key}'.")
 
