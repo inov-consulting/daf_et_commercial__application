@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.deps import get_current_user, require_permission
 from app.api.v1.schemas.transport_offer import (
@@ -185,13 +185,34 @@ async def update_offer_form(
     )
 
 
-# ── Clients Odoo (liste pour formulaire) ─────────────────────────────────────
+# ── Partenaires Odoo (clients & fournisseurs) ────────────────────────────────
 
 @router.get("/customers", dependencies=_read_deps)
-async def list_odoo_clients(search: str = "") -> list[OdooClientOut]:
-    """Retourne tous les clients Odoo (res.partner entreprises actives) pour la liste déroulante du formulaire."""
-    from app.infrastructure.ai.tools.odoo_client_list import list_odoo_clients as _odoo_clients
-    records = await _odoo_clients(search=search)
+async def list_odoo_clients(
+    search: str = "",
+    companies_only: bool = Query(False, description="true = entreprises uniquement, false = tous (entreprises + particuliers)"),
+) -> list[OdooClientOut]:
+    """Retourne les clients Odoo (customer_rank > 0) pour la liste déroulante du formulaire.
+
+    Chaque entrée contient : nom, type (entreprise/particulier), email, téléphone,
+    mobile, adresse complète (rue, ville, code postal, pays).
+    """
+    from app.infrastructure.ai.tools.odoo_client_list import list_odoo_clients as _odoo_partners
+    records = await _odoo_partners(search=search, companies_only=companies_only, suppliers=False)
+    return [OdooClientOut(**r) for r in records]
+
+
+@router.get("/suppliers", dependencies=_read_deps)
+async def list_odoo_suppliers(
+    search: str = "",
+    companies_only: bool = Query(False, description="true = entreprises uniquement, false = tous (entreprises + particuliers)"),
+) -> list[OdooClientOut]:
+    """Retourne les fournisseurs Odoo (supplier_rank > 0).
+
+    Même structure que /customers : nom, type, email, téléphone, mobile, adresse.
+    """
+    from app.infrastructure.ai.tools.odoo_client_list import list_odoo_clients as _odoo_partners
+    records = await _odoo_partners(search=search, companies_only=companies_only, suppliers=True)
     return [OdooClientOut(**r) for r in records]
 
 

@@ -159,10 +159,17 @@ class OfferSummaryOut(BaseModel):
 
 
 class OdooClientOut(BaseModel):
-    """Client Odoo (res.partner) retourné pour la liste déroulante du formulaire."""
+    """Client Odoo (res.partner) : entreprise ou particulier."""
 
     id: int
     name: str
+    is_company: bool = True
     email: str | None = None
     phone: str | None = None
-    address: str | None = None
+    mobile: str | None = None
+    street: str | None = None
+    street2: str | None = None
+    city: str | None = None
+    zip: str | None = None
+    country: str | None = None
+    address: str | None = None  # Adresse complète formatée (rue, ville, pays)
