@@ -76,7 +76,7 @@ export default function FicheCreancePage() {
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
         <button
-          onClick={() => router.push(`/${locale}/page/finances/dso-creances`)}
+          onClick={() => router.back()}
           className="w-8 h-8 rounded-lg border border-[var(--bd-def)] flex items-center justify-center text-[var(--tx-3)] hover:bg-[var(--bg-sink)] transition-colors"
         >
           <ArrowLeftIcon size={16} />

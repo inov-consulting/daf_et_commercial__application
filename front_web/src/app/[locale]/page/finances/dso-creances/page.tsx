@@ -98,7 +98,9 @@ export default function DsoCreancesPage() {
   } = useAppSelector(s => s.daf);
 
   /* Toast */
-  const [toast, setToast] = useState<{ msg: string; type: 'error' | 'success' | 'info' } | null>(null);
+  const [toast, setToast]   = useState<{ msg: string; type: 'error' | 'success' | 'info' } | null>(null);
+  const [actionPage, setActionPage] = useState(0);
+  const ACTION_PAGE_SIZE = 10;
   const toastTimer = useRef<NodeJS.Timeout | null>(null);
 
   function showToast(msg: string, type: 'error' | 'success' | 'info' = 'error') {
@@ -114,6 +116,9 @@ export default function DsoCreancesPage() {
     dispatch(fetchProposedActions({ status: 'pending', limit: 50 }));
     return () => { if (toastTimer.current) clearTimeout(toastTimer.current); };
   }, [dispatch]);
+
+  /* Reset page when actions list changes */
+  useEffect(() => { setActionPage(0); }, [proposedActions]);
 
   /* Afficher les erreurs via toast */
   useEffect(() => {
@@ -158,7 +163,9 @@ export default function DsoCreancesPage() {
     .filter(a => a.action_type === 'send_reminder' || a.action_type === 'escalate' || a.action_type === 'flag_risk')
     .sort((a, b) => (priorityRank[a.priority] ?? 9) - (priorityRank[b.priority] ?? 9));
 
-  const criticalCount = actions.filter(a => a.priority === 'critical').length;
+  const criticalCount     = actions.filter(a => a.priority === 'critical').length;
+  const pageCount         = Math.ceil(actions.length / ACTION_PAGE_SIZE);
+  const paginatedActions  = actions.slice(actionPage * ACTION_PAGE_SIZE, (actionPage + 1) * ACTION_PAGE_SIZE);
 
   const isLoading = latestSnapshotLoading || snapshotsLoading || proposedActionsLoading;
 
@@ -166,8 +173,8 @@ export default function DsoCreancesPage() {
     <div className="p-3 sm:p-4 md:p-6 mx-auto max-w-[1600px]">
       <FinSectionHeader
         title="DSO & Créances clients"
-        secondaryAction={{ label: 'Exporter', icon: <DownloadSimpleIcon size={13} />, onClick: () => {} }}
-        actionLabel="+ Relance auto"
+        // secondaryAction={{ label: 'Exporter', icon: <DownloadSimpleIcon size={13} />, onClick: () => {} }}
+        // actionLabel="+ Relance auto"
         onAction={() => {}}
       />
 
@@ -273,59 +280,102 @@ export default function DsoCreancesPage() {
             )}
 
             {actions.length > 0 && (
-              <div className="divide-y divide-[var(--bd-def)] border-t border-[var(--bd-def)]">
-                {actions.map(action => {
-                  const p = PRIORITY_STYLE[action.priority] ?? PRIORITY_STYLE.low;
-                  const s = STATUS_STYLE[action.status]   ?? STATUS_STYLE.pending;
-                  const isDeciding = decidingId === action.id;
-                  return (
-                    <div
-                      key={action.id}
-                      className="flex items-start gap-3 px-4 py-3.5 hover:bg-[var(--bg-sink)] transition-colors"
+              <>
+                <div className="overflow-x-auto border-t border-[var(--bd-def)]">
+                  <table className="w-full text-[12px]">
+                    <thead>
+                      <tr className="bg-[var(--bg-sink)] text-[var(--tx-3)] text-left">
+                        <th className="px-4 py-2.5 font-semibold whitespace-nowrap">Priorité</th>
+                        <th className="px-4 py-2.5 font-semibold">Titre</th>
+                        <th className="px-4 py-2.5 font-semibold hidden md:table-cell">Description</th>
+                        <th className="px-4 py-2.5 font-semibold whitespace-nowrap hidden sm:table-cell">Date</th>
+                        <th className="px-4 py-2.5 font-semibold whitespace-nowrap">Statut</th>
+                        <th className="px-4 py-2.5 font-semibold text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--bd-def)]">
+                      {paginatedActions.map(action => {
+                        const p = PRIORITY_STYLE[action.priority] ?? PRIORITY_STYLE.low;
+                        const s = STATUS_STYLE[action.status]   ?? STATUS_STYLE.pending;
+                        const isDeciding = decidingId === action.id;
+                        return (
+                          <tr key={action.id} className="hover:bg-[var(--bg-sink)] transition-colors">
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span
+                                className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                                style={{ background: p.bg, color: p.text, border: `1px solid ${p.border}` }}
+                              >
+                                {p.label}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <p className="font-semibold text-[var(--tx-1)] leading-snug">{action.title}</p>
+                            </td>
+                            <td className="px-4 py-3 hidden md:table-cell">
+                              <p className="text-[var(--tx-2)] line-clamp-2 max-w-xs">{action.description}</p>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-[var(--tx-3)] hidden sm:table-cell">
+                              {fmtDate(action.proposed_at)}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className="font-semibold text-[11px]" style={{ color: s.text }}>{s.label}</span>
+                            </td>
+                            <td className="px-4 py-3">
+                              {action.status === 'pending' ? (
+                                <div className="flex items-center gap-1.5 justify-end">
+                                  <button
+                                    onClick={() => handleApprove(action.id)}
+                                    disabled={isDeciding}
+                                    className="h-7 px-2.5 rounded-lg text-[11px] font-semibold flex items-center gap-1 bg-[rgba(16,185,129,.1)] text-[var(--ok600)] hover:bg-[rgba(16,185,129,.2)] disabled:opacity-50 transition-colors whitespace-nowrap"
+                                  >
+                                    {isDeciding
+                                      ? <SpinnerGapIcon size={12} className="animate-spin" />
+                                      : <CheckIcon size={12} weight="bold" />}
+                                    Valider
+                                  </button>
+                                  <button
+                                    onClick={() => handleReject(action.id)}
+                                    disabled={isDeciding}
+                                    className="h-7 px-2.5 rounded-lg text-[11px] font-semibold flex items-center gap-1 bg-[rgba(239,68,68,.08)] text-[#DC2626] hover:bg-[rgba(239,68,68,.15)] disabled:opacity-50 transition-colors whitespace-nowrap"
+                                  >
+                                    <XIcon size={12} weight="bold" />
+                                    Rejeter
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-[var(--tx-3)] italic text-right block">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                {pageCount > 1 && (
+                  <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--bd-def)]">
+                    <button
+                      onClick={() => setActionPage(p => Math.max(0, p - 1))}
+                      disabled={actionPage === 0}
+                      className="h-7 px-3 rounded-lg text-[11px] font-semibold bg-[var(--bg-sink)] border border-[var(--bd-def)] text-[var(--tx-2)] hover:bg-[var(--bd-def)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     >
-                      <div className="w-1 self-stretch rounded-full flex-shrink-0 mt-1" style={{ background: p.bar }} />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start gap-2 flex-wrap mb-0.5">
-                          <span
-                            className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0"
-                            style={{ background: p.bg, color: p.text, border: `1px solid ${p.border}` }}
-                          >
-                            {p.label}
-                          </span>
-                          <p className="text-[13px] font-semibold text-[var(--tx-1)] leading-snug">{action.title}</p>
-                        </div>
-                        <p className="text-[12px] text-[var(--tx-2)] line-clamp-2 mb-1">{action.description}</p>
-                        <p className="text-[11px] text-[var(--tx-3)]">
-                          {fmtDate(action.proposed_at)} ·&nbsp;
-                          <span className="font-semibold" style={{ color: s.text }}>{s.label}</span>
-                        </p>
-                      </div>
-                      {action.status === 'pending' && (
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <button
-                            onClick={() => handleApprove(action.id)}
-                            disabled={isDeciding}
-                            className="h-7 px-2.5 rounded-lg text-[11px] font-semibold flex items-center gap-1 bg-[rgba(16,185,129,.1)] text-[var(--ok600)] hover:bg-[rgba(16,185,129,.2)] disabled:opacity-50 transition-colors"
-                          >
-                            {isDeciding
-                              ? <SpinnerGapIcon size={12} className="animate-spin" />
-                              : <CheckIcon size={12} weight="bold" />}
-                            Valider
-                          </button>
-                          <button
-                            onClick={() => handleReject(action.id)}
-                            disabled={isDeciding}
-                            className="h-7 px-2.5 rounded-lg text-[11px] font-semibold flex items-center gap-1 bg-[rgba(239,68,68,.08)] text-[#DC2626] hover:bg-[rgba(239,68,68,.15)] disabled:opacity-50 transition-colors"
-                          >
-                            <XIcon size={12} weight="bold" />
-                            Rejeter
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                      Précédent
+                    </button>
+                    <span className="text-[11px] text-[var(--tx-3)]">
+                      Page <span className="font-semibold text-[var(--tx-1)]">{actionPage + 1}</span> / {pageCount}
+                    </span>
+                    <button
+                      onClick={() => setActionPage(p => Math.min(pageCount - 1, p + 1))}
+                      disabled={actionPage >= pageCount - 1}
+                      className="h-7 px-3 rounded-lg text-[11px] font-semibold bg-[var(--bg-sink)] border border-[var(--bd-def)] text-[var(--tx-2)] hover:bg-[var(--bd-def)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Suivant
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </FinCard>
         </div>

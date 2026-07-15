@@ -91,8 +91,8 @@ export default function AlertesPage() {
     <div className="p-3 sm:p-4 md:p-6 mx-auto max-w-[1600px]">
       <FinSectionHeader
         title="Alertes financières"
-        secondaryAction={{ label: 'Archiver toutes', icon: <CheckIcon size={13} />, onClick: () => {} }}
-        actionLabel="+ Règle personnalisée"
+        // secondaryAction={{ label: 'Archiver toutes', icon: <CheckIcon size={13} />, onClick: () => {} }}
+        // actionLabel="+ Règle personnalisée"
         onAction={() => {}}
       />
 
