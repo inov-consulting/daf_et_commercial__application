@@ -385,7 +385,7 @@ export default function DettesFournisseursPage() {
           )}
 
           {/* Actions rapides */}
-          <FinCard>
+          {/* <FinCard>
             <SectionLabel className="mb-3">Actions rapides</SectionLabel>
             <div className="space-y-2">
               {[
@@ -405,7 +405,7 @@ export default function DettesFournisseursPage() {
                 </button>
               ))}
             </div>
-          </FinCard>
+          </FinCard> */}
         </div>
       </div>
 
