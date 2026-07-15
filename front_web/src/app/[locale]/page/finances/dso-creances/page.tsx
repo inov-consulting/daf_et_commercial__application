@@ -56,7 +56,7 @@ const STATUS_STYLE: Record<DafActionStatus, { label: string; bg: string; text: s
   failed:   { label: 'Échouée',    bg: 'rgba(239,68,68,.08)', text: '#DC2626' },
 };
 
-/* ── Balance âgée (mock — pas de route API disponible) ───────────────── */
+/* ── Balance âgée (mock) ────────────────────────────────────────────── */
 
 const BALANCE_AGEE_MOCK: BalanceAgeeItem[] = [
   { tranche: '0 – 30 jours',  montant: 18_900, pct: 40 },
@@ -66,7 +66,7 @@ const BALANCE_AGEE_MOCK: BalanceAgeeItem[] = [
   { tranche: '> 90 jours',    montant:  4_100, pct:  9 },
 ];
 
-/* ── Squelettes de chargement ───────────────────────────────────────── */
+/* ── Squelettes ─────────────────────────────────────────────────────── */
 
 function KpiSkeleton() {
   return (
@@ -82,7 +82,7 @@ function KpiSkeleton() {
   );
 }
 
-/* ── Page ──────────────────────────────────────────────────────────────── */
+/* ── Page ────────────────────────────────────────────────────────────── */
 
 export default function DsoCreancesPage() {
   const dispatch   = useAppDispatch();
@@ -97,7 +97,6 @@ export default function DsoCreancesPage() {
     decidingId, decideError,
   } = useAppSelector(s => s.daf);
 
-  /* Toast */
   const [toast, setToast]   = useState<{ msg: string; type: 'error' | 'success' | 'info' } | null>(null);
   const [actionPage, setActionPage] = useState(0);
   const ACTION_PAGE_SIZE = 10;
@@ -109,7 +108,6 @@ export default function DsoCreancesPage() {
     toastTimer.current = setTimeout(() => setToast(null), 4000);
   }
 
-  /* Fetch on mount */
   useEffect(() => {
     dispatch(fetchLatestSnapshot());
     dispatch(fetchSnapshots(10));
@@ -117,10 +115,8 @@ export default function DsoCreancesPage() {
     return () => { if (toastTimer.current) clearTimeout(toastTimer.current); };
   }, [dispatch]);
 
-  /* Reset page when actions list changes */
   useEffect(() => { setActionPage(0); }, [proposedActions]);
 
-  /* Afficher les erreurs via toast */
   useEffect(() => {
     if (latestSnapshotError)  showToast(latestSnapshotError);
     if (snapshotsError)       showToast(snapshotsError);
@@ -134,7 +130,6 @@ export default function DsoCreancesPage() {
     }
   }, [decideError, dispatch]);
 
-  /* Handlers */
   async function handleApprove(actionId: string) {
     const res = await dispatch(approveAction({ actionId }));
     if (approveAction.fulfilled.match(res)) showToast('Action approuvée avec succès', 'success');
@@ -145,19 +140,16 @@ export default function DsoCreancesPage() {
     if (rejectAction.fulfilled.match(res)) showToast('Action rejetée', 'info');
   }
 
-  /* Données dérivées */
   const snap = latestSnapshot;
 
   const dsoObjectif = 45;
   const dsoValue    = snap?.dso_days ?? 0;
   const dsoTrend    = dsoValue > dsoObjectif ? 'warning' : 'up';
 
-  // Chart : snapshots triés du plus ancien au plus récent
   const chartData = [...snapshots]
     .sort((a, b) => new Date(a.snapshot_at).getTime() - new Date(b.snapshot_at).getTime())
     .map(s => ({ mois: FR_MONTHS_SHORT[new Date(s.snapshot_at).getMonth()], dso: s.dso_days, objectif: dsoObjectif }));
 
-  // Actions de relance uniquement, par priorité décroissante
   const priorityRank: Record<DafActionPriority, number> = { critical: 0, high: 1, medium: 2, low: 3 };
   const actions = [...proposedActions]
     .filter(a => a.action_type === 'send_reminder' || a.action_type === 'escalate' || a.action_type === 'flag_risk')
@@ -170,11 +162,9 @@ export default function DsoCreancesPage() {
   const isLoading = latestSnapshotLoading || snapshotsLoading || proposedActionsLoading;
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 mx-auto max-w-[1600px]">
+    <div className="p-3 sm:p-4 md:p-6 mx-auto max-w-[1600px] space-y-4 sm:space-y-6">
       <FinSectionHeader
         title="DSO & Créances clients"
-        // secondaryAction={{ label: 'Exporter', icon: <DownloadSimpleIcon size={13} />, onClick: () => {} }}
-        // actionLabel="+ Relance auto"
         onAction={() => {}}
       />
 
@@ -182,7 +172,7 @@ export default function DsoCreancesPage() {
       {isLoading && !snap ? (
         <KpiSkeleton />
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           {[
             {
               label: 'DSO moyen global',
@@ -209,17 +199,19 @@ export default function DsoCreancesPage() {
               accent: '#1B6B45',
             },
           ].map(k => (
-            <div key={k.label} className="bg-white rounded-2xl border border-[var(--bd-def)] shadow-[var(--sh-xs)] p-4 sm:p-5">
+            <div key={k.label} className="bg-white rounded-2xl border border-[var(--bd-def)] shadow-[var(--sh-xs)] p-4 sm:p-5 flex flex-col">
               <p className="text-[11px] text-[var(--tx-3)] mb-1">{k.label}</p>
-              <p className="font-display font-bold text-lg leading-tight" style={{ color: k.accent }}>{k.value}</p>
+              <p className="font-display font-bold text-lg sm:text-xl leading-tight mt-auto" style={{ color: k.accent }}>{k.value}</p>
               <p className="text-[11px] text-[var(--tx-3)] mt-1">{k.sub}</p>
             </div>
           ))}
         </div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-3 sm:gap-4">
-        <div className="flex flex-col gap-3 sm:gap-4">
+      {/* Layout principal : 2 colonnes sur desktop */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-4 sm:gap-5 items-start">
+        {/* Colonne gauche */}
+        <div className="flex flex-col gap-4 sm:gap-5 min-w-0">
           {/* Chart évolution DSO */}
           {chartData.length > 0 ? (
             <FinLineChart
@@ -230,7 +222,7 @@ export default function DsoCreancesPage() {
                 { yKey: 'dso',      yName: 'DSO réel',      stroke: '#F97316' },
                 { yKey: 'objectif', yName: `Objectif ${dsoObjectif}j`, stroke: '#D1FAE5' },
               ]}
-              height={200}
+              height={220}
               yFormatter={v => `${v}j`}
             />
           ) : snapshotsLoading ? (
@@ -241,21 +233,29 @@ export default function DsoCreancesPage() {
 
           {/* Actions proposées */}
           <FinCard padding={false}>
-            <div className="px-4 sm:px-5 pt-4 pb-2">
-              <FinCardHeader
-                title="Actions proposées par l'agent DAF"
-                badge={
-                  criticalCount > 0
-                    ? <span className="text-[10px] font-semibold text-[#DC2626] bg-[rgba(239,68,68,.1)] px-2 py-0.5 rounded-full">
-                        {criticalCount} critique{criticalCount > 1 ? 's' : ''}
-                      </span>
-                    : <span className="text-[10px] text-[var(--tx-3)] bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded px-1.5 py-0.5">
-                        {actions.length} action{actions.length !== 1 ? 's' : ''}
-                      </span>
-                }
-                action={actions.length > 0 ? 'Vue complète' : undefined}
-                onAction={() => router.push(`/${locale}/page/finances/alertes`)}
-              />
+            <div className="px-4 sm:px-5 pt-4 pb-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <h3 className="font-space-grotesk text-sm font-semibold text-[var(--tx-1)]">
+                  Actions proposées par l&apos;agent DAF
+                </h3>
+                {criticalCount > 0 ? (
+                  <span className="text-[10px] font-semibold text-[#DC2626] bg-[rgba(239,68,68,.1)] px-2 py-0.5 rounded-full flex-shrink-0">
+                    {criticalCount} critique{criticalCount > 1 ? 's' : ''}
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-[var(--tx-3)] bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded px-1.5 py-0.5 flex-shrink-0">
+                    {actions.length} action{actions.length !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+              {actions.length > 0 && (
+                <button
+                  onClick={() => router.push(`/${locale}/page/finances/alertes`)}
+                  className="text-[11px] font-medium text-[var(--p500)] hover:underline flex-shrink-0 whitespace-nowrap"
+                >
+                  Vue complète
+                </button>
+              )}
             </div>
 
             {proposedActionsLoading && actions.length === 0 && (
@@ -285,12 +285,12 @@ export default function DsoCreancesPage() {
                   <table className="w-full text-[12px]">
                     <thead>
                       <tr className="bg-[var(--bg-sink)] text-[var(--tx-3)] text-left">
-                        <th className="px-4 py-2.5 font-semibold whitespace-nowrap">Priorité</th>
-                        <th className="px-4 py-2.5 font-semibold">Titre</th>
-                        <th className="px-4 py-2.5 font-semibold hidden md:table-cell">Description</th>
-                        <th className="px-4 py-2.5 font-semibold whitespace-nowrap hidden sm:table-cell">Date</th>
-                        <th className="px-4 py-2.5 font-semibold whitespace-nowrap">Statut</th>
-                        <th className="px-4 py-2.5 font-semibold text-right">Actions</th>
+                        <th className="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap w-[80px]">Priorité</th>
+                        <th className="px-3 sm:px-4 py-2.5 font-semibold">Titre</th>
+                        <th className="px-3 sm:px-4 py-2.5 font-semibold hidden md:table-cell">Description</th>
+                        <th className="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap hidden sm:table-cell w-[100px]">Date</th>
+                        <th className="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap w-[90px]">Statut</th>
+                        <th className="px-3 sm:px-4 py-2.5 font-semibold text-right w-[130px]">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--bd-def)]">
@@ -300,7 +300,7 @@ export default function DsoCreancesPage() {
                         const isDeciding = decidingId === action.id;
                         return (
                           <tr key={action.id} className="hover:bg-[var(--bg-sink)] transition-colors">
-                            <td className="px-4 py-3 whitespace-nowrap">
+                            <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
                               <span
                                 className="text-[10px] font-bold px-1.5 py-0.5 rounded"
                                 style={{ background: p.bg, color: p.text, border: `1px solid ${p.border}` }}
@@ -308,42 +308,44 @@ export default function DsoCreancesPage() {
                                 {p.label}
                               </span>
                             </td>
-                            <td className="px-4 py-3">
-                              <p className="font-semibold text-[var(--tx-1)] leading-snug">{action.title}</p>
+                            <td className="px-3 sm:px-4 py-3">
+                              <p className="font-semibold text-[var(--tx-1)] leading-snug line-clamp-2">{action.title}</p>
                             </td>
-                            <td className="px-4 py-3 hidden md:table-cell">
-                              <p className="text-[var(--tx-2)] line-clamp-2 max-w-xs">{action.description}</p>
+                            <td className="px-3 sm:px-4 py-3 hidden md:table-cell">
+                              <p className="text-[var(--tx-2)] line-clamp-2 max-w-[200px]">{action.description}</p>
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-[var(--tx-3)] hidden sm:table-cell">
+                            <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-[var(--tx-3)] hidden sm:table-cell">
                               {fmtDate(action.proposed_at)}
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
+                            <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
                               <span className="font-semibold text-[11px]" style={{ color: s.text }}>{s.label}</span>
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-3 sm:px-4 py-3">
                               {action.status === 'pending' ? (
                                 <div className="flex items-center gap-1.5 justify-end">
                                   <button
                                     onClick={() => handleApprove(action.id)}
                                     disabled={isDeciding}
-                                    className="h-7 px-2.5 rounded-lg text-[11px] font-semibold flex items-center gap-1 bg-[rgba(16,185,129,.1)] text-[var(--ok600)] hover:bg-[rgba(16,185,129,.2)] disabled:opacity-50 transition-colors whitespace-nowrap"
+                                    className="h-7 w-7 sm:w-auto sm:px-2.5 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 bg-[rgba(16,185,129,.1)] text-[var(--ok600)] hover:bg-[rgba(16,185,129,.2)] disabled:opacity-50 transition-colors"
+                                    title="Valider"
                                   >
                                     {isDeciding
                                       ? <SpinnerGapIcon size={12} className="animate-spin" />
                                       : <CheckIcon size={12} weight="bold" />}
-                                    Valider
+                                    <span className="hidden sm:inline">Valider</span>
                                   </button>
                                   <button
                                     onClick={() => handleReject(action.id)}
                                     disabled={isDeciding}
-                                    className="h-7 px-2.5 rounded-lg text-[11px] font-semibold flex items-center gap-1 bg-[rgba(239,68,68,.08)] text-[#DC2626] hover:bg-[rgba(239,68,68,.15)] disabled:opacity-50 transition-colors whitespace-nowrap"
+                                    className="h-7 w-7 sm:w-auto sm:px-2.5 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 bg-[rgba(239,68,68,.08)] text-[#DC2626] hover:bg-[rgba(239,68,68,.15)] disabled:opacity-50 transition-colors"
+                                    title="Rejeter"
                                   >
                                     <XIcon size={12} weight="bold" />
-                                    Rejeter
+                                    <span className="hidden sm:inline">Rejeter</span>
                                   </button>
                                 </div>
                               ) : (
-                                <span className="text-[var(--tx-3)] italic text-right block">—</span>
+                                <span className="text-[var(--tx-3)] italic text-right block text-[11px]">—</span>
                               )}
                             </td>
                           </tr>
@@ -364,7 +366,7 @@ export default function DsoCreancesPage() {
                       Précédent
                     </button>
                     <span className="text-[11px] text-[var(--tx-3)]">
-                      Page <span className="font-semibold text-[var(--tx-1)]">{actionPage + 1}</span> / {pageCount}
+                      {actionPage + 1} / {pageCount}
                     </span>
                     <button
                       onClick={() => setActionPage(p => Math.min(pageCount - 1, p + 1))}
@@ -380,57 +382,54 @@ export default function DsoCreancesPage() {
           </FinCard>
         </div>
 
-        {/* Panneau droit */}
-        <div className="flex flex-col gap-3 sm:gap-4">
+        {/* Colonne droite - Sidebar */}
+        <div className="flex flex-col gap-4 sm:gap-5">
           {/* Jauge DSO */}
           <FinCard>
-            <div className="flex items-start justify-between mb-3">
+            <div className="flex items-start justify-between mb-4">
               <div>
                 <p className="text-[11px] text-[var(--tx-3)] mb-0.5">DSO actuel</p>
                 <p
-                  className="font-display font-bold text-4xl"
+                  className="font-display font-bold text-[32px] sm:text-4xl leading-none"
                   style={{ color: dsoValue > dsoObjectif ? '#F97316' : '#1B6B45' }}
                 >
                   {latestSnapshotLoading ? '…' : dsoValue}
                 </p>
-                <p className="text-[12px] text-[var(--tx-3)]">jours</p>
-                {snap && (
-                  <p className="text-[11px] text-[var(--tx-3)] mt-1">
-                    Snapshot · {fmtDate(snap.snapshot_at)}
-                  </p>
-                )}
+                <p className="text-[11px] text-[var(--tx-3)] mt-0.5">jours</p>
               </div>
               <button
                 onClick={() => dispatch(fetchLatestSnapshot())}
-                className="text-xs font-medium text-[var(--p500)] hover:underline flex items-center gap-1"
+                className="text-[11px] font-medium text-[var(--p500)] hover:underline flex items-center gap-1 flex-shrink-0"
               >
-                Actualiser <ArrowRightIcon size={12} />
+                Actualiser <ArrowRightIcon size={11} />
               </button>
             </div>
+
             {/* Gauge bar */}
             <div className="h-[8px] bg-[var(--bg-sink)] rounded-full overflow-hidden mb-2 relative">
               <div className="absolute inset-0 flex">
-                <div className="h-full" style={{ width: `${(dsoObjectif / 90) * 100}%`, background: '#10B981' }} />
-                <div className="h-full" style={{ width: `${(15 / 90) * 100}%`, background: '#F59E0B' }} />
-                <div className="h-full flex-1" style={{ background: '#EF4444' }} />
+                <div className="h-full bg-[#10B981]" style={{ width: `${(dsoObjectif / 90) * 100}%` }} />
+                <div className="h-full bg-[#F59E0B]" style={{ width: `${(15 / 90) * 100}%` }} />
+                <div className="h-full flex-1 bg-[#EF4444]" />
               </div>
               {dsoValue > 0 && (
                 <div
-                  className="absolute top-0 h-full w-[3px] bg-[var(--tx-1)] rounded"
+                  className="absolute top-0 h-full w-[3px] bg-white ring-1 ring-[var(--tx-1)] rounded-full"
                   style={{ left: `${Math.min((dsoValue / 90) * 100, 98)}%` }}
                 />
               )}
             </div>
-            <div className="flex justify-between text-[9px] text-[var(--tx-3)] mb-3">
+            <div className="flex justify-between text-[9px] text-[var(--tx-3)] mb-4">
               <span>0j</span><span>{dsoObjectif}j</span><span>60j</span><span>90j</span>
             </div>
-            <div className="space-y-1.5 pt-2 border-t border-[var(--bd-def)]">
+
+            <div className="space-y-2 pt-3 border-t border-[var(--bd-def)]">
               <div className="flex justify-between text-[12px]">
                 <span className="text-[var(--tx-3)]">Objectif</span>
                 <span className="font-semibold text-[var(--tx-1)]">
                   {dsoObjectif} jours
                   {dsoValue > dsoObjectif && (
-                    <span className="text-[#F97316] ml-1">+{dsoValue - dsoObjectif}j écart</span>
+                    <span className="text-[#F97316] ml-1">+{dsoValue - dsoObjectif}j</span>
                   )}
                 </span>
               </div>
@@ -440,14 +439,14 @@ export default function DsoCreancesPage() {
                   {snap ? fmtM(snap.overdue_receivables) : '—'}
                 </span>
               </div>
+              {snap && (
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-[var(--tx-3)]">Snapshot</span>
+                  <span className="text-[var(--tx-2)]">{fmtDate(snap.snapshot_at)}</span>
+                </div>
+              )}
             </div>
           </FinCard>
-
-          {/* Balance âgée (mock — pas de route API) */}
-          <BalanceAgee
-            total={snap?.total_receivables ?? 47_200_000}
-            lignes={BALANCE_AGEE_MOCK}
-          />
         </div>
       </div>
 
