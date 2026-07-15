@@ -4,7 +4,8 @@ from __future__ import annotations
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 
 from app.api.deps import require_permission
 from app.api.v1.schemas.prospects import (
@@ -133,3 +134,30 @@ async def get_compte_rendu(cr_id: UUID) -> CompteRenduWithParentOut:
         cr_data["parent"] = _build_prospect_parent(cr.parent_id, prospect)
 
     return CompteRenduWithParentOut.model_validate(cr_data)
+
+
+class LinkProspectIn(BaseModel):
+    prospect_id: UUID
+
+
+@router.patch("/{cr_id}/link-prospect", dependencies=[Depends(require_permission("compte-rendus:write"))])
+async def link_to_prospect(cr_id: UUID, body: LinkProspectIn) -> dict:
+    """Associe un compte rendu existant (ex: issu d'une conversation WhatsApp) à une prospection.
+
+    Met à jour parent_type → 'prospect' et parent_id → prospect_id.
+    """
+    cr = await CompteRenduOrm.get_or_none(id=cr_id)
+    if not cr:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Compte rendu introuvable")
+
+    prospect = await ProspectOrm.get_or_none(id=body.prospect_id)
+    if not prospect:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prospection introuvable")
+
+    existing = await CompteRenduOrm.filter(parent_type="prospect", parent_id=body.prospect_id).count()
+    cr.parent_type = "prospect"
+    cr.parent_id = body.prospect_id
+    cr.version = existing + 1
+    await cr.save()
+
+    return {"cr_id": cr.id, "prospect_id": body.prospect_id, "version": cr.version}
