@@ -169,9 +169,9 @@ export default function TresoreriePage() {
     <div className="p-3 sm:p-4 md:p-6 mx-auto max-w-[1600px]">
       <FinSectionHeader
         title="Trésorerie nette"
-        secondaryAction={{ label: 'Exporter', icon: <DownloadSimpleIcon size={13} />, onClick: () => {} }}
-        actionLabel="+ Virement"
-        onAction={() => {}}
+        // secondaryAction={{ label: 'Exporter', icon: <DownloadSimpleIcon size={13} />, onClick: () => {} }}
+        // actionLabel="+ Virement"
+        // onAction={() => {}}
       />
 
       {/* KPI row */}
@@ -217,99 +217,11 @@ export default function TresoreriePage() {
               { yKey: 'sortant', yName: 'Sortants', fill: '#FCA5A5' },
             ]}
             height={200}
-          />
-
-          {/* Comptes bancaires (mock) */}
-          <FinCard padding={false}>
-            <div className="px-4 sm:px-5 pt-4 pb-2">
-              <FinCardHeader
-                title="Comptes bancaires"
-                badge={
-                  <span className="text-[10px] text-[var(--tx-3)] bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded px-1.5 py-0.5">
-                    {COMPTES.length} comptes
-                  </span>
-                }
-                action="Rapprochement"
-                onAction={() => {}}
-              />
-            </div>
-            <table className="w-full text-xs">
-              <tbody className="divide-y divide-[var(--bd-def)]">
-                {COMPTES.map(c => (
-                  <tr key={c.id} className="hover:bg-[var(--bg-sink)] transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-md bg-[var(--bg-sink)] border border-[var(--bd-def)] flex items-center justify-center text-[9px] font-bold text-[var(--tx-3)]">
-                          {c.pays}
-                        </span>
-                        <div>
-                          <p className="font-medium text-[var(--tx-1)]">{c.banque}</p>
-                          <p className="text-[10px] text-[var(--tx-3)] font-mono">{c.ref}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono font-semibold text-[var(--tx-1)]">{fmtSolde(c.solde)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <span className={cn('text-[11px] font-semibold', c.trend > 0 ? 'text-[var(--ok600)]' : c.trend < 0 ? 'text-[#DC2626]' : 'text-[var(--tx-3)]')}>
-                        {c.trend > 0 ? '▲' : c.trend < 0 ? '▼' : ''} {Math.abs(c.trend)}%
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-t-2 border-[var(--bd-def)] bg-[var(--bg-sink)] font-bold">
-                  <td className="px-4 py-3 text-sm">Total consolidé</td>
-                  <td className="px-4 py-3 text-right font-mono text-[var(--tx-1)]">{fmtSolde(soldeTotal)}</td>
-                  <td className="px-4 py-3 text-right text-[var(--ok600)]">▲ +5%</td>
-                </tr>
-              </tfoot>
-            </table>
-          </FinCard>
+          />          
         </div>
 
         {/* Panneau droit */}
         <div className="flex flex-col gap-3 sm:gap-4">
-
-          {/* Échéances (mock) */}
-          <FinCard padding={false}>
-            <div className="px-4 sm:px-5 pt-4 pb-2">
-              <FinCardHeader
-                title="Échéances · Juillet"
-                badge={
-                  <span className="text-[11px] font-semibold text-[var(--ok600)] bg-[rgba(16,185,129,.1)] px-2 py-0.5 rounded-full">
-                    {ECHEANCES.length} à venir
-                  </span>
-                }
-                action="Calendrier"
-                onAction={() => {}}
-              />
-            </div>
-            <div className="divide-y divide-[var(--bd-def)]">
-              {ECHEANCES.map(e => {
-                const s = STATUS_STYLE[e.status];
-                return (
-                  <div key={e.id} className="flex items-start gap-3 px-4 py-3 hover:bg-[var(--bg-sink)] transition-colors">
-                    <p className="text-[11px] text-[var(--tx-3)] font-mono w-14 flex-shrink-0 pt-0.5">{e.date}</p>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className={cn('w-[6px] h-[6px] rounded-full flex-shrink-0', s.dot)} />
-                        <p className="text-[12px] font-medium text-[var(--tx-1)] truncate">{e.label}</p>
-                      </div>
-                      <p className="text-[10px] text-[var(--tx-3)] truncate">{e.sub}</p>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className={cn('text-[12px] font-semibold', e.montant < 0 ? 'text-[#DC2626]' : 'text-[var(--ok600)]')}>
-                        {fmtMontant(e.montant)}
-                      </p>
-                      <span className="text-[9px] text-[var(--tx-3)] bg-[var(--bg-sink)] px-1.5 py-0.5 rounded">{s.label}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </FinCard>
-
           {/* Projection J+90 (calculée depuis la position réelle) */}
           <FinCard>
             <SectionLabel className="mb-3">Solde prévisionnel J+90</SectionLabel>
