@@ -52,6 +52,8 @@ dependencies = [
     "playwright>=1.40",
     # ── Scheduler ──
     "apscheduler>=3.10",
+    # ── WhatsApp ──
+    "pywa[fastapi]>=2.0",
 ]
 
 [dependency-groups]
