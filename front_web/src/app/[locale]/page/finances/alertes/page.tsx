@@ -375,7 +375,7 @@ export default function AlertesPage() {
                             </>
                           ) : (
                             <button
-                              onClick={() => setDismissed(prev => new Set([...prev, a.id]))}
+                              onClick={() => setDismissed(prev => new Set(Array.from(prev).concat(a.id)))}
                               className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--tx-3)] hover:bg-white/60 transition-colors"
                               title="Ignorer"
                             >
