@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useParams } from "next/navigation";
+import Link from "next/link";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { fetchRuns, fetchLatestSnapshot } from "@/redux/features/daf/dafSlice";
 import { renderMarkdown } from "@/lib/renderMarkdown";
@@ -253,6 +255,8 @@ function fmtDate(iso: string) {
 
 export default function ReportingPage() {
   const dispatch = useAppDispatch();
+  const params   = useParams();
+  const locale   = typeof params?.locale === 'string' ? params.locale : 'fr';
 
   const {
     runs,
@@ -308,12 +312,12 @@ export default function ReportingPage() {
     <div className="p-3 sm:p-4 md:p-6 mx-auto max-w-[1600px]">
       <FinSectionHeader
         title="Reporting financier"
-        secondaryAction={{
-          label: "Exporter tout",
-          icon: <DownloadSimpleIcon size={13} />,
-          onClick: () => {},
-        }}
-        actionLabel="+ Nouveau rapport"
+        // secondaryAction={{
+        //   label: "Exporter tout",
+        //   icon: <DownloadSimpleIcon size={13} />,
+        //   onClick: () => {},
+        // }}
+        // actionLabel="+ Nouveau rapport"
         onAction={() => {}}
       />
 
@@ -665,9 +669,10 @@ export default function ReportingPage() {
                   Runs récents
                 </p>
                 {runs.slice(0, 4).map((r) => (
-                  <div
+                  <Link
                     key={r.id}
-                    className="flex items-center justify-between gap-2"
+                    href={`/${locale}/page/finances/reporting/${r.id}`}
+                    className="flex items-center justify-between gap-2 rounded-md px-1 py-0.5 hover:bg-[rgba(16,185,129,.06)] transition-colors"
                   >
                     <span
                       className={cn(
@@ -683,13 +688,13 @@ export default function ReportingPage() {
                     >
                       {r.status}
                     </span>
-                    <span className="text-[10px] text-[var(--tx-3)] font-mono truncate">
+                    <span className="text-[10px] text-[var(--tx-3)] font-mono truncate flex-1">
                       {fmtDate(r.started_at)}
                     </span>
                     <span className="text-[10px] text-[var(--tx-3)]">
                       {r.proposed_actions_count} act.
                     </span>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}

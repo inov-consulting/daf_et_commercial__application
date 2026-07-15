@@ -598,16 +598,19 @@ function isFinancialKpi(kpi: KpiItem): boolean {
   );
 }
 
+const DAF_CATEGORIES = new Set(['Agent DAF', 'Finance DAF']);
+
 function ChartsSection() {
   const { displayed, catalogLoading } = useAppSelector((s) => s.kpi);
-  const revenueKpi      = findRevenueKpi(displayed);
-  const otherKpis       = displayed.filter((k) => k.key !== revenueKpi?.key);
+  const nonDaf          = displayed.filter((k) => !DAF_CATEGORIES.has(k.category));
+  const revenueKpi      = findRevenueKpi(nonDaf);
+  const otherKpis       = nonDaf.filter((k) => k.key !== revenueKpi?.key);
   const financialOthers = otherKpis.filter(isFinancialKpi);
   const otherIndicators = otherKpis.filter((k) => !isFinancialKpi(k));
   const hasFinancial    = financialOthers.length > 0;
   const hasOthers       = otherIndicators.length > 0;
 
-  if (!catalogLoading && displayed.length === 0) return null;
+  if (!catalogLoading && nonDaf.length === 0) return null;
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4">
@@ -1096,7 +1099,7 @@ export default function DashboardPage() {
   return (
     <div className="p-3 sm:p-4 md:p-6 mx-auto max-w-[1600px]">
       <PageHeader />
-      <IACenter />
+      {/* <IACenter /> */}
       <KpiRow />
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-3 sm:gap-4 mb-4 sm:mb-6">
         <ChartsSection />
