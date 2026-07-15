@@ -221,6 +221,97 @@ RAPPEL: Générer un document HTML COMPLET avec ce Design System. Respecter les 
 
         return cr
 
+    async def generate_from_raw_content(
+        self,
+        content: str,
+        parent_type: str,
+        parent_id: UUID,
+        author_id: UUID | None = None,
+        extra_note_ids: list[UUID] | None = None,
+    ) -> "CompteRenduOrm":
+        """Génère un CR depuis du contenu brut (messages WhatsApp, texte libre…).
+
+        Le contenu peut être complété par des NoteOrm existantes via extra_note_ids.
+        Aucune prospection n'est requise — parent_type peut être "whatsapp", "libre", etc.
+        Le CR peut ensuite être lié à une prospection via link_to_prospect().
+        """
+        from app.infrastructure.db.models.ai_config import AiConfigOrm
+        import re as _re
+
+        config = await AiConfigOrm.first()
+        style_template = config.compte_rendu_template if config else None
+
+        # Compléter avec des notes existantes si demandé
+        extra_text = ""
+        if extra_note_ids:
+            extra_notes = await NoteOrm.filter(id__in=extra_note_ids).order_by("created_at")
+            if extra_notes:
+                extra_text = "\n\n--- Notes complémentaires ---\n" + self._format_notes_for_prompt(extra_notes)
+
+        full_content = content + extra_text
+
+        base_prompt = CR_GENERATION_PROMPT.format(notes=full_content)
+        prompt = base_prompt
+        if style_template and style_template.strip():
+            prompt += f"\n\n⚠️ DESIGN SYSTEM PORTALIS (À APPLIQUER STRICTEMENT):\n{style_template}\n\nRAPPEL: Générer un document HTML COMPLET avec ce Design System."
+
+        html_content = await self._call_claude(prompt)
+
+        html_content = _re.sub(r'^\s*```\w*\s*\n?', '', html_content, flags=_re.IGNORECASE)
+        html_content = _re.sub(r'\n?```\s*$', '', html_content, flags=_re.IGNORECASE)
+        html_content = html_content.strip()
+
+        if not html_content.startswith(('<!DOCTYPE', '<!doctype', '<html')):
+            html_content = f"""<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><style>body{{font-family:system-ui,sans-serif;color:#212121;margin:0;padding:0;}}</style></head>
+<body>{html_content}</body>
+</html>"""
+
+        existing_count = await CompteRenduOrm.filter(
+            parent_type=parent_type, parent_id=parent_id
+        ).count()
+        version = existing_count + 1
+
+        folder = f"cr/{parent_type}/{parent_id}"
+        filename = f"CR-{parent_type}-{str(parent_id)[:8]}-v{version}.pdf"
+        minio_path = f"{folder}/{filename}"
+
+        cr = await CompteRenduOrm.create(
+            parent_type=parent_type,
+            parent_id=parent_id,
+            version=version,
+            status="final",
+            minio_bucket=settings.minio_bucket,
+            minio_path=minio_path,
+            generated_by="ai",
+            content=html_content,
+            prompt_used=prompt,
+            note_ids=[str(nid) for nid in (extra_note_ids or [])],
+            generation_status="running",
+            created_by_id=author_id,
+        )
+
+        try:
+            pdf_bytes = await self._generate_pdf(html_content, parent_id, style_template)
+            await self._storage.upload(
+                pdf_bytes,
+                filename=filename,
+                content_type="application/pdf",
+                folder=folder,
+                unique=False,
+            )
+            cr.file_size = len(pdf_bytes)
+            cr.generation_status = "done"
+            await cr.save()
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception("cr.raw.pdf_failed cr_id=%s", cr.id)
+            cr.generation_status = "failed"
+            await cr.save()
+
+        return cr
+
     def _format_notes_for_prompt(self, notes: list[NoteOrm]) -> str:
         """Formate les notes pour le prompt Claude."""
         lines = []
@@ -478,4 +569,124 @@ RAPPEL: Générer un document HTML COMPLET avec ce Design System. Respecter les 
         await cr.save()
         
         logger.info(f"PDF régénéré pour CR {cr.id}: {len(pdf_bytes)} bytes")
+        return cr
+
+        """Analyse une conversation WhatsApp et génère un compte rendu PDF.
+
+        Sauvegarde avec parent_type='whatsapp' et parent_id=conversation_id.
+        Peut être associé à un prospect plus tard via link_to_prospect().
+        """
+        import logging
+        import re as _re
+        from app.infrastructure.db.models.whatsapp import WhatsAppConversationOrm, WhatsAppMessageOrm
+        from app.infrastructure.db.models.ai_config import AiConfigOrm
+
+        logger = logging.getLogger(__name__)
+
+        conv = await WhatsAppConversationOrm.get_or_none(id=conversation_id)
+        if not conv:
+            raise ValueError("Conversation WhatsApp introuvable")
+
+        messages = await WhatsAppMessageOrm.filter(
+            conversation_id=conversation_id,
+        ).order_by("meta_timestamp")
+
+        if not messages:
+            raise ValueError("Aucun message dans cette conversation")
+
+        # Formater la transcript
+        lines = []
+        for m in messages:
+            who = "Client" if m.direction == "inbound" else "Nous"
+            ts = m.meta_timestamp.strftime("%d/%m/%Y %H:%M") if m.meta_timestamp else ""
+            if m.message_type == "text" and m.body:
+                lines.append(f"[{ts}] {who}: {m.body}")
+            else:
+                lines.append(f"[{ts}] {who}: [{m.message_type.upper()}]")
+
+        transcript = "\n".join(lines)
+        contact = conv.contact_name or conv.wa_id
+
+        config = await AiConfigOrm.first()
+        style_template = config.compte_rendu_template if config else None
+
+        prompt = f"""Tu es un assistant commercial professionnel. Analyse la conversation WhatsApp ci-dessous entre notre équipe et le contact "{contact}" et génère un compte rendu professionnel en HTML complet.
+
+STRUCTURE ATTENDUE :
+1. Page de garde : logo PortaLis, titre "Compte Rendu — Échange WhatsApp", contact, date
+2. Résumé exécutif : points clés de la conversation en bullets
+3. Détail de la discussion : thèmes abordés, demandes exprimées, informations échangées
+4. Points d'action : suites à donner, engagements pris
+5. Footer "PortaLis — Sénégal"
+
+⚠️ RÈGLES ABSOLUES :
+- Document HTML COMPLET et autonome (CSS inline dans <style>)
+- NE PAS utiliser de bloc Markdown (```html)
+- Commencer directement par <!DOCTYPE html> et terminer par </html>
+- Contenu en français
+- Logo : https://web.portalis.manage.inov-consulting.com/assets/images/logo_portalis.png
+- @page :first {{ margin: 0; }} et @page {{ margin: 2cm; }}
+
+{"⚠️ DESIGN SYSTEM PORTALIS :\\n" + style_template if style_template else ""}
+
+TRANSCRIPT DE LA CONVERSATION :
+{transcript}
+"""
+
+        html_content = await self._call_claude(prompt)
+
+        # Nettoyage markdown
+        html_content = _re.sub(r'^\s*```\w*\s*\n?', '', html_content, flags=_re.IGNORECASE)
+        html_content = _re.sub(r'\n?```\s*$', '', html_content, flags=_re.IGNORECASE)
+        html_content = html_content.strip()
+
+        if not html_content.startswith(('<!DOCTYPE', '<!doctype', '<html')):
+            html_content = f"""<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><style>body{{font-family:system-ui,sans-serif;color:#212121;margin:0;padding:0;}}</style></head>
+<body>{html_content}</body>
+</html>"""
+
+        # Version : incrément si un CR existe déjà pour cette conversation
+        existing_count = await CompteRenduOrm.filter(
+            parent_type="whatsapp", parent_id=conversation_id
+        ).count()
+        version = existing_count + 1
+
+        folder = f"cr/whatsapp/{conversation_id}"
+        filename = f"CR-whatsapp-{str(conversation_id)[:8]}-v{version}.pdf"
+        minio_path = f"{folder}/{filename}"
+
+        cr = await CompteRenduOrm.create(
+            parent_type="whatsapp",
+            parent_id=conversation_id,
+            version=version,
+            status="final",
+            minio_bucket=self._storage._bucket,
+            minio_path=minio_path,
+            generated_by="ai",
+            content=html_content,
+            prompt_used=prompt,
+            generation_status="running",
+            created_by_id=author_id,
+        )
+
+        try:
+            pdf_bytes = await self._generate_pdf(html_content, conversation_id, style_template)
+            await self._storage.upload(
+                pdf_bytes,
+                filename=filename,
+                content_type="application/pdf",
+                folder=folder,
+                unique=False,
+            )
+            cr.file_size = len(pdf_bytes)
+            cr.generation_status = "done"
+            await cr.save()
+            logger.info("cr.whatsapp.done cr_id=%s conversation=%s", cr.id, conversation_id)
+        except Exception:
+            logger.exception("cr.whatsapp.pdf_failed cr_id=%s", cr.id)
+            cr.generation_status = "failed"
+            await cr.save()
+
         return cr
