@@ -1,38 +1,41 @@
 'use client';
 
-import { useState } from 'react';
-import { CheckIcon, PencilSimpleIcon, XIcon, ArrowRightIcon } from '@phosphor-icons/react';
+import { CheckIcon, XIcon, SpinnerGapIcon } from '@phosphor-icons/react';
 import { Progress } from '@/components/ui/progress';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { AgentSyntheseItem, AgentActif } from '@/types/finance_type';
+import type { AgentActif } from '@/types/finance_type';
+import type { DafProposedAction } from '@/types/daf_type';
 
-function ModelBadge({ model }: { model: 'sonnet' | 'haiku' }) {
-  return (
-    <span className={cn(
-      'text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0',
-      model === 'sonnet' ? 'bg-[var(--a100)] text-[var(--a600)]' : 'bg-[var(--p100)] text-[var(--p600)]',
-    )}>
-      {model === 'sonnet' ? 'Claude Sonnet' : 'Claude Haiku'}
-    </span>
-  );
-}
+const PRIORITY_CONFIG = {
+  critical: { label: 'Critique', color: '#DC2626', bg: 'rgba(239,68,68,.12)' },
+  high:     { label: 'Haute',    color: '#F97316', bg: 'rgba(249,115,22,.12)' },
+  medium:   { label: 'Moyenne',  color: '#B45309', bg: 'rgba(245,158,11,.12)' },
+  low:      { label: 'Faible',   color: '#6B7280', bg: 'rgba(107,114,128,.12)' },
+} as const;
+
+const ACTION_TYPE_LABEL: Record<string, string> = {
+  send_reminder: 'Relance client',
+  escalate:      'Escalade',
+  flag_risk:     'Signal risque',
+  payment_plan:  'Plan de paiement',
+};
 
 interface Props {
-  label:       string;
-  rule?:       string;
-  items:       AgentSyntheseItem[];
-  agents:      AgentActif[];
-  taskCount:   number;
-  validCount:  number;
+  label:           string;
+  rule?:           string;
+  agents:          AgentActif[];
+  proposedActions: DafProposedAction[];
+  decidingId:      string | null;
+  onApprove:       (id: string) => void;
+  onReject:        (id: string) => void;
+  taskCount:       number;
+  validCount:      number;
 }
 
-export function AgentSyntheseDaf({ label, rule, items: initItems, agents, taskCount, validCount }: Props) {
-  const [items, setItems] = useState(initItems);
-
-  function dismiss(id: number) {
-    setItems(prev => prev.filter(i => i.id !== id));
-  }
+export function AgentSyntheseDaf({
+  label, rule, agents, proposedActions, decidingId, onApprove, onReject, taskCount, validCount,
+}: Props) {
+  const pendingCount = proposedActions.filter(a => a.status === 'pending').length;
 
   return (
     <div className="bg-white rounded-2xl border border-[var(--bd-def)] shadow-[var(--sh-xs)] mb-4 sm:mb-6 overflow-hidden">
@@ -49,44 +52,107 @@ export function AgentSyntheseDaf({ label, rule, items: initItems, agents, taskCo
             {rule && <p className="text-[11px] text-[var(--tx-3)] hidden sm:block">{rule}</p>}
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-white px-2.5 py-1 rounded-full" style={{ background: 'var(--grad)' }}>
-            <span className="text-[10px] leading-none">✦</span> {items.length}
+        {pendingCount > 0 && (
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-white px-2.5 py-1 rounded-full flex-shrink-0" style={{ background: 'var(--grad)' }}>
+            <span className="text-[10px] leading-none">✦</span> {pendingCount} en attente
           </span>
-          <button className="text-xs font-medium text-[var(--p500)] hover:underline hidden sm:flex items-center gap-1">
-            Voir tout <ArrowRightIcon size={12} />
-          </button>
-        </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] divide-y lg:divide-y-0 lg:divide-x divide-[var(--bd-def)]">
 
-        {/* Validation items */}
+        {/* Actions proposées */}
         <div className="bg-[var(--bg-sink)]">
           <p className="px-4 sm:px-5 pt-3 pb-2 text-[9px] font-semibold tracking-[.08em] text-[var(--tx-3)] uppercase">
-            En attente de votre validation
+            Actions proposées par l&apos;agent IA
           </p>
           <div className="divide-y divide-[var(--bd-def)] border-t border-[var(--bd-def)] bg-white">
-            {items.map(item => (
-              <div key={item.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 px-3 sm:px-5 py-3 sm:py-3.5">
-                <div className="flex items-center justify-between sm:block sm:flex-shrink-0 sm:w-[120px]">
-                  <ModelBadge model={item.model} />
+            {proposedActions.map(action => {
+              const p         = PRIORITY_CONFIG[action.priority as keyof typeof PRIORITY_CONFIG] ?? PRIORITY_CONFIG.medium;
+              const loading   = decidingId === action.id;
+              const isPending = action.status === 'pending';
+              const td        = action.target_data as Record<string, unknown>;
+              const partnerName = td?.partner_name ?? td?.client_name ?? td?.name ?? null;
+              const amount      = td?.amount ?? td?.outstanding_amount ?? td?.montant ?? null;
+
+              return (
+                <div key={action.id} className="px-3 sm:px-5 py-3 sm:py-4">
+                  {/* Type + priority + status */}
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--tx-3)]">
+                      {ACTION_TYPE_LABEL[action.action_type] ?? action.action_type.replace(/_/g, ' ')}
+                    </span>
+                    <span className="text-[10px] font-bold px-1.5 py-px rounded-full" style={{ color: p.color, background: p.bg }}>
+                      {p.label}
+                    </span>
+                    {!isPending && (
+                      <span className={cn(
+                        'text-[10px] font-bold px-1.5 py-px rounded-full',
+                        action.status === 'approved' ? 'bg-[rgba(16,185,129,.1)] text-[#1B6B45]' :
+                        action.status === 'rejected' ? 'bg-[rgba(239,68,68,.1)] text-[#DC2626]'  :
+                        action.status === 'executed' ? 'bg-[rgba(99,102,241,.1)] text-[#4338CA]' :
+                        'bg-[var(--bg-sink)] text-[var(--tx-3)]',
+                      )}>
+                        {action.status}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Title */}
+                  <p className="text-sm font-semibold text-[var(--tx-1)] mb-1 leading-snug">{action.title}</p>
+
+                  {/* Description */}
+                  <p className="text-[11px] text-[var(--tx-2)] leading-relaxed mb-1">{action.description}</p>
+
+                  {/* Reasoning */}
+                  {action.reasoning && (
+                    <p className="text-[11px] text-[var(--tx-3)] italic leading-relaxed border-l-2 border-[var(--bd-def)] pl-2 mb-2">
+                      {action.reasoning}
+                    </p>
+                  )}
+
+                  {/* Target data */}
+                  {(partnerName || amount !== null) && (
+                    <div className="flex items-center gap-3 text-[11px] text-[var(--tx-3)] mb-2">
+                      {partnerName && <span>👤 {String(partnerName)}</span>}
+                      {amount !== null && <span>💰 {Number(amount).toLocaleString('fr-FR')} XAF</span>}
+                    </div>
+                  )}
+
+                  {/* Meta */}
+                  <p className="text-[9px] text-[var(--tx-3)] mb-2">
+                    Proposé le {new Date(action.proposed_at).toLocaleDateString('fr-FR')}
+                    {action.decided_at && (
+                      <> · Décidé le {new Date(action.decided_at).toLocaleDateString('fr-FR')}</>
+                    )}
+                  </p>
+
+                  {/* Approve / Reject */}
+                  {isPending && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => onApprove(action.id)}
+                        disabled={!!decidingId}
+                        className="flex items-center gap-1 h-7 px-3 rounded-lg bg-[rgba(16,185,129,.1)] text-[#1B6B45] text-[11px] font-semibold hover:bg-[rgba(16,185,129,.2)] transition-colors disabled:opacity-50"
+                      >
+                        {loading ? <SpinnerGapIcon size={11} className="animate-spin" /> : <CheckIcon size={11} weight="bold" />}
+                        Approuver
+                      </button>
+                      <button
+                        onClick={() => onReject(action.id)}
+                        disabled={!!decidingId}
+                        className="flex items-center gap-1 h-7 px-3 rounded-lg bg-[rgba(239,68,68,.1)] text-[#DC2626] text-[11px] font-semibold hover:bg-[rgba(239,68,68,.2)] transition-colors disabled:opacity-50"
+                      >
+                        {loading ? <SpinnerGapIcon size={11} className="animate-spin" /> : <XIcon size={11} />}
+                        Rejeter
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[9px] font-semibold text-[var(--tx-3)] uppercase tracking-wide mb-0.5">{item.type}</p>
-                  <p className="text-xs sm:text-sm font-semibold text-[var(--tx-1)] mb-0.5">{item.title}</p>
-                  <p className="text-[11px] text-[var(--tx-2)] line-clamp-2 mb-1">{item.desc}</p>
-                  <p className="text-[9px] text-[var(--tx-3)] truncate">{item.meta}</p>
-                </div>
-                <div className="flex items-center gap-1 flex-shrink-0 ml-auto sm:ml-0">
-                  <Button variant="success" size="xs"><CheckIcon size={12} weight="bold" /><span className="hidden sm:inline ml-1">Valider</span></Button>
-                  <Button variant="ghost"   size="xs"><PencilSimpleIcon size={12} /><span className="hidden sm:inline ml-1">Modifier</span></Button>
-                  <Button variant="ghost"   size="xs" iconOnly onClick={() => dismiss(item.id)}><XIcon size={12} /></Button>
-                </div>
-              </div>
-            ))}
-            {items.length === 0 && (
-              <p className="px-5 py-4 text-[12px] text-[var(--tx-3)]">Aucun élément en attente.</p>
+              );
+            })}
+            {proposedActions.length === 0 && (
+              <p className="px-5 py-4 text-[12px] text-[var(--tx-3)] italic">Aucune action proposée en cours.</p>
             )}
           </div>
         </div>

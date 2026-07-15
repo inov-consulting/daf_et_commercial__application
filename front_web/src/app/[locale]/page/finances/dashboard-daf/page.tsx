@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useParams } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import {
   fetchAgentStatus,
@@ -9,43 +10,72 @@ import {
   fetchLatestSnapshot,
   fetchSnapshots,
   fetchProposedActions,
+  approveAction,
+  rejectAction,
 } from "@/redux/features/daf/dafSlice";
+import { fetchKpiCatalog } from "@/redux/features/kpi/kpiSlice";
 import { FinSectionHeader } from "@/components/finance/fin-section-header";
 import { FinKpiRow } from "@/components/finance/fin-kpi-row";
 import { AgentSyntheseDaf } from "@/components/finance/agent-synthese-daf";
 import { AlertesFin } from "@/components/finance/alertes-fin";
 import { CreancesTop } from "@/components/finance/creances-top";
 import {
-  FinBarChart,
   FinLineChart,
   FR_MONTHS_SHORT,
 } from "@/components/finance/fin-chart";
+import {
+  KpiChartCard,
+  KpiChartCardSkeleton,
+} from "@/components/kpi/kpi-chart-card";
 import { FloatingToast } from "@/components/ui/toast";
 import { SpinnerGapIcon, ArrowClockwiseIcon } from "@phosphor-icons/react";
 import type {
   FinKpi,
-  AgentSyntheseItem,
   AgentActif,
   AlerteFinance,
-  CreanceClient,
 } from "@/types/finance_type";
+import type { KpiItem } from "@/types/kpi_type";
+
 import type {
-  DafRun,
   DafAgentStatus,
   DafProposedAction,
   DafSnapshot,
 } from "@/types/daf_type";
 
-/* ── Mock fixe : CA (pas de route API) ──────────────────────────────── */
+/* ── Helpers KPI Agent DAF ───────────────────────────────────────────── */
 
-const CA_DATA = [
-  { mois: "Jan", precedent: 60, valeur: 39 },
-  { mois: "Fév", precedent: 60, valeur: 43 },
-  { mois: "Mar", precedent: 60, valeur: 43 },
-  { mois: "Avr", precedent: 60, valeur: 48 },
-  { mois: "Mai", precedent: 60, valeur: 51 },
-  { mois: "Jun", precedent: 60, valeur: 68 },
-];
+const FR_MONTHS_ABBR = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+
+function fmtDayLabel(dateStr: string): string {
+  const d = new Date(dateStr.slice(0, 10) + 'T00:00:00');
+  return `${d.getDate()} ${FR_MONTHS_ABBR[d.getMonth()]}`;
+}
+
+function transformDayKpi(kpi: KpiItem): KpiItem {
+  const xKey = kpi.chart.series[0]?.xKey;
+  if (!xKey) return kpi;
+  const sample = String(kpi.chart.data[0]?.[xKey] ?? '');
+  if (!/^\d{4}-\d{2}-\d{2}/.test(sample)) return kpi;
+  const seen = new Set<string>();
+  const newData: Record<string, unknown>[] = [];
+  for (const row of kpi.chart.data) {
+    const dayKey = String(row[xKey] ?? '').slice(0, 10);
+    if (seen.has(dayKey)) continue;
+    seen.add(dayKey);
+    newData.push({ ...row, [xKey]: fmtDayLabel(String(row[xKey])) });
+  }
+  return { ...kpi, chart: { ...kpi.chart, data: newData } };
+}
+
+function swapCritiqueBasse(kpi: KpiItem): KpiItem {
+  if (kpi.key !== 'daf_actions_priorite') return kpi;
+  const series = [...kpi.chart.series];
+  const ci = series.findIndex(s => s.yKey === 'Critique');
+  const bi = series.findIndex(s => s.yKey === 'Basse');
+  if (ci === -1 || bi === -1) return kpi;
+  [series[ci], series[bi]] = [series[bi], series[ci]];
+  return { ...kpi, chart: { ...kpi.chart, series } };
+}
 
 const KPI_MOCK: FinKpi[] = [
   {
@@ -92,60 +122,13 @@ const ALERTES_FALLBACK: AlerteFinance[] = [
   },
 ];
 
-const CREANCES_FALLBACK: CreanceClient[] = [];
-
 /* ── Helpers ─────────────────────────────────────────────────────────── */
 
 function fmtM(v: number) {
   return `${(v / 1_000_000).toFixed(1)}M FCFA`;
 }
 
-function fmtDateShort(iso: string) {
-  return new Date(iso).toLocaleString("fr-FR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function stripMarkdown(text: string): string {
-  return text
-    .replace(/#{1,6}\s+/g, "")
-    .replace(/\*\*/g, "")
-    .replace(/\*/g, "")
-    .replace(/\n+/g, " ")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-}
-
 /* ── Fonctions de mapping API → props composants ────────────────────── */
-
-function runsToItems(runs: DafRun[]): AgentSyntheseItem[] {
-  return runs.slice(0, 3).map((run, idx) => {
-    const raw = run.summary ?? run.error ?? "";
-    const firstLine =
-      raw
-        .split("\n")
-        .map((l) => l.trim())
-        .find((l) => l && !/^#{1,3}$/.test(l)) ?? `Run ${run.id.slice(0, 8)}`;
-    const cleanTitle = stripMarkdown(firstLine).slice(0, 80);
-    const cleanDesc = stripMarkdown(raw).slice(0, 200);
-    return {
-      id: idx + 1,
-      model: "sonnet" as const,
-      type: `${run.trigger.replace(/_/g, " ").toUpperCase()} · ${run.status.toUpperCase()}`,
-      title: cleanTitle || `Run ${run.id.slice(0, 8)}`,
-      desc:
-        cleanDesc ||
-        (run.status === "failed"
-          ? (run.error ?? "Échec sans message")
-          : "Aucun résumé disponible."),
-      meta: `${fmtDateShort(run.started_at)} · ${run.proposed_actions_count} actions proposées`,
-    };
-  });
-}
 
 function statusToAgents(status: DafAgentStatus | null): AgentActif[] {
   if (!status) {
@@ -268,31 +251,6 @@ function buildAlertes(
   return result.slice(0, 5);
 }
 
-function buildCreances(actions: DafProposedAction[]): CreanceClient[] {
-  return actions
-    .filter(
-      (a) =>
-        ["send_reminder", "escalate", "flag_risk"].includes(a.action_type) &&
-        a.status === "pending",
-    )
-    .slice(0, 5)
-    .map((a, i) => {
-      const td = a.target_data as Record<string, unknown>;
-      const montant = Number(
-        td?.amount ?? td?.montant ?? td?.outstanding_amount ?? 0,
-      );
-      const dso = Number(td?.dso_days ?? td?.dso ?? 0);
-      const name = String(td?.client_name ?? td?.name ?? a.title);
-      const ville = String(td?.ville ?? td?.city ?? "Dakar");
-      const status: CreanceClient["status"] =
-        a.priority === "critical"
-          ? "critique"
-          : a.priority === "high"
-            ? "a_risque"
-            : "normal";
-      return { id: i + 1, rank: i + 1, name, ville, montant, dso, status };
-    });
-}
 
 /* ── Skeleton AgentSyntheseDaf ───────────────────────────────────────── */
 
@@ -318,6 +276,8 @@ function AgentSkeleton() {
 
 export default function DashboardDafPage() {
   const dispatch = useAppDispatch();
+  const params   = useParams();
+  const locale   = typeof params?.locale === 'string' ? params.locale : 'fr';
 
   const {
     agentStatus,
@@ -334,9 +294,12 @@ export default function DashboardDafPage() {
     snapshotsError,
     proposedActions,
     proposedActionsError,
+    decidingId,
     triggering,
     triggerError,
   } = useAppSelector((s) => s.daf);
+
+  const { catalog, catalogLoading } = useAppSelector((s) => s.kpi);
 
   const [toast, setToast] = useState<{
     msg: string;
@@ -355,13 +318,15 @@ export default function DashboardDafPage() {
 
   useEffect(() => {
     dispatch(fetchAgentStatus());
-    dispatch(fetchRuns(5));
+    dispatch(fetchRuns(10));
     dispatch(fetchLatestSnapshot());
     dispatch(fetchSnapshots(6));
     dispatch(fetchProposedActions({ status: "pending", limit: 20 }));
+    if (catalog.length === 0) dispatch(fetchKpiCatalog());
     return () => {
       if (toastTimer.current) clearTimeout(toastTimer.current);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch]);
 
   useEffect(() => {
@@ -386,7 +351,7 @@ export default function DashboardDafPage() {
       if (!result.type.endsWith("/rejected")) {
         showToast("Agent DAF déclenché avec succès", "success");
         setTimeout(() => {
-          dispatch(fetchRuns(5));
+          dispatch(fetchRuns(10));
           dispatch(fetchAgentStatus());
         }, 1500);
       }
@@ -395,19 +360,17 @@ export default function DashboardDafPage() {
 
   function handleRefresh() {
     dispatch(fetchAgentStatus());
-    dispatch(fetchRuns(5));
+    dispatch(fetchRuns(10));
     dispatch(fetchLatestSnapshot());
     dispatch(fetchSnapshots(6));
     dispatch(fetchProposedActions({ status: "pending", limit: 20 }));
   }
 
   /* Données dérivées */
-  const snap = latestSnapshot;
-  const kpis = snap ? snapshotToKpis(snap) : KPI_MOCK;
-  const items = runsToItems(runs);
+  const snap   = latestSnapshot;
+  const kpis   = snap ? snapshotToKpis(snap) : KPI_MOCK;
   const agents = statusToAgents(agentStatus);
   const alertes = buildAlertes(proposedActions, snap);
-  const creances = buildCreances(proposedActions);
 
   const taskCount = runs.reduce((s, r) => s + r.proposed_actions_count, 0);
   const validCount = proposedActions.filter(
@@ -426,6 +389,14 @@ export default function DashboardDafPage() {
 
   const isLoading = runsLoading || agentStatusLoading;
 
+  const dafAgentKpis = catalog
+    .filter((k) => k.category === 'Agent DAF')
+    .map(transformDayKpi)
+    .map(swapCritiqueBasse);
+
+  const prioriteKpi = dafAgentKpis.find((k) => k.key === 'daf_actions_priorite');
+  const otherKpis   = dafAgentKpis.filter((k) => k.key !== 'daf_actions_priorite');
+
   return (
     <div className="p-3 sm:p-4 md:p-6 mx-auto max-w-[1600px]">
       <FinSectionHeader
@@ -440,23 +411,9 @@ export default function DashboardDafPage() {
           ),
           onClick: handleRefresh,
         }}
-        actionLabel={triggering ? "Déclenchement…" : "Déclencher Agent"}
+        // actionLabel={triggering ? "Déclenchement…" : "Déclencher Agent"}
         onAction={handleTrigger}
       />
-
-      {/* Agent Synthèse — monté seulement quand les runs sont disponibles */}
-      {runsLoading && runs.length === 0 ? (
-        <AgentSkeleton />
-      ) : (
-        <AgentSyntheseDaf
-          label="Agent Synthèse DAF"
-          rule="Claude a généré ces éléments — validation requise avant action (R-DAF)"
-          items={items}
-          agents={agents}
-          taskCount={taskCount}
-          validCount={validCount}
-        />
-      )}
 
       {/* KPI row */}
       {latestSnapshotLoading && !snap ? (
@@ -476,20 +433,43 @@ export default function DashboardDafPage() {
         <FinKpiRow kpis={kpis} />
       )}
 
+      {/* Agent Synthèse — monté seulement quand les runs sont disponibles */}
+      {runsLoading && runs.length === 0 ? (
+        <AgentSkeleton />
+      ) : (
+        <AgentSyntheseDaf
+          label="Agent Synthèse DAF"
+          rule="L&apos;IA a généré ces éléments — validation requise avant action (R-DAF)"
+          proposedActions={[...proposedActions].sort((a, b) => new Date(b.proposed_at).getTime() - new Date(a.proposed_at).getTime()).slice(0, 5)}
+          agents={agents}
+          decidingId={decidingId}
+          onApprove={(id) => dispatch(approveAction({ actionId: id }))}
+          onReject={(id)  => dispatch(rejectAction({ actionId: id }))}
+          taskCount={taskCount}
+          validCount={validCount}
+        />
+      )}
+
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-3 sm:gap-4">
         <div className="flex flex-col gap-3 sm:gap-4">
-          {/* CA mensuel (mock — pas de route API revenue) */}
-          <FinBarChart
-            title="Chiffre d'affaires mensuel"
-            subtitle="Jan – Juin 2026 · Millions FCFA · Estimation"
-            ytd="279M"
-            data={CA_DATA}
-            series={[
-              { yKey: "precedent", yName: "Mois précédents", fill: "#D1FAE5" },
-              { yKey: "valeur", yName: "Mois en cours", fill: "#1E5B3C" },
-            ]}
-            height={220}
-          />
+          {/* KPIs Agent DAF (catalogue) */}
+          {catalogLoading && dafAgentKpis.length === 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[1, 2, 3, 4].map((i) => <KpiChartCardSkeleton key={i} />)}
+            </div>
+          ) : dafAgentKpis.length > 0 ? (
+            <>
+              {otherKpis[0] && <KpiChartCard kpi={otherKpis[0]} featured />}
+              {otherKpis.length > 1 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {otherKpis.slice(1).map((kpi) => (
+                    <KpiChartCard key={kpi.key} kpi={kpi} />
+                  ))}
+                </div>
+              )}
+              {prioriteKpi && <KpiChartCard kpi={prioriteKpi} featured />}
+            </>
+          ) : null}
 
           {/* Trésorerie nette (données réelles depuis snapshots) */}
           {snapshotsLoading && treoData.length === 0 ? (
@@ -522,9 +502,7 @@ export default function DashboardDafPage() {
           <AlertesFin
             alertes={alertes.length > 0 ? alertes : ALERTES_FALLBACK}
           />
-          <CreancesTop
-            creances={creances.length > 0 ? creances : CREANCES_FALLBACK}
-          />
+          <CreancesTop runs={runs} locale={locale} />
         </div>
       </div>
 
