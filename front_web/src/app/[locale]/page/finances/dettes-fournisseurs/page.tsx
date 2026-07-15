@@ -176,8 +176,8 @@ export default function DettesFournisseursPage() {
     <div className="p-3 sm:p-4 md:p-6 mx-auto max-w-[1600px]">
       <FinSectionHeader
         title="Dettes fournisseurs"
-        secondaryAction={{ label: 'Exporter', icon: <DownloadSimpleIcon size={13} />, onClick: () => {} }}
-        actionLabel="+ Règlement"
+        // secondaryAction={{ label: 'Exporter', icon: <DownloadSimpleIcon size={13} />, onClick: () => {} }}
+        // actionLabel="+ Règlement"
         onAction={() => {}}
       />
 
@@ -220,14 +220,14 @@ export default function DettesFournisseursPage() {
           ) : null}
 
           {/* Balance âgée fournisseurs (mock — pas de route API par tranche) */}
-          <FinBarChart
+          {/* <FinBarChart
             title="Balance âgée fournisseurs"
             subtitle="Répartition par ancienneté · Millions FCFA · Estimation"
             data={balanceBarData}
             xKey="tranche"
             series={[{ yKey: 'montant', yName: 'Montant dû (M FCFA)', fill: '#1E5B3C' }]}
             height={180}
-          />
+          /> */}
 
           {/* Liste fournisseurs (mock — pas de route API par fournisseur) */}
           <FinCard padding={false}>
@@ -297,73 +297,89 @@ export default function DettesFournisseursPage() {
 
         {/* Panneau droit */}
         <div className="flex flex-col gap-3 sm:gap-4">
-
-          {/* Balance âgée détail (mock) */}
-          <FinCard>
-            <SectionLabel className="mb-3">Balance âgée fournisseurs</SectionLabel>
-            {balanceMock.map((r, i) => {
-              const realPct = snap
-                ? Math.round((r.montant / balanceTotal) * 100)
-                : r.pct;
-              return (
-                <div key={i} className="mb-3 last:mb-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-[12px] text-[var(--tx-2)]">{r.tranche}</p>
-                    <p className="text-[12px] font-bold font-mono" style={{ color: r.color }}>
-                      {fmtM(r.montant, 1)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-[5px] bg-[var(--bg-sink)] rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${realPct}%`, backgroundColor: r.color }} />
-                    </div>
-                    <span className="text-[10px] text-[var(--tx-3)] w-8 text-right font-mono">{realPct}%</span>
-                  </div>
-                </div>
-              );
-            })}
-            <div className="mt-3 pt-3 border-t border-[var(--bd-def)] flex items-center justify-between">
-              <p className="text-[11px] font-semibold text-[var(--tx-2)]">Total</p>
-              <p className="text-[12px] font-bold font-mono text-[#DC2626]">
-                {fmtM(balanceTotal)}
-              </p>
-            </div>
-            <p className="mt-2 text-[10px] text-[var(--warn600)]">
-              ⚠ Répartition par tranche estimée. Total consolidé depuis l&apos;API snapshot.
-            </p>
-          </FinCard>
-
           {/* Résumé snapshot */}
           {snap && (
-            <FinCard className="border-[rgba(220,38,38,.2)] bg-[rgba(220,38,38,.02)]">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="w-6 h-6 rounded-md bg-[rgba(220,38,38,.15)] flex items-center justify-center">
+            <FinCard>
+              <div className="flex items-center gap-2 mb-4">
+                <span className="w-6 h-6 rounded-md bg-[rgba(220,38,38,.12)] flex items-center justify-center flex-shrink-0">
                   <WarningIcon size={13} className="text-[#DC2626]" />
                 </span>
                 <p className="text-[12px] font-semibold text-[var(--tx-1)]">Synthèse snapshot</p>
+                <span className="ml-auto text-[10px] text-[var(--tx-3)] bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded px-1.5 py-0.5">
+                  {snap.period_label}
+                </span>
               </div>
-              <div className="space-y-2 text-[12px] text-[var(--tx-2)] leading-relaxed">
-                <div className="flex justify-between">
-                  <span className="text-[var(--tx-3)]">Total dettes</span>
-                  <span className="font-semibold font-mono text-[#DC2626]">{fmtM(snap.total_payables)}</span>
+
+              {/* Bloc Dettes fournisseurs */}
+              <div className="mb-3">
+                <p className="text-[9px] font-bold uppercase tracking-[.08em] text-[#DC2626] mb-1.5">
+                  Dettes fournisseurs
+                </p>
+                <div className="rounded-xl border border-[rgba(220,38,38,.15)] bg-[rgba(220,38,38,.03)] divide-y divide-[rgba(220,38,38,.1)]">
+                  <div className="flex items-center justify-between px-3 py-2">
+                    <span className="text-[11px] text-[var(--tx-3)]">Total</span>
+                    <span className="text-[12px] font-bold font-mono text-[var(--tx-1)]">{fmtM(snap.total_payables)}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-3 py-2">
+                    <span className="text-[11px] text-[var(--tx-3)]">En retard</span>
+                    <span className="text-[12px] font-bold font-mono text-[#F97316]">{fmtM(snap.overdue_payables)}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-3 py-2">
+                    <span className="text-[11px] text-[var(--tx-3)]">Factures fournisseurs en retard</span>
+                    <span className="text-[12px] font-semibold text-[#F97316]">
+                      {snap.overdue_payables_count} 
+                    </span>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-[var(--tx-3)]">Dettes en retard</span>
-                  <span className="font-semibold font-mono text-[#F97316]">{fmtM(snap.overdue_payables)}</span>
+              </div>
+
+              {/* Bloc Créances clients */}
+              <div className="mb-3">
+                <p className="text-[9px] font-bold uppercase tracking-[.08em] text-[#1B6B45] mb-1.5">
+                  Créances clients
+                </p>
+                <div className="rounded-xl border border-[rgba(27,107,69,.15)] bg-[rgba(27,107,69,.03)] divide-y divide-[rgba(27,107,69,.1)]">
+                  <div className="flex items-center justify-between px-3 py-2">
+                    <span className="text-[11px] text-[var(--tx-3)]">Total</span>
+                    <span className="text-[12px] font-bold font-mono text-[var(--tx-1)]">{fmtM(snap.total_receivables)}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-3 py-2">
+                    <span className="text-[11px] text-[var(--tx-3)]">En retard</span>
+                    <span className="text-[12px] font-bold font-mono text-[#F97316]">{fmtM(snap.overdue_receivables)}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-3 py-2">
+                    <span className="text-[11px] text-[var(--tx-3)]">Factures clients en retard</span>
+                    <span className="text-[12px] font-semibold text-[#F97316]">
+                      {snap.overdue_receivables_count}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-[var(--tx-3)]">Fournisseurs en retard</span>
-                  <span className="font-semibold">{snap.overdue_payables_count}</span>
+              </div>
+
+              {/* Position globale */}
+              <div className="rounded-xl border border-[var(--bd-def)] bg-[var(--bg-sink)] divide-y divide-[var(--bd-def)]">
+                <div className="flex items-center justify-between px-3 py-2">
+                  <span className="text-[11px] text-[var(--tx-3)]">Ratio créances / dettes</span>
+                  <span className={cn('text-[12px] font-bold', snap.total_receivables >= snap.total_payables ? 'text-[var(--ok600)]' : 'text-[#DC2626]')}>
+                    {snap.total_payables > 0 ? `${(snap.total_receivables / snap.total_payables).toFixed(1)}x` : '—'}
+                  </span>
                 </div>
-                <div className="flex justify-between border-t border-[rgba(220,38,38,.15)] pt-2 mt-2">
-                  <span className="text-[var(--tx-3)]">Créances / Dettes</span>
-                  <span className={cn('font-bold', snap.total_receivables >= snap.total_payables ? 'text-[var(--ok600)]' : 'text-[#DC2626]')}>
-                    {snap.total_payables > 0 ? `${(snap.total_receivables / snap.total_payables).toFixed(2)}x` : '—'}
+                <div className="flex items-center justify-between px-3 py-2">
+                  <span className="text-[11px] text-[var(--tx-3)]">DSO moyen</span>
+                  <span className={cn('text-[12px] font-bold', snap.dso_days > 45 ? 'text-[#F97316]' : 'text-[var(--ok600)]')}>
+                    {snap.dso_days}j
+                  </span>
+                </div>
+                <div className="flex items-center justify-between px-3 py-2">
+                  <span className="text-[11px] text-[var(--tx-3)]">Trésorerie nette</span>
+                  <span className={cn('text-[12px] font-bold font-mono', snap.cash_position >= 0 ? 'text-[var(--tx-1)]' : 'text-[#DC2626]')}>
+                    {fmtM(snap.cash_position)}
                   </span>
                 </div>
               </div>
-              <p className="text-[10px] text-[var(--tx-3)] mt-3 pt-2 border-t border-[rgba(220,38,38,.15)]">
-                Snapshot · {new Date(snap.snapshot_at).toLocaleDateString('fr-FR')} · {snap.period_label}
+
+              <p className="text-[10px] text-[var(--tx-3)] mt-3 pt-2 border-t border-[var(--bd-def)]">
+                Snapshot · {new Date(snap.snapshot_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </p>
             </FinCard>
           )}

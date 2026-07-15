@@ -25,9 +25,19 @@ export interface DafRun {
   proposed_actions_count: number;
 }
 
+export type DafEventType = 'agent_start' | 'analysis' | 'info' | 'action_proposed' | 'action_executed' | string;
+
+export interface DafRunEvent {
+  id:         string;
+  event_type: DafEventType;
+  message:    string;
+  payload:    Record<string, unknown> | null;
+  created_at: string;
+}
+
 export interface DafRunDetail extends DafRun {
-  events:           unknown[];
-  snapshots:        unknown[];
+  events:           DafRunEvent[];
+  snapshots:        DafSnapshot[];
   proposed_actions: DafProposedAction[];
 }
 
