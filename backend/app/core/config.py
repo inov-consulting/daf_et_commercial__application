@@ -107,6 +107,15 @@ class Settings(BaseSettings):
     odoo_password: str = ""
     odoo_api_key: str = ""
 
+    # ── WhatsApp Business Cloud API ────────────────────────────────────
+    whatsapp_access_token: str = ""
+    whatsapp_phone_number_id: str = ""       # Phone Number ID (pas le numéro lui-même)
+    whatsapp_business_account_id: str = ""   # WhatsApp Business Account ID
+    whatsapp_webhook_verify_token: str = ""  # Token secret inventé par toi, copié dans Meta
+    api_domain: str = ""                     # Domaine public de l'API (sans slash final)
+    # ex dev  : https://abc123.ngrok-free.app
+    # ex prod : https://portalis.mondomaine.com
+
     # ── Observability ──────────────────────────────────────────────────
     sentry_dsn: str = ""
     bugsnag_api_key: str = ""

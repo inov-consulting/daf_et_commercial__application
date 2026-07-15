@@ -96,10 +96,10 @@ _CATALOG: list[KpiDefinition] = [
     ),
     KpiDefinition(
         key="daf_tresorerie_evolution",
-        label="Évolution de la trésorerie",
+        label="État de la trésorerie",
         category="Finance DAF",
         source="portalis",
-        description="Position de trésorerie disponible (banques + caisse) suivie à chaque cycle DAF.",
+        description="Flux entrant (créances clients), flux sortant (dettes fournisseurs) et trésorerie nette par mois pour l'année en cours.",
         unit="XOF",
     ),
     # ── Finance & Transport ──────────────────────────────────────────────────
