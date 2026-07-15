@@ -15,7 +15,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel
 
 from app.api.deps import require_permission
@@ -54,14 +54,42 @@ class WhatsAppMessageOut(BaseModel):
     created_at: datetime
 
 
-class ReplyIn(BaseModel):
-    text: str
+def _mime_to_message_type(mime: str) -> str:
+    if mime.startswith("image/"):
+        return "image"
+    if mime.startswith("video/"):
+        return "video"
+    if mime.startswith("audio/"):
+        return "audio"
+    return "document"
 
 
-class StartConversationIn(BaseModel):
-    phone: str   # numéro international sans '+', ex: "22890123456"
-    text: str
-    contact_name: str | None = None
+async def _upload_file_to_minio(data: bytes, filename: str, content_type: str) -> str | None:
+    """Upload les bytes vers MinIO et retourne l'URL publique."""
+    try:
+        from app.infrastructure.storage.minio import StorageService
+        storage = StorageService()
+        return await storage.upload(data, filename=filename, content_type=content_type, folder="whatsapp/outbound")
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("whatsapp.upload_file_to_minio failed")
+        return None
+
+
+async def _send_media_via_pywa(wa, to: str, msg_type: str, url: str, filename: str | None, caption: str | None) -> str:
+    """Envoie le média via pywa et retourne le wamid."""
+    try:
+        if msg_type == "image":
+            sent = await wa.send_image(to=to, image=url, caption=caption or "")
+        elif msg_type == "audio":
+            sent = await wa.send_audio(to=to, audio=url)
+        elif msg_type == "video":
+            sent = await wa.send_video(to=to, video=url, caption=caption or "")
+        else:  # document
+            sent = await wa.send_document(to=to, document=url, filename=filename or "document", caption=caption or "")
+        return sent.id if hasattr(sent, "id") else f"out:{uuid4()}"
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Échec d'envoi WhatsApp : {exc}") from exc
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -166,34 +194,60 @@ async def get_messages(
 
 
 @router.post("/conversations/start", dependencies=_write_deps, status_code=status.HTTP_201_CREATED)
-async def start_conversation(body: StartConversationIn) -> dict:
+async def start_conversation(
+    phone: str = Form(..., description="Numéro international sans '+', ex: 22890123456"),
+    text: str | None = Form(None),
+    contact_name: str | None = Form(None),
+    file: UploadFile | None = File(None),
+) -> dict:
     """Initie une conversation WhatsApp avec un client et envoie le premier message.
 
-    ⚠️  WhatsApp n'autorise les messages texte libres que si le client a écrit dans les 24h.
-    Pour contacter un client froid, utilisez un template Meta approuvé via /whatsapp/send-template.
+    Utiliser `multipart/form-data` avec les champs :
+    - `phone` (obligatoire) : numéro international sans '+'
+    - `text` (optionnel) : message texte ou légende
+    - `contact_name` (optionnel) : nom du contact
+    - `file` (optionnel) : fichier à envoyer
+
+    ⚠️  WhatsApp n'autorise les messages libres que si le client a écrit dans les 24h.
     """
     from app.infrastructure.db.models.whatsapp import WhatsAppConversationOrm, WhatsAppMessageOrm
     from app.infrastructure.whatsapp.client import get_wa, is_configured
     from app.core.config import settings
 
+    if not text and not file:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Fournir au moins `text` ou `file`")
+
     if not is_configured():
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="WhatsApp non configuré")
 
     wa = get_wa()
-    try:
-        sent = await wa.send_message(to=body.phone, text=body.text)
-        sent_wamid = sent.id if hasattr(sent, "id") else f"out:{uuid4()}"
-    except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Échec d'envoi : {exc}") from exc
-
     now = datetime.now(timezone.utc)
+    msg_type = "text"
+    media_url: str | None = None
+    media_filename: str | None = None
+
+    if file:
+        content_type = file.content_type or "application/octet-stream"
+        msg_type = _mime_to_message_type(content_type)
+        media_filename = file.filename or f"file_{uuid4().hex[:8]}"
+        data = await file.read()
+        media_url = await _upload_file_to_minio(data, media_filename, content_type)
+        if not media_url:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Échec de l'upload du fichier")
+        sent_wamid = await _send_media_via_pywa(wa, phone, msg_type, media_url, media_filename, text)
+    else:
+        try:
+            sent = await wa.send_message(to=phone, text=text)
+            sent_wamid = sent.id if hasattr(sent, "id") else f"out:{uuid4()}"
+        except Exception as exc:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Échec d'envoi : {exc}") from exc
 
     conv, _ = await WhatsAppConversationOrm.get_or_create(
-        wa_id=body.phone,
+        wa_id=phone,
         phone_number_id=settings.whatsapp_phone_number_id,
         defaults={
             "id": uuid4(),
-            "contact_name": body.contact_name,
+            "contact_name": contact_name,
             "display_phone_number": None,
             "status": "active",
             "last_message_at": now,
@@ -201,8 +255,8 @@ async def start_conversation(body: StartConversationIn) -> dict:
     )
     conv.last_message_at = now
     conv.status = "active"
-    if body.contact_name and not conv.contact_name:
-        conv.contact_name = body.contact_name
+    if contact_name and not conv.contact_name:
+        conv.contact_name = contact_name
     await conv.save()
 
     msg = await WhatsAppMessageOrm.create(
@@ -210,8 +264,10 @@ async def start_conversation(body: StartConversationIn) -> dict:
         conversation_id=conv.id,
         wamid=sent_wamid,
         direction="outbound",
-        message_type="text",
-        body=body.text,
+        message_type=msg_type,
+        body=text,
+        media_url=media_url,
+        media_filename=media_filename,
         meta_timestamp=now,
         delivery_status="sent",
     )
@@ -228,44 +284,68 @@ async def start_conversation(body: StartConversationIn) -> dict:
 @router.post("/conversations/{conversation_id}/reply", dependencies=_write_deps, status_code=status.HTTP_201_CREATED)
 async def reply_to_conversation(
     conversation_id: UUID,
-    body: ReplyIn,
+    text: str | None = Form(None),
+    file: UploadFile | None = File(None),
 ) -> WhatsAppMessageOut:
-    """Envoie un message texte au contact WhatsApp et persiste la réponse en BD."""
+    """Envoie un message au contact WhatsApp (texte, audio, image, vidéo ou document).
+
+    Utiliser `multipart/form-data` :
+    - `text` (optionnel) : contenu texte ou légende du média
+    - `file` (optionnel) : fichier à envoyer
+
+    Au moins un des deux doit être fourni.
+    """
     from app.infrastructure.db.models.whatsapp import WhatsAppConversationOrm, WhatsAppMessageOrm
     from app.infrastructure.whatsapp.client import get_wa, is_configured
+
+    if not text and not file:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Fournir au moins `text` ou `file`")
 
     conv = await WhatsAppConversationOrm.get_or_none(id=conversation_id)
     if not conv:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation non trouvée")
 
     if not is_configured():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="WhatsApp non configuré",
-        )
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="WhatsApp non configuré")
 
     wa = get_wa()
-    sent_wamid: str
-    try:
-        sent = await wa.send_message(to=conv.wa_id, text=body.text)
-        sent_wamid = sent.id if hasattr(sent, "id") else f"out:{uuid4()}"
-        delivery_status = "sent"
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Échec d'envoi WhatsApp : {exc}",
-        ) from exc
-
     now = datetime.now(timezone.utc)
+
+    msg_type = "text"
+    media_url: str | None = None
+    media_filename: str | None = None
+    sent_wamid: str
+
+    if file:
+        content_type = file.content_type or "application/octet-stream"
+        msg_type = _mime_to_message_type(content_type)
+        media_filename = file.filename or f"file_{uuid4().hex[:8]}"
+        data = await file.read()
+
+        # Upload vers MinIO pour archivage
+        media_url = await _upload_file_to_minio(data, media_filename, content_type)
+        if not media_url:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Échec de l'upload du fichier")
+
+        sent_wamid = await _send_media_via_pywa(wa, conv.wa_id, msg_type, media_url, media_filename, text)
+    else:
+        try:
+            sent = await wa.send_message(to=conv.wa_id, text=text)
+            sent_wamid = sent.id if hasattr(sent, "id") else f"out:{uuid4()}"
+        except Exception as exc:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Échec d'envoi WhatsApp : {exc}") from exc
+
     msg = await WhatsAppMessageOrm.create(
         id=uuid4(),
         conversation_id=conv.id,
         wamid=sent_wamid,
         direction="outbound",
-        message_type="text",
-        body=body.text,
+        message_type=msg_type,
+        body=text,
+        media_url=media_url,
+        media_filename=media_filename,
         meta_timestamp=now,
-        delivery_status=delivery_status,
+        delivery_status="sent",
     )
 
     conv.last_message_at = now
@@ -278,7 +358,8 @@ async def reply_to_conversation(
         message_type=msg.message_type,
         body=msg.body,
         media_id=None,
-        media_filename=None,
+        media_url=msg.media_url,
+        media_filename=msg.media_filename,
         delivery_status=msg.delivery_status,
         error_message=None,
         meta_timestamp=msg.meta_timestamp,
