@@ -159,10 +159,35 @@ async def _persist_and_handle(_client, msg) -> None:
         media_mime = msg.document.mime_type
         media_filename = msg.document.filename
     elif msg.type in (MessageType.UNKNOWN, MessageType.UNSUPPORTED):
-        # Tentative d'extraction depuis le payload brut (polls, réactions inconnues, etc.)
+        # Extraire le sous-type depuis le payload brut (poll_creation, agenda, etc.)
         raw = getattr(msg, "raw", None)
         if raw:
-            body_text = _json.dumps(raw, ensure_ascii=False, default=str)
+            try:
+                msg_data = raw["entry"][0]["changes"][0]["value"]["messages"][0]
+                unsupported_type = msg_data.get("unsupported", {}).get("type", "unknown")
+                errors = msg_data.get("errors", [])
+                body_text = _json.dumps({
+                    "unsupported_type": unsupported_type,
+                    "errors": [{"code": e.get("code"), "title": e.get("title")} for e in errors],
+                }, ensure_ascii=False)
+            except (KeyError, IndexError, TypeError):
+                body_text = _json.dumps({"unsupported_type": "unknown"}, ensure_ascii=False)
+
+        # Réponse automatique — informer l'expéditeur que ce type n'est pas pris en charge
+        await _send_and_persist_autoreply(
+            wa_id=wa_id,
+            conversation_id=conversation.id,
+            text=(
+                "Désolé, nous ne pouvons pas lire ce type de contenu pour le moment. 🙏\n\n"
+                "Vous pouvez nous envoyer :\n"
+                "• 💬 Messages texte\n"
+                "• 🎤 Audios / Notes vocales\n"
+                "• 🖼️ Images\n"
+                "• 🎥 Vidéos\n"
+                "• 📄 Documents\n"
+                "• 🔗 Liens"
+            ),
+        )
 
     # ── Téléchargement du média vers MinIO ────────────────────────────
     media_url: str | None = None
@@ -191,6 +216,37 @@ async def _persist_and_handle(_client, msg) -> None:
     )
 
     logger.info("whatsapp.message.received wa_id=%s type=%s", _mask(wa_id), msg_type)
+
+
+# ── Réponse automatique système ──────────────────────────────────────────────
+
+async def _send_and_persist_autoreply(wa_id: str, conversation_id, text: str) -> None:
+    """Envoie un message automatique et le persiste en BD comme message sortant système."""
+    from datetime import datetime, timezone
+    from app.infrastructure.db.models.whatsapp import WhatsAppMessageOrm
+
+    sent_wamid = f"auto:{uuid4()}"
+    delivery_status = "failed"
+
+    try:
+        wa = get_wa()
+        sent = await wa.send_message(to=wa_id, text=text)
+        sent_wamid = sent.id if hasattr(sent, "id") else sent_wamid
+        delivery_status = "sent"
+    except Exception:
+        logger.warning("whatsapp.autoreply.send_failed wa_id=%s", _mask(wa_id))
+
+    await WhatsAppMessageOrm.create(
+        id=uuid4(),
+        conversation_id=conversation_id,
+        wamid=sent_wamid,
+        direction="outbound",
+        message_type="text",
+        body=text,
+        meta_timestamp=datetime.now(timezone.utc),
+        delivery_status=delivery_status,
+    )
+    logger.info("whatsapp.autoreply.persisted wa_id=%s status=%s", _mask(wa_id), delivery_status)
 
 
 # ── Téléchargement média Meta → MinIO ────────────────────────────────────────
