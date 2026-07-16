@@ -3,56 +3,47 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/redux/store';
 import { fetchLatestSnapshot, fetchSnapshots } from '@/redux/features/daf/dafSlice';
+import { fetchKpiCatalog } from '@/redux/features/kpi/kpiSlice';
 import { FinSectionHeader } from '@/components/finance/fin-section-header';
-import { FinLineChart, FinBarChart, FR_MONTHS_SHORT } from '@/components/finance/fin-chart';
-import { FinCard, FinCardHeader, SectionLabel } from '@/components/finance/fin-card';
+import { FinLineChart, FR_MONTHS_SHORT } from '@/components/finance/fin-chart';
+import { FinCard, FinCardHeader } from '@/components/finance/fin-card';
 import { FloatingToast } from '@/components/ui/toast';
-import { DownloadSimpleIcon, SpinnerGapIcon, WarningIcon, CheckCircleIcon, ClockIcon } from '@phosphor-icons/react';
+import { SpinnerGapIcon, WarningIcon, CheckCircleIcon, ClockIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 
 /* ── Types locaux ────────────────────────────────────────────────────── */
 
-interface FournisseurRow {
-  id:      number;
-  rank:    number;
-  name:    string;
-  ref:     string;
-  montant: number;
-  echeance: string;
-  retard:  number; // jours de retard (0 = pas en retard)
-  status:  'critique' | 'retard' | 'a_echoir' | 'regle';
+interface FactureRow {
+  numero:       string;
+  client:       string;
+  montant:      number;
+  date_facture: string;
+  echeance:     string;
+  jours_retard: number;
+  devise:       string;
 }
 
-interface BalanceAgeeRow {
-  tranche: string;
-  montant: number;
-  pct:     number;
-  color:   string;
-}
+/* ── Status dérivé du nombre de jours de retard ─────────────────────── */
 
-/* ── Données mock sans équivalent API ───────────────────────────────── */
+type StatusKey = 'critique' | 'retard' | 'a_echoir';
 
-const FOURNISSEURS_MOCK: FournisseurRow[] = [
-  { id: 1, rank: 1, name: 'TOTAL Sénégal',          ref: 'F-SN-2026-0412', montant: 8_400_000,  echeance: '25/06/2026', retard: 15, status: 'retard'   },
-  { id: 2, rank: 2, name: 'MAERSK Line Afrique',    ref: 'F-SN-2026-0389', montant: 6_200_000,  echeance: '01/07/2026', retard: 0,  status: 'a_echoir' },
-  { id: 3, rank: 3, name: 'BOLLORÉ Logistics CI',   ref: 'F-CI-2026-0221', montant: 5_800_000,  echeance: '18/06/2026', retard: 22, status: 'critique'  },
-  { id: 4, rank: 4, name: 'COLAS Afrique de l\'Ouest', ref: 'F-SN-2026-0401', montant: 4_100_000, echeance: '30/07/2026', retard: 0,  status: 'a_echoir' },
-  { id: 5, rank: 5, name: 'SOTELMA Telecom',        ref: 'F-SN-2026-0188', montant: 1_900_000,  echeance: '10/06/2026', retard: 30, status: 'critique'  },
-];
-
-const BALANCE_AGEE_MOCK: BalanceAgeeRow[] = [
-  { tranche: '0 – 30 jours',  montant: 8_200_000, pct: 37, color: '#10B981' },
-  { tranche: '31 – 60 jours', montant: 5_400_000, pct: 25, color: '#F59E0B' },
-  { tranche: '61 – 90 jours', montant: 4_800_000, pct: 22, color: '#F97316' },
-  { tranche: '> 90 jours',    montant: 3_300_000, pct: 16, color: '#EF4444' },
-];
-
-const STATUS_STYLE: Record<FournisseurRow['status'], { dot: string; label: string; text: string }> = {
-  critique: { dot: 'bg-[#EF4444]', label: 'Critique',   text: 'text-[#DC2626]'        },
-  retard:   { dot: 'bg-[#F97316]', label: 'En retard',  text: 'text-[#EA580C]'        },
-  a_echoir: { dot: 'bg-[#10B981]', label: 'À échoir',   text: 'text-[var(--ok600)]'   },
-  regle:    { dot: 'bg-[var(--tx-3)]', label: 'Réglé',  text: 'text-[var(--tx-3)]'   },
+const STATUS_STYLE: Record<StatusKey, { dot: string; label: string; text: string }> = {
+  critique: { dot: 'bg-[#EF4444]', label: 'Critique',  text: 'text-[#DC2626]'      },
+  retard:   { dot: 'bg-[#F97316]', label: 'En retard', text: 'text-[#EA580C]'      },
+  a_echoir: { dot: 'bg-[#10B981]', label: 'À échoir',  text: 'text-[var(--ok600)]' },
 };
+
+function getStatus(jours: number): StatusKey {
+  if (jours > 30) return 'critique';
+  if (jours > 0)  return 'retard';
+  return 'a_echoir';
+}
+
+function fmtIsoDate(iso: string) {
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
 
@@ -99,6 +90,8 @@ export default function DettesFournisseursPage() {
     snapshots,             snapshotsLoading,      snapshotsError,
   } = useAppSelector(s => s.daf);
 
+  const { catalog, catalogLoading } = useAppSelector(s => s.kpi);
+
   const [toast, setToast] = useState<{ msg: string; type: 'error' | 'success' | 'info' } | null>(null);
   const toastTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -111,7 +104,9 @@ export default function DettesFournisseursPage() {
   useEffect(() => {
     dispatch(fetchLatestSnapshot());
     dispatch(fetchSnapshots(10));
+    if (!catalog.length) dispatch(fetchKpiCatalog());
     return () => { if (toastTimer.current) clearTimeout(toastTimer.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch]);
 
   useEffect(() => {
@@ -122,6 +117,34 @@ export default function DettesFournisseursPage() {
   /* Données dérivées */
   const snap    = latestSnapshot;
   const isKpiLoading = latestSnapshotLoading && !snap;
+
+  const facturesRows = (
+    (catalog.find(k => k.key === 'daf_factures_impayees_clients')?.chart.data ?? []) as unknown as FactureRow[]
+  );
+  const maxMontant    = Math.max(...facturesRows.map(r => r.montant), 1);
+  const nbEnRetard    = facturesRows.filter(r => r.jours_retard > 0).length;
+  const totalFactures = facturesRows.reduce((s, r) => s + r.montant, 0);
+
+  function exportCsv() {
+    const headers = ['N° Facture', 'Partenaire', 'Montant', 'Devise', 'Date Facture', 'Échéance', 'Jours Retard', 'Statut'];
+    const lines = facturesRows.map(r => [
+      r.numero,
+      `"${r.client.replace(/"/g, '""')}"`,
+      r.montant,
+      r.devise,
+      r.date_facture,
+      r.echeance,
+      r.jours_retard,
+      STATUS_STYLE[getStatus(r.jours_retard)].label,
+    ].join(';'));
+    const csv = '﻿' + [headers.join(';'), ...lines].join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    const a   = document.createElement('a');
+    a.href = url;
+    a.download = `factures-impayees-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   // KPI cards
   const kpiCards = snap
@@ -136,14 +159,14 @@ export default function DettesFournisseursPage() {
         {
           label:  'Dettes en retard',
           value:  fmtM(snap.overdue_payables),
-          sub:    `${snap.overdue_payables_count} fournisseur${snap.overdue_payables_count > 1 ? 's' : ''} en retard`,
+          sub:    `${snap.overdue_payables_count} facture${snap.overdue_payables_count > 1 ? 's' : ''} en retard`,
           color:  '#F97316',
           icon:   <ClockIcon size={14} className="inline mr-0.5" />,
         },
         {
           label:  'Fournisseurs en retard',
           value:  `${snap.overdue_payables_count === null ? 0 : snap.overdue_payables_count}`,
-          sub:    `sur ${FOURNISSEURS_MOCK.length} fournisseurs actifs`,
+          sub:    `sur ${facturesRows.length} factures`,
           color:  snap.overdue_payables_count > 2 ? '#DC2626' : '#F59E0B',
           icon:   null,
         },
@@ -172,14 +195,6 @@ export default function DettesFournisseursPage() {
       retard: +(s.overdue_payables / 1_000_000).toFixed(2),
     }));
 
-  // Balance âgée : utilise le total réel si disponible, sinon mock
-  const balanceMock = BALANCE_AGEE_MOCK;
-  const balanceTotal = snap?.total_payables ?? balanceMock.reduce((s, r) => s + r.montant, 0);
-
-  // Données bar chart balance âgée
-  const balanceBarData = balanceMock.map(r => ({ tranche: r.tranche.split(' ')[0] + 'j', montant: +(r.montant / 1_000_000).toFixed(2) }));
-
-  const maxMontant = Math.max(...FOURNISSEURS_MOCK.map(f => f.montant), 1);
 
   return (
     <div className="p-3 sm:p-4 md:p-6 mx-auto max-w-[1600px]">
@@ -228,79 +243,83 @@ export default function DettesFournisseursPage() {
             />
           ) : null}
 
-          {/* Balance âgée fournisseurs (mock — pas de route API par tranche) */}
-          {/* <FinBarChart
-            title="Balance âgée fournisseurs"
-            subtitle="Répartition par ancienneté · Millions FCFA · Estimation"
-            data={balanceBarData}
-            xKey="tranche"
-            series={[{ yKey: 'montant', yName: 'Montant dû (M FCFA)', fill: '#1E5B3C' }]}
-            height={180}
-          /> */}
-
-          {/* Liste fournisseurs (mock — pas de route API par fournisseur) */}
+          {/* Factures impayées (données réelles depuis KPI catalogue) */}
           <FinCard padding={false}>
             <div className="px-4 sm:px-5 pt-4 pb-2">
               <FinCardHeader
-                title="Fournisseurs — encours"
+                title="Factures impayées — encours"
                 badge={
                   <span className="text-[10px] font-semibold text-[#DC2626] bg-[rgba(239,68,68,.1)] px-2 py-0.5 rounded-full">
-                    {FOURNISSEURS_MOCK.filter(f => f.status === 'critique' || f.status === 'retard').length} en retard
+                    {nbEnRetard} en retard
                   </span>
                 }
-                action="Exporter"
-                onAction={() => {}}
+                action={facturesRows.length > 0 ? 'Exporter' : undefined}
+                onAction={facturesRows.length > 0 ? exportCsv : undefined}
               />
             </div>
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-t border-b border-[var(--bd-def)] bg-[var(--bg-sink)]">
-                  {['#', 'Fournisseur', 'Référence', 'Montant dû', 'Échéance', 'Retard', 'Statut'].map(h => (
-                    <th key={h} className={cn('px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-[var(--tx-3)]', h === 'Fournisseur' || h === '#' ? 'text-left' : 'text-right')}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--bd-def)]">
-                {FOURNISSEURS_MOCK.map(f => {
-                  const s = STATUS_STYLE[f.status];
-                  const pct = Math.round((f.montant / maxMontant) * 100);
-                  return (
-                    <tr key={f.id} className="hover:bg-[var(--bg-sink)] transition-colors">
-                      <td className="px-4 py-3 text-[var(--tx-3)] font-mono">{f.rank}</td>
-                      <td className="px-4 py-3">
-                        <div>
-                          <p className="font-semibold text-[var(--tx-1)]">{f.name}</p>
-                          <div className="mt-1 h-[3px] bg-[var(--bg-sink)] rounded-full overflow-hidden w-24">
-                            <div className="h-full rounded-full bg-[#DC2626]" style={{ width: `${pct}%` }} />
+
+            {catalogLoading && facturesRows.length === 0 ? (
+              <div className="flex items-center justify-center h-32">
+                <SpinnerGapIcon size={22} className="animate-spin text-[var(--tx-3)]" />
+              </div>
+            ) : facturesRows.length === 0 ? (
+              <p className="text-center text-[12px] text-[var(--tx-3)] italic py-8">
+                Aucune facture impayée.
+              </p>
+            ) : (
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-t border-b border-[var(--bd-def)] bg-[var(--bg-sink)]">
+                    {['#', 'Partenaire', 'N° Facture', 'Montant dû', 'Échéance', 'Retard', 'Statut'].map(h => (
+                      <th key={h} className={cn('px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-[var(--tx-3)]', h === 'Partenaire' || h === '#' ? 'text-left' : 'text-right')}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--bd-def)]">
+                  {facturesRows.map((f, i) => {
+                    const status = getStatus(f.jours_retard);
+                    const s = STATUS_STYLE[status];
+                    const pct = Math.round((f.montant / maxMontant) * 100);
+                    return (
+                      <tr key={f.numero} className="hover:bg-[var(--bg-sink)] transition-colors">
+                        <td className="px-4 py-3 text-[var(--tx-3)] font-mono">{i + 1}</td>
+                        <td className="px-4 py-3">
+                          <div>
+                            <p className="font-semibold text-[var(--tx-1)]">{f.client}</p>
+                            <div className="mt-1 h-[3px] bg-[var(--bg-sink)] rounded-full overflow-hidden w-24">
+                              <div className="h-full rounded-full bg-[#DC2626]" style={{ width: `${pct}%` }} />
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono text-[var(--tx-3)] text-[11px]">{f.ref}</td>
-                      <td className="px-4 py-3 text-right font-mono font-semibold text-[var(--tx-1)]">{fmtSolde(f.montant)}</td>
-                      <td className="px-4 py-3 text-right text-[var(--tx-2)]">{f.echeance}</td>
-                      <td className={cn('px-4 py-3 text-right font-semibold', f.retard > 0 ? 'text-[#DC2626]' : 'text-[var(--tx-3)]')}>
-                        {f.retard > 0 ? `+${f.retard}j` : '—'}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <span className={cn('inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full')}>
-                          <span className={cn('w-[6px] h-[6px] rounded-full flex-shrink-0', s.dot)} />
-                          <span className={s.text}>{s.label}</span>
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot>
-                <tr className="border-t-2 border-[var(--bd-def)] bg-[var(--bg-sink)] font-bold">
-                  <td colSpan={3} className="px-4 py-3 text-sm">Total encours</td>
-                  <td className="px-4 py-3 text-right font-mono text-[#DC2626]">
-                    {snap ? fmtM(snap.total_payables) : fmtSolde(FOURNISSEURS_MOCK.reduce((s, f) => s + f.montant, 0))}
-                  </td>
-                  <td colSpan={3} />
-                </tr>
-              </tfoot>
-            </table>
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono text-[var(--tx-3)] text-[11px]">{f.numero}</td>
+                        <td className="px-4 py-3 text-right font-mono font-semibold text-[var(--tx-1)]">{fmtSolde(f.montant)}</td>
+                        <td className="px-4 py-3 text-right text-[var(--tx-2)]">{fmtIsoDate(f.echeance)}</td>
+                        <td className={cn('px-4 py-3 text-right font-semibold', f.jours_retard > 0 ? 'text-[#DC2626]' : 'text-[var(--tx-3)]')}>
+                          {f.jours_retard > 0 ? `+${f.jours_retard}j` : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold">
+                            <span className={cn('w-[6px] h-[6px] rounded-full flex-shrink-0', s.dot)} />
+                            <span className={s.text}>{s.label}</span>
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-[var(--bd-def)] bg-[var(--bg-sink)] font-bold">
+                    <td colSpan={3} className="px-4 py-3 text-sm">
+                      Total ({facturesRows.length} facture{facturesRows.length > 1 ? 's' : ''})
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-[#DC2626]">
+                      {fmtSolde(totalFactures)}
+                    </td>
+                    <td colSpan={3} />
+                  </tr>
+                </tfoot>
+              </table>
+            )}
           </FinCard>
         </div>
 
