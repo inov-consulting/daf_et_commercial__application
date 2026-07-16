@@ -51,7 +51,6 @@ RUN playwright install chromium && \
     chown -R appuser:appuser /opt/playwright-browsers
 
 COPY . .
-COPY /home/debian/.services_datas/portalis/backend/portalis-4add6-firebase-adminsdk-fbsvc-dbb26ca65f.json ./app/portalis-4add6-firebase-adminsdk-fbsvc-dbb26ca65f.json
 
 RUN chown -R appuser:appuser /app
 
