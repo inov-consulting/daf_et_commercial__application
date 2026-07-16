@@ -7,3 +7,6 @@ __pycache__/
 htmlcov/
 .env
 .venv/
+# Firebase service account — ne jamais commiter
+app/*-firebase-adminsdk-*.json
+app/firebase-credentials.json
