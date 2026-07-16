@@ -5,7 +5,7 @@ from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Catalogue des modèles supportés → provider associé
-AI_MODEL_PROVIDERS: dict[str, Literal["anthropic", "openai", "groq"]] = {
+AI_MODEL_PROVIDERS: dict[str, Literal["anthropic", "openai", "groq", "deepseek"]] = {
     # Anthropic — Claude
     "claude-opus-4-7": "anthropic",
     "claude-opus-4-5": "anthropic",
@@ -23,6 +23,9 @@ AI_MODEL_PROVIDERS: dict[str, Literal["anthropic", "openai", "groq"]] = {
     "llama-3.1-8b-instant":    "groq",
     "mixtral-8x7b-32768":      "groq",
     "gemma2-9b-it":            "groq",
+    # DeepSeek — API compatible OpenAI  # DeepSeek-R1 (raisonnement)
+    "deepseek-v4-flash": "deepseek",
+    "deepseek-v4-pro": "deepseek"
 }
 
 
@@ -82,11 +85,13 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     openai_api_key: str = ""
     groq_api_key: str = ""
+    deepseek_api_key: str = ""
+    deepseek_base_url: str = ""
     # Modèle par défaut pour l'agent. Le provider est déduit automatiquement
     # depuis AI_MODEL_PROVIDERS. Exemples : claude-opus-4-7, gpt-4o-mini
     ai_default_model: str = "gpt-4o-mini"
     # Résolu automatiquement — ne pas définir dans .env
-    ai_provider: Literal["anthropic", "openai", "groq"] = "openai"
+    ai_provider: Literal["anthropic", "openai", "groq", "deepseek"] = "deepseek"
 
     @model_validator(mode="after")
     def resolve_ai_provider(self) -> "Settings":
@@ -115,6 +120,11 @@ class Settings(BaseSettings):
     api_domain: str = ""                     # Domaine public de l'API (sans slash final)
     # ex dev  : https://abc123.ngrok-free.app
     # ex prod : https://portalis.mondomaine.com
+
+    # ── Firebase / FCM ─────────────────────────────────────────────────
+    # Chemin vers le fichier serviceAccountKey.json téléchargé depuis
+    # Firebase Console → Project Settings → Service Accounts → Generate new private key
+    firebase_credentials_path: str = "app/portalis-4add6-firebase-adminsdk-fbsvc-dbb26ca65f.json"
 
     # ── Observability ──────────────────────────────────────────────────
     sentry_dsn: str = ""

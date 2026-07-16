@@ -54,6 +54,10 @@ dependencies = [
     "apscheduler>=3.10",
     # ── WhatsApp ──
     "pywa[fastapi]>=2.0",
+    # ── Push notifications ──
+    "firebase-admin>=6.5",
+    # ── SSE (Server-Sent Events) ──
+    "sse-starlette>=2.1",
 ]
 
 [dependency-groups]

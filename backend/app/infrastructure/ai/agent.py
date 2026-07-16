@@ -131,6 +131,13 @@ async def _get_llm(provider: str, model: str, reasoning: bool = False):  # type:
     elif provider == "groq":
         from langchain_groq import ChatGroq
         return ChatGroq(model=model, api_key=settings.groq_api_key)
+    elif provider == "deepseek":
+        from langchain_openai import ChatOpenAI
+        return ChatOpenAI(
+            model=model,
+            api_key=settings.deepseek_api_key,
+            base_url=settings.deepseek_base_url,
+        )
     raise ValueError(f"Provider inconnu : {provider}")
 
 
