@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { getToken, onMessage } from 'firebase/messaging';
-import { messagingReady } from '@/lib/firebase';
+import { isSupported, getMessaging, register, onRegistered, onMessage } from 'firebase/messaging';
+import { firebaseApp } from '@/lib/firebase';
 import { useAppDispatch } from '@/redux/store';
 import {
   setFcmToken,
@@ -29,6 +29,13 @@ export function useFcmNotifications() {
     initialized.current = true;
 
     (async () => {
+      // Vérifier le support FCM avant toute demande de permission
+      const supported = await isSupported();
+      if (!supported) {
+        dispatch(setPermission('unsupported'));
+        return;
+      }
+
       const current = Notification.permission;
       let granted   = current === 'granted';
 
@@ -45,22 +52,26 @@ export function useFcmNotifications() {
 
       if (!granted) return;
 
-      const messaging = await messagingReady;
-      if (!messaging) return;
+      const messaging = getMessaging(firebaseApp);
+      const swReg     = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
 
-      const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+      // Firebase 12 : register() + onRegistered() remplace getToken()
+      // onRegistered reçoit un Firebase Installation ID (FID) utilisable comme cible backend
+      let lastFid: string | null = null;
+      onRegistered(messaging, (fid) => {
+        if (!fid || fid === lastFid) return;
+        lastFid = fid;
+        dispatch(setFcmToken(fid));
+        dispatch(registerDevice(fid));
+      });
 
-      const token = await getToken(messaging, {
+      // Déclenche l'enregistrement — le FID arrive via onRegistered
+      await register(messaging, {
         vapidKey:                  VAPID_KEY,
         serviceWorkerRegistration: swReg,
       });
 
-      if (!token) return;
-
-      dispatch(setFcmToken(token));
-      dispatch(registerDevice(token));
-
-      // Notifications en foreground (onglet visible)
+      // Notifications reçues quand l'onglet est visible (foreground)
       onMessage(messaging, payload => {
         dispatch(addForegroundNotification({
           notification_type: (payload.data?.notification_type as string) ?? 'info',
