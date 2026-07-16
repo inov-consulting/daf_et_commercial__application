@@ -5,6 +5,11 @@ services:
       - /home/debian/.services_datas/portalis/backend/.env
     ports:
       - "8101:8000"
+    # docker-compose.prod.yml
+    volumes:
+      # Montage du fichier Firebase (read-only)
+      - /home/debian/.services_datas/portalis/backend/portalis-4add6-firebase-adminsdk-fbsvc-dbb26ca65f.json:/app/app/portalis-4add6-firebase-adminsdk-fbsvc-dbb26ca65f.json:ro
+
 
   frontend:
     image: ghcr.io/inov-consulting/daf_et_commercial__application/frontend:staging

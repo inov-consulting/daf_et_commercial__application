@@ -26,7 +26,6 @@ FROM base AS dev
 # Installer toutes les deps (prod + dev)
 COPY pyproject.toml uv.lock* ./
 
-COPY /home/debian/.services_datas/portalis/backend/portalis-4add6-firebase-adminsdk-fbsvc-dbb26ca65f.json ./app/portalis-4add6-firebase-adminsdk-fbsvc-dbb26ca65f.json
 
 RUN uv sync --frozen --no-install-project 2>/dev/null || uv sync --no-install-project
 
@@ -52,6 +51,8 @@ RUN playwright install chromium && \
     chown -R appuser:appuser /opt/playwright-browsers
 
 COPY . .
+COPY /home/debian/.services_datas/portalis/backend/portalis-4add6-firebase-adminsdk-fbsvc-dbb26ca65f.json ./app/portalis-4add6-firebase-adminsdk-fbsvc-dbb26ca65f.json
+
 RUN chown -R appuser:appuser /app
 
 USER appuser
