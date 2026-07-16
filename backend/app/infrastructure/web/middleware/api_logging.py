@@ -17,12 +17,21 @@ from app.infrastructure.db.models.api_log import ApiRequestLogOrm
 class ApiLoggingMiddleware(BaseHTTPMiddleware):
     """Middleware qui logue toutes les requêtes HTTP dans la DB."""
 
-    # Routes à exclure du logging (health checks, etc.)
+    # Routes à exclure du logging
+    # ⚠️ Les endpoints SSE (stream) DOIVENT être exclus — BaseHTTPMiddleware
+    # bufferise le body entier ce qui casse les réponses streaming.
     EXCLUDED_PATHS = {"/health", "/docs", "/openapi.json", "/redoc"}
+    EXCLUDED_SUFFIXES = {"/stream"}
 
     async def dispatch(self, request: Request, call_next):
-        # Ignorer les routes exclues
-        if any(request.url.path.startswith(p) for p in self.EXCLUDED_PATHS):
+        # Ignorer les routes exclues et les WebSocket/SSE (streaming)
+        path = request.url.path
+        if any(path.startswith(p) for p in self.EXCLUDED_PATHS):
+            return await call_next(request)
+        if any(path.endswith(s) for s in self.EXCLUDED_SUFFIXES):
+            return await call_next(request)
+        # Laisser passer les upgrades WebSocket sans buffering
+        if request.headers.get("upgrade", "").lower() == "websocket":
             return await call_next(request)
 
         start_time = time.time()

@@ -15,6 +15,7 @@ from app.infrastructure.db.models.daf_agent import (
 from app.infrastructure.db.models.note import CompteRenduOrm, NoteOrm
 from app.infrastructure.db.models.prospect import ProspectActivityOrm, ProspectOrm
 from app.infrastructure.db.models.transport_offer import TransportOfferOrm
+from app.infrastructure.db.models.notification import NotificationOrm
 from app.infrastructure.db.models.user import UserOrm
 from app.infrastructure.db.models.user_device import UserDeviceOrm
 from app.infrastructure.db.models.whatsapp import WhatsAppConversationOrm, WhatsAppMessageOrm
@@ -35,6 +36,7 @@ __all__ = [
     "ProspectActivityOrm",
     "ProspectOrm",
     "TransportOfferOrm",
+    "NotificationOrm",
     "UserOrm",
     "UserDeviceOrm",
     "WhatsAppConversationOrm",
