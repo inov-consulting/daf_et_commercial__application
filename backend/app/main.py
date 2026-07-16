@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.error_handlers import register_error_handlers
 from app.api.v1 import ai_config, api_logs, auth, chat, companies, compte_rendus, daf, groups, health, kpi, prospects, transport, users
-from app.api.v1 import app_config, transport_offers, whatsapp
+from app.api.v1 import app_config, notifications, transport_offers, whatsapp
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
 from app.infrastructure.db.repositories.ai_config import AiModelRepository
@@ -58,6 +58,10 @@ app = FastAPI(
 from app.infrastructure.whatsapp.client import setup_whatsapp
 setup_whatsapp(app)
 
+# Firebase Admin SDK — notifications push FCM
+from app.infrastructure.firebase.fcm import setup_firebase
+setup_firebase()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
@@ -92,4 +96,5 @@ app.include_router(transport_offers.router, prefix=API_V1_PREFIX)
 app.include_router(app_config.router, prefix=API_V1_PREFIX)
 app.include_router(kpi.router, prefix=API_V1_PREFIX)
 app.include_router(daf.router, prefix=API_V1_PREFIX)
+app.include_router(notifications.router, prefix=API_V1_PREFIX)
 app.include_router(whatsapp.router, prefix=API_V1_PREFIX)

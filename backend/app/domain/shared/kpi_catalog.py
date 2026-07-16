@@ -102,6 +102,22 @@ _CATALOG: list[KpiDefinition] = [
         description="Flux entrant (créances clients), flux sortant (dettes fournisseurs) et trésorerie nette par mois pour l'année en cours.",
         unit="XOF",
     ),
+    KpiDefinition(
+        key="daf_factures_impayees_fournisseurs",
+        label="Factures fournisseurs impayées",
+        category="Finance DAF",
+        source="portalis",
+        description="Liste détaillée des factures fournisseurs en retard de paiement : fournisseur, montant, date facture, échéance et jours de retard.",
+        unit="XOF",
+    ),
+    KpiDefinition(
+        key="daf_factures_impayees_clients",
+        label="Factures clients impayées",
+        category="Finance DAF",
+        source="portalis",
+        description="Liste détaillée des factures clients en retard de paiement : client, montant, date facture, échéance et jours de retard.",
+        unit="XOF",
+    ),
     # ── Finance & Transport ──────────────────────────────────────────────────
     KpiDefinition(
         key="ca_mois",

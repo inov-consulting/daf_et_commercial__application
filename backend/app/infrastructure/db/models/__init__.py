@@ -16,6 +16,7 @@ from app.infrastructure.db.models.note import CompteRenduOrm, NoteOrm
 from app.infrastructure.db.models.prospect import ProspectActivityOrm, ProspectOrm
 from app.infrastructure.db.models.transport_offer import TransportOfferOrm
 from app.infrastructure.db.models.user import UserOrm
+from app.infrastructure.db.models.user_device import UserDeviceOrm
 from app.infrastructure.db.models.whatsapp import WhatsAppConversationOrm, WhatsAppMessageOrm
 
 __all__ = [
@@ -35,6 +36,7 @@ __all__ = [
     "ProspectOrm",
     "TransportOfferOrm",
     "UserOrm",
+    "UserDeviceOrm",
     "WhatsAppConversationOrm",
     "WhatsAppMessageOrm",
 ]
