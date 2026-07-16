@@ -360,6 +360,45 @@ class KeycloakAdminClient:
                 raise RuntimeError(f"Utilisateur '{user_id}' ou groupe '{group_id}' introuvable")
             resp.raise_for_status()
 
+    async def remove_user_from_group(self, user_id: str, group_id: str) -> None:
+        """Retire un utilisateur d'un groupe Keycloak."""
+        headers = await self._auth_header()
+        url = f"{self._base_url}/admin/realms/{self._realm}/users/{user_id}/groups/{group_id}"
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.delete(url, headers=headers)
+            if resp.status_code == 404:
+                return  # déjà absent du groupe, pas d'erreur
+            resp.raise_for_status()
+
+    async def update_user_profile(
+        self,
+        user_id: str,
+        first_name: str | None = None,
+        last_name: str | None = None,
+        email: str | None = None,
+    ) -> None:
+        """Met à jour le profil d'un utilisateur dans Keycloak (PUT /users/{id})."""
+        existing = await self.get_user_by_id(user_id)
+        if not existing:
+            raise RuntimeError(f"Utilisateur '{user_id}' introuvable dans Keycloak")
+        payload: dict = {}
+        if first_name is not None:
+            payload["firstName"] = first_name
+        if last_name is not None:
+            payload["lastName"] = last_name
+        if email is not None:
+            payload["email"] = email
+        if not payload:
+            return
+        merged = {**existing, **payload}
+        headers = await self._auth_header()
+        url = f"{self._base_url}/admin/realms/{self._realm}/users/{user_id}"
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.put(url, headers=headers, json=merged)
+            if resp.status_code == 404:
+                raise RuntimeError(f"Utilisateur '{user_id}' introuvable dans Keycloak")
+            resp.raise_for_status()
+
     async def send_verify_email(self, user_id: str) -> None:
         """Envoie l'email de vérification à l'utilisateur."""
         headers = await self._auth_header()

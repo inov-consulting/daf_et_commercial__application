@@ -165,7 +165,8 @@ async def update_user(
 ) -> UserOut:
     """Met à jour les données applicatives d'un utilisateur.
 
-    Permet de modifier les entreprises rattachées, le statut actif/inactif.
+    Permet de modifier les entreprises rattachées, les groupes Keycloak,
+    le profil (prénom/nom) et le statut actif/inactif.
     Les champs non fournis (null) sont ignorés.
     """
     user = await UpdateUserUseCase(user_repo).execute(
@@ -178,9 +179,39 @@ async def update_user(
         ),
     )
 
-    # Récupère les données enrichies depuis Keycloak
     kc = KeycloakAdminClient()
-    kc_user = await kc.get_user_by_id(str(user_id))
+    user_id_str = str(user_id)
+
+    # Sync prénom/nom vers Keycloak si fournis
+    if payload.first_name is not None or payload.last_name is not None:
+        try:
+            await kc.update_user_profile(
+                user_id_str,
+                first_name=payload.first_name,
+                last_name=payload.last_name,
+            )
+        except RuntimeError as exc:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    # Sync groupes vers Keycloak si fournis
+    if payload.group_ids is not None:
+        current_groups = await kc.get_user_groups(user_id_str)
+        current_ids = {g["id"] for g in current_groups}
+        new_ids = set(payload.group_ids)
+
+        # Retrait des groupes abandonnés
+        for gid in current_ids - new_ids:
+            await kc.remove_user_from_group(user_id_str, gid)
+
+        # Ajout des nouveaux groupes
+        for gid in new_ids - current_ids:
+            try:
+                await kc.add_user_to_group(user_id_str, gid)
+            except RuntimeError as exc:
+                raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    # Données enrichies depuis Keycloak pour la réponse
+    kc_user = await kc.get_user_by_id(user_id_str)
     if kc_user:
         user.email = kc_user.get("email", "")
         user.first_name = kc_user.get("firstName", "")
@@ -192,7 +223,7 @@ async def update_user(
         if c:
             companies.append(CompanyOut.from_domain(c))
 
-    kc_groups = await kc.get_user_groups(str(user_id))
+    kc_groups = await kc.get_user_groups(user_id_str)
     user_group_ids = [g["id"] for g in kc_groups]
 
     return UserOut.from_domain(user, companies=companies, group_ids=user_group_ids)

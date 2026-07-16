@@ -28,6 +28,7 @@ class UserCreate(BaseModel):
 
 class UserUpdate(BaseModel):
     company_ids: list[UUID] | None = None
+    group_ids: list[str] | None = None
     first_name: str | None = None
     last_name: str | None = None
     is_active: bool | None = None

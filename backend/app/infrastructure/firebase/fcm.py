@@ -114,7 +114,7 @@ async def notify_whatsapp_message(
 
     await send_push(
         tokens=tokens,
-        title=f"💬 WhatsApp — {sender}",
+        title=f"💬 WhatsApp Business — {sender}",
         body=preview,
         data={
             "type": "whatsapp_message",
