@@ -1,6 +1,7 @@
 """Router /ai : catalogue de modèles + configuration active."""
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
@@ -27,8 +28,9 @@ class AiModelOut(BaseModel):
 
 
 class AiModelsByProviderOut(BaseModel):
-    anthropic: list[AiModelOut]
-    openai: list[AiModelOut]
+    anthropic: list[AiModelOut] = []
+    openai: list[AiModelOut] = []
+    deepseek: list[AiModelOut] = []
 
 
 class AiConfigOut(BaseModel):
@@ -41,7 +43,7 @@ class AiConfigOut(BaseModel):
 
 class AiModelCreate(BaseModel):
     name: str
-    provider: str
+    provider: Literal["anthropic", "openai", "groq", "deepseek"]
     is_embedding: bool = False
 
 
@@ -81,13 +83,12 @@ def _model_out(m: object) -> AiModelOut:
 
 @router.get("/models")
 async def list_models() -> AiModelsByProviderOut:
-    """Liste tous les modèles actifs, groupés par provider."""
+    """Liste tous les modèles, groupés par provider."""
     all_models = await get_model_repo().list_all()
-    return AiModelsByProviderOut(
-        anthropic=[_model_out(m) for m in all_models if m.provider == "anthropic"],
-        openai=[_model_out(m) for m in all_models if m.provider == "openai"],
-        deepseek=[_model_out(m) for m in all_models if m.provider == "deepseek"],
-    )
+    grouped: dict[str, list[AiModelOut]] = {}
+    for m in all_models:
+        grouped.setdefault(m.provider, []).append(_model_out(m))
+    return AiModelsByProviderOut(**{k: v for k, v in grouped.items() if k in AiModelsByProviderOut.model_fields})
 
 
 @router.post(
