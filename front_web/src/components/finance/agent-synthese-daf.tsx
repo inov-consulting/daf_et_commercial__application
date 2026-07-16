@@ -1,10 +1,8 @@
 'use client';
 
-import { CheckIcon, XIcon, SpinnerGapIcon } from '@phosphor-icons/react';
-import { Progress } from '@/components/ui/progress';
+import { CheckIcon, XIcon, SpinnerGapIcon, EyeIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
-import type { AgentActif } from '@/types/finance_type';
-import type { DafProposedAction } from '@/types/daf_type';
+import type { DafAgentStatus, DafProposedAction } from '@/types/daf_type';
 
 const PRIORITY_CONFIG = {
   critical: { label: 'Critique', color: '#DC2626', bg: 'rgba(239,68,68,.12)' },
@@ -13,6 +11,13 @@ const PRIORITY_CONFIG = {
   low:      { label: 'Faible',   color: '#6B7280', bg: 'rgba(107,114,128,.12)' },
 } as const;
 
+const RUN_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  failed:    { label: 'Échec',      color: '#DC2626', bg: 'rgba(239,68,68,.12)'   },
+  completed: { label: 'Succès',     color: '#1B6B45', bg: 'rgba(16,185,129,.12)'  },
+  running:   { label: 'En cours',   color: '#2563EB', bg: 'rgba(37,99,235,.12)'   },
+  pending:   { label: 'En attente', color: '#B45309', bg: 'rgba(245,158,11,.12)'  },
+};
+
 const ACTION_TYPE_LABEL: Record<string, string> = {
   send_reminder: 'Relance client',
   escalate:      'Escalade',
@@ -20,22 +25,41 @@ const ACTION_TYPE_LABEL: Record<string, string> = {
   payment_plan:  'Plan de paiement',
 };
 
+function fmtDateTime(iso: string): string {
+  return new Date(iso).toLocaleString('fr-FR', {
+    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+  });
+}
+
+function fmtCountdown(iso: string): string {
+  const diff = new Date(iso).getTime() - Date.now();
+  if (diff <= 0) return 'imminente';
+  const h = Math.floor(diff / 3_600_000);
+  const m = Math.floor((diff % 3_600_000) / 60_000);
+  if (h > 0) return `dans ${h}h ${m}min`;
+  return `dans ${m} min`;
+}
+
 interface Props {
-  label:           string;
-  rule?:           string;
-  agents:          AgentActif[];
-  proposedActions: DafProposedAction[];
-  decidingId:      string | null;
-  onApprove:       (id: string) => void;
-  onReject:        (id: string) => void;
-  taskCount:       number;
-  validCount:      number;
+  label:            string;
+  rule?:            string;
+  agentStatus:      DafAgentStatus | null;
+  proposedActions:  DafProposedAction[];
+  decidingId:       string | null;
+  onApprove:        (id: string) => void;
+  onReject:         (id: string) => void;
+  onViewAction?:    (action: DafProposedAction) => void;
+  taskCount:        number;
+  validCount:       number;
 }
 
 export function AgentSyntheseDaf({
-  label, rule, agents, proposedActions, decidingId, onApprove, onReject, taskCount, validCount,
+  label, rule, agentStatus, proposedActions, decidingId, onApprove, onReject, onViewAction, taskCount, validCount,
 }: Props) {
   const pendingCount = proposedActions.filter(a => a.status === 'pending').length;
+  const runCfg = agentStatus?.last_run_status
+    ? (RUN_STATUS_CONFIG[agentStatus.last_run_status] ?? null)
+    : null;
 
   return (
     <div className="bg-white rounded-2xl border border-[var(--bd-def)] shadow-[var(--sh-xs)] mb-4 sm:mb-6 overflow-hidden">
@@ -59,7 +83,7 @@ export function AgentSyntheseDaf({
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] divide-y lg:divide-y-0 lg:divide-x divide-[var(--bd-def)]">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] divide-y lg:divide-y-0 lg:divide-x divide-[var(--bd-def)]">
 
         {/* Actions proposées */}
         <div className="bg-[var(--bg-sink)]">
@@ -77,7 +101,6 @@ export function AgentSyntheseDaf({
 
               return (
                 <div key={action.id} className="px-3 sm:px-5 py-3 sm:py-4">
-                  {/* Type + priority + status */}
                   <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                     <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--tx-3)]">
                       {ACTION_TYPE_LABEL[action.action_type] ?? action.action_type.replace(/_/g, ' ')}
@@ -98,20 +121,15 @@ export function AgentSyntheseDaf({
                     )}
                   </div>
 
-                  {/* Title */}
                   <p className="text-sm font-semibold text-[var(--tx-1)] mb-1 leading-snug">{action.title}</p>
-
-                  {/* Description */}
                   <p className="text-[11px] text-[var(--tx-2)] leading-relaxed mb-1">{action.description}</p>
 
-                  {/* Reasoning */}
                   {action.reasoning && (
                     <p className="text-[11px] text-[var(--tx-3)] italic leading-relaxed border-l-2 border-[var(--bd-def)] pl-2 mb-2">
                       {action.reasoning}
                     </p>
                   )}
 
-                  {/* Target data */}
                   {(partnerName || amount !== null) && (
                     <div className="flex items-center gap-3 text-[11px] text-[var(--tx-3)] mb-2">
                       {partnerName && <span>👤 {String(partnerName)}</span>}
@@ -119,7 +137,6 @@ export function AgentSyntheseDaf({
                     </div>
                   )}
 
-                  {/* Meta */}
                   <p className="text-[9px] text-[var(--tx-3)] mb-2">
                     Proposé le {new Date(action.proposed_at).toLocaleDateString('fr-FR')}
                     {action.decided_at && (
@@ -127,9 +144,20 @@ export function AgentSyntheseDaf({
                     )}
                   </p>
 
-                  {/* Approve / Reject */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {onViewAction && (
+                      <button
+                        onClick={() => onViewAction(action)}
+                        className="flex items-center gap-1 h-7 px-2.5 rounded-lg border border-[var(--bd-def)] text-[var(--tx-3)] text-[11px] font-semibold hover:bg-[var(--bg-sink)] transition-colors"
+                      >
+                        <EyeIcon size={11} />
+                        Détails
+                      </button>
+                    )}
+                  </div>
+
                   {isPending && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 mt-1">
                       <button
                         onClick={() => onApprove(action.id)}
                         disabled={!!decidingId}
@@ -157,30 +185,75 @@ export function AgentSyntheseDaf({
           </div>
         </div>
 
-        {/* Agents actifs */}
-        <div className="p-4 sm:p-5 bg-[var(--bg-sink)]">
-          <p className="text-[9px] font-semibold tracking-[.08em] text-[var(--tx-3)] uppercase mb-2 sm:mb-3">Agents actifs</p>
-          <div className="flex flex-col gap-2 mb-3">
-            {agents.map(agent => (
-              <div key={agent.id} className="p-2.5 rounded-xl bg-white border border-[var(--bd-def)]">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={cn('w-2 h-2 rounded-full flex-shrink-0', agent.running ? 'bg-[var(--p500)] animate-pulse' : 'bg-[var(--ok500)]')} />
-                  <p className="text-xs font-semibold text-[var(--tx-1)] flex-1 truncate">{agent.name}</p>
-                  <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500 flex-shrink-0">{agent.model}</span>
-                </div>
-                <p className={cn('text-[11px] mb-1.5', agent.running ? 'text-[var(--tx-3)]' : 'text-success')}>
-                  {agent.desc}
+        {/* Panneau statut scheduler */}
+        <div className="p-4 sm:p-5 bg-[var(--bg-sink)] flex flex-col gap-2.5">
+          <p className="text-[9px] font-semibold tracking-[.08em] text-[var(--tx-3)] uppercase">
+            Scheduler IA
+          </p>
+
+          {/* Statut global */}
+          <div className="p-3 rounded-xl bg-white border border-[var(--bd-def)]">
+            <div className="flex items-center gap-2 mb-1">
+              <span className={cn(
+                'w-2 h-2 rounded-full flex-shrink-0',
+                agentStatus?.scheduler_running ? 'bg-[var(--ok500)] animate-pulse' : 'bg-[rgba(239,68,68,.7)]',
+              )} />
+              <p className="text-xs font-semibold text-[var(--tx-1)]">
+                {agentStatus?.scheduler_running ? 'Scheduler actif' : 'Scheduler inactif'}
+              </p>
+            </div>
+            {agentStatus?.interval_hours && (
+              <p className="text-[11px] text-[var(--tx-3)] pl-4">
+                Cycle toutes les {agentStatus.interval_hours}h
+              </p>
+            )}
+          </div>
+
+          {/* Dernier run */}
+          <div className="p-3 rounded-xl bg-white border border-[var(--bd-def)]">
+            <p className="text-[9px] font-semibold tracking-[.06em] text-[var(--tx-3)] uppercase mb-2">
+              Dernier run
+            </p>
+            {agentStatus?.last_run_at ? (
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] text-[var(--tx-2)]">
+                  {fmtDateTime(agentStatus.last_run_at)}
                 </p>
-                {agent.progress !== null && (
-                  <div className="flex items-center gap-2">
-                    <Progress value={agent.progress} size="sm" className="flex-1" />
-                    <span className="text-[9px] text-[var(--tx-3)] whitespace-nowrap">{agent.timeLeft}</span>
-                  </div>
+                {runCfg && (
+                  <span
+                    className="text-[10px] font-bold px-2 py-px rounded-full whitespace-nowrap flex-shrink-0"
+                    style={{ color: runCfg.color, background: runCfg.bg }}
+                  >
+                    {runCfg.label}
+                  </span>
                 )}
               </div>
-            ))}
+            ) : (
+              <p className="text-[11px] text-[var(--tx-3)] italic">Aucun run enregistré</p>
+            )}
           </div>
-          <div className="grid grid-cols-2 gap-2">
+
+          {/* Prochain run */}
+          <div className="p-3 rounded-xl bg-white border border-[var(--bd-def)]">
+            <p className="text-[9px] font-semibold tracking-[.06em] text-[var(--tx-3)] uppercase mb-2">
+              Prochain run
+            </p>
+            {agentStatus?.next_run_at ? (
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] text-[var(--tx-2)]">
+                  {fmtDateTime(agentStatus.next_run_at)}
+                </p>
+                <p className="text-[10px] font-semibold text-[var(--p500)] whitespace-nowrap flex-shrink-0">
+                  {fmtCountdown(agentStatus.next_run_at)}
+                </p>
+              </div>
+            ) : (
+              <p className="text-[11px] text-[var(--tx-3)] italic">—</p>
+            )}
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-2 mt-auto">
             <div className="p-2.5 rounded-xl bg-white border border-[var(--bd-def)]">
               <p className="font-display font-bold text-xl text-primary-700">{taskCount}</p>
               <p className="text-[9px] text-[var(--tx-3)]">Tâches IA aujourd&apos;hui</p>

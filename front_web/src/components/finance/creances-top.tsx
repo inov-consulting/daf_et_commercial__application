@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { EyeIcon } from '@phosphor-icons/react';
 import { FinCard, FinCardHeader } from './fin-card';
 import type { DafRun } from '@/types/daf_type';
 
@@ -25,12 +26,13 @@ const RUN_STATUS: Record<string, { label: string; bg: string; text: string }> = 
 };
 
 interface Props {
-  runs:       DafRun[];
-  locale:     string;
+  runs:        DafRun[];
+  locale:      string;
   onVoirTout?: () => void;
+  onViewRun?:  (run: DafRun) => void;
 }
 
-export function CreancesTop({ runs, locale, onVoirTout }: Props) {
+export function CreancesTop({ runs, locale, onVoirTout, onViewRun }: Props) {
   return (
     <FinCard>
       <FinCardHeader
@@ -70,6 +72,16 @@ export function CreancesTop({ runs, locale, onVoirTout }: Props) {
                 <span className="text-[10px] font-semibold text-[var(--p500)] bg-[rgba(99,102,241,.08)] px-1.5 py-0.5 rounded-full flex-shrink-0">
                   {r.proposed_actions_count} act.
                 </span>
+              )}
+
+              {onViewRun && (
+                <button
+                  onClick={(e) => { e.preventDefault(); onViewRun(r); }}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--tx-3)] hover:bg-[var(--bg-sink)] transition-colors flex-shrink-0"
+                  title="Aperçu du cycle"
+                >
+                  <EyeIcon size={13} />
+                </button>
               )}
             </Link>
           );
