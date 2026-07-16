@@ -3,48 +3,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/redux/store';
 import { fetchLatestSnapshot, fetchSnapshots } from '@/redux/features/daf/dafSlice';
+import { fetchKpiCatalog } from '@/redux/features/kpi/kpiSlice';
 import { FinSectionHeader } from '@/components/finance/fin-section-header';
-import { FinBarChart, FinLineChart, FR_MONTHS_SHORT } from '@/components/finance/fin-chart';
-import { FinCard, FinCardHeader, SectionLabel } from '@/components/finance/fin-card';
+import { FinLineChart, FR_MONTHS_SHORT } from '@/components/finance/fin-chart';
+import { FinCard, SectionLabel } from '@/components/finance/fin-card';
+import { KpiChartCard, KpiChartCardSkeleton } from '@/components/kpi/kpi-chart-card';
 import { FloatingToast } from '@/components/ui/toast';
-import { DownloadSimpleIcon, SpinnerGapIcon } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
-import type { CompteBancaire, EcheanceItem } from '@/types/finance_type';
-
-/* ── Données mock sans équivalent API ───────────────────────────────── */
-
-const FLUX_DATA = [
-  { mois: 'Jan', entrant: 68, sortant: 52 },
-  { mois: 'Fév', entrant: 72, sortant: 55 },
-  { mois: 'Mar', entrant: 58, sortant: 70 },
-  { mois: 'Avr', entrant: 80, sortant: 58 },
-  { mois: 'Mai', entrant: 88, sortant: 63 },
-  { mois: 'Jun', entrant: 96, sortant: 63 },
-];
-
-const COMPTES: CompteBancaire[] = [
-  { id: 1, banque: 'SGBCI · Sénégal',        pays: 'SN', ref: 'SN-SGBCI-001-4892', solde: 18_720_000, trend:  5.2 },
-  { id: 2, banque: 'BICICI · Côte d\'Ivoire', pays: 'CI', ref: 'CI-BICICI-002-7341', solde:  8_940_000, trend:  1.8 },
-  { id: 3, banque: 'ECOBANK · Sénégal',       pays: 'SN', ref: 'SN-ECOB-001-2241',   solde:  3_180_000, trend: -12  },
-  { id: 4, banque: 'BOA · Côte d\'Ivoire',    pays: 'CI', ref: 'CI-BOA-003-5588',    solde:  2_460_000, trend:  0.4 },
-  { id: 5, banque: 'UBA · Sénégal',           pays: 'SN', ref: 'SN-UBA-001-8823',    solde:  1_500_000, trend:  0   },
-];
-
-const ECHEANCES: EcheanceItem[] = [
-  { id: 1, date: '10 juil.', label: 'Loyers bureaux Dakar',   sub: 'Virement fournisseur', montant: -4_200_000,  status: 'urgent'   },
-  { id: 2, date: '15 juil.', label: 'Masse salariale',         sub: 'Paie Juin 2026',       montant: -17_200_000, status: 'planifie' },
-  { id: 3, date: '18 juil.', label: 'SONACOS · Règlement',     sub: 'FAC-2026-0089',        montant:  14_200_000, status: 'confirme' },
-  { id: 4, date: '20 juil.', label: 'Impôts & taxes DGI',      sub: 'Acompte IS T3',        montant: -6_800_000,  status: 'planifie' },
-  { id: 5, date: '25 juil.', label: 'PETROCI · Solde mission', sub: 'FAC-2026-0104',        montant:  9_800_000,  status: 'attente'  },
-  { id: 6, date: '31 juil.', label: 'Assurances NSIA',         sub: 'Prime annuelle',       montant: -2_100_000,  status: 'planifie' },
-];
-
-const STATUS_STYLE: Record<string, { dot: string; label: string }> = {
-  urgent:   { dot: 'bg-[#EF4444]',        label: 'Urgent'     },
-  planifie: { dot: 'bg-[var(--p500)]',    label: 'Planifié'   },
-  confirme: { dot: 'bg-[var(--ok500)]',   label: 'Confirmé'   },
-  attente:  { dot: 'bg-[var(--warn500)]', label: 'En attente' },
-};
+import { SpinnerGapIcon } from '@phosphor-icons/react';
+import type { KpiItem } from '@/types/kpi_type';
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
 
@@ -53,29 +19,29 @@ function fmtM(v: number) {
   return `${m.toFixed(1)}M FCFA`;
 }
 
-function fmtSolde(v: number) {
-  return `${(v / 1_000_000).toFixed(3).replace('.', ',')} 000 FCFA`;
+function fmtDate(d: Date) {
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 }
 
-function fmtMontant(v: number) {
-  const abs = Math.abs(v / 1_000_000);
-  return `${v < 0 ? '−' : '+'}${abs.toFixed(1)} M FCFA`;
-}
+/* Converts "Jul 2026" → "2026-07" so KpiChartCard.fillMonthlyGaps
+   recognises the ISO format and fills all months Jan → current.       */
+const EN_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-/* ── Skeleton KPI ────────────────────────────────────────────────────── */
-
-function KpiSkeleton() {
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
-      {[1, 2, 3, 4].map(i => (
-        <div key={i} className="bg-white rounded-2xl border border-[var(--bd-def)] p-4 sm:p-5 animate-pulse">
-          <div className="h-3 w-24 bg-[#EEF2F7] rounded mb-3" />
-          <div className="h-7 w-16 bg-[#EEF2F7] rounded mb-2" />
-          <div className="h-2.5 w-32 bg-[#EEF2F7] rounded" />
-        </div>
-      ))}
-    </div>
-  );
+function normalizeTresoKpi(kpi: KpiItem): KpiItem {
+  return {
+    ...kpi,
+    chart: {
+      ...kpi.chart,
+      data: kpi.chart.data.map(row => {
+        const raw = row['mois'] as string | undefined;
+        const m = raw?.match(/^([A-Za-z]+)\s+(\d{4})$/);
+        if (!m) return row;
+        const idx = EN_MONTHS.findIndex(e => e.toLowerCase() === m[1].toLowerCase());
+        if (idx === -1) return row;
+        return { ...row, mois: `${m[2]}-${String(idx + 1).padStart(2, '0')}` };
+      }),
+    },
+  };
 }
 
 /* ── Page ────────────────────────────────────────────────────────────── */
@@ -87,6 +53,8 @@ export default function TresoreriePage() {
     latestSnapshot,        latestSnapshotLoading, latestSnapshotError,
     snapshots,             snapshotsLoading,      snapshotsError,
   } = useAppSelector(s => s.daf);
+
+  const { catalog, catalogLoading } = useAppSelector(s => s.kpi);
 
   const [toast, setToast] = useState<{ msg: string; type: 'error' | 'success' | 'info' } | null>(null);
   const toastTimer = useRef<NodeJS.Timeout | null>(null);
@@ -100,7 +68,9 @@ export default function TresoreriePage() {
   useEffect(() => {
     dispatch(fetchLatestSnapshot());
     dispatch(fetchSnapshots(10));
+    if (!catalog.length) dispatch(fetchKpiCatalog());
     return () => { if (toastTimer.current) clearTimeout(toastTimer.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch]);
 
   useEffect(() => {
@@ -114,28 +84,26 @@ export default function TresoreriePage() {
   const netPos  = snap ? snap.total_receivables - snap.total_payables : 0;
   const isKpiLoading = latestSnapshotLoading && !snap;
 
+  const tresoKpiRaw = catalog.find(k => k.key === 'daf_tresorerie_evolution') ?? null;
+  const tresoKpi    = tresoKpiRaw ? normalizeTresoKpi(tresoKpiRaw) : null;
+
   // Évolution depuis les snapshots (oldest → newest)
   const evoData = [...snapshots]
     .sort((a, b) => new Date(a.snapshot_at).getTime() - new Date(b.snapshot_at).getTime())
     .map(s => ({ mois: FR_MONTHS_SHORT[new Date(s.snapshot_at).getMonth()], solde: +(s.cash_position / 1_000_000).toFixed(2) }));
 
-  // Projection J+90 calculée depuis la position réelle
+  // Projection J+90 calculée depuis la position réelle, dates dynamiques
+  const today = new Date();
+  const d30 = new Date(today); d30.setDate(today.getDate() + 30);
+  const d60 = new Date(today); d60.setDate(today.getDate() + 60);
+  const d90 = new Date(today); d90.setDate(today.getDate() + 90);
   const cashM = +(cashPos / 1_000_000).toFixed(1);
-  const projectionData = snap
-    ? [
-        { label: "Aujourd'hui",   montant: `${cashM} M`,                       bar: 100 },
-        { label: 'J+30 · 5 août', montant: `${(cashM * 0.98).toFixed(1)} M`,   bar: 98  },
-        { label: 'J+60 · 4 sep.', montant: `${(cashM * 0.82).toFixed(1)} M`,   bar: 82  },
-        { label: 'J+90 · 4 oct.', montant: `${(cashM * 0.90).toFixed(1)} M`,   bar: 90  },
-      ]
-    : [
-        { label: "Aujourd'hui",   montant: '—', bar: 100 },
-        { label: 'J+30 · 5 août', montant: '—', bar: 98  },
-        { label: 'J+60 · 4 sep.', montant: '—', bar: 82  },
-        { label: 'J+90 · 4 oct.', montant: '—', bar: 90  },
-      ];
-
-  const soldeTotal = COMPTES.reduce((s, c) => s + c.solde, 0);
+  const projectionData = [
+    { label: "Aujourd'hui",                   montant: snap ? `${cashM} M`                     : '—', bar: 100 },
+    { label: `J+30 · ${fmtDate(d30)}`,        montant: snap ? `${(cashM * 0.98).toFixed(1)} M` : '—', bar: 98  },
+    { label: `J+60 · ${fmtDate(d60)}`,        montant: snap ? `${(cashM * 0.82).toFixed(1)} M` : '—', bar: 82  },
+    { label: `J+90 · ${fmtDate(d90)}`,        montant: snap ? `${(cashM * 0.90).toFixed(1)} M` : '—', bar: 90  },
+  ];
 
   /* ── KPI cards ──────────────────────────────────────────────────── */
   const kpiCards = [
@@ -175,19 +143,24 @@ export default function TresoreriePage() {
       />
 
       {/* KPI row */}
-      {isKpiLoading ? (
-        <KpiSkeleton />
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
-          {kpiCards.map(k => (
-            <div key={k.label} className="bg-white rounded-2xl border border-[var(--bd-def)] shadow-[var(--sh-xs)] p-4 sm:p-5">
-              <p className="text-[11px] text-[var(--tx-3)] mb-1">{k.label}</p>
-              <p className="font-display font-bold text-lg leading-tight" style={{ color: k.color }}>{k.value}</p>
-              <p className="text-[11px] text-[var(--tx-3)] mt-1">{k.sub}</p>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+        {isKpiLoading
+          ? [1, 2, 3, 4].map(i => (
+              <div key={i} className="bg-white rounded-2xl border border-[var(--bd-def)] p-4 sm:p-5 animate-pulse">
+                <div className="h-3 w-24 bg-[#EEF2F7] rounded mb-3" />
+                <div className="h-7 w-16 bg-[#EEF2F7] rounded mb-2" />
+                <div className="h-2.5 w-32 bg-[#EEF2F7] rounded" />
+              </div>
+            ))
+          : kpiCards.map(k => (
+              <div key={k.label} className="bg-white rounded-2xl border border-[var(--bd-def)] shadow-[var(--sh-xs)] p-4 sm:p-5">
+                <p className="text-[11px] text-[var(--tx-3)] mb-1">{k.label}</p>
+                <p className="font-display font-bold text-lg leading-tight" style={{ color: k.color }}>{k.value}</p>
+                <p className="text-[11px] text-[var(--tx-3)] mt-1">{k.sub}</p>
+              </div>
+            ))
+        }
+      </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-3 sm:gap-4">
         <div className="flex flex-col gap-3 sm:gap-4">
@@ -207,17 +180,12 @@ export default function TresoreriePage() {
             />
           ) : null}
 
-          {/* Flux entrants vs sortants (mock — pas de route API) */}
-          <FinBarChart
-            title="Flux entrants vs sortants"
-            subtitle="Jan – Juin 2026 · Millions FCFA · Estimation"
-            data={FLUX_DATA}
-            series={[
-              { yKey: 'entrant', yName: 'Entrants', fill: '#1E5B3C' },
-              { yKey: 'sortant', yName: 'Sortants', fill: '#FCA5A5' },
-            ]}
-            height={200}
-          />          
+          {/* Flux entrants vs sortants (KPI catalogue) */}
+          {catalogLoading && !tresoKpi ? (
+            <KpiChartCardSkeleton />
+          ) : tresoKpi ? (
+            <KpiChartCard kpi={tresoKpi} featured />
+          ) : null}
         </div>
 
         {/* Panneau droit */}
@@ -252,8 +220,8 @@ export default function TresoreriePage() {
                 ))}
               </div>
             )}
-            <p className="mt-3 pt-3 border-t border-[var(--bd-def)] text-[10px] text-[var(--warn600)] leading-relaxed">
-              ⚠ Projection estimée à partir de la position de trésorerie réelle. Les flux entrants/sortants ne sont pas encore disponibles via l&apos;API.
+            <p className="mt-3 pt-3 border-t border-[var(--bd-def)] text-[10px] text-[var(--tx-3)] leading-relaxed">
+              Projection estimée à partir de la position de trésorerie réelle.
             </p>
           </FinCard>
         </div>

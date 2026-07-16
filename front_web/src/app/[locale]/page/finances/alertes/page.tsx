@@ -9,9 +9,10 @@ import {
   rejectAction,
 } from '@/redux/features/daf/dafSlice';
 import { FinCard } from '@/components/finance/fin-card';
+import { ActionDetailDrawer } from '@/components/finance/action-detail-drawer';
 import {
   WarningCircleIcon, ClockIcon, BellIcon, InfoIcon,
-  CheckIcon, XIcon, FunnelIcon, SpinnerGapIcon,
+  CheckIcon, XIcon, FunnelIcon, SpinnerGapIcon, EyeIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { DafProposedAction } from '@/types/daf_type';
@@ -116,9 +117,10 @@ export default function AlertesPage() {
     latestSnapshot,
   } = useAppSelector(s => s.daf);
 
-  const [filterCat,   setFilterCat]   = useState<string>('all');
-  const [filterLevel, setFilterLevel] = useState<AlerteLevel | 'all'>('all');
-  const [dismissed,   setDismissed]   = useState<Set<string>>(new Set());
+  const [filterCat,    setFilterCat]    = useState<string>('all');
+  const [filterLevel,  setFilterLevel]  = useState<AlerteLevel | 'all'>('all');
+  const [dismissed,    setDismissed]    = useState<Set<string>>(new Set());
+  const [detailAction, setDetailAction] = useState<DafProposedAction | null>(null);
 
   useEffect(() => {
     dispatch(fetchProposedActions({ status: 'pending', limit: 50 }));
@@ -355,6 +357,16 @@ export default function AlertesPage() {
                           {!a.isSystem && a.actionId ? (
                             <>
                               <button
+                                onClick={() => {
+                                  const found = proposedActions.find(p => p.id === a.actionId);
+                                  if (found) setDetailAction(found);
+                                }}
+                                className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--tx-3)] hover:bg-white/60 transition-colors"
+                                title="Voir détails"
+                              >
+                                <EyeIcon size={14} />
+                              </button>
+                              <button
                                 onClick={() => dispatch(approveAction({ actionId: a.actionId! }))}
                                 disabled={!!decidingId}
                                 className="h-7 px-2.5 rounded-lg text-[11px] font-semibold flex items-center gap-1 bg-[rgba(16,185,129,.1)] text-[var(--ok600)] hover:bg-[rgba(16,185,129,.2)] disabled:opacity-50 transition-colors whitespace-nowrap"
@@ -408,6 +420,14 @@ export default function AlertesPage() {
           )}
         </div>
       )}
+
+      <ActionDetailDrawer
+        action={detailAction}
+        onClose={() => setDetailAction(null)}
+        onApprove={(id) => dispatch(approveAction({ actionId: id }))}
+        onReject={(id)  => dispatch(rejectAction({ actionId: id }))}
+        decidingId={decidingId}
+      />
     </div>
   );
 }
