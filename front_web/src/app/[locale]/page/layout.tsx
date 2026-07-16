@@ -6,6 +6,7 @@ import { useAppDispatch } from '@/redux/store';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { fetchMe, clearMe } from '@/redux/features/me/meSlice';
 import { AuthContext } from '@/app/clientLayout';
+import { useFcmNotifications } from '@/hooks/useFcmNotifications';
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -17,6 +18,9 @@ export default function PageLayout({ children, params }: PageLayoutProps) {
   const dispatch = useAppDispatch();
   const auth = useContext(AuthContext);
   const authenticated = auth?.authenticated ?? false;
+
+  // Initialise Firebase Cloud Messaging une fois l'utilisateur authentifié
+  useFcmNotifications();
 
   // Charge le profil uniquement quand Keycloak a confirmé l'authentification
   // et que le token est disponible dans kc.token (lu par ApiService).
