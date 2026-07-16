@@ -56,6 +56,8 @@ dependencies = [
     "pywa[fastapi]>=2.0",
     # ── Push notifications ──
     "firebase-admin>=6.5",
+    # ── Monitoring système ──
+    "psutil>=6.0",
     # ── SSE (Server-Sent Events) ──
     "sse-starlette>=2.1",
 ]

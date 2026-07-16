@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.error_handlers import register_error_handlers
 from app.api.v1 import ai_config, api_logs, auth, chat, companies, compte_rendus, daf, groups, health, kpi, prospects, transport, users
-from app.api.v1 import app_config, notifications, transport_offers, whatsapp
+from app.api.v1 import app_config, monitoring, notifications, transport_offers, whatsapp
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
 from app.infrastructure.db.repositories.ai_config import AiModelRepository
@@ -37,6 +37,10 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
     from app.infrastructure.scheduler.daf_scheduler import daf_scheduler
     await daf_scheduler.start()
+
+    import asyncio as _asyncio
+    from app.infrastructure.monitoring.collector import start_monitoring_loop
+    _asyncio.create_task(start_monitoring_loop(interval=2.0))
 
     try:
         yield
@@ -97,4 +101,5 @@ app.include_router(app_config.router, prefix=API_V1_PREFIX)
 app.include_router(kpi.router, prefix=API_V1_PREFIX)
 app.include_router(daf.router, prefix=API_V1_PREFIX)
 app.include_router(notifications.router, prefix=API_V1_PREFIX)
+app.include_router(monitoring.router, prefix=API_V1_PREFIX)
 app.include_router(whatsapp.router, prefix=API_V1_PREFIX)

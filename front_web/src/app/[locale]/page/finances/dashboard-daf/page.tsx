@@ -282,7 +282,7 @@ export default function DashboardDafPage() {
 
   useEffect(() => {
     dispatch(fetchAgentStatus());
-    dispatch(fetchRuns(19));
+    dispatch(fetchRuns(15));
     dispatch(fetchLatestSnapshot());
     dispatch(fetchSnapshots(6));
     dispatch(fetchProposedActions({ status: "pending", limit: 20 }));
