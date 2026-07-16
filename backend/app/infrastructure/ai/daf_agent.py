@@ -392,11 +392,6 @@ async def _notify_daf_users(
         from app.infrastructure.auth.keycloak import KeycloakAdminClient
         from app.services.notification_email import _get_smtp_config, _send_smtp, _base_template
 
-        smtp = await _get_smtp_config()
-        if not smtp.host or not smtp.from_email:
-            logger.warning("daf.notify.smtp_not_configured")
-            return
-
         kc = KeycloakAdminClient()
         users = await kc.get_users_by_role("financial_ai:write")
         if not users:
@@ -404,6 +399,28 @@ async def _notify_daf_users(
             return
 
         trigger_label = {"startup": "démarrage", "scheduled": "cycle planifié", "manual": "déclenchement manuel"}.get(trigger, trigger)
+
+        # Notification in-app (badge + push + WS) — indépendant de l'email
+        try:
+            from app.services.notification import NotificationService
+            user_ids_notif = [UUID(u["id"]) for u in users if u.get("id")]
+            if user_ids_notif:
+                await NotificationService.create_for_users(
+                    user_ids=user_ids_notif,
+                    notification_type="daf_cycle_done",
+                    title=f"Analyse DAF terminée — {proposed_count} action(s) proposée(s)",
+                    body=(summary[:300] + "...") if len(summary or "") > 300 else (summary or ""),
+                    reference_type="daf_run",
+                    reference_id=run_id,
+                    data={"trigger": trigger, "proposed_count": proposed_count},
+                )
+        except Exception as exc:
+            logger.warning("daf.notify.inapp_failed run_id=%s error=%s", run_id, exc)
+
+        smtp = await _get_smtp_config()
+        if not smtp.host or not smtp.from_email:
+            logger.warning("daf.notify.smtp_not_configured")
+            return
 
         for user in users:
             email = user.get("email")
@@ -440,10 +457,6 @@ async def _notify_daf_status(event: str, trigger: str | None = None) -> None:
         from app.infrastructure.auth.keycloak import KeycloakAdminClient
         from app.services.notification_email import _get_smtp_config, _send_smtp, _base_template
 
-        smtp = await _get_smtp_config()
-        if not smtp.host or not smtp.from_email:
-            return
-
         kc = KeycloakAdminClient()
         users = await kc.get_users_by_role("financial_ai:write")
         if not users:
@@ -453,10 +466,30 @@ async def _notify_daf_status(event: str, trigger: str | None = None) -> None:
             subject = "[PortaLis DAF] Agent DAF IA démarré"
             intro = "L'agent DAF IA vient de démarrer. Il analysera les données financières toutes les 3 heures."
             rows = [("Déclencheur", trigger or "inconnu"), ("Fréquence", "Toutes les 3 heures")]
+            notif_type = "daf_started"
         else:
             subject = "[PortaLis DAF] Agent DAF IA arrêté"
             intro = "L'agent DAF IA a été arrêté. Les analyses automatiques sont suspendues."
             rows = [("Statut", "Arrêté")]
+            notif_type = "daf_stopped"
+
+        # Notification in-app
+        try:
+            from app.services.notification import NotificationService
+            user_ids_notif = [UUID(u["id"]) for u in users if u.get("id")]
+            if user_ids_notif:
+                await NotificationService.create_for_users(
+                    user_ids=user_ids_notif,
+                    notification_type=notif_type,
+                    title=subject.replace("[PortaLis DAF] ", ""),
+                    body=intro,
+                )
+        except Exception as exc_notif:
+            logger.warning("daf.notify_status.inapp_failed event=%s error=%s", event, exc_notif)
+
+        smtp = await _get_smtp_config()
+        if not smtp.host or not smtp.from_email:
+            return
 
         for user in users:
             email = user.get("email")

@@ -202,6 +202,17 @@ async def notify_offer_generated(
             warnings.append(msg)
             return warnings
 
+        # Notification in-app (badge + push + WS) — indépendant de l'email
+        title = offer_title or f"Offre {offer_id}"
+        asyncio.create_task(_fire_notification(
+            user_id=validator_id,
+            notification_type="offer_to_validate",
+            title=f"Offre à valider : {title}",
+            body=f"Créée par {author_name}",
+            reference_type="transport_offer",
+            reference_id=offer_id,
+        ))
+
         if not smtp.host or not smtp.from_email:
             msg = (
                 "Le serveur SMTP n'est pas configuré : la notification au validateur n'a pas été envoyée. "
@@ -222,7 +233,6 @@ async def notify_offer_generated(
             return warnings
 
         validator_first_name = await _get_validator_first_name(validator_id) or "Validateur"
-        title = offer_title or f"Offre {offer_id}"
         subject = f"[PortaLis] Offre à valider : {title}"
         html_body = _base_template(
             recipient_name=validator_first_name,
@@ -249,6 +259,31 @@ async def notify_offer_generated(
     return warnings
 
 
+async def _fire_notification(
+    user_id: UUID,
+    notification_type: str,
+    title: str,
+    body: str = "",
+    reference_type: str | None = None,
+    reference_id: UUID | None = None,
+    data: dict | None = None,
+) -> None:
+    """Lance une notification in-app en fire-and-forget (best-effort)."""
+    try:
+        from app.services.notification import NotificationService
+        await NotificationService.create(
+            user_id=user_id,
+            notification_type=notification_type,
+            title=title,
+            body=body,
+            reference_type=reference_type,
+            reference_id=reference_id,
+            data=data,
+        )
+    except Exception as exc:
+        logger.warning("notification.inapp.failed type=%s user_id=%s error=%s", notification_type, user_id, exc)
+
+
 async def notify_author_cr_ready(
     author_id: UUID,
     cr_id: UUID,
@@ -260,6 +295,19 @@ async def notify_author_cr_ready(
 
     Envoi best-effort : les erreurs sont loggées mais n'interrompent pas le flux.
     """
+    version_label = f"v{cr_version}" if cr_version else None
+    label_preview = prospect_name or (version_label or "Compte rendu")
+    notif_title = f"Compte rendu prêt : {label_preview}" + (f" ({version_label})" if version_label and prospect_name else "")
+    asyncio.create_task(_fire_notification(
+        user_id=author_id,
+        notification_type="cr_ready",
+        title=notif_title,
+        body="Votre compte rendu a été généré avec succès et est disponible au téléchargement.",
+        reference_type="compte_rendu",
+        reference_id=cr_id,
+        data={"download_url": download_url} if download_url else None,
+    ))
+
     try:
         smtp = await _get_smtp_config()
         if not smtp.host or not smtp.from_email:
@@ -306,6 +354,16 @@ async def notify_author_cr_failed(
     error: str,
 ) -> None:
     """Notifie l'auteur que la génération de son compte-rendu a échoué."""
+    label_preview = prospect_name or "Compte rendu"
+    asyncio.create_task(_fire_notification(
+        user_id=author_id,
+        notification_type="cr_failed",
+        title=f"Échec de génération : {label_preview}",
+        body=f"Erreur : {error[:200]}",
+        reference_type="compte_rendu",
+        reference_id=cr_id,
+    ))
+
     try:
         smtp = await _get_smtp_config()
         if not smtp.host or not smtp.from_email:
@@ -366,6 +424,17 @@ async def notify_compte_rendu_generated(
             warnings.append(msg)
             return warnings
 
+        label = prospect_name or "Compte rendu"
+        asyncio.create_task(_fire_notification(
+            user_id=validator_id,
+            notification_type="cr_to_validate",
+            title=f"Compte rendu à valider : {label}",
+            body=f"Créé par {author_name}",
+            reference_type="compte_rendu",
+            reference_id=cr_id,
+            data={"download_url": download_url} if download_url else None,
+        ))
+
         if not smtp.host or not smtp.from_email:
             msg = (
                 "Le serveur SMTP n'est pas configuré : la notification au validateur n'a pas été envoyée. "
@@ -386,7 +455,6 @@ async def notify_compte_rendu_generated(
             return warnings
 
         validator_first_name = await _get_validator_first_name(validator_id) or "Validateur"
-        label = prospect_name or f"Compte rendu {cr_id}"
         subject = f"[PortaLis] Compte rendu à valider : {label}"
         html_body = _base_template(
             recipient_name=validator_first_name,

@@ -17,9 +17,8 @@ from uuid import UUID, uuid4
 
 import json
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect, status
 from pydantic import BaseModel
-from sse_starlette.sse import EventSourceResponse
 
 from app.api.deps import require_permission
 
@@ -370,59 +369,43 @@ async def reply_to_conversation(
     )
 
 
-# ── SSE — Temps réel ──────────────────────────────────────────────────────────
+# ── WebSocket — Temps réel ────────────────────────────────────────────────────
 
-@router.get("/conversations/{conversation_id}/stream", dependencies=_read_deps)
-async def stream_conversation(conversation_id: UUID, request: Request) -> EventSourceResponse:
-    """Flux SSE — reçoit les nouveaux messages d'une conversation en temps réel.
+@router.websocket("/conversations/stream")
+async def ws_stream_all(websocket: WebSocket):
+    """WebSocket global — reçoit un événement à chaque nouveau message (toutes conversations).
 
-    Connexion persistante : le client reçoit chaque message dès son arrivée
-    via le webhook WhatsApp, sans avoir à rafraîchir la page.
-
-    Format des événements :
-        event: message
-        data: {"id": "...", "direction": "inbound", "message_type": "text", ...}
-
-    Flutter / Web : utiliser EventSource ou http streaming.
-    Heartbeat envoyé toutes les 30s pour maintenir la connexion.
-    """
-    from app.infrastructure.whatsapp.broadcaster import subscribe_conversation
-
-    async def event_generator():
-        async for payload in subscribe_conversation(str(conversation_id)):
-            if await request.is_disconnected():
-                break
-            yield {
-                "event": payload["event"],
-                "data": json.dumps(payload["data"], default=str),
-            }
-
-    return EventSourceResponse(event_generator(), ping=30)
-
-
-@router.get("/stream", dependencies=_read_deps)
-async def stream_all_conversations(request: Request) -> EventSourceResponse:
-    """Flux SSE global — reçoit un événement à chaque nouveau message (toutes conversations).
-
-    Permet de rafraîchir la liste des conversations en temps réel.
-
-    Format des événements :
-        event: new_message
-        data: {"conversation_id": "...", "direction": "inbound", "message_type": "text", ...}
+    Connexion : ws://.../api/v1/whatsapp/conversations/stream
+    Format reçu : {"event": "new_message", "data": {"conversation_id": "...", ...}}
     """
     from app.infrastructure.whatsapp.broadcaster import subscribe_all
 
-    async def event_generator():
+    await websocket.accept()
+    try:
         async for payload in subscribe_all():
-            if await request.is_disconnected():
-                break
-            yield {
-                "event": payload["event"],
-                "data": json.dumps(payload["data"], default=str),
-            }
+            await websocket.send_text(json.dumps(payload, default=str))
+    except WebSocketDisconnect:
+        pass
 
-    return EventSourceResponse(event_generator(), ping=30)
 
+@router.websocket("/conversations/{conversation_id}/stream")
+async def ws_stream_conversation(websocket: WebSocket, conversation_id: UUID):
+    """WebSocket d'une conversation — reçoit chaque nouveau message en temps réel.
+
+    Connexion : ws://.../api/v1/whatsapp/conversations/{id}/stream
+    Format reçu : {"event": "message", "data": {"id": "...", "body": "...", ...}}
+    """
+    from app.infrastructure.whatsapp.broadcaster import subscribe_conversation
+
+    await websocket.accept()
+    try:
+        async for payload in subscribe_conversation(str(conversation_id)):
+            await websocket.send_text(json.dumps(payload, default=str))
+    except WebSocketDisconnect:
+        pass
+
+
+# ── SSE — Temps réel ──────────────────────────────────────────────────────────
 
 class GenerateCRIn(BaseModel):
     extra_note_ids: list[UUID] = []   # notes existantes à combiner avec les messages

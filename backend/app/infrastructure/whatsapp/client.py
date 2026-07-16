@@ -15,7 +15,7 @@ Envoi de messages depuis n'importe où :
 from __future__ import annotations
 
 import logging
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from app.core.config import settings
 
@@ -234,7 +234,7 @@ async def _persist_and_handle(_client, msg) -> None:
         "meta_timestamp": msg.timestamp.isoformat() if msg.timestamp else None,
     }
 
-    # SSE — push immédiat aux clients web/flutter ouverts sur cette conversation
+    # WS — push immédiat aux clients web/flutter ouverts sur cette conversation
     _asyncio.create_task(publish_message(str(conversation.id), message_payload))
 
     # FCM — notification push pour les appareils en arrière-plan
@@ -244,6 +244,30 @@ async def _persist_and_handle(_client, msg) -> None:
         message_preview=body_text or "",
         message_type=msg_type,
     ))
+
+    # Notification in-app — historique et badge pour chaque utilisateur transport:read
+    async def _persist_whatsapp_notification() -> None:
+        try:
+            from app.infrastructure.auth.keycloak import KeycloakAdminClient
+            from app.services.notification import NotificationService
+            kc = KeycloakAdminClient()
+            users = await kc.get_users_by_role("transport:read")
+            user_ids = [UUID(u["id"]) for u in users if u.get("id")]
+            if user_ids:
+                preview = body_text or f"[{msg_type}]"
+                await NotificationService.create_for_users(
+                    user_ids=user_ids,
+                    notification_type="whatsapp_message",
+                    title=f"Message de {contact_name}",
+                    body=preview[:200],
+                    reference_type="whatsapp",
+                    reference_id=conversation.id,
+                    data={"message_type": msg_type, "conversation_id": str(conversation.id)},
+                )
+        except Exception as _exc:
+            logger.warning("whatsapp.notify.inapp_failed error=%s", _exc)
+
+    _asyncio.create_task(_persist_whatsapp_notification())
 
 
 # ── Réponse automatique système ──────────────────────────────────────────────
