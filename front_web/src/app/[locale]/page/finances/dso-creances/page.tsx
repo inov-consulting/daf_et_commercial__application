@@ -17,9 +17,10 @@ import { FR_MONTHS_SHORT } from '@/components/finance/fin-chart';
 import { BalanceAgee } from '@/components/finance/balance-agee';
 import { FinLineChart } from '@/components/finance/fin-chart';
 import { FloatingToast } from '@/components/ui/toast';
+import { ActionDetailDrawer } from '@/components/finance/action-detail-drawer';
 import {
   DownloadSimpleIcon, ArrowRightIcon, CheckIcon, XIcon,
-  SpinnerGapIcon, WarningCircleIcon,
+  SpinnerGapIcon, WarningCircleIcon, EyeIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { DafActionPriority, DafActionStatus } from '@/types/daf_type';
@@ -97,7 +98,8 @@ export default function DsoCreancesPage() {
     decidingId, decideError,
   } = useAppSelector(s => s.daf);
 
-  const [toast, setToast]   = useState<{ msg: string; type: 'error' | 'success' | 'info' } | null>(null);
+  const [toast, setToast]       = useState<{ msg: string; type: 'error' | 'success' | 'info' } | null>(null);
+  const [detailAction, setDetailAction] = useState<import('@/types/daf_type').DafProposedAction | null>(null);
   const [actionPage, setActionPage] = useState(0);
   const ACTION_PAGE_SIZE = 10;
   const toastTimer = useRef<NodeJS.Timeout | null>(null);
@@ -176,7 +178,7 @@ export default function DsoCreancesPage() {
           {[
             {
               label: 'DSO moyen global',
-              value: snap ? `${snap.dso_days} jours` : '—',
+              value: snap ? `${snap.dso_days === null ? 0 : snap.dso_days} jour${snap.dso_days > 1 ? 's' : ''}` : '—',
               sub: `Objectif : ${dsoObjectif}j${snap && snap.dso_days > dsoObjectif ? ` — +${snap.dso_days - dsoObjectif}j` : ' — Respecté'}`,
               accent: dsoTrend === 'warning' ? '#F97316' : '#1B6B45',
             },
@@ -321,32 +323,39 @@ export default function DsoCreancesPage() {
                               <span className="font-semibold text-[11px]" style={{ color: s.text }}>{s.label}</span>
                             </td>
                             <td className="px-3 sm:px-4 py-3">
-                              {action.status === 'pending' ? (
-                                <div className="flex items-center gap-1.5 justify-end">
-                                  <button
-                                    onClick={() => handleApprove(action.id)}
-                                    disabled={isDeciding}
-                                    className="h-7 w-7 sm:w-auto sm:px-2.5 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 bg-[rgba(16,185,129,.1)] text-[var(--ok600)] hover:bg-[rgba(16,185,129,.2)] disabled:opacity-50 transition-colors"
-                                    title="Valider"
-                                  >
-                                    {isDeciding
-                                      ? <SpinnerGapIcon size={12} className="animate-spin" />
-                                      : <CheckIcon size={12} weight="bold" />}
-                                    <span className="hidden sm:inline">Valider</span>
-                                  </button>
-                                  <button
-                                    onClick={() => handleReject(action.id)}
-                                    disabled={isDeciding}
-                                    className="h-7 w-7 sm:w-auto sm:px-2.5 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 bg-[rgba(239,68,68,.08)] text-[#DC2626] hover:bg-[rgba(239,68,68,.15)] disabled:opacity-50 transition-colors"
-                                    title="Rejeter"
-                                  >
-                                    <XIcon size={12} weight="bold" />
-                                    <span className="hidden sm:inline">Rejeter</span>
-                                  </button>
-                                </div>
-                              ) : (
-                                <span className="text-[var(--tx-3)] italic text-right block text-[11px]">—</span>
-                              )}
+                              <div className="flex items-center gap-1.5 justify-end">
+                                <button
+                                  onClick={() => setDetailAction(action)}
+                                  className="h-7 w-7 rounded-lg text-[11px] flex items-center justify-center text-[var(--tx-3)] border border-[var(--bd-def)] hover:bg-[var(--bg-sink)] transition-colors"
+                                  title="Voir détails"
+                                >
+                                  <EyeIcon size={12} />
+                                </button>
+                                {action.status === 'pending' && (
+                                  <>
+                                    <button
+                                      onClick={() => handleApprove(action.id)}
+                                      disabled={isDeciding}
+                                      className="h-7 w-7 sm:w-auto sm:px-2.5 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 bg-[rgba(16,185,129,.1)] text-[var(--ok600)] hover:bg-[rgba(16,185,129,.2)] disabled:opacity-50 transition-colors"
+                                      title="Valider"
+                                    >
+                                      {isDeciding
+                                        ? <SpinnerGapIcon size={12} className="animate-spin" />
+                                        : <CheckIcon size={12} weight="bold" />}
+                                      <span className="hidden sm:inline">Valider</span>
+                                    </button>
+                                    <button
+                                      onClick={() => handleReject(action.id)}
+                                      disabled={isDeciding}
+                                      className="h-7 w-7 sm:w-auto sm:px-2.5 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 bg-[rgba(239,68,68,.08)] text-[#DC2626] hover:bg-[rgba(239,68,68,.15)] disabled:opacity-50 transition-colors"
+                                      title="Rejeter"
+                                    >
+                                      <XIcon size={12} weight="bold" />
+                                      <span className="hidden sm:inline">Rejeter</span>
+                                    </button>
+                                  </>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );
@@ -449,6 +458,14 @@ export default function DsoCreancesPage() {
           </FinCard>
         </div>
       </div>
+
+      <ActionDetailDrawer
+        action={detailAction}
+        onClose={() => setDetailAction(null)}
+        onApprove={(id) => dispatch(approveAction({ actionId: id }))}
+        onReject={(id)  => dispatch(rejectAction({ actionId: id }))}
+        decidingId={decidingId}
+      />
 
       {/* Toast */}
       <FloatingToast message={toast?.msg ?? null} type={toast?.type ?? 'error'} />

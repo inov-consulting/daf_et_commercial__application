@@ -17,10 +17,11 @@ import { fetchKpiCatalog } from "@/redux/features/kpi/kpiSlice";
 import { FinSectionHeader } from "@/components/finance/fin-section-header";
 import { FinKpiRow } from "@/components/finance/fin-kpi-row";
 import { AgentSyntheseDaf } from "@/components/finance/agent-synthese-daf";
+import { ActionDetailDrawer } from "@/components/finance/action-detail-drawer";
+import { RunDetailDrawer } from "@/components/finance/run-detail-drawer";
 import { AlertesFin } from "@/components/finance/alertes-fin";
 import { CreancesTop } from "@/components/finance/creances-top";
 import {
-  FinLineChart,
   FR_MONTHS_SHORT,
 } from "@/components/finance/fin-chart";
 import {
@@ -31,7 +32,6 @@ import { FloatingToast } from "@/components/ui/toast";
 import { SpinnerGapIcon, ArrowClockwiseIcon } from "@phosphor-icons/react";
 import type {
   FinKpi,
-  AgentActif,
   AlerteFinance,
 } from "@/types/finance_type";
 import type { KpiItem } from "@/types/kpi_type";
@@ -130,45 +130,6 @@ function fmtM(v: number) {
 
 /* ── Fonctions de mapping API → props composants ────────────────────── */
 
-function statusToAgents(status: DafAgentStatus | null): AgentActif[] {
-  if (!status) {
-    return [
-      {
-        id: 1,
-        name: "Agent DAF",
-        model: "Sonnet 4.5",
-        desc: "Chargement du statut…",
-        running: false,
-        progress: null,
-        timeLeft: null,
-      },
-    ];
-  }
-  const nextRun = status.next_run_at
-    ? new Date(status.next_run_at).toLocaleString("fr-FR", {
-        day: "2-digit",
-        month: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : null;
-  return [
-    {
-      id: 1,
-      name: "Agent DAF",
-      model: "Sonnet 4.5",
-      desc: status.scheduler_running
-        ? nextRun
-          ? `Scheduler actif · Prochain run · ${nextRun}`
-          : "Scheduler actif"
-        : `Scheduler inactif · Dernier statut : ${status.last_run_status ?? "—"}`,
-      running: status.last_run_status === "running",
-      progress: null,
-      timeLeft: nextRun ? `Prochain run · ${nextRun}` : null,
-    },
-  ];
-}
-
 function snapshotToKpis(snap: DafSnapshot): FinKpi[] {
   const dsoOver = snap.dso_days - 45;
   return [
@@ -190,7 +151,7 @@ function snapshotToKpis(snap: DafSnapshot): FinKpi[] {
     },
     {
       label: "DSO moyen",
-      value: `${snap.dso_days} jours`,
+      value: `${snap.dso_days === null ? 0 : snap.dso_days} jour${snap.dso_days > 1 ? 's' : ''}`,
       sub:
         snap.dso_days > 45
           ? `Objectif 45j — dépassé de ${dsoOver}j`
@@ -202,9 +163,9 @@ function snapshotToKpis(snap: DafSnapshot): FinKpi[] {
     {
       label: "Créances en retard",
       value: fmtM(snap.overdue_receivables),
-      sub: `${snap.overdue_receivables_count} clients · Relances prioritaires`,
+      sub: `${snap.overdue_receivables_count === null ? 0 : snap.overdue_receivables_count} client${snap.overdue_receivables_count > 1 ? 's' : ''} · Relances prioritaires`,
       trend: "down",
-      trendVal: `${snap.overdue_receivables_count} clients`,
+      trendVal: `${snap.overdue_receivables_count} client${snap.overdue_receivables_count > 1 ? 's' : ''}`,
       accent: "error",
     },
   ];
@@ -222,7 +183,7 @@ function buildAlertes(
       level: snap.dso_days > 60 ? "critique" : "urgent",
       tag: "DSO",
       title: `DSO ${snap.dso_days}j · Seuil dépassé`,
-      sub: `Objectif 45j — ${snap.overdue_receivables_count} clients > 60j — ${fmtM(snap.overdue_receivables)} exposés`,
+      sub: `Objectif 45j — ${snap.overdue_receivables_count} client${snap.overdue_receivables_count > 1 ? 's' : ''} > 60j — ${fmtM(snap.overdue_receivables)} exposés`,
       date: snap.period_label,
     });
   }
@@ -301,6 +262,9 @@ export default function DashboardDafPage() {
 
   const { catalog, catalogLoading } = useAppSelector((s) => s.kpi);
 
+  const [detailAction, setDetailAction] = useState<import('@/types/daf_type').DafProposedAction | null>(null);
+  const [detailRun,    setDetailRun]    = useState<import('@/types/daf_type').DafRun | null>(null);
+
   const [toast, setToast] = useState<{
     msg: string;
     type: "error" | "success" | "info";
@@ -318,7 +282,7 @@ export default function DashboardDafPage() {
 
   useEffect(() => {
     dispatch(fetchAgentStatus());
-    dispatch(fetchRuns(10));
+    dispatch(fetchRuns(19));
     dispatch(fetchLatestSnapshot());
     dispatch(fetchSnapshots(6));
     dispatch(fetchProposedActions({ status: "pending", limit: 20 }));
@@ -369,7 +333,6 @@ export default function DashboardDafPage() {
   /* Données dérivées */
   const snap   = latestSnapshot;
   const kpis   = snap ? snapshotToKpis(snap) : KPI_MOCK;
-  const agents = statusToAgents(agentStatus);
   const alertes = buildAlertes(proposedActions, snap);
 
   const taskCount = runs.reduce((s, r) => s + r.proposed_actions_count, 0);
@@ -440,11 +403,12 @@ export default function DashboardDafPage() {
         <AgentSyntheseDaf
           label="Agent Synthèse DAF"
           rule="L&apos;IA a généré ces éléments — validation requise avant action (R-DAF)"
-          proposedActions={[...proposedActions].sort((a, b) => new Date(b.proposed_at).getTime() - new Date(a.proposed_at).getTime()).slice(0, 5)}
-          agents={agents}
+          proposedActions={[...proposedActions].sort((a, b) => new Date(b.proposed_at).getTime() - new Date(a.proposed_at).getTime()).slice(0, 3)}
+          agentStatus={agentStatus}
           decidingId={decidingId}
           onApprove={(id) => dispatch(approveAction({ actionId: id }))}
           onReject={(id)  => dispatch(rejectAction({ actionId: id }))}
+          onViewAction={(a) => setDetailAction(a)}
           taskCount={taskCount}
           validCount={validCount}
         />
@@ -470,31 +434,6 @@ export default function DashboardDafPage() {
               {prioriteKpi && <KpiChartCard kpi={prioriteKpi} featured />}
             </>
           ) : null}
-
-          {/* Trésorerie nette (données réelles depuis snapshots) */}
-          {snapshotsLoading && treoData.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-[var(--bd-def)] p-4 h-[240px] flex items-center justify-center">
-              <SpinnerGapIcon
-                size={24}
-                className="animate-spin text-[var(--tx-3)]"
-              />
-            </div>
-          ) : treoData.length > 0 ? (
-            <FinLineChart
-              title="Trésorerie nette"
-              subtitle="Historique des snapshots · Millions FCFA"
-              data={treoData}
-              series={[
-                {
-                  yKey: "solde",
-                  yName: "Solde net",
-                  stroke: "#1B6B45",
-                  type: "area",
-                },
-              ]}
-              height={200}
-            />
-          ) : null}
         </div>
 
         {/* Panneau droit */}
@@ -502,9 +441,26 @@ export default function DashboardDafPage() {
           <AlertesFin
             alertes={alertes.length > 0 ? alertes : ALERTES_FALLBACK}
           />
-          <CreancesTop runs={runs} locale={locale} />
+          <CreancesTop
+            runs={runs}
+            locale={locale}
+            onViewRun={(r) => setDetailRun(r)}
+          />
         </div>
       </div>
+
+      <ActionDetailDrawer
+        action={detailAction}
+        onClose={() => setDetailAction(null)}
+        onApprove={(id) => dispatch(approveAction({ actionId: id }))}
+        onReject={(id)  => dispatch(rejectAction({ actionId: id }))}
+        decidingId={decidingId}
+      />
+      <RunDetailDrawer
+        run={detailRun}
+        onClose={() => setDetailRun(null)}
+        locale={locale}
+      />
 
       <FloatingToast
         message={toast?.msg ?? null}

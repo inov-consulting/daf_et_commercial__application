@@ -41,7 +41,8 @@ function fmtDuration(start: string, end: string | null) {
   return s >= 60 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${s}s`;
 }
 
-function fmtM(v: number) {
+function fmtM(v: number | null | undefined): string {
+  if (v == null || v === undefined) return '_';
   if (v >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(1)}Md`;
   if (v >= 1_000_000)     return `${(v / 1_000_000).toFixed(1)}M`;
   if (v >= 1_000)         return `${(v / 1_000).toFixed(0)}k`;
@@ -144,9 +145,9 @@ function PayloadPanel({ payload }: { payload: Record<string, unknown> }) {
 
 function SnapshotKpis({ snap }: { snap: DafSnapshot }) {
   const kpis = [
-    { label: 'Créances totales',   value: `${fmtM(snap.total_receivables)} XAF`,   sub: `${snap.overdue_receivables_count} en retard`, accent: '#4338CA' },
-    { label: 'DSO',                value: `${snap.dso_days} jours`,                sub: snap.dso_days > 45 ? 'Au-dessus de l\'objectif' : 'Dans l\'objectif', accent: snap.dso_days > 45 ? '#F97316' : '#1B6B45' },
-    { label: 'Dettes fournisseurs',value: `${fmtM(snap.total_payables)} XAF`,      sub: `${snap.overdue_payables_count} en retard`,    accent: '#6B7280'  },
+    { label: 'Créances totales',   value: `${fmtM(snap.total_receivables)} XAF`,   sub: `${snap.overdue_receivables_count === null ? 0 : snap.overdue_receivables_count} en retard`, accent: '#4338CA' },
+    { label: 'DSO',                value: `${snap.dso_days === null ? 0 : snap.dso_days} jours`,                sub: snap.dso_days > 45 ? 'Au-dessus de l\'objectif' : 'Dans l\'objectif', accent: snap.dso_days > 45 ? '#F97316' : '#1B6B45' },
+    { label: 'Dettes fournisseurs',value: `${fmtM(snap.total_payables)} XAF`,      sub: `${snap.overdue_payables_count === null ? 0 : snap.overdue_payables_count} en retard`,    accent: '#6B7280'  },
     { label: 'Position trésorerie',value: `${fmtM(snap.cash_position)} XAF`,       sub: snap.cash_position === 0 ? 'Trésorerie critique' : 'Solde disponible', accent: snap.cash_position === 0 ? '#DC2626' : '#1B6B45' },
   ];
   return (

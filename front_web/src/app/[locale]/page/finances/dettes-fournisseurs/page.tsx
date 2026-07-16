@@ -60,6 +60,15 @@ function fmtM(v: number, digits = 1) {
   return `${(v / 1_000_000).toFixed(digits)}M FCFA`;
 }
 
+const FR_MONTHS_LONG = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+
+function fmtPeriod(period: string): string {
+  const m = period.match(/^(\d{4})-(\d{2})$/);
+  if (!m) return period;
+  const month = FR_MONTHS_LONG[parseInt(m[2], 10) - 1];
+  return month ? `${month} ${m[1]}` : period;
+}
+
 function fmtSolde(v: number) {
   return v.toLocaleString('fr-FR') + ' FCFA';
 }
@@ -120,7 +129,7 @@ export default function DettesFournisseursPage() {
         {
           label:  'Dettes fournisseurs totales',
           value:  fmtM(snap.total_payables),
-          sub:    `Snapshot · ${snap.period_label}`,
+          sub:    `Snapshot · ${fmtPeriod(snap.period_label)}`,
           color:  '#DC2626',
           icon:   <WarningIcon size={14} className="inline mr-0.5" />,
         },
@@ -133,7 +142,7 @@ export default function DettesFournisseursPage() {
         },
         {
           label:  'Fournisseurs en retard',
-          value:  `${snap.overdue_payables_count}`,
+          value:  `${snap.overdue_payables_count === null ? 0 : snap.overdue_payables_count}`,
           sub:    `sur ${FOURNISSEURS_MOCK.length} fournisseurs actifs`,
           color:  snap.overdue_payables_count > 2 ? '#DC2626' : '#F59E0B',
           icon:   null,
@@ -142,10 +151,10 @@ export default function DettesFournisseursPage() {
           label:  'Ratio créances / dettes',
           value:  snap.total_payables > 0
             ? `${(snap.total_receivables / snap.total_payables).toFixed(2)}x`
-            : '—',
+            : '-',
           sub:    snap.total_payables > 0 && snap.total_receivables > snap.total_payables
-            ? 'Créances > Dettes — situation saine'
-            : 'Dettes > Créances — surveiller',
+            ? 'Créances > Dettes - situation saine'
+            : 'Dettes > Créances - surveiller',
           color:  snap.total_receivables >= snap.total_payables ? '#1B6B45' : '#DC2626',
           icon:   snap.total_receivables >= snap.total_payables
             ? <CheckCircleIcon size={14} className="inline mr-0.5" />
@@ -306,7 +315,7 @@ export default function DettesFournisseursPage() {
                 </span>
                 <p className="text-[12px] font-semibold text-[var(--tx-1)]">Synthèse snapshot</p>
                 <span className="ml-auto text-[10px] text-[var(--tx-3)] bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded px-1.5 py-0.5">
-                  {snap.period_label}
+                  {fmtPeriod(snap.period_label)}
                 </span>
               </div>
 
@@ -361,13 +370,13 @@ export default function DettesFournisseursPage() {
                 <div className="flex items-center justify-between px-3 py-2">
                   <span className="text-[11px] text-[var(--tx-3)]">Ratio créances / dettes</span>
                   <span className={cn('text-[12px] font-bold', snap.total_receivables >= snap.total_payables ? 'text-[var(--ok600)]' : 'text-[#DC2626]')}>
-                    {snap.total_payables > 0 ? `${(snap.total_receivables / snap.total_payables).toFixed(1)}x` : '—'}
+                    {snap.total_payables > 0 ? `${(snap.total_receivables / snap.total_payables).toFixed(1)}x` : '-'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between px-3 py-2">
                   <span className="text-[11px] text-[var(--tx-3)]">DSO moyen</span>
                   <span className={cn('text-[12px] font-bold', snap.dso_days > 45 ? 'text-[#F97316]' : 'text-[var(--ok600)]')}>
-                    {snap.dso_days}j
+                    {snap.dso_days === null ? 0 : snap.dso_days}j
                   </span>
                 </div>
                 <div className="flex items-center justify-between px-3 py-2">
