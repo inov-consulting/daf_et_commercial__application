@@ -79,6 +79,7 @@ async def get_overdue_receivables() -> dict:
             "partner_id": partner[0] if isinstance(partner, list) else partner,
             "partner_name": partner[1] if isinstance(partner, list) and len(partner) > 1 else "",
             "amount_residual": amount,
+            "invoice_date": r.get("invoice_date", ""),
             "invoice_date_due": due_str,
             "days_overdue": days_overdue,
             "currency": currency[1] if isinstance(currency, list) and len(currency) > 1 else "XOF",
@@ -124,7 +125,7 @@ async def get_overdue_payables() -> dict:
     ]
     fields = [
         "id", "name", "partner_id", "amount_residual",
-        "invoice_date_due", "currency_id",
+        "invoice_date", "invoice_date_due", "currency_id",
     ]
     records = await asyncio.to_thread(client.fetch_all, "account.move", domain, fields)
 
@@ -149,6 +150,7 @@ async def get_overdue_payables() -> dict:
             "partner_id": partner[0] if isinstance(partner, list) else partner,
             "partner_name": partner[1] if isinstance(partner, list) and len(partner) > 1 else "",
             "amount_residual": amount,
+            "invoice_date": r.get("invoice_date", ""),
             "invoice_date_due": due_str,
             "days_overdue": days_overdue,
             "currency": currency[1] if isinstance(currency, list) and len(currency) > 1 else "XOF",

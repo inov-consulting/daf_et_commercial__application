@@ -86,6 +86,7 @@ async def list_models() -> AiModelsByProviderOut:
     return AiModelsByProviderOut(
         anthropic=[_model_out(m) for m in all_models if m.provider == "anthropic"],
         openai=[_model_out(m) for m in all_models if m.provider == "openai"],
+        deepseek=[_model_out(m) for m in all_models if m.provider == "deepseek"],
     )
 
 
