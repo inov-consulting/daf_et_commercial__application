@@ -200,7 +200,7 @@ async def _persist_and_handle(_client, msg) -> None:
         body_text = await _transcribe_audio(audio_bytes, media_mime or "audio/ogg")
 
     # ── Persistance du message entrant ────────────────────────────────
-    await WhatsAppMessageOrm.create(
+    new_msg = await WhatsAppMessageOrm.create(
         id=uuid4(),
         conversation_id=conversation.id,
         wamid=wamid,
@@ -216,6 +216,34 @@ async def _persist_and_handle(_client, msg) -> None:
     )
 
     logger.info("whatsapp.message.received wa_id=%s type=%s", _mask(wa_id), msg_type)
+
+    # ── Notifications temps réel (SSE + FCM) ──────────────────────────
+    import asyncio as _asyncio
+    from app.infrastructure.whatsapp.broadcaster import publish_message
+    from app.infrastructure.firebase import fcm as _fcm
+
+    message_payload = {
+        "id": str(new_msg.id),
+        "wamid": new_msg.wamid,
+        "direction": "inbound",
+        "message_type": msg_type,
+        "body": body_text,
+        "media_url": media_url,
+        "media_filename": media_filename,
+        "contact_name": contact_name,
+        "meta_timestamp": msg.timestamp.isoformat() if msg.timestamp else None,
+    }
+
+    # SSE — push immédiat aux clients web/flutter ouverts sur cette conversation
+    _asyncio.create_task(publish_message(str(conversation.id), message_payload))
+
+    # FCM — notification push pour les appareils en arrière-plan
+    _asyncio.create_task(_fcm.notify_whatsapp_message(
+        conversation_id=str(conversation.id),
+        contact_name=contact_name,
+        message_preview=body_text or "",
+        message_type=msg_type,
+    ))
 
 
 # ── Réponse automatique système ──────────────────────────────────────────────
