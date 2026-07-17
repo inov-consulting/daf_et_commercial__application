@@ -8,12 +8,8 @@ import { logoutKeycloak } from '@/lib/keycloak';
 import type { ApiUser, User } from '@/types/user_type';
 import { getRoleAbbreviation } from '@/lib/roleAbbreviation';
 import Image from 'next/image';
-
-const NOTIFICATIONS = [
-  { id: 1, color: '#10B981', label: 'MIS-2026-0140 livré · SITARAIL', time: '13h47' },
-  { id: 2, color: '#F59E0B', label: 'Retard · MIS-2026-0142 · ETA +48h', time: '10h22' },
-  { id: 3, color: '#1B6B45', label: 'IA · 3 éléments à valider (R-05)', time: '09h14' },
-] as const;
+import { useAppSelector } from '@/redux/store';
+import { NotificationsDrawer } from '@/components/layout/notifications-drawer';
 
 const MENU_ITEMS = [
   { Icon: UserIcon, label: 'Mon profil', danger: false },
@@ -30,31 +26,25 @@ interface TopBarProps {
 }
 
 export default function TopBar({ onToggleSidebar, user, rawUser }: TopBarProps) {
-  const [showNotifs, setShowNotifs] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotifDrawer, setShowNotifDrawer] = useState(false);
+  const [showUserMenu, setShowUserMenu]       = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
-  const [notifsPos, setNotifsPos] = useState<DropdownPos>({ top: 0, right: 0 });
-  const [menuPos, setMenuPos] = useState<DropdownPos>({ top: 0, right: 0 });
-  const [mounted, setMounted] = useState(false);
+  const [menuPos, setMenuPos]   = useState<DropdownPos>({ top: 0, right: 0 });
+  const [mounted, setMounted]   = useState(false);
 
-  const notifBtnRef = useRef<HTMLButtonElement>(null);
   const menuBtnRef = useRef<HTMLButtonElement>(null);
+
+  const unreadCount = useAppSelector(s => s.notifications.unreadCount);
 
   useEffect(() => { setMounted(true); }, []);
 
   const closeAll = useCallback(() => {
-    setShowNotifs(false);
     setShowUserMenu(false);
   }, []);
 
-  // Recalcule les positions quand la fenêtre change de taille
   useEffect(() => {
-    if (!showNotifs && !showUserMenu) return;
+    if (!showUserMenu) return;
     const update = () => {
-      if (showNotifs && notifBtnRef.current) {
-        const r = notifBtnRef.current.getBoundingClientRect();
-        setNotifsPos({ top: r.bottom + 8, right: window.innerWidth - r.right });
-      }
       if (showUserMenu && menuBtnRef.current) {
         const r = menuBtnRef.current.getBoundingClientRect();
         setMenuPos({ top: r.bottom + 8, right: window.innerWidth - r.right });
@@ -62,27 +52,13 @@ export default function TopBar({ onToggleSidebar, user, rawUser }: TopBarProps) 
     };
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
-  }, [showNotifs, showUserMenu]);
+  }, [showUserMenu]);
 
-  // Ferme sur Escape
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeAll(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { closeAll(); setShowNotifDrawer(false); } };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [closeAll]);
-
-  // onPointerDown + preventDefault évite le "ghost click" mobile :
-  // le navigateur génère un click synthétique ~300ms après touchend qui tomberait
-  // sur le backdrop. preventDefault() sur pointerDown supprime ce click fantôme.
-  const handleNotifToggle = (e: React.PointerEvent) => {
-    e.preventDefault();
-    if (notifBtnRef.current) {
-      const r = notifBtnRef.current.getBoundingClientRect();
-      setNotifsPos({ top: r.bottom + 8, right: window.innerWidth - r.right });
-    }
-    setShowNotifs(v => !v);
-    setShowUserMenu(false);
-  };
 
   const handleMenuToggle = (e: React.PointerEvent) => {
     e.preventDefault();
@@ -91,7 +67,6 @@ export default function TopBar({ onToggleSidebar, user, rawUser }: TopBarProps) 
       setMenuPos({ top: r.bottom + 8, right: window.innerWidth - r.right });
     }
     setShowUserMenu(v => !v);
-    setShowNotifs(false);
   };
 
   const initials = user?.initials ||
@@ -104,44 +79,18 @@ export default function TopBar({ onToggleSidebar, user, rawUser }: TopBarProps) 
 
   return (
     <>
-      {/* Backdrop global — ferme tous les menus */}
-      {mounted && (showNotifs || showUserMenu) && createPortal(
-        <div className="fixed inset-0 z-[198]" onClick={closeAll} onKeyDown={(e) => { if (e.key === 'Escape') closeAll(); }} aria-hidden="true" />,
+      {/* Backdrop menu utilisateur */}
+      {mounted && showUserMenu && createPortal(
+        <div className="fixed inset-0 z-[198]" onClick={closeAll} aria-hidden="true" />,
         document.body,
       )}
 
-      {/* Dropdown Notifications via portal */}
-      {mounted && showNotifs && createPortal(
-        <div
-          className="fixed z-[199] w-[calc(100vw-2rem)] sm:w-72 md:w-80 max-w-[320px] bg-white rounded-xl border border-[var(--bd-def)] shadow-[var(--sh-xl)]"
-          style={{ top: notifsPos.top, right: notifsPos.right }}
-        >
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--bd-def)]">
-            <p className="font-semibold text-sm text-[var(--tx-1)]">Notifications (3)</p>
-            <button onClick={() => setShowNotifs(false)} className="text-[var(--tx-3)] hover:text-[var(--tx-1)] transition-colors">
-              <XIcon size={14} />
-            </button>
-          </div>
-          {NOTIFICATIONS.map(n => (
-            <div key={n.id} className="flex items-start gap-3 px-4 py-3 hover:bg-[var(--bg-sink)] transition-colors cursor-pointer border-b border-[var(--bd-def)] last:border-0">
-              <span className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ backgroundColor: n.color }} />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-[var(--tx-1)] truncate">{n.label}</p>
-                <p className="text-xs text-[var(--tx-3)] mt-0.5">{n.time}</p>
-              </div>
-            </div>
-          ))}
-        </div>,
-        document.body,
-      )}
-
-      {/* Dropdown Menu utilisateur via portal */}
+      {/* Dropdown Menu utilisateur */}
       {mounted && showUserMenu && createPortal(
         <div
           className="fixed z-[199] w-48 bg-white rounded-xl border border-[var(--bd-def)] shadow-[var(--sh-xl)] overflow-hidden py-1"
           style={{ top: menuPos.top, right: menuPos.right }}
         >
-          {/* Info utilisateur visible uniquement sur mobile */}
           <div className="sm:hidden px-3.5 py-2.5 border-b border-[var(--bd-def)]">
             <p className="text-sm font-medium text-[var(--tx-1)] truncate">{fullName}</p>
             {user?.role && (
@@ -162,6 +111,15 @@ export default function TopBar({ onToggleSidebar, user, rawUser }: TopBarProps) 
             </button>
           ))}
         </div>,
+        document.body,
+      )}
+
+      {/* Notifications drawer (via portal) */}
+      {mounted && createPortal(
+        <NotificationsDrawer
+          isOpen={showNotifDrawer}
+          onClose={() => setShowNotifDrawer(false)}
+        />,
         document.body,
       )}
 
@@ -197,7 +155,7 @@ export default function TopBar({ onToggleSidebar, user, rawUser }: TopBarProps) 
             </div>
           </div>
 
-          {/* Centre : barre de recherche (desktop uniquement) */}
+          {/* Centre : barre de recherche (desktop) */}
           <div className="flex-1 max-w-[320px] lg:max-w-[480px] mx-4 hidden md:block">
             <div className="relative">
               <MagnifyingGlassIcon
@@ -227,17 +185,18 @@ export default function TopBar({ onToggleSidebar, user, rawUser }: TopBarProps) 
               {showMobileSearch ? <XIcon size={18} /> : <MagnifyingGlassIcon size={18} />}
             </button>
 
-            {/* Notifications */}
+            {/* Bouton notifications → ouvre le drawer */}
             <button
-              ref={notifBtnRef}
-              onPointerDown={handleNotifToggle}
+              onClick={() => { setShowNotifDrawer(v => !v); setShowUserMenu(false); }}
               className="relative w-9 h-9 rounded-lg flex items-center justify-center text-[var(--tx-2)] hover:bg-[var(--bg-sink)] transition-colors"
               aria-label="Notifications"
             >
               <BellIcon size={18} />
-              <span className="absolute top-1.5 right-1.5 w-3 h-3 bg-error rounded-full text-white text-[9px] font-bold flex items-center justify-center leading-none">
-                3
-              </span>
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 min-w-[16px] h-4 px-0.5 bg-error rounded-full text-white text-[9px] font-bold flex items-center justify-center leading-none">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </button>
 
             {/* Séparateur */}

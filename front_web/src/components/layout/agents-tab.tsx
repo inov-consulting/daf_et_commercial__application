@@ -145,47 +145,67 @@ export function AgentsTab({ showToast }: AgentsTabProps) {
   };
 
   return (
-    <div>
+    <div className="space-y-5">
       <InfoBanner showToast={showToast} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {agents.map((agent) => (
-          <AgentCard
-            key={agent.id}
-            name={agent.name}
-            description={agent.description}
-            icon={agent.icon}
-            color={agent.color}
-            activeSince={agent.activeSince}
-            isActive={agent.isActive}
-            model={agent.model}
-            modelOptions={agent.modelOptions}
-            latencyThreshold={agent.latencyThreshold}
-            triggerMode={agent.triggerMode}
-            retryCount={agent.retryCount}
-            template={agent.template}
-            templateOptions={agent.templateOptions}
-            currency={agent.currency}
-            currencyOptions={agent.currencyOptions}
-            vat={agent.vat}
-            vatOptions={agent.vatOptions}
-            time={agent.time}
-            recipients={agent.recipients}
-            dataSources={agent.dataSources}
-            showWarning={agent.showWarning}
-            warningTitle={agent.warningTitle}
-            warningSub={agent.warningSub}
-            warningBadge={agent.warningBadge}
-            onToggle={(active) => handleToggle(agent.id, active)}
-            onModelChange={(model) => handleModelChange(agent.id, model)}
-            onThresholdChange={(threshold) => handleThresholdChange(agent.id, threshold)}
-            onTriggerChange={(mode) => handleTriggerChange(agent.id, mode)}
-            onRetryChange={(count) => handleRetryChange(agent.id, count)}
-          />
-        ))}
+      {/* Section Modèles IA - Mise en avant */}
+      <div className="relative">
+        <div className="absolute -top-3 left-4 z-10">
+          <span className="text-[9px] font-bold uppercase tracking-[.12em] text-[#1B6B45] bg-[#E8F7F0] border border-[#A8DCC5] px-2.5 py-1 rounded-full flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
+            Configuration principale
+          </span>
+        </div>
+        <AiModelsSection showToast={showToast} />
       </div>
 
-      <AiModelsSection showToast={showToast} />
+      {/* Section Agents */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#7691A8]">
+            Agents configurés
+          </span>
+          <span className="text-[10px] text-[#9EB0C4] bg-[#EEF2F7] px-1.5 py-0.5 rounded-full font-medium">
+            {agents.length}
+          </span>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {agents.map((agent) => (
+            <AgentCard
+              key={agent.id}
+              name={agent.name}
+              description={agent.description}
+              icon={agent.icon}
+              color={agent.color}
+              activeSince={agent.activeSince}
+              isActive={agent.isActive}
+              model={agent.model}
+              modelOptions={agent.modelOptions}
+              latencyThreshold={agent.latencyThreshold}
+              triggerMode={agent.triggerMode}
+              retryCount={agent.retryCount}
+              template={agent.template}
+              templateOptions={agent.templateOptions}
+              currency={agent.currency}
+              currencyOptions={agent.currencyOptions}
+              vat={agent.vat}
+              vatOptions={agent.vatOptions}
+              time={agent.time}
+              recipients={agent.recipients}
+              dataSources={agent.dataSources}
+              showWarning={agent.showWarning}
+              warningTitle={agent.warningTitle}
+              warningSub={agent.warningSub}
+              warningBadge={agent.warningBadge}
+              onToggle={(active) => handleToggle(agent.id, active)}
+              onModelChange={(model) => handleModelChange(agent.id, model)}
+              onThresholdChange={(threshold) => handleThresholdChange(agent.id, threshold)}
+              onTriggerChange={(mode) => handleTriggerChange(agent.id, mode)}
+              onRetryChange={(count) => handleRetryChange(agent.id, count)}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

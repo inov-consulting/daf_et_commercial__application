@@ -105,6 +105,14 @@ export const ApiRoutes = {
   DAF_APPROVE_ACTION:   (actionId: string) => `${BASE}/api/v1/daf/proposed-actions/${actionId}/approve`,
   DAF_REJECT_ACTION:    (actionId: string) => `${BASE}/api/v1/daf/proposed-actions/${actionId}/reject`,
 
+  // ── Notifications ─────────────────────────────────────────────────────────
+  NOTIFICATIONS:              `${BASE}/api/v1/notifications`,
+  NOTIFICATIONS_UNREAD_COUNT: `${BASE}/api/v1/notifications/unread-count`,
+  NOTIFICATION_READ:          (id: string) => `${BASE}/api/v1/notifications/${id}/read`,
+  NOTIFICATIONS_READ_ALL:     `${BASE}/api/v1/notifications/read-all`,
+  NOTIFICATIONS_DEVICE_REG:   `${BASE}/api/v1/notifications/devices/register`,
+  NOTIFICATIONS_DEVICE_UNREG: `${BASE}/api/v1/notifications/devices/unregister`,
+
   // ── App Config ───────────────────────────────────────────────────────────
   CONFIG_APP:            `${BASE}/api/v1/config/app`,
   CONFIG_APP_VALIDATORS: `${BASE}/api/v1/config/app/validators`,
