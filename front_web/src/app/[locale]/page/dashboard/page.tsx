@@ -109,7 +109,7 @@ const ALERTS = [
   },
   {
     id: 3,
-    color: "#1B6B45",
+    color: "#0E86E8",
     bgColor: "rgba(27,107,69,0.08)",
     type: "info" as const,
     text: "IA · 3 éléments à valider",
@@ -522,7 +522,7 @@ function RevenueTrendBadge({ kpi }: { kpi: KpiItem }) {
       className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap"
       style={{
         background: isUp ? "#ECFDF5" : "#FEF2F2",
-        color: isUp ? "#1E5B3C" : "#DC2626",
+        color: isUp ? "#0E86E8" : "#DC2626",
       }}
     >
       <Icon size={11} weight="bold" />

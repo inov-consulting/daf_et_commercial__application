@@ -34,11 +34,11 @@ export const MODULE_STYLES: Record<ActivityModule, { bg: string; color: string }
   DAF:            { bg: '#F3EFFE', color: '#5829A8' },
   RH:             { bg: '#FDF0F7', color: '#A01D65' },
   Administration: { bg: '#EEF2F7', color: '#435869' },
-  Facturation:    { bg: '#ECFDF5', color: '#059669' },
+  Facturation:    { bg: '#ECFDF5', color: '#0E86E8' },
 };
 
 export const STATUS_STYLES: Record<ActivityStatus, { bg: string; color: string }> = {
-  'Succès':  { bg: '#ECFDF5', color: '#059669' },
+  'Succès':  { bg: '#ECFDF5', color: '#0E86E8' },
   'Erreur':  { bg: '#FEF2F2', color: '#DC2626' },
   'Warning': { bg: '#FFFBEB', color: '#D97706' },
 };

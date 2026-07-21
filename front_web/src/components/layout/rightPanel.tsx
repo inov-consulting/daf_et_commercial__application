@@ -40,11 +40,11 @@ const RightPanel = ({ state, wordCount, crContext, generatedCR, nextStep, action
             style={
               state === 'recording' ? { background: 'rgba(239,68,68,0.1)', color: '#DC2626', border: '1px solid rgba(239,68,68,0.25)' } :
               state === 'processing' ? { background: 'rgba(107,53,201,0.1)', color: '#5829A8', border: '1px solid rgba(107,53,201,0.2)' } :
-              { background: 'rgba(16,185,129,0.1)', color: '#065F46', border: '1px solid rgba(16,185,129,0.25)' }
+              { background: 'rgba(16, 106, 185, 0.1)', color: '#0E86E8', border: '1px solid rgba(16, 114, 185, 0.25)' }
             }
           >
             <span className="w-1.5 h-1.5 rounded-full" style={{
-              background: state === 'recording' ? '#EF4444' : state === 'processing' ? '#6B35C9' : '#10B981',
+              background: state === 'recording' ? '#EF4444' : state === 'processing' ? '#6B35C9' : '#0E86E8',
               animation: state === 'recording' ? 'cr-blink 1s ease-in-out infinite' : 'none',
             }} />
             {state === 'recording' ? 'En écoute active' : state === 'processing' ? 'En traitement…' : 'Disponible'}
@@ -108,8 +108,8 @@ const RightPanel = ({ state, wordCount, crContext, generatedCR, nextStep, action
       {state === 'processing' && (
         <div>
           <div className="rounded-xl p-3 border" style={{ background: 'rgba(16,185,129,0.05)', borderColor: 'rgba(16,185,129,0.25)' }}>
-            <div className="text-[12px] font-semibold mb-1" style={{ color: '#065F46' }}>Envoi sécurisé · TLS 1.3</div>
-            <div className="text-[11px] leading-relaxed" style={{ color: '#059669' }}>
+            <div className="text-[12px] font-semibold mb-1" style={{ color: '#0E86E8' }}>Envoi sécurisé · TLS 1.3</div>
+            <div className="text-[11px] leading-relaxed" style={{ color: '#0E86E8' }}>
               Votre transcription est chiffrée en transit. Durée moyenne : 7–9 secondes.
             </div>
           </div>
@@ -122,7 +122,7 @@ const RightPanel = ({ state, wordCount, crContext, generatedCR, nextStep, action
           <div className="bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-xl p-3 space-y-2">
             <div className="flex items-center gap-2.5">
               <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
-                style={{ background: 'rgba(16,185,129,0.1)', border: '1.5px solid #10B981', color: '#065F46' }}>✓</span>
+                style={{ background: 'rgba(16,185,129,0.1)', border: '1.5px solid #0E86E8', color: '#0E86E8' }}>✓</span>
               <span className="text-[12px] text-[var(--tx-2)]">Confiance &gt; 90% — valeur fiable</span>
             </div>
             <div className="flex items-center gap-2.5">
@@ -144,10 +144,10 @@ const RightPanel = ({ state, wordCount, crContext, generatedCR, nextStep, action
         <div>
           {/* CR archivé */}
           <div className="rounded-xl p-3 border" style={{ background: 'rgba(16,185,129,0.05)', borderColor: 'rgba(16,185,129,0.25)' }}>
-            <div className="text-[12px] font-semibold mb-1" style={{ color: '#065F46' }}>
+            <div className="text-[12px] font-semibold mb-1" style={{ color: '#0E86E8' }}>
               Génération lancée en arrière-plan
             </div>
-            <div className="text-[11px] leading-relaxed" style={{ color: '#059669' }}>
+            <div className="text-[11px] leading-relaxed" style={{ color: '#0E86E8' }}>
               {crContext?.label
                 ? <>{crContext.label}{crContext.sublabel ? ` · ${crContext.sublabel}` : ''}<br /></>
                 : null}

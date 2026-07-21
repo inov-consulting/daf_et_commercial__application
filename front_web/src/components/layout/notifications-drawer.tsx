@@ -25,7 +25,7 @@ function fmtRelative(iso: string): string {
 }
 
 const TYPE_COLOR: Record<string, { dot: string; bg: string }> = {
-  agent_cycle:      { dot: 'bg-[#1B6B45]', bg: 'bg-[rgba(27,107,69,.1)]'    },
+  agent_cycle:      { dot: 'bg-primary', bg: 'bg-[rgba(27,107,69,.1)]'    },
   alert:            { dot: 'bg-[#DC2626]', bg: 'bg-[rgba(220,38,38,.1)]'    },
   action_required:  { dot: 'bg-[#F97316]', bg: 'bg-[rgba(249,115,22,.1)]'   },
   payment:          { dot: 'bg-[#B45309]', bg: 'bg-[rgba(180,83,9,.1)]'     },

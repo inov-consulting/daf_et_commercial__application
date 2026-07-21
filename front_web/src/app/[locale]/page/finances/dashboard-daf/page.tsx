@@ -340,16 +340,6 @@ export default function DashboardDafPage() {
     (a) => a.status !== "pending",
   ).length;
 
-  const treoData = [...snapshots]
-    .sort(
-      (a, b) =>
-        new Date(a.snapshot_at).getTime() - new Date(b.snapshot_at).getTime(),
-    )
-    .map((s) => ({
-      mois: FR_MONTHS_SHORT[new Date(s.snapshot_at).getMonth()],
-      solde: +(s.cash_position / 1_000_000).toFixed(2),
-    }));
-
   const isLoading = runsLoading || agentStatusLoading;
 
   const dafAgentKpis = catalog

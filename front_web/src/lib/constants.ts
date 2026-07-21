@@ -4,7 +4,7 @@ export const STATUS_PILL: Record<OfferStatus, { label: string; bg: string; color
   brouillon: { label: 'Brouillon', bg: '#EEF2F7', color: '#435869', dot: '#7691A8' },
   genere:    { label: 'Généré',    bg: '#FBF3DE', color: '#725A0A', dot: '#92720C' },
   envoyee:   { label: 'Validée',    bg: '#FFFBEB', color: '#D97706', dot: '#F59E0B' },
-  validee:   { label: 'Lié à Odoo', bg: '#ECFDF5', color: '#059669', dot: '#10B981' },
+  validee:   { label: 'Lié à Odoo', bg: '#ECFDF5', color: '#0E86E8', dot: '#0E86E8' },
   refusee:   { label: 'Refusée',   bg: '#FEF2F2', color: '#B91C1C', dot: '#EF4444' },
   expiree:   { label: 'Expirée',   bg: '#EEF2F7', color: '#435869', dot: '#7691A8' },
 };
@@ -20,7 +20,7 @@ export const STATUS_TABS: { key: OfferStatus | 'tous'; label: string }[] = [
 ];
 
 export const VALIDITY_LEGEND = [
-  { dot: '#10B981', label: 'Valide (J+4 et plus)' },
+  { dot: '#0E86E8', label: 'Valide (J+4 et plus)' },
   { dot: '#F59E0B', label: 'Bientôt expirée (J-3 à J0)' },
   { dot: '#9EB0C4', label: 'Expirée / non applicable' },
 ] as const;

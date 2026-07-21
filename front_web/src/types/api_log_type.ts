@@ -59,7 +59,7 @@ export function logStatus(log: ApiLog): { label: string; bg: string; color: stri
     return { label: 'Erreur',  bg: '#FEF2F2', color: '#DC2626' };
   if (log.status_code >= 400)
     return { label: 'Warning', bg: '#FFFBEB', color: '#D97706' };
-  return   { label: 'Succès',  bg: '#ECFDF5', color: '#059669' };
+  return   { label: 'Succès',  bg: '#ECFDF5', color: '#0E86E8' };
 }
 
 export function fmtLogDate(iso: string): string {

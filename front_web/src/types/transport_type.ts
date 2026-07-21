@@ -54,7 +54,7 @@ export interface CreateDossierBody {
 
 export const MODE_CONFIG: Record<DossierMode, { label: string; bg: string; color: string }> = {
   maritime:   { label: 'Maritime',   bg: '#EBF5FD', color: '#085499' },
-  routier:    { label: 'Routier',    bg: '#ECFDF5', color: '#059669' },
+  routier:    { label: 'Routier',    bg: '#ECFDF5', color: '#0E86E8' },
   multimodal: { label: 'Multimodal', bg: '#F3EFFE', color: '#5829A8' },
 };
 
@@ -65,7 +65,7 @@ export const STATUT_CONFIG: Record<DossierStatut, {
   estim:  { label: 'Estimation',   dot: '#6B35C9', bg: '#F3EFFE', text: '#5829A8', etape: 'B' },
   exec:   { label: 'En exécution', dot: '#F59E0B', bg: '#FFFBEB', text: '#D97706', etape: 'C' },
   reel:   { label: 'Coûts réels',  dot: '#C2257A', bg: '#FDF0F7', text: '#A01D65', etape: 'D' },
-  clos:   { label: 'Clôturé',      dot: '#10B981', bg: '#ECFDF5', text: '#059669', etape: 'E' },
+  clos:   { label: 'Clôturé',      dot: '#10B981', bg: '#ECFDF5', text: '#0E86E8', etape: 'E' },
 };
 
 export const DOSSIER_STATUTS = Object.keys(STATUT_CONFIG) as DossierStatut[];
@@ -238,18 +238,18 @@ export interface TransportDashboard {
 
 export const SHIPMENT_STATE_CONFIG: Record<ShipmentState, { label: string; bg: string; color: string; dot: string }> = {
   draft:       { label: 'Brouillon',  bg: '#F3F4F6', color: '#374151', dot: '#9CA3AF' },
-  confirmed:   { label: 'Confirmé',   bg: '#EBF5FD', color: '#085499', dot: '#0E86E8' },
+  confirmed:   { label: 'Confirmé',   bg: '#EBF5FD', color: '#085499', dot: '#085499' },
   in_transit:  { label: 'En transit', bg: '#FFFBEB', color: '#D97706', dot: '#F59E0B' },
   in_progress: { label: 'En cours',   bg: '#F3EFFE', color: '#5829A8', dot: '#6B35C9' },
-  done:        { label: 'Livré',      bg: '#ECFDF5', color: '#059669', dot: '#10B981' },
+  done:        { label: 'Livré',      bg: '#ECFDF5', color: '#10B981', dot: '#10B981' },
   cancelled:   { label: 'Annulé',     bg: '#FEF2F2', color: '#DC2626', dot: '#EF4444' },
 };
 
 export const SHIPMENT_MODE_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
   maritime:    { label: 'Maritime',    bg: '#EBF5FD', color: '#085499' },
-  routier:     { label: 'Routier',     bg: '#ECFDF5', color: '#059669' },
-  road:        { label: 'Routier',     bg: '#ECFDF5', color: '#059669' },
-  terrestre:   { label: 'Terrestre',   bg: '#ECFDF5', color: '#059669' },
+  routier:     { label: 'Routier',     bg: '#ECFDF5', color: '#0E86E8' },
+  road:        { label: 'Routier',     bg: '#ECFDF5', color: '#0E86E8' },
+  terrestre:   { label: 'Terrestre',   bg: '#ECFDF5', color: '#0E86E8' },
   multimodal:  { label: 'Multimodal',  bg: '#F3EFFE', color: '#5829A8' },
   aerien:      { label: 'Aérien',      bg: '#FDF0F7', color: '#A01D65' },
   air:         { label: 'Aérien',      bg: '#FDF0F7', color: '#A01D65' },

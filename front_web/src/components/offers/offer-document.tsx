@@ -87,7 +87,7 @@ function SectionContent({ content, preview }: { content: string; preview: boolea
         // Standalone bold label → subheading
         flushKv();
         nodes.push(
-          <div key={key++} style={{ fontSize: fs, fontWeight: 700, color: '#1E5B3C', marginTop: 8, marginBottom: 3 }}>
+          <div key={key++} style={{ fontSize: fs, fontWeight: 700, color: '#0E86E8', marginTop: 8, marginBottom: 3 }}>
             {label}
           </div>
         );
@@ -151,7 +151,7 @@ export function OfferDocument({ offer, detail, preview = false }: OfferDocumentP
 
   const hdStyle = {
     fontWeight: 700,
-    color: '#1E5B3C',
+    color: '#20435f',
     marginBottom: preview ? 4 : 6,
     textTransform: 'uppercase' as const,
     fontSize: preview ? 8 : 11,
@@ -166,18 +166,18 @@ export function OfferDocument({ offer, detail, preview = false }: OfferDocumentP
       {/* ── En-tête ────────────────────────────────────────────────── */}
       <div
         className="flex items-center justify-between mb-6 pb-4"
-        style={{ borderBottom: '3px solid #1E5B3C' }}
+        style={{ borderBottom: '3px solid #0E86E8' }}
       >
         <div>
-          <div className="font-bold text-[#1E5B3C]" style={{ fontSize: preview ? 16 : 22, letterSpacing: -0.5 }}>
-            PORTALIS
+          <div className="font-bold text-primary" style={{ fontSize: preview ? 16 : 22, letterSpacing: -0.5 }}>
+            INOV CONSULTING
           </div>
           <div className="text-[#6B7280]" style={{ fontSize: preview ? 9 : 11 }}>
             TMS · Gestion Transport &amp; Logistique
           </div>
         </div>
         <div className="text-right">
-          <div className="font-bold uppercase text-[#1E5B3C]" style={{ fontSize: preview ? 11 : 15, letterSpacing: 1 }}>
+          <div className="font-bold uppercase text-primary" style={{ fontSize: preview ? 11 : 15, letterSpacing: 1 }}>
             Offre commerciale
           </div>
           <div className="text-[#374151] font-mono mt-0.5" style={{ fontSize: preview ? 9 : 11 }}>
@@ -195,7 +195,7 @@ export function OfferDocument({ offer, detail, preview = false }: OfferDocumentP
           <div className="text-[#6B7280] font-semibold uppercase mb-1" style={{ fontSize: preview ? 7 : 9, letterSpacing: 1 }}>
             De
           </div>
-          <div className="font-semibold text-[#111827]">PORTALIS LOGISTICS SN</div>
+          <div className="font-semibold text-[#111827]">INOV CONSULTING LOGISTICS</div>
           <div className="text-[#6B7280]">Dakar, Sénégal</div>
           <div className="text-[#6B7280]">contact@portalis.sn</div>
         </div>
@@ -249,7 +249,7 @@ export function OfferDocument({ offer, detail, preview = false }: OfferDocumentP
             <div style={hdStyle}>Détail de la prestation</div>
             <table className="w-full" style={{ borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ background: '#1E5B3C', color: '#fff' }}>
+                <tr style={{ background: '#0E86E8', color: '#fff' }}>
                   {['Désignation', 'Détail'].map(h => (
                     <th key={h} className="text-left font-semibold px-3 py-2" style={{ fontSize: preview ? 8 : 11 }}>{h}</th>
                   ))}
@@ -293,7 +293,7 @@ export function OfferDocument({ offer, detail, preview = false }: OfferDocumentP
                   <tr
                     key={i}
                     style={{
-                      background: ttc ? '#1E5B3C' : i % 2 === 0 ? '#F9FAFB' : '#fff',
+                      background: ttc ? '#0E86E8' : i % 2 === 0 ? '#F9FAFB' : '#fff',
                       borderBottom: ttc ? 'none' : '1px solid #E5E7EB',
                       color: ttc ? '#fff' : undefined,
                     }}
@@ -317,7 +317,7 @@ export function OfferDocument({ offer, detail, preview = false }: OfferDocumentP
                   <td className="px-3 py-2 text-[#374151]" style={{ fontSize: preview ? 8 : 11 }}>TVA ({tvaRate}%)</td>
                   <td className="px-3 py-2 text-[#111827] font-mono" style={{ fontSize: preview ? 8 : 11 }}>{fmtOfferAmount(tva, currency)}</td>
                 </tr>
-                <tr style={{ background: '#1E5B3C', color: '#fff' }}>
+                <tr style={{ background: '#0E86E8', color: '#fff' }}>
                   <td className="px-3 py-2 font-bold" style={{ fontSize: preview ? 9 : 12 }}>Total TTC</td>
                   <td className="px-3 py-2 font-bold font-mono" style={{ fontSize: preview ? 9 : 12 }}>{fmtOfferAmount(ttc, currency)}</td>
                 </tr>
@@ -370,7 +370,7 @@ export function OfferDocument({ offer, detail, preview = false }: OfferDocumentP
       <div className="grid grid-cols-2 gap-8 mt-6">
         <div>
           <div className="font-semibold text-[#374151] mb-8" style={{ fontSize: preview ? 9 : 11 }}>
-            Pour PORTALIS LOGISTICS :
+            Pour INOV CONSULTING LOGISTICS :
           </div>
           <div style={{ borderTop: '1px solid #D1D5DB' }} className="pt-1">
             <div className="text-[#6B7280]" style={{ fontSize: preview ? 7 : 10 }}>Nom &amp; Signature</div>

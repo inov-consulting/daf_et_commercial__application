@@ -103,7 +103,7 @@ const ApercuSection = ({ detail }: { detail: ShipmentDetail }) => {
           )}
           {detail.margin != null && (
             <InfoRow label="Marge" value={
-              <span className={`font-mono font-semibold ${detail.margin >= 0 ? 'text-[#059669]' : 'text-[#DC2626]'}`}>
+              <span className={`font-mono font-semibold ${detail.margin >= 0 ? 'text-[#0E86E8]' : 'text-[#DC2626]'}`}>
                 {fmtAmount(detail.margin, detail.currency)}
                 {marginPct && <span className="ml-1 text-[10px] font-normal opacity-70">({marginPct}%)</span>}
               </span>

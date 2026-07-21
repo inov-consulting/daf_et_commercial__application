@@ -24,9 +24,9 @@ const LEVEL_STYLE: Record<AlerteLevel, { border: string; bg: string; icon: React
     badge: <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[rgba(245,158,11,.1)] text-[var(--warn600)]">Demain</span>,
   },
   info: {
-    border: '#1B6B45',
+    border: '#0E86E8',
     bg: 'rgba(27,107,69,.04)',
-    icon: <span className="text-[13px] leading-none" style={{ color: '#1B6B45' }}>✦</span>,
+    icon: <span className="text-[13px] leading-none" style={{ color: '#0E86E8' }}>✦</span>,
     badge: <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[rgba(27,107,69,.1)] text-[var(--p600)]">Info</span>,
   },
 };

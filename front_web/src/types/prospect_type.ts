@@ -32,7 +32,7 @@ export const STATUS_CONFIG: Record<ProspectStatus, {
 }> = {
   nouveau: {
     label: 'Nouveau',
-    dotColor: '#1B6B45',
+    dotColor: '#0E86E8',
     tagBg: 'rgba(27,107,69,0.10)',
     tagText: '#0F3D27',
     tagBorder: 'rgba(27,107,69,0.25)',
@@ -56,10 +56,10 @@ export const STATUS_CONFIG: Record<ProspectStatus, {
   },
   converti: {
     label: 'Converti',
-    dotColor: '#10B981',
-    tagBg: 'rgba(16,185,129,0.10)',
-    tagText: '#065F46',
-    tagBorder: 'rgba(16,185,129,0.25)',
+    dotColor: '#0E86E8',
+    tagBg: 'rgba(16, 129, 185, 0.1)',
+    tagText: '#0E86E8',
+    tagBorder: 'rgba(16, 143, 185, 0.25)',
     colBg: 'rgba(16,185,129,0.03)',
   },
   perdu: {
@@ -73,8 +73,8 @@ export const STATUS_CONFIG: Record<ProspectStatus, {
 };
 
 export const SECTOR_STYLES: Record<string, { bg: string; text: string; border: string }> = {
-  'Transport':        { bg: 'rgba(27,107,69,0.10)',   text: '#1B6B45', border: 'rgba(27,107,69,0.22)' },
-  'Agro-alimentaire': { bg: 'rgba(16,185,129,0.10)',  text: '#059669', border: 'rgba(16,185,129,0.22)' },
+  'Transport':        { bg: 'rgba(27,107,69,0.10)',   text: '#0E86E8', border: 'rgba(27,107,69,0.22)' },
+  'Agro-alimentaire': { bg: 'rgba(16,185,129,0.10)',  text: '#0E86E8', border: 'rgba(16,185,129,0.22)' },
   'Mining':           { bg: 'rgba(245,158,11,0.10)',  text: '#B45309', border: 'rgba(245,158,11,0.22)' },
   'Énergie':          { bg: 'rgba(249,115,22,0.10)',  text: '#C2410C', border: 'rgba(249,115,22,0.22)' },
   'BTP':              { bg: 'rgba(120,113,108,0.10)', text: '#57534E', border: 'rgba(120,113,108,0.22)' },

@@ -18,7 +18,7 @@ export function InformationsLegales() {
             <div className="font-inter text-[11px] text-[#9EB0C4] mt-1">
               Numéro d&apos;Identification National des Entreprises et Associations
             </div>
-            <div className="flex items-center gap-1.5 text-[11px] text-[#059669] mt-1">
+            <div className="flex items-center gap-1.5 text-[11px] text-[#0E86E8] mt-1">
               <div className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
               NINEA vérifié · TVA applicable : 18% (Sénégal)
             </div>

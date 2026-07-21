@@ -38,7 +38,7 @@ function providerLabel(p: string) {
 function providerColor(p: string): string {
   const map: Record<string, string> = {
     anthropic: "#D97706",
-    openai: "#059669",
+    openai: "#0E86E8",
     DeepSeek: "#085499",
   };
   return map[p.toLowerCase()] ?? "#435869";
@@ -94,7 +94,7 @@ function ModelSelect({
           <select
             value={localId}
             onChange={(e) => setLocalId(e.target.value)}
-            className="w-full h-9 pl-3 pr-8 text-[13px] text-[#2E3D4C] bg-white border border-[#DDE5EF] rounded-lg appearance-none focus:outline-none focus:border-[#1B6B45] focus:ring-1 focus:ring-[#1B6B45]/20 cursor-pointer disabled:opacity-60"
+            className="w-full h-9 pl-3 pr-8 text-[13px] text-[#2E3D4C] bg-white border border-[#DDE5EF] rounded-lg appearance-none focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 cursor-pointer disabled:opacity-60"
             disabled={saving || models.length === 0}
           >
             <option value="" disabled>
@@ -115,7 +115,7 @@ function ModelSelect({
           onClick={() => onChange(localId)}
           disabled={!dirty || saving || !localId}
           className="h-9 px-3 rounded-lg text-[12px] font-semibold flex items-center gap-1.5 transition-all
-            bg-[#1B6B45] text-white hover:bg-[#145236]
+            bg-primary text-white hover:bg-[#145236]
             disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
         >
           {saving ? (
@@ -392,10 +392,10 @@ export function AiModelsSection({ showToast }: AiModelsSectionProps) {
           {!showAddForm ? (
             <button
               onClick={() => setShowAddForm(true)}
-              className="flex items-center gap-1.5 text-[11px] font-semibold text-[#1B6B45] hover:text-[#145236] transition-colors group"
+              className="flex items-center gap-1.5 text-[11px] font-semibold text-primary hover:text-[#145236] transition-colors group"
             >
-              <span className="w-5 h-5 rounded-md bg-[#1B6B45]/10 flex items-center justify-center group-hover:bg-[#1B6B45]/20 transition-colors">
-                <PlusIcon size={11} weight="bold" className="text-[#1B6B45]" />
+              <span className="w-5 h-5 rounded-md bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                <PlusIcon size={11} weight="bold" className="text-primary" />
               </span>
               Ajouter un modèle
             </button>
@@ -417,14 +417,14 @@ export function AiModelsSection({ showToast }: AiModelsSectionProps) {
                     placeholder="Nom du modèle"
                     value={addName}
                     onChange={(e) => setAddName(e.target.value)}
-                    className="w-full h-8 pl-2.5 pr-3 text-[12px] bg-white border border-[#DDE5EF] rounded-lg focus:outline-none focus:border-[#1B6B45] focus:ring-2 focus:ring-[#1B6B45]/10 transition-all placeholder:text-[#9EB0C4]"
+                    className="w-full h-8 pl-2.5 pr-3 text-[12px] bg-white border border-[#DDE5EF] rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-[#9EB0C4]"
                   />
                 </div>
                 <div className="relative">
                   <select
                     value={addProvider}
                     onChange={(e) => setAddProvider(e.target.value)}
-                    className="h-8 pl-2.5 pr-7 text-[12px] text-[#2E3D4C] bg-white border border-[#DDE5EF] rounded-lg appearance-none focus:outline-none focus:border-[#1B6B45] focus:ring-2 focus:ring-[#1B6B45]/10 transition-all cursor-pointer"
+                    className="h-8 pl-2.5 pr-7 text-[12px] text-[#2E3D4C] bg-white border border-[#DDE5EF] rounded-lg appearance-none focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all cursor-pointer"
                   >
                     <option value="anthropic">Anthropic</option>
                     <option value="openai">OpenAI</option>
@@ -446,8 +446,8 @@ export function AiModelsSection({ showToast }: AiModelsSectionProps) {
                     onClick={() => setAddIsEmb((v) => !v)}
                     className={`
                 relative w-8 h-[18px] rounded-full transition-all duration-200
-                ${addIsEmb ? "bg-[#1B6B45]" : "bg-[#DDE5EF]"}
-                focus:outline-none focus:ring-2 focus:ring-[#1B6B45]/20
+                ${addIsEmb ? "bg-primary" : "bg-[#DDE5EF]"}
+                focus:outline-none focus:ring-2 focus:ring-primary/20
               `}
                   >
                     <span
@@ -459,7 +459,7 @@ export function AiModelsSection({ showToast }: AiModelsSectionProps) {
                     />
                   </button>
                   <span
-                    className={`text-[11px] font-medium transition-colors ${addIsEmb ? "text-[#1B6B45]" : "text-[#7691A8]"}`}
+                    className={`text-[11px] font-medium transition-colors ${addIsEmb ? "text-primary" : "text-[#7691A8]"}`}
                   >
                     Embedding
                   </span>
@@ -478,7 +478,7 @@ export function AiModelsSection({ showToast }: AiModelsSectionProps) {
                   <button
                     onClick={handleAddModel}
                     disabled={addingModel || !addName.trim()}
-                    className="h-8 px-3.5 rounded-lg text-[11px] font-semibold bg-[#1B6B45] text-white hover:bg-[#145236] disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 transition-all shadow-sm hover:shadow-md active:scale-[0.98]"
+                    className="h-8 px-3.5 rounded-lg text-[11px] font-semibold bg-primary text-white hover:bg-[#145236] disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 transition-all shadow-sm hover:shadow-md active:scale-[0.98]"
                   >
                     {addingModel ? (
                       <CircleNotchIcon size={12} className="animate-spin" />
@@ -505,7 +505,7 @@ export function AiModelsSection({ showToast }: AiModelsSectionProps) {
           onChange={(e) => setTemplate(e.target.value)}
           rows={12}
           placeholder={"# Compte-rendu\n## Participants\n…"}
-          className="w-full px-3 py-2.5 text-[13px] font-mono text-[#2E3D4C] bg-[#F7F9FB] border border-[#DDE5EF] rounded-lg focus:outline-none focus:border-[#1B6B45] focus:ring-1 focus:ring-[#1B6B45]/20 resize-y"
+          className="w-full px-3 py-2.5 text-[13px] font-mono text-[#2E3D4C] bg-[#F7F9FB] border border-[#DDE5EF] rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 resize-y"
         />
         <div className="flex items-center justify-between mt-3">
           <span className="text-[11px] text-[#9EB0C4]">
@@ -517,7 +517,7 @@ export function AiModelsSection({ showToast }: AiModelsSectionProps) {
               savingTpl || template === (config?.compte_rendu_template ?? "")
             }
             className="h-9 px-4 rounded-lg text-[12px] font-semibold flex items-center gap-1.5
-              bg-[#1B6B45] text-white hover:bg-[#145236]
+              bg-primary text-white hover:bg-[#145236]
               disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           >
             {savingTpl ? (

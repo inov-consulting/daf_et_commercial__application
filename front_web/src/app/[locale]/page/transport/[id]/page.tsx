@@ -146,8 +146,8 @@ function CostTable({ lines, taux_usd, taux_eur }: { lines: CostLine[]; taux_usd?
         {[
           { label: 'CA estimé', value: `${totalCA.toLocaleString('fr-FR')} XOF` },
           { label: 'Coûts', value: `${Math.abs(totalCouts).toLocaleString('fr-FR')} XOF` },
-          { label: 'Marge brute', value: `${marge.toLocaleString('fr-FR')} XOF`, color: marge > 0 ? '#059669' : '#DC2626' },
-          { label: 'Taux de marge', value: `${tauxM.toFixed(1)}%`, color: tauxM >= 20 ? '#059669' : tauxM >= 10 ? '#D97706' : '#DC2626' },
+          { label: 'Marge brute', value: `${marge.toLocaleString('fr-FR')} XOF`, color: marge > 0 ? '#0E86E8' : '#DC2626' },
+          { label: 'Taux de marge', value: `${tauxM.toFixed(1)}%`, color: tauxM >= 20 ? '#0E86E8' : tauxM >= 10 ? '#D97706' : '#DC2626' },
         ].map((k, i, arr) => (
           <div key={i} className="flex items-center gap-6">
             <div className="text-center">
@@ -200,7 +200,7 @@ function Stepper({ current, dossierEtape, onChange }: {
                   isDone    ? 'bg-primary-100 border-primary-400 text-primary' :
                   isCurrent ? 'text-white border-transparent shadow-[0_2px_12px_rgba(107,53,201,.35)]' :
                   isLocked  ? 'bg-[#F0F4F8] border-[var(--bd-def)] text-[#C3D0DF]' :
-                  'bg-white border-[var(--bd-def)] text-neutral group-hover:border-[#0E86E8]',
+                  'bg-white border-[var(--bd-def)] text-neutral group-hover:border-primary',
                 )}
                 style={isCurrent ? { background: 'linear-gradient(135deg,#0E86E8,#6B35C9)' } : {}}>
                   {isDone ? <CheckIcon size={14} weight="bold" /> : isLocked ? <LockSimpleIcon size={12} weight="bold" /> : s}
@@ -329,7 +329,7 @@ function StepC({ d, onPrev, onNext }: { d: DossierTransportDetail; onPrev: () =>
             <div className="text-[13px] font-semibold text-[var(--tx-1)] mt-1">{portOri?.name ?? d.origine ?? '–'}</div>
             <div className="text-[11px] text-[var(--tx-3)] mt-0.5">{portOri?.country ?? ''}</div>
             {portOri?.date && (
-              <div className="text-[11px] text-[#0E86E8] font-semibold mt-2 pt-2 border-t border-[var(--bd-def)]">
+              <div className="text-[11px] text-primary font-semibold mt-2 pt-2 border-t border-[var(--bd-def)]">
                 {portOri.date_label ?? 'Départ'} : {portOri.date}
               </div>
             )}
@@ -351,7 +351,7 @@ function StepC({ d, onPrev, onNext }: { d: DossierTransportDetail; onPrev: () =>
             <div className="text-[13px] font-semibold text-[var(--tx-1)] mt-1">{portDst?.name ?? d.destination ?? '–'}</div>
             <div className="text-[11px] text-[var(--tx-3)] mt-0.5">{portDst?.country ?? ''}</div>
             {portDst?.date && (
-              <div className="text-[11px] text-[#0E86E8] font-semibold mt-2 pt-2 border-t border-[var(--bd-def)]">
+              <div className="text-[11px] text-primary font-semibold mt-2 pt-2 border-t border-[var(--bd-def)]">
                 {portDst.date_label ?? 'Arrivée ETA'} : {portDst.date}
               </div>
             )}
@@ -497,7 +497,7 @@ function StepD({ d, onPrev, onNext }: { d: DossierTransportDetail; onPrev: () =>
             {/* Écart total */}
             <div className={cn('rounded-xl p-4 text-center', ecartAbs > 0 ? 'bg-[#FEF2F2]' : 'bg-primary-100')}>
               <div className="text-[10px] font-semibold uppercase tracking-[.06em] text-[var(--tx-3)] mb-1">Écart total</div>
-              <div className="font-display text-[20px] font-bold" style={{ color: ecartAbs > 0 ? '#DC2626' : '#059669' }}>
+              <div className="font-display text-[20px] font-bold" style={{ color: ecartAbs > 0 ? '#DC2626' : '#0E86E8' }}>
                 {ecartAbs > 0 ? '+' : ''}{ecartAbs.toLocaleString('fr-FR')} XOF
               </div>
               <div className="text-[11px] mt-1" style={{ color: ecartAbs > 0 ? '#EF4444' : '#10B981' }}>
@@ -508,7 +508,7 @@ function StepD({ d, onPrev, onNext }: { d: DossierTransportDetail; onPrev: () =>
             <div className={cn('rounded-xl p-4 text-center', (margeReel ?? 0) < 10 ? 'bg-[#FEF2F2]' : (margeReel ?? 0) < 20 ? 'bg-[#FFFBEB]' : 'bg-primary-100')}>
               <div className="text-[10px] font-semibold uppercase tracking-[.06em] text-[var(--tx-3)] mb-1">Marge réelle</div>
               <div className="font-display text-[20px] font-bold"
-                   style={{ color: (margeReel ?? 0) < 10 ? '#DC2626' : (margeReel ?? 0) < 20 ? '#D97706' : '#059669' }}>
+                   style={{ color: (margeReel ?? 0) < 10 ? '#DC2626' : (margeReel ?? 0) < 20 ? '#D97706' : '#0E86E8' }}>
                 {margeReel != null ? `${margeReel.toFixed(1)}%` : '–'}
               </div>
               {d.marge_est != null && <div className="text-[11px] text-[var(--tx-3)] mt-1">vs {d.marge_est.toFixed(1)}% estimé</div>}

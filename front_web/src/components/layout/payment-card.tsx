@@ -39,7 +39,7 @@ export function PaymentCard({ showToast }: PaymentCardProps) {
           </div>
           
           {/* Badge vérifié */}
-          <div className="flex items-center gap-1 h-5 px-2 bg-[#ECFDF5] border border-[#6EE7B7] rounded-full font-inter text-[10px] font-semibold text-[#059669] flex-shrink-0">
+          <div className="flex items-center gap-1 h-5 px-2 bg-[#ECFDF5] border border-[#6EE7B7] rounded-full font-inter text-[10px] font-semibold text-[#0E86E8] flex-shrink-0">
             <div className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
             Vérifié
           </div>

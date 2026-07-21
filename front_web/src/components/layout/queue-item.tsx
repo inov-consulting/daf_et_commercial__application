@@ -29,7 +29,7 @@ export function QueueItem({ item, onValidate, onReject, onEdit }: QueueItemProps
   const chipClass = {
     'b-amber': 'bg-secondary-100 text-[#7A5C1E] border-secondary-400',
     'b-green': 'bg-[#E8F7F0] text-[#003d23] border-[#A8DCC5]',
-    'b-ok': 'bg-primary-100 text-[#065F46] border-primary-300',
+    'b-ok': 'bg-primary-100 text-[#0E86E8] border-primary-300',
     'b-green-mid': 'bg-[#CCEEDD] text-primary border-[#A8DCC5]',
     'b-slate': 'bg-[#EEF2F7] text-[#435869] border-neutral-400',
   };

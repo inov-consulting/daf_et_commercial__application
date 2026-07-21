@@ -20,7 +20,7 @@ export interface NotifListProps extends HTMLAttributes<HTMLDivElement> {
 
 const defaultIcon: Record<NotifType, ReactNode> = {
   info: (
-    <svg width="16" height="16" fill="none" stroke="#1B6B45" strokeWidth="2" viewBox="0 0 24 24">
+    <svg width="16" height="16" fill="none" stroke="#0E86E8" strokeWidth="2" viewBox="0 0 24 24">
       <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
     </svg>
   ),

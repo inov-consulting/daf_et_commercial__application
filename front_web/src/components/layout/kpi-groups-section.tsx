@@ -229,7 +229,7 @@ export function KpiGroupsSection({ showToast }: KpiGroupsSectionProps) {
                       <button
                         onClick={() => handleSaveGroup(group)}
                         disabled={isSaving || !isDirty}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-emerald-800 text-white hover:bg-emerald-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-primary-800 text-white hover:bg-primary-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         {isSaving ? (
                           <><ArrowsClockwiseIcon size={12} className="animate-spin" />Enregistrement…</>

@@ -7,7 +7,7 @@ import { renderMarkdown } from '@/lib/renderMarkdown';
 import type { DafRun } from '@/types/daf_type';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  completed: { label: 'Succès',     color: '#1B6B45', bg: 'rgba(16,185,129,.12)'  },
+  completed: { label: 'Succès',     color: '#0E86E8', bg: 'rgba(16,185,129,.12)'  },
   failed:    { label: 'Échec',      color: '#DC2626', bg: 'rgba(239,68,68,.12)'   },
   running:   { label: 'En cours',   color: '#2563EB', bg: 'rgba(37,99,235,.12)'   },
   pending:   { label: 'En attente', color: '#B45309', bg: 'rgba(245,158,11,.12)'  },

@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
   FunnelSimpleIcon, PlusIcon, DownloadSimpleIcon, CaretRightIcon,
 } from '@phosphor-icons/react';
+import { Button } from '@/components/ui/button';
 import type { Offer, OfferStatus } from '@/types/offer_type';
 import { computeOfferStatus } from '@/types/offer_type';
 import type { OfferListViewProps } from '@/types/offer_type';
@@ -109,18 +110,19 @@ export function OfferListView({
         </h1>
         
         <div className="flex items-center gap-2">
-          <button className="h-9 px-3.5 border border-gray-200 rounded-lg bg-white text-gray-700 text-xs font-medium inline-flex items-center gap-1.5 hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm">
+          <Button variant="ghost" size="sm" className="flex-1 sm:flex-none gap-1 sm:gap-1.5 h-8 text-[11px] sm:text-[12px]">
             <DownloadSimpleIcon size={14} />
             Exporter CSV
-          </button>
+          </Button>
           
-          <button 
+          <Button
+            variant="gradient" size="sm"
+            className="flex-1 sm:flex-none gap-1 sm:gap-1.5 h-8 text-[11px] sm:text-[12px]"
             onClick={onNew}
-            className="h-9 px-4 bg-emerald-800 text-white text-xs font-semibold rounded-lg inline-flex items-center gap-1.5 hover:bg-emerald-900 transition-colors shadow-md"
           >
             <PlusIcon size={14} />
             Nouvelle offre
-          </button>
+          </Button>
         </div>
       </div>
       
@@ -179,7 +181,7 @@ export function OfferListView({
                     type="checkbox"
                     checked={allOnPageSelected}
                     onChange={handleSelectAll}
-                    className="w-4 h-4 cursor-pointer accent-emerald-800"
+                    className="w-4 h-4 cursor-pointer accent-primary-800"
                   />
                 </th>
                 <th className="bg-gray-50 px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200 whitespace-nowrap">

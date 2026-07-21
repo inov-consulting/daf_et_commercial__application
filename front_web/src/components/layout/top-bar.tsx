@@ -138,13 +138,13 @@ export default function TopBar({ onToggleSidebar, user, rawUser }: TopBarProps) 
 
             <div className="flex items-center gap-2 min-w-0">
               <Image
-                src="/assets/images/logo_portalis.png"
+                src="/assets/images/Logo_Inov_C.png"
                 alt="Portalis"
                 width={400}
                 height={200}
                 unoptimized
                 priority
-                style={{ height: '75px', width: 'auto' }}
+                style={{ height: '50px', width: 'auto' }}
                 className="flex-shrink-0"
               />
               <div className="hidden sm:flex items-center gap-1.5 bg-primary/5 border border-primary/40 text-primary rounded-full px-2 sm:px-2.5 py-1 text-[10px] sm:text-[11px] font-medium flex-shrink-0">

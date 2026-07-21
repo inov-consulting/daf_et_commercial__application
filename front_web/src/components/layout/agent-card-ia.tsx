@@ -29,7 +29,7 @@ export function AgentCard({ agent }: AgentCardProps) {
   };
 
   const config = statusConfig[agent.status];
-  const latencyColor = agent.latency < 5 ? '#059669' : agent.latency < 10 ? '#D97706' : '#EF4444';
+  const latencyColor = agent.latency < 5 ? '#0E86E8' : agent.latency < 10 ? '#D97706' : '#EF4444';
 
   return (
     <div className={`px-4 py-[14px] ${agent.id !== 'daf' ? 'border-b border-[#EEF2F7]' : ''}`}>

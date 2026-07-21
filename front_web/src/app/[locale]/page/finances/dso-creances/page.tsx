@@ -20,7 +20,7 @@ import { FloatingToast } from '@/components/ui/toast';
 import { ActionDetailDrawer } from '@/components/finance/action-detail-drawer';
 import {
   DownloadSimpleIcon, ArrowRightIcon, CheckIcon, XIcon,
-  SpinnerGapIcon, WarningCircleIcon, EyeIcon,
+  SpinnerGapIcon, WarningCircleIcon, EyeIcon, ArrowClockwiseIcon
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { DafActionPriority, DafActionStatus } from '@/types/daf_type';
@@ -46,26 +46,16 @@ const PRIORITY_STYLE: Record<DafActionPriority, { text: string; bg: string; bord
   critical: { text: '#DC2626', bg: 'rgba(239,68,68,.08)',  border: 'rgba(239,68,68,.25)',  bar: '#EF4444', label: 'Critique' },
   high:     { text: '#EA580C', bg: 'rgba(249,115,22,.08)', border: 'rgba(249,115,22,.25)', bar: '#F97316', label: 'Élevée'   },
   medium:   { text: '#B45309', bg: 'rgba(245,158,11,.08)', border: 'rgba(245,158,11,.25)', bar: '#F59E0B', label: 'Moyenne'  },
-  low:      { text: '#1B6B45', bg: 'rgba(16,185,129,.08)', border: 'rgba(16,185,129,.25)', bar: '#10B981', label: 'Faible'   },
+  low:      { text: '#0E86E8', bg: 'rgba(16,185,129,.08)', border: 'rgba(16,185,129,.25)', bar: '#10B981', label: 'Faible'   },
 };
 
 const STATUS_STYLE: Record<DafActionStatus, { label: string; bg: string; text: string }> = {
   pending:  { label: 'En attente', bg: 'rgba(245,158,11,.1)', text: '#B45309' },
-  approved: { label: 'Approuvée',  bg: 'rgba(16,185,129,.1)', text: '#1B6B45' },
+  approved: { label: 'Approuvée',  bg: 'rgba(16,185,129,.1)', text: '#0E86E8' },
   rejected: { label: 'Rejetée',    bg: 'rgba(239,68,68,.08)', text: '#DC2626' },
   executed: { label: 'Exécutée',   bg: 'rgba(99,102,241,.1)', text: '#4338CA' },
   failed:   { label: 'Échouée',    bg: 'rgba(239,68,68,.08)', text: '#DC2626' },
 };
-
-/* ── Balance âgée (mock) ────────────────────────────────────────────── */
-
-const BALANCE_AGEE_MOCK: BalanceAgeeItem[] = [
-  { tranche: '0 – 30 jours',  montant: 18_900, pct: 40 },
-  { tranche: '31 – 45 jours', montant:  6_200, pct: 13 },
-  { tranche: '46 – 60 jours', montant:  3_800, pct:  8 },
-  { tranche: '61 – 90 jours', montant: 14_200, pct: 30 },
-  { tranche: '> 90 jours',    montant:  4_100, pct:  9 },
-];
 
 /* ── Squelettes ─────────────────────────────────────────────────────── */
 
@@ -180,7 +170,7 @@ export default function DsoCreancesPage() {
               label: 'DSO moyen global',
               value: snap ? `${snap.dso_days === null ? 0 : snap.dso_days} jour${snap.dso_days > 1 ? 's' : ''}` : '—',
               sub: `Objectif : ${dsoObjectif}j${snap && snap.dso_days > dsoObjectif ? ` — +${snap.dso_days - dsoObjectif}j` : ' — Respecté'}`,
-              accent: dsoTrend === 'warning' ? '#F97316' : '#1B6B45',
+              accent: dsoTrend === 'warning' ? '#F97316' : '#0E86E8',
             },
             {
               label: 'Créances totales',
@@ -198,7 +188,7 @@ export default function DsoCreancesPage() {
               label: 'Position de trésorerie',
               value: snap ? fmtM(snap.cash_position) : '—',
               sub: snap ? `Mis à jour le ${fmtDate(snap.snapshot_at)}` : '—',
-              accent: '#1B6B45',
+              accent: '#0E86E8',
             },
           ].map(k => (
             <div key={k.label} className="bg-white rounded-2xl border border-[var(--bd-def)] shadow-[var(--sh-xs)] p-4 sm:p-5 flex flex-col">
@@ -400,9 +390,9 @@ export default function DsoCreancesPage() {
                 <p className="text-[11px] text-[var(--tx-3)] mb-0.5">DSO actuel</p>
                 <p
                   className="font-display font-bold text-[32px] sm:text-4xl leading-none"
-                  style={{ color: dsoValue > dsoObjectif ? '#F97316' : '#1B6B45' }}
+                  style={{ color: dsoValue > dsoObjectif ? '#F97316' : '#0E86E8' }}
                 >
-                  {latestSnapshotLoading ? '…' : dsoValue}
+                  {latestSnapshotLoading ? <SpinnerGapIcon size={20} className="animate-spin" /> : dsoValue}
                 </p>
                 <p className="text-[11px] text-[var(--tx-3)] mt-0.5">jours</p>
               </div>
@@ -410,14 +400,14 @@ export default function DsoCreancesPage() {
                 onClick={() => dispatch(fetchLatestSnapshot())}
                 className="text-[11px] font-medium text-[var(--p500)] hover:underline flex items-center gap-1 flex-shrink-0"
               >
-                Actualiser <ArrowRightIcon size={11} />
+                Actualiser <ArrowClockwiseIcon size={11} />
               </button>
             </div>
 
             {/* Gauge bar */}
             <div className="h-[8px] bg-[var(--bg-sink)] rounded-full overflow-hidden mb-2 relative">
               <div className="absolute inset-0 flex">
-                <div className="h-full bg-[#10B981]" style={{ width: `${(dsoObjectif / 90) * 100}%` }} />
+                <div className="h-full bg-[#0E86E8]" style={{ width: `${(dsoObjectif / 90) * 100}%` }} />
                 <div className="h-full bg-[#F59E0B]" style={{ width: `${(15 / 90) * 100}%` }} />
                 <div className="h-full flex-1 bg-[#EF4444]" />
               </div>

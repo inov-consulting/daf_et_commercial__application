@@ -18,14 +18,14 @@ import {
   setParentType,
   setOffset,
 } from '@/redux/features/compte-rendus/compteRendusSlice';
-import { type GlobalCR, type GlobalCRDetail } from '@/types/prospect_note_type';
+import { type GlobalCR } from '@/types/prospect_note_type';
 import CRDetailDrawer from '@/components/layout/cr-detail-drawer';
 
 /* ── Status config ──────────────────────────────────────────────── */
 const STATUS_CFG: Record<string, { label: string; bg: string; text: string; border: string; dot: string }> = {
   final: {
-    label: 'Finalisé', bg: 'rgba(16,185,129,0.10)', text: '#065F46',
-    border: 'rgba(16,185,129,0.25)', dot: '#10B981',
+    label: 'Finalisé', bg: 'rgba(16, 129, 185, 0.1)', text: '#0E86E8',
+    border: 'rgba(16, 143, 185, 0.25)', dot: '#0E86E8',
   },
   draft: {
     label: 'Brouillon', bg: 'rgba(245,158,11,0.10)', text: '#92400E',
@@ -63,7 +63,7 @@ function fmtDate(iso: string) {
 function hashColor(str: string): string {
   let h = 0;
   for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h);
-  const colors = ['#0EA5E9', '#8B5CF6', '#F59E0B', '#EF4444', '#10B981', '#6366F1', '#F97316', '#22C55E'];
+  const colors = ['#0EA5E9', '#8B5CF6', '#F59E0B', '#EF4444', '#0E86E8', '#6366F1', '#F97316', '#22C55E'];
   return colors[Math.abs(h) % colors.length];
 }
 
@@ -358,7 +358,7 @@ export default function ComptesRendusPage() {
                       <span className="text-[var(--tx-3)] opacity-40 text-[10px]">·</span>
                       <span className="text-[11px] font-mono text-[var(--tx-3)]">v{cr.version + 1}</span>
                       <span className="text-[var(--tx-3)] opacity-40 text-[10px]">·</span>
-                      <span className="text-[11px] text-[var(--tx-3)]">{cr.note_ids.length} note{cr.note_ids.length !== 1 ? 's' : ''}</span>
+                      <span className="text-[11px] text-[var(--tx-3)]">{cr.note_ids === null ? 0 : cr.note_ids.length} note{cr.note_ids !== null && cr.note_ids.length > 1 ? 's' : ''}</span>
                     </div>
                   </div>
                 </div>

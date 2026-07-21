@@ -40,7 +40,7 @@ const agentsData: Agent[] = [
     name: 'Agent Extraction',
     description: 'Recommandé pour extraction rapide (≤5s)',
     icon: '◎',
-    color: '#1B6B45',
+    color: '#0E86E8',
     activeSince: '14 jours',
     isActive: true,
     model: 'Claude Haiku 4.5',
@@ -71,7 +71,7 @@ const agentsData: Agent[] = [
     name: 'Agent Offres',
     description: 'Recommandé pour génération d\'offres (≤10s)',
     icon: '≡',
-    color: '#1B6B45',
+    color: '#0E86E8',
     activeSince: '14 jours',
     isActive: true,
     model: 'Claude Haiku 4.5',
@@ -151,7 +151,7 @@ export function AgentsTab({ showToast }: AgentsTabProps) {
       {/* Section Modèles IA - Mise en avant */}
       <div className="relative">
         <div className="absolute -top-3 left-4 z-10">
-          <span className="text-[9px] font-bold uppercase tracking-[.12em] text-[#1B6B45] bg-[#E8F7F0] border border-[#A8DCC5] px-2.5 py-1 rounded-full flex items-center gap-1.5">
+          <span className="text-[9px] font-bold uppercase tracking-[.12em] text-primary bg-[#E8F7F0] border border-[#A8DCC5] px-2.5 py-1 rounded-full flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
             Configuration principale
           </span>

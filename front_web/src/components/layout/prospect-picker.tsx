@@ -138,12 +138,12 @@ export function ProspectPicker({ initialType, onSelect, onSkip }: ProspectPicker
               </button>
             ))}
           </div>
-          <button
+          {/* <button
             onClick={onSkip}
             className="w-full text-center text-[12px] text-[var(--tx-3)] hover:text-[var(--tx-2)] py-2 transition-colors"
           >
             Continuer sans contexte →
-          </button>
+          </button> */}
         </div>
       )}
 

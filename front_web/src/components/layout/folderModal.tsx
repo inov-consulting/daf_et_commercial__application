@@ -50,11 +50,11 @@ const FolderModal = ({
                     selected === f.id ? 'bg-[rgba(14,134,232,0.07)] text-[#0A6DC0]' : 'hover:bg-[var(--bg-sink)] text-[var(--tx-2)]',
                   )}
                 >
-                  <FolderSimpleIcon size={14} className={selected === f.id ? 'text-[#0E86E8]' : 'text-[var(--tx-3)]'} />
+                  <FolderSimpleIcon size={14} className={selected === f.id ? 'text-primary' : 'text-[var(--tx-3)]'} />
                   <span className="text-[13px] font-medium flex-1">{f.name}</span>
                   {'current' in f && f.current && (
                     <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded"
-                      style={{ background: 'rgba(16,185,129,0.1)', color: '#065F46', border: '1px solid rgba(16,185,129,0.25)' }}>
+                      style={{ background: 'rgba(16,185,129,0.1)', color: '#0E86E8', border: '1px solid rgba(16,185,129,0.25)' }}>
                       Actuel
                     </span>
                   )}

@@ -68,8 +68,8 @@ export function ValidatorsSection({ showToast }: ValidatorsSectionProps) {
     <section className="bg-white border border-[#DDE5EF] rounded-xl p-5 sm:p-6 space-y-5">
       {/* Header */}
       <div className="flex items-center gap-2.5">
-        <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center flex-shrink-0">
-          <ShieldCheckIcon size={16} className="text-emerald-700" weight="bold" />
+        <div className="w-8 h-8 rounded-lg bg-primary-50 border border-primary-200 flex items-center justify-center flex-shrink-0">
+          <ShieldCheckIcon size={16} className="text-primary-700" weight="bold" />
         </div>
         <div>
           <h3 className="text-[13px] font-semibold text-[var(--tx-1)] leading-tight">
@@ -122,7 +122,7 @@ export function ValidatorsSection({ showToast }: ValidatorsSectionProps) {
                 Modifications non enregistrées
               </span>
             ) : config ? (
-              <span className="flex items-center gap-1 text-emerald-600">
+              <span className="flex items-center gap-1 text-primary-600">
                 <CheckCircleIcon size={12} weight="fill" />
                 Configuration à jour
               </span>
@@ -131,7 +131,7 @@ export function ValidatorsSection({ showToast }: ValidatorsSectionProps) {
           <button
             onClick={handleSave}
             disabled={!dirty || saving}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-semibold bg-emerald-800 text-white hover:bg-emerald-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-semibold bg-primary-800 text-white hover:bg-primary-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {saving ? (
               <>
@@ -181,7 +181,7 @@ function ValidatorPicker({
           value={value}
           onChange={e => onChange(e.target.value)}
           disabled={loading}
-          className="w-full pl-7 pr-3 py-2 text-[12px] border border-[#DDE5EF] rounded-lg bg-white text-[var(--tx-1)] focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 disabled:opacity-60 appearance-none cursor-pointer"
+          className="w-full pl-7 pr-3 py-2 text-[12px] border border-[#DDE5EF] rounded-lg bg-white text-[var(--tx-1)] focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 disabled:opacity-60 appearance-none cursor-pointer"
         >
           <option value="">— Aucun validateur —</option>
           {options.map(opt => (

@@ -13,8 +13,8 @@ const PORTEUR_CONFIG: Record<string, { label: string; bg: string; color: string 
 
 const CHARGE_STATE_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
   prevu:     { label: 'Prévu',    bg: '#F3F4F6', color: '#374151' },
-  confirme:  { label: 'Confirmé', bg: '#ECFDF5', color: '#059669' },
-  reel:      { label: 'Réel',     bg: '#ECFDF5', color: '#059669' },
+  confirme:  { label: 'Confirmé', bg: '#ECFDF5', color: '#0E86E8' },
+  reel:      { label: 'Réel',     bg: '#ECFDF5', color: '#0E86E8' },
   annule:    { label: 'Annulé',   bg: '#FEF2F2', color: '#DC2626' },
 };
 

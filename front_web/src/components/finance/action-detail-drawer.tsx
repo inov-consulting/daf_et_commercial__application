@@ -13,7 +13,7 @@ const PRIORITY_CONFIG = {
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   pending:  { label: 'En attente', className: 'bg-[rgba(245,158,11,.1)] text-[#B45309]'  },
-  approved: { label: 'Approuvé',   className: 'bg-[rgba(16,185,129,.1)] text-[#1B6B45]' },
+  approved: { label: 'Approuvé',   className: 'bg-[rgba(16,185,129,.1)] text-primary' },
   rejected: { label: 'Rejeté',     className: 'bg-[rgba(239,68,68,.1)] text-[#DC2626]'  },
   executed: { label: 'Exécuté',    className: 'bg-[rgba(99,102,241,.1)] text-[#4338CA]' },
 };
@@ -110,7 +110,7 @@ export function ActionDetailDrawer({ action, onClose, onApprove, onReject, decid
                 <span className="w-4 h-4 rounded flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0" style={{ background: 'var(--grad)' }}>
                   IA
                 </span>
-                <p className="text-[9px] font-semibold uppercase tracking-wider text-[#1B6B45]">
+                <p className="text-[9px] font-semibold uppercase tracking-wider text-primary">
                   Raisonnement de l&apos;agent
                 </p>
               </div>
@@ -222,7 +222,7 @@ export function ActionDetailDrawer({ action, onClose, onApprove, onReject, decid
             <button
               onClick={() => { onApprove(action.id); onClose(); }}
               disabled={!!decidingId}
-              className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl bg-[rgba(16,185,129,.1)] text-[#1B6B45] text-[12px] font-semibold hover:bg-[rgba(16,185,129,.2)] transition-colors disabled:opacity-50"
+              className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl bg-[rgba(16,185,129,.1)] text-primary text-[12px] font-semibold hover:bg-[rgba(16,185,129,.2)] transition-colors disabled:opacity-50"
             >
               {loading ? <SpinnerGapIcon size={13} className="animate-spin" /> : <CheckIcon size={13} weight="bold" />}
               Approuver

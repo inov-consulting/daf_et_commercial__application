@@ -64,7 +64,7 @@ function RolePill({ role }: { role: string }) {
         'inline-flex items-center px-2.5 py-[3px] rounded-full font-display text-[11px] font-bold text-white',
         map[role] ?? '',
       )}
-      style={role === 'DG' ? { background: 'linear-gradient(135deg, #1B6B45, #8B6914)' } : undefined}
+      style={role === 'DG' ? { background: 'linear-gradient(135deg, #0E86E8, #8B6914)' } : undefined}
     >
       {role}
     </span>

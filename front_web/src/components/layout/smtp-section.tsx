@@ -183,7 +183,7 @@ export function SmtpSection({ showToast }: SmtpSectionProps) {
               aria-checked={form.use_tls}
               onClick={() => set('use_tls', !form.use_tls)}
               className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
-                form.use_tls ? 'bg-emerald-600' : 'bg-gray-200'
+                form.use_tls ? 'bg-primary-600' : 'bg-gray-200'
               }`}
             >
               <span
@@ -207,7 +207,7 @@ export function SmtpSection({ showToast }: SmtpSectionProps) {
                 Modifications non enregistrées
               </span>
             ) : config ? (
-              <span className="flex items-center gap-1 text-emerald-600">
+              <span className="flex items-center gap-1 text-primary-600">
                 <CheckCircleIcon size={12} weight="fill" />
                 Configuration à jour
               </span>
@@ -216,7 +216,7 @@ export function SmtpSection({ showToast }: SmtpSectionProps) {
           <button
             onClick={handleSave}
             disabled={!dirty || saving}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-semibold bg-emerald-800 text-white hover:bg-emerald-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-semibold bg-primary-800 text-white hover:bg-primary-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {saving ? (
               <><ArrowsClockwiseIcon size={13} className="animate-spin" />Enregistrement…</>
@@ -232,7 +232,7 @@ export function SmtpSection({ showToast }: SmtpSectionProps) {
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-const inputCls = 'w-full px-2.5 py-1.5 text-[12px] border border-[#DDE5EF] rounded-lg bg-white text-[var(--tx-1)] placeholder:text-[var(--tx-3)] focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500';
+const inputCls = 'w-full px-2.5 py-1.5 text-[12px] border border-[#DDE5EF] rounded-lg bg-white text-[var(--tx-1)] placeholder:text-[var(--tx-3)] focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500';
 
 function Field({
   label,

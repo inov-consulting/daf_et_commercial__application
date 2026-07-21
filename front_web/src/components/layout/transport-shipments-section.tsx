@@ -198,7 +198,7 @@ export function TransportShipmentsSection() {
       {/* KPI row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
         <KpiCard
-          icon={<FolderOpenIcon size={16} className="text-[#0E86E8] bg-white" />}
+          icon={<FolderOpenIcon size={16} className="text-primary bg-white" />}
           label="Envois"
           value={loading ? '–' : String(kpi.totalShipments)}
           labelPosition="above"
@@ -216,13 +216,13 @@ export function TransportShipmentsSection() {
           trend="neutral"
         />
         <KpiCard
-          icon={<CheckIcon size={16} className="text-[#059669] bg-white" />}
+          icon={<CheckIcon size={16} className="text-[#0E86E8] bg-white" />}
           label="Chiffre d'affaires"
           value={loading ? '–' : kpi.totalRevenue != null ? kpi.totalRevenue.toLocaleString('fr-FR') : '–'}
           labelPosition="above"
-          accentStyle="linear-gradient(135deg,#10B981,#059669)"
+          accentStyle="linear-gradient(135deg,#0E86E8,#C2257A)"
           trendValue={kpi.currency}
-          trend="up"
+          // trend="up"
         />
         <KpiCard
           icon={<WarningIcon size={16} className="text-[#6B35C9] bg-white" />}
@@ -463,7 +463,7 @@ export function TransportShipmentsSection() {
                               <span className="text-[var(--tx-3)] font-normal ml-0.5 text-[10px]">{s.currency ?? 'XOF'}</span>
                             </div>
                             {s.margin != null && (
-                              <div className={`text-[10px] font-semibold mt-0.5 whitespace-nowrap ${s.margin >= 0 ? 'text-[#059669]' : 'text-[#DC2626]'}`}>
+                              <div className={`text-[10px] font-semibold mt-0.5 whitespace-nowrap ${s.margin >= 0 ? 'text-[#0E86E8]' : 'text-[#DC2626]'}`}>
                                 {s.margin >= 0 ? '+' : ''}{s.margin.toLocaleString('fr-FR')}
                                 {marginPct && <span className="ml-1 opacity-70">({marginPct}%)</span>}
                               </div>
@@ -531,7 +531,7 @@ export function TransportShipmentsSection() {
                         <button
                           onClick={() => setShowNextStep(true)}
                           className="h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-[11px] font-semibold text-white transition-all hover:opacity-90"
-                          style={{ background: 'linear-gradient(135deg,#1B6B45,#8B6914)' }}
+                          style={{ background: 'linear-gradient(135deg,#0E86E8,#C2257A)' }}
                           title="Avancer le workflow"
                         >
                           <ArrowArcRightIcon size={12} weight="bold" />
@@ -593,7 +593,7 @@ export function TransportShipmentsSection() {
                       className={cn(
                         'px-4 py-2.5 text-[12px] font-medium border-b-2 -mb-px whitespace-nowrap transition-colors flex-shrink-0',
                         drawerTab === t.key
-                          ? 'border-[#0E86E8] text-[#085499] font-semibold bg-white'
+                          ? 'border-primary text-[#085499] font-semibold bg-white'
                           : 'border-transparent text-[var(--tx-3)] hover:text-[var(--tx-1)] hover:bg-white/50',
                       )}
                     >

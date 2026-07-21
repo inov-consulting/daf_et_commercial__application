@@ -72,7 +72,7 @@ export function NextStepModal({
                 <div className="flex items-center gap-2 mb-1">
                   <div
                     className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: 'linear-gradient(135deg,#1B6B45,#8B6914)' }}
+                    style={{ background: 'linear-gradient(135deg,#0E86E8,#C2257A)' }}
                   >
                     <ArrowArcRightIcon size={14} weight="bold" className="text-white" />
                   </div>
@@ -159,7 +159,7 @@ export function NextStepModal({
                     onChange={e => setNote(e.target.value)}
                     rows={3}
                     placeholder="Ex: Marchandise chargée, départ confirmé pour Abidjan…"
-                    className="w-full px-3 py-2.5 text-[13px] text-[var(--tx-1)] bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-xl focus:outline-none focus:border-[#0E86E8] focus:ring-1 focus:ring-[#0E86E8]/20 resize-none"
+                    className="w-full px-3 py-2.5 text-[13px] text-[var(--tx-1)] bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none"
                   />
                 </div>
 
@@ -183,7 +183,7 @@ export function NextStepModal({
                     onClick={handleSubmit}
                     disabled={loading}
                     className="flex-1 h-10 rounded-xl text-[13px] font-semibold text-white flex items-center justify-center gap-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                    style={{ background: 'linear-gradient(135deg,#1B6B45,#8B6914)' }}
+                    style={{ background: 'linear-gradient(135deg,#0E86E8,#C2257A)' }}
                   >
                     {loading
                       ? <><CircleNotchIcon size={14} className="animate-spin" /> En cours…</>
