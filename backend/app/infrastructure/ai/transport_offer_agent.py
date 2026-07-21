@@ -189,7 +189,7 @@ async def run_offer_chat(
 
     config_repo = AiConfigRepository()
     _, model_domain, _ = await config_repo.get()
-    llm = await _get_llm(model_domain.provider, model_domain.name)
+    llm = await _get_llm(model_domain.provider, model_domain.name, context="offer")
 
     # Import des outils
     from app.infrastructure.ai.tools.odoo_client_list_tool import list_odoo_clients_tool
@@ -238,7 +238,7 @@ async def extract_collected_data(session_id: UUID) -> dict:
     """
     config_repo = AiConfigRepository()
     _, model_domain, _ = await config_repo.get()
-    llm = await _get_llm(model_domain.provider, model_domain.name)
+    llm = await _get_llm(model_domain.provider, model_domain.name, context="offer")
 
     # Récupérer l'historique depuis le checkpointer
     config = {"configurable": {"thread_id": str(session_id)}}
@@ -285,7 +285,7 @@ async def generate_offer_document(collected_data: dict) -> dict:
         provider = "anthropic"
         model_name = "claude-haiku-4-5"
 
-    llm = await _get_llm(provider, model_name)
+    llm = await _get_llm(provider, model_name, context="offer")
 
     prompt_text = OFFER_DOCUMENT_PROMPT.format(
         collected_data=json.dumps(collected_data, ensure_ascii=False, indent=2)
