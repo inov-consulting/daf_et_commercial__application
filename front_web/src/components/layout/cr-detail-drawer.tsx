@@ -1,7 +1,7 @@
 ﻿import { fetchCompteRenduDetail } from '@/redux/features/compte-rendus/compteRendusSlice';
 import { useAppDispatch, useAppSelector } from '@/redux/store';
 import { GlobalCR, GlobalCRDetail } from '@/types/prospect_note_type';
-import { CircleNotchIcon, CodeIcon, DownloadSimpleIcon, XIcon } from '@phosphor-icons/react';
+import { CircleNotchIcon, FileIcon, DownloadSimpleIcon, XIcon } from '@phosphor-icons/react';
 import React, { useEffect } from 'react'
 
 /* ── Drawer responsive override ─────────────────────────────────── */
@@ -191,8 +191,8 @@ const CRDetailDrawer = ({ crId, items, downloading, onClose, onDownload }: {
             />
           ) : detail && !(detail as GlobalCRDetail).content ? (
             <div className="flex flex-col items-center justify-center flex-1 gap-2 text-[var(--tx-3)]">
-              <CodeIcon size={28} className="opacity-40" />
-              <p className="text-[13px]">Aucun contenu HTML disponible pour ce CR.</p>
+              <FileIcon size={28} className="opacity-40" />
+              <p className="text-[13px]">Aucun contenu disponible pour ce CR.</p>
             </div>
           ) : null}
         </div>
@@ -206,7 +206,7 @@ const CRDetailDrawer = ({ crId, items, downloading, onClose, onDownload }: {
             </div>
             <div>
               <p className="text-[10px] text-[var(--tx-3)] font-semibold uppercase tracking-wide">Notes utilisées</p>
-              <p className="text-[12px] font-medium text-[var(--tx-1)]">{cr.note_ids.length}</p>
+              <p className="text-[12px] font-medium text-[var(--tx-1)]">{cr.note_ids === null ? 0 : cr.note_ids.length}</p>
             </div>
             {cr.parent.email && (
               <div>

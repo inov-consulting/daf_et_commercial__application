@@ -247,7 +247,7 @@ export default function DettesFournisseursPage() {
           <FinCard padding={false}>
             <div className="px-4 sm:px-5 pt-4 pb-2">
               <FinCardHeader
-                title="Factures impayées — encours"
+                title="Factures impayées - en cours"
                 badge={
                   <span className="text-[10px] font-semibold text-[#DC2626] bg-[rgba(239,68,68,.1)] px-2 py-0.5 rounded-full">
                     {nbEnRetard} en retard
