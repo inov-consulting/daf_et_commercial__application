@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAppSelector } from '@/redux/store';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import type { ApiUser, User as UserType } from '@/types/user_type';
 import { getRoleAbbreviation } from '@/lib/roleAbbreviation';
 import Image from 'next/image';
+import { LogoutConfirmModal } from '@/components/layout/logout-confirm-modal';
 
 type NavItem = {
   href: string;
@@ -57,7 +58,7 @@ function buildNav(locale: string, prospectCount?: number, alerteCount?: number):
     {
       title: 'OPÉRATIONS',
       items: [
-        { href: `/${locale}/page/documents`, label: 'Documents', Icon: FilesIcon },
+        // { href: `/${locale}/page/documents`, label: 'Documents', Icon: FilesIcon },
         { href: `/${locale}/page/comptes-rendus`, label: 'Comptes-rendus', Icon: FileTextIcon },
       ],
     }, 
@@ -112,6 +113,7 @@ export default function Sidebar({ locale, open, onClose, user, rawUser }: Sideba
   const pendingCount     = proposedActions.filter(a => a.status === 'pending').length;
   const sections = buildNav(locale, prospectTotal || undefined, pendingCount || undefined);
   const sidebarRef = useRef<HTMLElement>(null);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 const isFirstRender = useRef(true);
 
   // Ferme la sidebar mobile à chaque changement de route
@@ -287,8 +289,9 @@ const isFirstRender = useRef(true);
                 )}
               </div>
               <button
-                onClick={() => logoutKeycloak()}
-                className="text-[var(--tx-3)] hover:text-[var(--tx-1)] transition-colors p-1 rounded flex-shrink-0"
+                onClick={() => setShowLogoutModal(true)}
+                className="text-[var(--tx-3)] hover:text-error transition-colors p-1 rounded flex-shrink-0"
+                aria-label="Se déconnecter"
               >
                 <SignOutIcon size={15} />
               </button>
@@ -312,6 +315,13 @@ const isFirstRender = useRef(true);
           )}
         </div>
       </aside>
+
+      {showLogoutModal && (
+        <LogoutConfirmModal
+          onConfirm={() => { setShowLogoutModal(false); logoutKeycloak(); }}
+          onCancel={() => setShowLogoutModal(false)}
+        />
+      )}
     </>
   );
 }

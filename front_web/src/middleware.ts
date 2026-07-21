@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { i18n } from '@/config/i18n';
 
-const SKIP_PATTERNS = ['/api', '/_next', '/favicon.ico', '/silent-check-sso.html'];
+const SKIP_PATTERNS = ['/api', '/_next', '/favicon.ico', '/silent-check-sso.html', '/firebase-messaging-sw.js'];
 
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;

@@ -358,7 +358,7 @@ export default function ComptesRendusPage() {
                       <span className="text-[var(--tx-3)] opacity-40 text-[10px]">·</span>
                       <span className="text-[11px] font-mono text-[var(--tx-3)]">v{cr.version + 1}</span>
                       <span className="text-[var(--tx-3)] opacity-40 text-[10px]">·</span>
-                      <span className="text-[11px] text-[var(--tx-3)]">{cr.note_ids.length} note{cr.note_ids.length !== 1 ? 's' : ''}</span>
+                      <span className="text-[11px] text-[var(--tx-3)]">{cr.note_ids === null ? 0 : cr.note_ids.length} note{cr.note_ids !== null && cr.note_ids.length > 1 ? 's' : ''}</span>
                     </div>
                   </div>
                 </div>
