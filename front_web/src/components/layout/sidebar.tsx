@@ -10,7 +10,7 @@ import {
   FilesIcon, FileTextIcon, DiamondIcon, ChartLineIcon, DownloadSimpleIcon,
   UsersIcon, GearIcon, SignOutIcon, XIcon, ClockCounterClockwiseIcon,
   FolderOpenIcon, BankIcon, CurrencyCircleDollarIcon, ReceiptIcon,
-  BellIcon, ChartBarIcon, WalletIcon,
+  BellIcon, ChartBarIcon, WalletIcon, ChatCircleDotsIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { ApiUser, User as UserType } from '@/types/user_type';
@@ -58,6 +58,7 @@ function buildNav(locale: string, prospectCount?: number, alerteCount?: number):
     {
       title: 'OPÉRATIONS',
       items: [
+        { href: `/${locale}/page/messagerie`, label: 'Messagerie', Icon: ChatCircleDotsIcon, badge: 2 },
         // { href: `/${locale}/page/documents`, label: 'Documents', Icon: FilesIcon },
         { href: `/${locale}/page/comptes-rendus`, label: 'Comptes-rendus', Icon: FileTextIcon },
       ],
