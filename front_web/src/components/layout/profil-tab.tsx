@@ -29,7 +29,7 @@ export function ProfilTab({ showToast }: ProfilTabProps) {
             </span>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div className="relative">
               <div className="absolute -top-2.5 left-3 z-10">
                 <span className="text-[9px] font-bold uppercase tracking-[.08em] text-[#4338CA] bg-[#EEF2FF] border border-[#C7D2FE] px-2 py-0.5 rounded-full">
