@@ -157,10 +157,10 @@ export const replyToConversation = createAsyncThunk(
     if (file) payload.file = file;
 
     const res = await PostData<WaMessage>({
-      url: ApiRoutes.WHATSAPP_REPLY(conversationId),
-      data: payload,
-      protected: true,
-      isMultipart: true,
+      url:         ApiRoutes.WHATSAPP_REPLY(conversationId),
+      data:        payload,
+      protected:   true,
+      ...(file ? { isMultipart: true } : {}),
     });
     if (!res.ok) return rejectWithValue(res.error ?? "Impossible d'envoyer le message");
     return { conversationId, message: res.data! };
@@ -214,8 +214,12 @@ const whatsappSlice = createSlice({
   name: 'whatsapp',
   initialState,
   reducers: {
-    setActiveConvId(state, action: PayloadAction<string>) {
+    setActiveConvId(state, action: PayloadAction<string | null>) {
       state.activeConvId = action.payload;
+    },
+    toggleConversationClosed(state, action: PayloadAction<string>) {
+      const conv = state.conversations.find(c => c.id === action.payload);
+      if (conv) conv.status = conv.status === 'closed' ? 'open' : 'closed';
     },
     clearWhatsAppErrors(state) {
       state.error         = null;
@@ -240,9 +244,6 @@ const whatsappSlice = createSlice({
       .addCase(fetchConversations.fulfilled, (s, a) => {
         s.loading       = false;
         s.conversations = a.payload;
-        if (!s.activeConvId && a.payload.length > 0) {
-          s.activeConvId = a.payload[0].id;
-        }
       })
       .addCase(fetchConversations.rejected, (s, a) => {
         s.loading = false;
@@ -337,5 +338,5 @@ const whatsappSlice = createSlice({
   },
 });
 
-export const { setActiveConvId, clearWhatsAppErrors, clearCrState } = whatsappSlice.actions;
+export const { setActiveConvId, toggleConversationClosed, clearWhatsAppErrors, clearCrState } = whatsappSlice.actions;
 export default whatsappSlice.reducer;
