@@ -13,22 +13,22 @@ export const PORTALIS_THEME = {
   baseTheme: "ag-default",
   palette: {
     fills: [
-      "#1E5B3C",
-      "#085499",
+      "#0E86E8",
+      "#C2257A",
       "#92720C",
-      "#A01D65",
+      "#a01d1d",
       "#5829A8",
-      "#0F6E56",
+      "#0A6DC0",
       "#D97706",
       "#DC2626",
     ],
     strokes: [
-      "#1E5B3C",
-      "#085499",
+      "#0E86E8",
+      "#9a1059",
       "#92720C",
-      "#A01D65",
+      "#a01d1d",
       "#5829A8",
-      "#0F6E56",
+      "#0A6DC0",
       "#D97706",
       "#DC2626",
     ],
@@ -161,7 +161,7 @@ export function KpiChartCardSkeleton() {
 // ── Badge catégorie ───────────────────────────────────────────────────────────
 
 const CATEGORY_COLORS: Record<string, { bg: string; color: string }> = {
-  commercial: { bg: "#ECFDF5", color: "#1E5B3C" },
+  commercial: { bg: "#ECFDF5", color: "#0E86E8" },
   transport: { bg: "#EBF5FD", color: "#085499" },
   finance: { bg: "#FBF3DE", color: "#725A0A" },
   operations: { bg: "#F3EFFE", color: "#5829A8" },

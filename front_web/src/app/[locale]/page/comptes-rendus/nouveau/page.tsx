@@ -837,7 +837,7 @@ export default function NouveauCRPage() {
                       <div>
                         <div className="text-[14px] font-bold text-[var(--tx-1)]">Agent CR Vocal</div>
                         <div className="text-[10px] text-[var(--tx-3)] font-mono mt-0.5">IA · M-08</div>
-                        <div className="flex items-center gap-1 mt-1 text-[10px]" style={{ color: '#059669' }}>
+                        <div className="flex items-center gap-1 mt-1 text-[10px]" style={{ color: '#0E86E8' }}>
                           <CheckIcon size={9} />
                           Transcription validée par vous
                         </div>
@@ -947,7 +947,7 @@ export default function NouveauCRPage() {
                                 title="Vérifier — confiance faible">?</span>
                             ) : (
                               <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
-                                style={{ background: 'rgba(16,185,129,0.1)', border: '1.5px solid #10B981', color: '#065F46' }}>✓</span>
+                                style={{ background: 'rgba(16,185,129,0.1)', border: '1.5px solid #10B981', color: '#0E86E8' }}>✓</span>
                             )}
                           </div>
                         </div>
@@ -1023,7 +1023,7 @@ export default function NouveauCRPage() {
                     CR généré par IA{crContext?.id ? ` · lié au prospect #${crContext.id.slice(0, 8)}` : ' · archivé dans PortaLis'}
                   </p>
                   <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] font-semibold mb-3"
-                    style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10B981', color: '#065F46' }}>
+                    style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10B981', color: '#0E86E8' }}>
                     <CheckCircleIcon size={13} />
                     Généré · en arrière-plan
                   </div>
@@ -1052,7 +1052,7 @@ export default function NouveauCRPage() {
                     )}
                     {generatedCR && (
                       <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-2 text-[11px]"
-                        style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)', color: '#059669' }}>
+                        style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)', color: '#0E86E8' }}>
                         <CheckCircleIcon size={12} />
                         CR v{generatedCR.version + 1} généré ·{' '}
                         {generatedCR.file_size ? `${(generatedCR.file_size / 1024).toFixed(1)} Ko` : '–'}
@@ -1124,7 +1124,7 @@ export default function NouveauCRPage() {
                     La connexion a été perdue pendant le traitement par IA.
                   </p>
                   <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[12px] font-semibold mb-6"
-                    style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10B981', color: '#065F46' }}>
+                    style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10B981', color: '#0E86E8' }}>
                     <CheckCircleIcon size={12} />
                     Enregistrement conservé · {savedDuration.current}
                   </div>

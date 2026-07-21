@@ -178,7 +178,7 @@ function renderLines(raw: string, inBlock = false, onConfirmClick?: () => void):
         // Première ligne du bloc = titre ambre avec séparateur
         result.push(
           <div key={key++} style={{
-            fontSize: 12, fontWeight: 700, color: '#725A0A',
+            fontSize: 12, fontWeight: 700, color: '#C2257A',
             paddingBottom: 8, marginBottom: 4, borderBottom: '1px solid #F3E2B0',
             lineHeight: 1.4,
           }}>
@@ -445,20 +445,20 @@ export function OfferAgentChat({ onOfferGenerated, onCancel }: OfferAgentChatPro
         {/* R-FM-02 : avatar IA = carré, jamais cercle */}
         <div
           style={{
-            width: 24, height: 24, borderRadius: 5, background: '#92720C',
+            width: 24, height: 24, borderRadius: 5, background: '#df3b92',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: '#fff', flexShrink: 0, fontSize: 13, fontWeight: 700,
           }}
         >
           ✦
         </div>
-        <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#725A0A' }}>
+        <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#C2257A' }}>
           Agent Offres - IA
         </span>
         <span
           style={{
-            fontFamily: 'monospace', fontSize: 10, color: '#725A0A',
-            background: '#FBF3DE', border: '1px solid #F3E2B0',
+            fontFamily: 'monospace', fontSize: 10, color: '#C2257A',
+            background: '#ffe2f1', border: '1px solid #d57fad',
             borderRadius: 8, padding: '2px 7px',
           }}
         >
@@ -485,7 +485,7 @@ export function OfferAgentChat({ onOfferGenerated, onCancel }: OfferAgentChatPro
               marginBottom: 16,
             }}
           >
-            <ChatCircleIcon size={28} weight="duotone" style={{ color: '#92720C' }} />
+            <ChatCircleIcon size={28} weight="duotone" style={{ color: '#df3b92' }} />
           </div>
 
           <div style={{ fontSize: 15, fontWeight: 700, color: '#1B2633', marginBottom: 8, textAlign: 'center' }}>
@@ -501,7 +501,7 @@ export function OfferAgentChat({ onOfferGenerated, onCancel }: OfferAgentChatPro
             style={{
               width: '100%', maxWidth: 280, height: 42,
               border: 'none', borderRadius: 9,
-              background: '#1E5B3C', color: '#fff',
+              background: '#0E86E8', color: '#fff',
               fontSize: 13, fontWeight: 600, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               boxShadow: '0 2px 12px rgba(18,58,38,.22)',
@@ -561,7 +561,7 @@ export function OfferAgentChat({ onOfferGenerated, onCancel }: OfferAgentChatPro
                     {/* Mini avatar */}
                     <div
                       style={{
-                        width: 20, height: 20, borderRadius: 4, background: '#92720C',
+                        width: 20, height: 20, borderRadius: 4, background: '#df3b92',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         color: '#fff', fontSize: 9, fontWeight: 700, flexShrink: 0, marginTop: 2,
                       }}
@@ -598,7 +598,7 @@ export function OfferAgentChat({ onOfferGenerated, onCancel }: OfferAgentChatPro
               <div style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                 <div
                   style={{
-                    width: 20, height: 20, borderRadius: 4, background: '#92720C',
+                    width: 20, height: 20, borderRadius: 4, background: '#df3b92',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     color: '#fff', fontSize: 9, fontWeight: 700, flexShrink: 0, marginTop: 2,
                   }}
@@ -632,7 +632,7 @@ export function OfferAgentChat({ onOfferGenerated, onCancel }: OfferAgentChatPro
               >
                 <div
                   style={{
-                    width: 20, height: 20, borderRadius: 4, background: '#92720C',
+                    width: 20, height: 20, borderRadius: 4, background: '#df3b92',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     color: '#fff', fontSize: 9, fontWeight: 700, flexShrink: 0, marginTop: 2,
                   }}
@@ -643,7 +643,7 @@ export function OfferAgentChat({ onOfferGenerated, onCancel }: OfferAgentChatPro
                   style={{
                     background: '#FBF3DE', border: '1px solid #F3E2B0',
                     borderRadius: '12px 12px 12px 2px',
-                    padding: '9px 13px', fontSize: 12, color: '#725A0A', lineHeight: 1.5,
+                    padding: '9px 13px', fontSize: 12, color: '#C2257A', lineHeight: 1.5,
                     display: 'flex', alignItems: 'center', gap: 8,
                   }}
                 >

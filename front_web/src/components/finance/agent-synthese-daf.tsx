@@ -13,7 +13,7 @@ const PRIORITY_CONFIG = {
 
 const RUN_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   failed:    { label: 'Échec',      color: '#DC2626', bg: 'rgba(239,68,68,.12)'   },
-  completed: { label: 'Succès',     color: '#1B6B45', bg: 'rgba(16,185,129,.12)'  },
+  completed: { label: 'Succès',     color: '#0E86E8', bg: 'rgba(16,185,129,.12)'  },
   running:   { label: 'En cours',   color: '#2563EB', bg: 'rgba(37,99,235,.12)'   },
   pending:   { label: 'En attente', color: '#B45309', bg: 'rgba(245,158,11,.12)'  },
 };
@@ -111,7 +111,7 @@ export function AgentSyntheseDaf({
                     {!isPending && (
                       <span className={cn(
                         'text-[10px] font-bold px-1.5 py-px rounded-full',
-                        action.status === 'approved' ? 'bg-[rgba(16,185,129,.1)] text-[#1B6B45]' :
+                        action.status === 'approved' ? 'bg-[rgba(16,185,129,.1)] text-primary' :
                         action.status === 'rejected' ? 'bg-[rgba(239,68,68,.1)] text-[#DC2626]'  :
                         action.status === 'executed' ? 'bg-[rgba(99,102,241,.1)] text-[#4338CA]' :
                         'bg-[var(--bg-sink)] text-[var(--tx-3)]',
@@ -161,7 +161,7 @@ export function AgentSyntheseDaf({
                       <button
                         onClick={() => onApprove(action.id)}
                         disabled={!!decidingId}
-                        className="flex items-center gap-1 h-7 px-3 rounded-lg bg-[rgba(16,185,129,.1)] text-[#1B6B45] text-[11px] font-semibold hover:bg-[rgba(16,185,129,.2)] transition-colors disabled:opacity-50"
+                        className="flex items-center gap-1 h-7 px-3 rounded-lg bg-[rgba(16,185,129,.1)] text-primary text-[11px] font-semibold hover:bg-[rgba(16,185,129,.2)] transition-colors disabled:opacity-50"
                       >
                         {loading ? <SpinnerGapIcon size={11} className="animate-spin" /> : <CheckIcon size={11} weight="bold" />}
                         Approuver

@@ -103,7 +103,7 @@ export function InvoiceTable({ showToast }: InvoiceTableProps) {
 function StatusBadge({ status }: { status: 'paid' | 'pending' }) {
   if (status === 'paid') {
     return (
-      <span className="inline-flex items-center h-5 px-2 bg-[#ECFDF5] border border-[#6EE7B7] rounded-full font-inter text-[10px] sm:text-[11px] font-semibold text-[#059669]">
+      <span className="inline-flex items-center h-5 px-2 bg-[#ECFDF5] border border-[#6EE7B7] rounded-full font-inter text-[10px] sm:text-[11px] font-semibold text-[#0E86E8]">
         Payée
       </span>
     );

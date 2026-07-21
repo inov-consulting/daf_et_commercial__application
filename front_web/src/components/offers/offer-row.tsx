@@ -51,7 +51,7 @@ export function OfferRow({
           type="checkbox"
           checked={checked}
           onChange={(e) => onCheck?.(offer.id, e.target.checked)}
-          className="w-4 h-4 cursor-pointer accent-emerald-800"
+          className="w-4 h-4 cursor-pointer accent-primary-800"
         />
       </td>
 
@@ -91,7 +91,7 @@ export function OfferRow({
         }
       >
         {hasRoute ? (
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-900 text-xs font-medium max-w-[180px]">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary-50 text-primary-900 text-xs font-medium max-w-[180px]">
             <MapPinIcon size={11} className="flex-shrink-0" />
             <span className="truncate">
               {offer.route?.origin.split(",")[0].trim()} →{" "}

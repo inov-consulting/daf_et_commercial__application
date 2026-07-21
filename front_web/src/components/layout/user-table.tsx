@@ -20,7 +20,7 @@ const FILTER_TABS: { key: FilterTab; label: string }[] = [
 ];
 
 const ROLE_STYLE: Record<UserRole, { bg?: string; cls: string }> = {
-  DG: { bg: 'linear-gradient(135deg, #1B6B45, #8B6914)', cls: 'text-white' },
+  DG: { bg: 'linear-gradient(135deg, #0E86E8, #8B6914)', cls: 'text-white' },
   Commercial: { cls: 'bg-primary-500 text-white' },
   DAF: { cls: 'bg-accent-500 text-white' },
   Opérations: { cls: 'bg-success text-white' },

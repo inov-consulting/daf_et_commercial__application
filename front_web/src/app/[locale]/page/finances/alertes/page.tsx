@@ -92,7 +92,7 @@ const LEVEL_CONFIG: Record<AlerteLevel, {
   critique: { bg: 'rgba(239,68,68,.05)',  text: '#DC2626', border: 'rgba(239,68,68,.2)',  barColor: '#EF4444', Icon: WarningCircleIcon, label: 'Critique', badgeBg: '#FEE2E2' },
   urgent:   { bg: 'rgba(249,115,22,.05)', text: '#EA580C', border: 'rgba(249,115,22,.2)', barColor: '#F97316', Icon: ClockIcon,         label: 'Urgent',   badgeBg: '#FFEDD5' },
   demain:   { bg: 'rgba(245,158,11,.05)', text: '#B45309', border: 'rgba(245,158,11,.2)', barColor: '#F59E0B', Icon: BellIcon,          label: 'Demain',   badgeBg: '#FEF3C7' },
-  info:     { bg: 'rgba(16,185,129,.05)', text: '#1B6B45', border: 'rgba(16,185,129,.2)', barColor: '#10B981', Icon: InfoIcon,          label: 'Info',     badgeBg: '#D1FAE5' },
+  info:     { bg: 'rgba(16,185,129,.05)', text: '#0E86E8', border: 'rgba(16,185,129,.2)', barColor: '#10B981', Icon: InfoIcon,          label: 'Info',     badgeBg: '#D1FAE5' },
 };
 
 const CATEGORIES = [

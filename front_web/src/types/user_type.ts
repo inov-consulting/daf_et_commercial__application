@@ -16,8 +16,8 @@ export interface ApiUser {
 
 // ── Palette déterministe basée sur l'id ───────────────────────────────────
 const BG_PALETTE = [
-  "linear-gradient(135deg, #1B6B45, #8B6914)",
-  "#1B6B45",
+  "linear-gradient(135deg, #0E86E8, #8B6914)",
+  "#0E86E8",
   "#8B6914",
   "#10B981",
   "#F59E0B",
@@ -140,7 +140,7 @@ export const MOCK_USERS: User[] = [
     status: "active",
     lastLogin: "4 juin 2026 · 09:15",
     created: "3 mars 2025",
-    bg: "linear-gradient(135deg, #1B6B45, #8B6914)",
+    bg: "linear-gradient(135deg, #0E86E8, #8B6914)",
   },
   {
     uid: "amadou",
@@ -155,7 +155,7 @@ export const MOCK_USERS: User[] = [
     status: "active",
     lastLogin: "2 juin 2026 · 14:33",
     created: "15 mai 2025",
-    bg: "#1B6B45",
+    bg: "#0E86E8",
   },
   {
     uid: "fatou",

@@ -28,12 +28,12 @@ export function ValidityCell({ offer }: ValidityCellProps) {
   return (
     <div 
       className={`flex items-center gap-1.5 text-xs font-medium whitespace-nowrap ${
-        isWarning ? 'text-amber-600' : 'text-emerald-600'
+        isWarning ? 'text-amber-600' : 'text-primary-600'
       }`}
     >
       <span 
         className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-          isWarning ? 'bg-amber-500' : 'bg-emerald-500'
+          isWarning ? 'bg-amber-500' : 'bg-primary-500'
         }`} 
       />
       {days}j restants

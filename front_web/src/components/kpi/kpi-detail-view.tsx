@@ -15,7 +15,7 @@ import type { KpiDefinition } from "@/types/app_config_type";
 // ── Couleurs catégories ───────────────────────────────────────────────────────
 
 const CATEGORY_COLORS: Record<string, { bg: string; color: string }> = {
-  commercial: { bg: "#ECFDF5", color: "#1E5B3C" },
+  commercial: { bg: "#ECFDF5", color: "#0E86E8" },
   transport: { bg: "#EBF5FD", color: "#085499" },
   finance: { bg: "#FBF3DE", color: "#725A0A" },
   operations: { bg: "#F3EFFE", color: "#5829A8" },

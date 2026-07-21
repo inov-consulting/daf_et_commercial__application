@@ -131,7 +131,7 @@ const VoyagesSection = ({ detail }: { detail: ShipmentDetail }) => {
                     {v.fuel_variance != null && (
                       <div className="bg-[var(--bg-sink)] rounded-lg px-2.5 py-2 text-center">
                         <div className="text-[var(--tx-3)] text-[10px]">Écart</div>
-                        <div className={`font-semibold ${v.fuel_variance === 0 ? 'text-[#059669]' : v.fuel_variance > 0 ? 'text-[#DC2626]' : 'text-[#059669]'}`}>
+                        <div className={`font-semibold ${v.fuel_variance === 0 ? 'text-[#0E86E8]' : v.fuel_variance > 0 ? 'text-[#DC2626]' : 'text-[#0E86E8]'}`}>
                           {v.fuel_variance > 0 ? '+' : ''}{v.fuel_variance} L
                         </div>
                       </div>

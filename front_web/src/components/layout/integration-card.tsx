@@ -28,7 +28,7 @@ export function IntegrationCard({
   showToast,
 }: IntegrationCardProps) {
   const statusConfig = {
-    connected: { label: 'Connecté', color: '#059669', bg: '#ECFDF5', border: '#6EE7B7' },
+    connected: { label: 'Connecté', color: '#0E86E8', bg: '#ECFDF5', border: '#6EE7B7' },
     error: { label: 'Erreur', color: '#EF4444', bg: '#FEF2F2', border: '#FECACA' },
     pending: { label: 'En attente', color: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A' },
     disconnected: { label: 'Déconnecté', color: '#7691A8', bg: '#F7F9FC', border: '#DDE5EF' },

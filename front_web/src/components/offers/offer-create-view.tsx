@@ -131,16 +131,16 @@ function fmtDateFr(iso: string) {
   });
 }
 
-const ACCENT_COLORS = ["#1E5B3C", "#92720C", "#059669", "#D97706"];
+const ACCENT_COLORS = ["#0E86E8", "#df3b92", "#0E86E8", "#D97706"];
 
 const STAT_COLORS: Record<
   string,
   { bg: string; color: string; label: string }
 > = {
-  brouillon: { bg: "#FBF3DE", color: "#725A0A", label: "Brouillon" },
+  brouillon: { bg: "#FBF3DE", color: "#C2257A", label: "Brouillon" },
   genere: { bg: "#EEF7F1", color: "#184A31", label: "Généré" },
   envoyee: { bg: "#FFFBEB", color: "#D97706", label: "Validée"    },
-  validee: { bg: "#ECFDF5", color: "#059669", label: "Lié à Odoo" },
+  validee: { bg: "#ECFDF5", color: "#0E86E8", label: "Lié à Odoo" },
   refusee: { bg: "#FEF2F2", color: "#DC2626", label: "Refusée" },
   expiree: { bg: "#F3F4F6", color: "#6B7280", label: "Expirée" },
 };
@@ -603,7 +603,7 @@ function DocSection({
   return (
     <div className="mb-3.5">
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 whitespace-nowrap">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-primary-800 whitespace-nowrap">
           {title}
         </span>
         <div className="flex-1 h-px bg-gray-100" />
@@ -674,10 +674,10 @@ function OfferDocPreview({
     <div className="text-[13px] text-gray-900 leading-relaxed">
       {/* Letterhead */}
       <div className="text-center mb-5 pb-4 border-b border-gray-100">
-        <div className="text-xs font-extrabold text-emerald-800 uppercase tracking-[0.12em] mb-1.5">
+        <div className="text-xs font-extrabold text-primary-800 uppercase tracking-[0.12em] mb-1.5">
           INOV Consulting / PortaLis Group Holding
         </div>
-        <div className="w-15 h-0.5 bg-emerald-800 mx-auto mb-3" />
+        <div className="w-15 h-0.5 bg-primary-800 mx-auto mb-3" />
         <div className="text-lg font-bold text-gray-900 tracking-tight mb-1">
           Offre de Transport
         </div>
@@ -716,7 +716,7 @@ function OfferDocPreview({
       <div className="text-xs font-semibold text-gray-900 bg-gray-50 border border-gray-200 rounded-lg p-2.5 mb-4 flex items-start gap-1.5">
         <FileTextIcon
           size={14}
-          className="text-emerald-800 flex-shrink-0 mt-0.5"
+          className="text-primary-800 flex-shrink-0 mt-0.5"
         />
         <span>
           <strong>Objet :</strong>&nbsp;Transport de {produit || "marchandises"}{" "}
@@ -730,7 +730,7 @@ function OfferDocPreview({
         sections.map((s, i) => (
           <div key={i} className="mb-4">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 whitespace-nowrap">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-primary-800 whitespace-nowrap">
                 {s.heading}
               </span>
               <div className="flex-1 h-px bg-gray-100" />
@@ -750,7 +750,7 @@ function OfferDocPreview({
       {hasPricing ? (
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-primary-800">
               Tarification
             </span>
             <div className="flex-1 h-px bg-gray-100" />
@@ -782,7 +782,7 @@ function OfferDocPreview({
       ) : generated ? (
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-primary-800">
               Tarification
             </span>
             <div className="flex-1 h-px bg-gray-100" />
@@ -1091,8 +1091,8 @@ export function OfferCreateView({
             </span>
           )}
           {offerStatus && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-emerald-50 border border-emerald-200 text-emerald-800 py-1 px-3 rounded-full">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-800 animate-pulse inline-block" />
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-primary-50 border border-primary-200 text-primary-800 py-1 px-3 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary-800 animate-pulse inline-block" />
               Généré
             </span>
           )}
@@ -1111,7 +1111,7 @@ export function OfferCreateView({
           </button>
           <button
             onClick={() => savedOffer && onSend?.(savedOffer)}
-            className="h-[34px] px-4 bg-emerald-800 text-white text-xs font-semibold rounded-lg inline-flex items-center gap-1.5 shadow-md hover:bg-emerald-900 transition-colors"
+            className="h-[34px] px-4 bg-primary-800 text-white text-xs font-semibold rounded-lg inline-flex items-center gap-1.5 shadow-md hover:bg-primary-900 transition-colors"
           >
             <PaperPlaneTiltIcon size={13} weight="fill" /> Envoyer
           </button>
@@ -1134,7 +1134,7 @@ export function OfferCreateView({
               <button className="w-full text-left px-4 py-2.5 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2">
                 <CopyIcon size={14} /> Dupliquer
               </button>
-              {/* <button className="w-full text-left px-4 py-2.5 text-xs text-white bg-emerald-800 hover:bg-emerald-900 flex items-center gap-2">
+              {/* <button className="w-full text-left px-4 py-2.5 text-xs text-white bg-primary-800 hover:bg-primary-900 flex items-center gap-2">
                 <PaperPlaneTiltIcon size={13} /> Envoyer
               </button> */}
             </div>
@@ -1149,7 +1149,7 @@ export function OfferCreateView({
             onClick={() => setShowMobilePanel("form")}
             className={`flex-1 h-10 rounded-lg text-sm font-medium transition-colors ${
               showMobilePanel === "form"
-                ? "bg-emerald-800 text-white"
+                ? "bg-primary-800 text-white"
                 : "border border-gray-200 text-gray-700"
             }`}
           >
@@ -1159,7 +1159,7 @@ export function OfferCreateView({
             onClick={() => setShowMobilePanel("preview")}
             className={`h-[34px] flex-1 rounded-lg text-sm font-medium transition-colors ${
               showMobilePanel === "preview"
-                ? "bg-emerald-800 text-white"
+                ? "bg-primary-800 text-white"
                 : "border border-gray-200 text-gray-700"
             }`}
           >
@@ -1223,7 +1223,7 @@ export function OfferCreateView({
                     placeholder="Nom de l'entreprise (optionnel)"
                     className={`w-full h-10 border rounded-lg pl-8 pr-3 text-[13px] text-gray-900 outline-none ${
                       companyName
-                        ? "border-emerald-300 bg-emerald-50"
+                        ? "border-primary-300 bg-primary-50"
                         : "border-gray-200 bg-white"
                     }`}
                   />
@@ -1237,7 +1237,7 @@ export function OfferCreateView({
                     <MapPinIcon
                       size={15}
                       weight="fill"
-                      className="absolute left-2.5 top-1/2 -translate-y-1/2 text-emerald-800 pointer-events-none"
+                      className="absolute left-2.5 top-1/2 -translate-y-1/2 text-primary-800 pointer-events-none"
                     />
                     <input
                       type="text"
@@ -1246,7 +1246,7 @@ export function OfferCreateView({
                       placeholder="Origine"
                       className={`w-full h-10 border rounded-lg pl-8 pr-3 text-[13px] text-gray-900 outline-none ${
                         origine
-                          ? "border-emerald-300 bg-emerald-50"
+                          ? "border-primary-300 bg-primary-50"
                           : "border-gray-200 bg-white"
                       }`}
                     />
@@ -1284,21 +1284,21 @@ export function OfferCreateView({
                     value={produit}
                     onChange={(e) => setProduit(e.target.value)}
                     placeholder="Produit transporté"
-                    className="h-10 border border-gray-200 rounded-lg px-3 text-[13px] text-gray-900 outline-none focus:border-emerald-300 focus:bg-emerald-50"
+                    className="h-10 border border-gray-200 rounded-lg px-3 text-[13px] text-gray-900 outline-none focus:border-primary-300 focus:bg-primary-50"
                   />
                   <input
                     type="number"
                     value={quantite}
                     onChange={(e) => setQuantite(Number(e.target.value))}
                     placeholder="Quantité"
-                    className="h-10 border border-gray-200 rounded-lg px-3 text-[13px] text-gray-900 outline-none focus:border-emerald-300 focus:bg-emerald-50"
+                    className="h-10 border border-gray-200 rounded-lg px-3 text-[13px] text-gray-900 outline-none focus:border-primary-300 focus:bg-primary-50"
                   />
                   <input
                     type="text"
                     value={unite}
                     onChange={(e) => setUnite(e.target.value)}
                     placeholder="Unité"
-                    className="h-10 border border-gray-200 rounded-lg px-3 text-[13px] text-gray-900 outline-none focus:border-emerald-300 focus:bg-emerald-50"
+                    className="h-10 border border-gray-200 rounded-lg px-3 text-[13px] text-gray-900 outline-none focus:border-primary-300 focus:bg-primary-50"
                   />
                 </div>
               </FormField>
@@ -1347,7 +1347,7 @@ export function OfferCreateView({
                     placeholder="Montant"
                     className={`w-full h-10 border rounded-lg pl-8 pr-3 text-[13px] text-gray-900 outline-none ${
                       prixStr
-                        ? "border-emerald-300 bg-emerald-50"
+                        ? "border-primary-300 bg-primary-50"
                         : "border-gray-200 bg-white"
                     }`}
                   />
@@ -1364,7 +1364,7 @@ export function OfferCreateView({
                   type="date"
                   value={dateDepart}
                   onChange={(e) => setDateDepart(e.target.value)}
-                  className="w-full h-10 border border-gray-200 rounded-lg px-3 text-[13px] text-gray-900 outline-none focus:border-emerald-300 focus:bg-emerald-50"
+                  className="w-full h-10 border border-gray-200 rounded-lg px-3 text-[13px] text-gray-900 outline-none focus:border-primary-300 focus:bg-primary-50"
                 />
               </FormField>
 
@@ -1409,7 +1409,7 @@ export function OfferCreateView({
                   </div>
                   {sections.map((s, i) => (
                     <div key={i} className="flex flex-col gap-1">
-                      <label className="text-[11px] font-semibold text-emerald-800 truncate">
+                      <label className="text-[11px] font-semibold text-primary-800 truncate">
                         {s.heading}
                       </label>
                       <textarea
@@ -1424,7 +1424,7 @@ export function OfferCreateView({
                           )
                         }
                         rows={4}
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[12px] text-gray-900 outline-none focus:border-emerald-300 focus:bg-emerald-50 resize-y leading-relaxed"
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[12px] text-gray-900 outline-none focus:border-primary-300 focus:bg-primary-50 resize-y leading-relaxed"
                       />
                     </div>
                   ))}
@@ -1438,7 +1438,7 @@ export function OfferCreateView({
                     value={footer}
                     onChange={(e) => setFooter(e.target.value)}
                     rows={3}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[12px] text-gray-900 outline-none focus:border-emerald-300 focus:bg-emerald-50 resize-y leading-relaxed"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[12px] text-gray-900 outline-none focus:border-primary-300 focus:bg-primary-50 resize-y leading-relaxed"
                   />
                 </FormField>
               )}
@@ -1458,7 +1458,7 @@ export function OfferCreateView({
                   <button
                     onClick={handleUpdate}
                     disabled={updating}
-                    className="w-full h-11 border-none rounded-lg bg-emerald-800 text-white text-sm font-bold inline-flex items-center justify-center gap-2 shadow-lg hover:bg-emerald-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full h-11 border-none rounded-lg bg-primary-800 text-white text-sm font-bold inline-flex items-center justify-center gap-2 shadow-lg hover:bg-primary-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {updating ? (
                       <><ArrowsClockwiseIcon size={18} className="animate-spin" /> Sauvegarde en cours…</>
@@ -1471,15 +1471,15 @@ export function OfferCreateView({
                 /* ── Après génération IA : Valider + Modifier ── */
                 <>
                   <div className="flex items-start gap-2 bg-[#EBF5FD] border border-[#7DBCEA] rounded-lg p-2.5">
-                    <CheckCircleIcon size={14} weight="fill" className="text-emerald-700 flex-shrink-0 mt-0.5" />
-                    <div className="text-[11px] text-emerald-700 leading-relaxed">
+                    <CheckCircleIcon size={14} weight="fill" className="text-primary-700 flex-shrink-0 mt-0.5" />
+                    <div className="text-[11px] text-primary-700 leading-relaxed">
                       <strong>Offre générée par l&apos;IA</strong> — Vérifiez et ajustez les informations si nécessaire, puis validez. La confirmation Odoo se fera depuis la page détail.
                     </div>
                   </div>
                   <button
                     onClick={handleValidate}
                     disabled={validating || updating}
-                    className="w-full h-11 border-none rounded-lg bg-emerald-800 text-white text-sm font-bold inline-flex items-center justify-center gap-2 shadow-lg hover:bg-emerald-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full h-11 border-none rounded-lg bg-primary-800 text-white text-sm font-bold inline-flex items-center justify-center gap-2 shadow-lg hover:bg-primary-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {validating ? (
                       <><ArrowsClockwiseIcon size={18} className="animate-spin" /> Validation en cours…</>
@@ -1517,7 +1517,7 @@ export function OfferCreateView({
                   <button
                     onClick={handleGenerate}
                     disabled={generating}
-                    className="w-full h-11 border-none rounded-lg bg-emerald-800 text-white text-sm font-bold inline-flex items-center justify-center gap-2 shadow-lg hover:bg-emerald-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full h-11 border-none rounded-lg bg-primary-800 text-white text-sm font-bold inline-flex items-center justify-center gap-2 shadow-lg hover:bg-primary-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {generating ? (
                       <>
@@ -1593,10 +1593,10 @@ export function OfferCreateView({
           <div className="overflow-y-auto p-4 sm:p-6 max-h-[calc(100vh-220px)]">
             {createPhase === "chat" && !generationSuccess ? (
               <div className="flex flex-col items-center justify-center gap-3.5 py-15 px-8 opacity-70">
-                <div className="w-13 h-13 rounded-xl bg-amber-50 flex items-center justify-center text-2xl text-amber-700">
+                <div className="w-13 h-13 rounded-xl bg-amber-50 flex items-center justify-center text-2xl text-secondary-700">
                   ✦
                 </div>
-                <div className="text-sm font-semibold text-amber-700 text-center">
+                <div className="text-sm font-semibold text-secondary-700 text-center">
                   En attente de l&apos;agent IA…
                 </div>
                 <div className="text-xs text-gray-400 text-center max-w-65 leading-relaxed">
@@ -1606,10 +1606,10 @@ export function OfferCreateView({
               </div>
             ) : generationSuccess ? (
               <div className="flex flex-col items-center justify-center gap-3.5 py-15 px-8">
-                <div className="w-14 h-14 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 text-3xl">
+                <div className="w-14 h-14 rounded-xl bg-primary-50 flex items-center justify-center text-primary-600 text-3xl">
                   ✓
                 </div>
-                <div className="text-sm font-semibold text-emerald-800">
+                <div className="text-sm font-semibold text-primary-800">
                   Document généré avec succès !
                 </div>
                 <div className="text-xs text-gray-400">
@@ -1720,7 +1720,7 @@ export function OfferCreateView({
                     className="absolute top-0 left-0 right-0 h-[3px]"
                     style={{ background: accent }}
                   />
-                  <div className="font-mono text-[11px] text-emerald-900 bg-emerald-50 px-1.5 py-0.5 rounded inline-block mb-1.5">
+                  <div className="font-mono text-[11px] text-primary-900 bg-primary-50 px-1.5 py-0.5 rounded inline-block mb-1.5">
                     {offer.name}
                   </div>
                   <div className="text-[13px] font-semibold text-gray-900 mb-0.5 truncate">

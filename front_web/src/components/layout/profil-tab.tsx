@@ -17,14 +17,14 @@ interface ProfilTabProps {
 
 export function ProfilTab({ showToast }: ProfilTabProps) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4 sm:gap-6 items-start">
+    <div className="grid grid-cols-1 gap-4 sm:gap-6 items-start">
       {/* Colonne principale */}
       <div className="min-w-0 space-y-5">
         {/* Section Configuration système - Mise en avant */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-            <span className="text-[10px] font-bold uppercase tracking-[.1em] text-[#1B6B45]">
+            <span className="text-[10px] font-bold uppercase tracking-[.1em] text-primary">
               Configuration système
             </span>
           </div>

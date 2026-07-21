@@ -274,7 +274,7 @@ function CollapsibleCard({
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center gap-2 px-4 sm:px-[18px] py-3.5 border-b border-[#DDE5EF] hover:bg-[#F7F9FC] transition-colors"
       >
-        <span className="text-[#1E5B3C] flex-shrink-0">{icon}</span>
+        <span className="text-primary flex-shrink-0">{icon}</span>
         <span className="font-space-grotesk text-[13px] font-semibold text-[#1B2633] flex-1 text-left">
           {title}
         </span>
@@ -300,8 +300,8 @@ interface TlEvent {
 }
 
 const TL_COLOR: Record<TlColor, string> = {
-  gold: "#92720C",
-  ok: "#10B981",
+  gold: "#C2257A",
+  ok: "#0E86E8",
   warn: "#F59E0B",
   err: "#EF4444",
   gray: "#9EB0C4",
@@ -469,7 +469,7 @@ export function OfferDetailView({
     title?: string;
   }) => {
     const variants = {
-      primary: "bg-[#1E5B3C] text-white hover:bg-[#174A30]",
+      primary: "bg-primary text-white hover:bg-[#174A30]",
       danger:
         "bg-[#FFF5F5] text-[#B91C1C] border border-[#FCA5A5] hover:bg-[#FEE2E2]",
       info: "bg-[#085499] text-white hover:bg-[#064276]",
@@ -703,7 +703,7 @@ export function OfferDetailView({
             <LinkSimpleIcon
               size={18}
               weight="fill"
-              className="text-[#059669] flex-shrink-0 mt-0.5"
+              className="text-[#0E86E8] flex-shrink-0 mt-0.5"
             />
             <div className="min-w-0">
               <strong>Dossier transport créé dans Odoo</strong> - L&apos;offre
@@ -753,7 +753,7 @@ export function OfferDetailView({
                     <div className="flex items-center gap-1 text-[11px] text-[#1B2633] font-semibold flex-1 min-w-0">
                       <MapPinIcon
                         size={11}
-                        className="text-[#1E5B3C] flex-shrink-0"
+                        className="text-primary flex-shrink-0"
                       />
                       <span className="truncate">
                         {offer.route?.origin.split(",")[0].trim()}
@@ -834,7 +834,7 @@ export function OfferDetailView({
                 label="Montant TTC"
                 value={
                   p.ttc > 0 ? (
-                    <span className="font-mono font-semibold text-[#1E5B3C]">
+                    <span className="font-mono font-semibold text-primary">
                       {fmtOfferAmount(p.ttc, offer.currency ?? "FCFA")}
                     </span>
                   ) : (

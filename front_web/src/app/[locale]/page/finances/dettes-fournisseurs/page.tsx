@@ -178,7 +178,7 @@ export default function DettesFournisseursPage() {
           sub:    snap.total_payables > 0 && snap.total_receivables > snap.total_payables
             ? 'Créances > Dettes - situation saine'
             : 'Dettes > Créances - surveiller',
-          color:  snap.total_receivables >= snap.total_payables ? '#1B6B45' : '#DC2626',
+          color:  snap.total_receivables >= snap.total_payables ? '#0E86E8' : '#DC2626',
           icon:   snap.total_receivables >= snap.total_payables
             ? <CheckCircleIcon size={14} className="inline mr-0.5" />
             : <WarningIcon size={14} className="inline mr-0.5" />,
@@ -236,7 +236,7 @@ export default function DettesFournisseursPage() {
               subtitle="Historique des snapshots · Millions FCFA"
               data={evoData}
               series={[
-                { yKey: 'dettes', yName: 'Total dettes',  stroke: '#1E5B3C', type: 'area' },
+                { yKey: 'dettes', yName: 'Total dettes',  stroke: '#0E86E8', type: 'area' },
                 { yKey: 'retard', yName: 'En retard',     stroke: '#F97316', type: 'line' },
               ]}
               height={200}
@@ -247,7 +247,7 @@ export default function DettesFournisseursPage() {
           <FinCard padding={false}>
             <div className="px-4 sm:px-5 pt-4 pb-2">
               <FinCardHeader
-                title="Factures impayées — encours"
+                title="Factures impayées - en cours"
                 badge={
                   <span className="text-[10px] font-semibold text-[#DC2626] bg-[rgba(239,68,68,.1)] px-2 py-0.5 rounded-full">
                     {nbEnRetard} en retard
@@ -363,7 +363,7 @@ export default function DettesFournisseursPage() {
 
               {/* Bloc Créances clients */}
               <div className="mb-3">
-                <p className="text-[9px] font-bold uppercase tracking-[.08em] text-[#1B6B45] mb-1.5">
+                <p className="text-[9px] font-bold uppercase tracking-[.08em] text-primary mb-1.5">
                   Créances clients
                 </p>
                 <div className="rounded-xl border border-[rgba(27,107,69,.15)] bg-[rgba(27,107,69,.03)] divide-y divide-[rgba(27,107,69,.1)]">

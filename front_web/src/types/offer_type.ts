@@ -307,16 +307,16 @@ export const OFFER_STATUS_CONFIG: Record<OfferStatus, {
   brouillon: { label: 'Brouillon', bg: '#F3F4F6', color: '#374151', dot: '#9CA3AF' },
   genere:    { label: 'Généré',    bg: '#FBF3DE', color: '#725A0A', dot: '#92720C' },
   envoyee:   { label: 'Validée',    bg: '#FFFBEB', color: '#D97706', dot: '#F59E0B' },
-  validee:   { label: 'Lié à Odoo', bg: '#ECFDF5', color: '#059669', dot: '#10B981' },
+  validee:   { label: 'Lié à Odoo', bg: '#ECFDF5', color: '#0E86E8', dot: '#10B981' },
   refusee:   { label: 'Refusée',   bg: '#FEF2F2', color: '#DC2626', dot: '#EF4444' },
   expiree:   { label: 'Expirée',   bg: '#F3F4F6', color: '#6B7280', dot: '#9CA3AF' },
 };
 
 export const OFFER_MODE_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
-  terrestre:  { label: 'Terrestre',  bg: '#ECFDF5', color: '#059669' },
+  terrestre:  { label: 'Terrestre',  bg: '#ECFDF5', color: '#0E86E8' },
   maritime:   { label: 'Maritime',   bg: '#EBF5FD', color: '#085499' },
   aerien:     { label: 'Aérien',     bg: '#FDF0F7', color: '#A01D65' },
-  routier:    { label: 'Routier',    bg: '#ECFDF5', color: '#059669' },
+  routier:    { label: 'Routier',    bg: '#ECFDF5', color: '#0E86E8' },
   multimodal: { label: 'Multimodal', bg: '#F3EFFE', color: '#5829A8' },
 };
 

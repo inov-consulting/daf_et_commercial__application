@@ -57,7 +57,7 @@ function buildNav(locale: string, prospectCount?: number, alerteCount?: number):
     {
       title: 'OPÉRATIONS',
       items: [
-        { href: `/${locale}/page/documents`, label: 'Documents', Icon: FilesIcon },
+        // { href: `/${locale}/page/documents`, label: 'Documents', Icon: FilesIcon },
         { href: `/${locale}/page/comptes-rendus`, label: 'Comptes-rendus', Icon: FileTextIcon },
       ],
     }, 
@@ -175,7 +175,7 @@ const isFirstRender = useRef(true);
         {/* Barre de couleur gradient gauche */}
         <div
           className="absolute left-0 top-0 h-full w-[3px] z-10 pointer-events-none"
-          style={{ background: 'linear-gradient(to bottom, #1B6B45 0%, #2E7D52 50%, #8B6914 100%)' }}
+          style={{ background: 'linear-gradient(to bottom, #0E86E8 0%, #0A6DC0 50%, #C2257A 100%)' }}
         />
 
         {/* Bouton fermer sur mobile */}
@@ -239,7 +239,7 @@ const isFirstRender = useRef(true);
                       'flex items-center rounded-lg transition-colors duration-150 mb-0.5',
                       open ? 'gap-2.5 px-2.5 py-[7px]' : 'justify-center p-[9px]',
                       active
-                        ? 'bg-[rgba(27,107,69,0.08)] text-[var(--p500)]'
+                        ? 'bg-[rgba(27,62,107,0.08)] text-[var(--p500)]'
                         : 'text-[var(--tx-2)] hover:bg-[var(--bg-sink)] hover:text-[var(--tx-1)]',
                     )}
                   >
@@ -253,7 +253,7 @@ const isFirstRender = useRef(true);
                               'min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center',
                               badgeDanger
                                 ? 'bg-error text-white'
-                                : 'bg-[rgba(27,107,69,0.1)] text-[var(--p500)]',
+                                : 'bg-[rgba(27,64,107,0.1)] text-[var(--p500)]',
                             )}
                           >
                             {badge}

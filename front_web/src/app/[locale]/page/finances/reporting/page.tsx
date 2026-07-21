@@ -218,7 +218,7 @@ export default function ReportingPage() {
                       className={cn(
                         "text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0",
                         r.status === "completed"
-                          ? "bg-[rgba(16,185,129,.1)] text-[#1B6B45]"
+                          ? "bg-[rgba(16,185,129,.1)] text-primary"
                           : r.status === "running"
                             ? "bg-[rgba(99,102,241,.1)] text-[#4338CA]"
                             : r.status === "failed"

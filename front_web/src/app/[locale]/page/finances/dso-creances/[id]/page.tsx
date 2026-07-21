@@ -46,7 +46,7 @@ const DSO_HISTORY = [
 const STATUT_STYLE: Record<FactureCreance['statut'], { bg: string; text: string; border: string; label: string }> = {
   retard:   { bg: 'rgba(239,68,68,.08)',   text: '#DC2626', border: 'rgba(239,68,68,.25)',   label: 'En retard'  },
   a_echoir: { bg: 'rgba(249,115,22,.08)', text: '#EA580C', border: 'rgba(249,115,22,.25)', label: 'À échoir'   },
-  regle:    { bg: 'rgba(16,185,129,.08)', text: '#1B6B45', border: 'rgba(16,185,129,.25)', label: 'Réglée'     },
+  regle:    { bg: 'rgba(16,185,129,.08)', text: '#0E86E8', border: 'rgba(16, 98, 185, 0.25)', label: 'Réglée'     },
   partiel:  { bg: 'rgba(245,158,11,.08)', text: '#B45309', border: 'rgba(245,158,11,.25)', label: 'Partiel'    },
 };
 

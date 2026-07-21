@@ -67,7 +67,7 @@ const WorkflowSection = ({ workflow }: { workflow?: ShipmentWorkflow }) => {
                 >
                   <div className={cn(
                     'w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5',
-                    isCurrent ? 'bg-[#0E86E8]' : 'bg-[#10B981]',
+                    isCurrent ? 'bg-primary' : 'bg-[#10B981]',
                   )}>
                     {isCurrent
                       ? <span className="text-[10px] font-bold text-white">{i + 1}</span>
@@ -91,7 +91,7 @@ const WorkflowSection = ({ workflow }: { workflow?: ShipmentWorkflow }) => {
                   </div>
                   <span className={cn(
                     'text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 h-fit',
-                    isCurrent ? 'bg-[#EBF5FD] text-[#085499]' : 'bg-[#DCFCE7] text-[#059669]',
+                    isCurrent ? 'bg-[#EBF5FD] text-[#085499]' : 'bg-[#DCFCE7] text-[#0E86E8]',
                   )}>
                     {isCurrent ? 'En cours' : 'Terminé'}
                   </span>

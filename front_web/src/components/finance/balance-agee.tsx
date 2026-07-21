@@ -5,7 +5,7 @@ function fmtN(v: number) {
   return v.toLocaleString('fr-FR') + ' 000';
 }
 
-const ROW_COLOR = ['#10B981', '#1B6B45', '#F59E0B', '#EF4444', '#DC2626'];
+const ROW_COLOR = ['#10B981', '#0E86E8', '#F59E0B', '#EF4444', '#DC2626'];
 
 interface Props {
   total:   number;

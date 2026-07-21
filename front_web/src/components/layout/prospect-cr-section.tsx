@@ -22,7 +22,7 @@ interface ProspectCRSectionProps {
 
 const STATUS_CR: Record<string, { label: string; bg: string; color: string }> = {
   draft: { label: 'Brouillon', bg: '#F3F4F6', color: '#374151' },
-  final: { label: 'Finalisé', bg: '#ECFDF5', color: '#059669' },
+  final: { label: 'Finalisé', bg: '#ECFDF5', color: '#0E86E8' },
   processing: { label: 'En cours…', bg: '#FFF3E0', color: '#D97706' },
 };
 

@@ -52,11 +52,11 @@ function fmtM(v: number | null | undefined): string {
 /* ── Event icon & color ──────────────────────────────────────────── */
 
 const EVENT_CONFIG: Record<string, { Icon: React.ElementType; color: string; bg: string }> = {
-  agent_start:     { Icon: PlayIcon,            color: '#1B6B45', bg: 'rgba(16,185,129,.12)' },
+  agent_start:     { Icon: PlayIcon,            color: '#0E86E8', bg: 'rgba(16,185,129,.12)' },
   analysis:        { Icon: MagnifyingGlassIcon, color: '#4338CA', bg: 'rgba(99,102,241,.12)'  },
   info:            { Icon: InfoIcon,            color: '#6B7280', bg: 'rgba(107,114,128,.12)' },
   action_proposed: { Icon: LightningIcon,       color: '#B45309', bg: 'rgba(245,158,11,.12)'  },
-  action_executed: { Icon: CheckCircleIcon,     color: '#1B6B45', bg: 'rgba(16,185,129,.12)'  },
+  action_executed: { Icon: CheckCircleIcon,     color: '#0E86E8', bg: 'rgba(16,185,129,.12)'  },
 };
 
 function eventConfig(type: string) {
@@ -146,9 +146,9 @@ function PayloadPanel({ payload }: { payload: Record<string, unknown> }) {
 function SnapshotKpis({ snap }: { snap: DafSnapshot }) {
   const kpis = [
     { label: 'Créances totales',   value: `${fmtM(snap.total_receivables)} XAF`,   sub: `${snap.overdue_receivables_count === null ? 0 : snap.overdue_receivables_count} en retard`, accent: '#4338CA' },
-    { label: 'DSO',                value: `${snap.dso_days === null ? 0 : snap.dso_days} jours`,                sub: snap.dso_days > 45 ? 'Au-dessus de l\'objectif' : 'Dans l\'objectif', accent: snap.dso_days > 45 ? '#F97316' : '#1B6B45' },
+    { label: 'DSO',                value: `${snap.dso_days === null ? 0 : snap.dso_days} jours`,                sub: snap.dso_days > 45 ? 'Au-dessus de l\'objectif' : 'Dans l\'objectif', accent: snap.dso_days > 45 ? '#F97316' : '#0E86E8' },
     { label: 'Dettes fournisseurs',value: `${fmtM(snap.total_payables)} XAF`,      sub: `${snap.overdue_payables_count === null ? 0 : snap.overdue_payables_count} en retard`,    accent: '#6B7280'  },
-    { label: 'Position trésorerie',value: `${fmtM(snap.cash_position)} XAF`,       sub: snap.cash_position === 0 ? 'Trésorerie critique' : 'Solde disponible', accent: snap.cash_position === 0 ? '#DC2626' : '#1B6B45' },
+    { label: 'Position trésorerie',value: `${fmtM(snap.cash_position)} XAF`,       sub: snap.cash_position === 0 ? 'Trésorerie critique' : 'Solde disponible', accent: snap.cash_position === 0 ? '#DC2626' : '#0E86E8' },
   ];
   return (
     <div className="grid grid-cols-2 gap-3">
@@ -201,7 +201,7 @@ function ActionCard({
           <button
             onClick={() => onApprove(action.id)}
             disabled={loading}
-            className="flex-1 h-7 rounded-lg bg-[rgba(16,185,129,.1)] text-[#1B6B45] text-[11px] font-semibold flex items-center justify-center gap-1 hover:bg-[rgba(16,185,129,.2)] transition-colors disabled:opacity-50"
+            className="flex-1 h-7 rounded-lg bg-[rgba(16,185,129,.1)] text-primary text-[11px] font-semibold flex items-center justify-center gap-1 hover:bg-[rgba(16,185,129,.2)] transition-colors disabled:opacity-50"
           >
             {loading ? <SpinnerGapIcon size={12} className="animate-spin" /> : <CheckIcon size={12} />}
             Approuver
@@ -219,7 +219,7 @@ function ActionCard({
         <div className="flex items-center gap-1.5 pt-1">
           <span className={cn(
             'text-[10px] font-bold px-2 py-0.5 rounded-full',
-            action.status === 'approved'  ? 'bg-[rgba(16,185,129,.1)] text-[#1B6B45]' :
+            action.status === 'approved'  ? 'bg-[rgba(16,185,129,.1)] text-primary' :
             action.status === 'rejected'  ? 'bg-[rgba(239,68,68,.1)] text-[#DC2626]'  :
             action.status === 'executed'  ? 'bg-[rgba(99,102,241,.1)] text-[#4338CA]' :
             'bg-[var(--bg-sink)] text-[var(--tx-3)]',
@@ -239,7 +239,7 @@ function ActionCard({
 
 function StatusBadge({ status }: { status: string }) {
   const cfg = {
-    completed: { label: 'Complété',  bg: 'rgba(16,185,129,.1)',  text: '#1B6B45' },
+    completed: { label: 'Complété',  bg: 'rgba(16,185,129,.1)',  text: '#0E86E8' },
     running:   { label: 'En cours',  bg: 'rgba(99,102,241,.1)',  text: '#4338CA' },
     failed:    { label: 'Échec',     bg: 'rgba(239,68,68,.1)',   text: '#DC2626' },
     pending:   { label: 'En attente',bg: 'rgba(245,158,11,.1)', text: '#B45309' },

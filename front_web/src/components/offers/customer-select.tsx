@@ -86,7 +86,7 @@ export function CustomerSelect({
         onClick={handleOpen}
         className={`w-full h-10 border rounded-lg pl-8 pr-8 text-[13px] text-left outline-none transition-colors flex items-center ${
           hasValue
-            ? 'border-emerald-300 bg-emerald-50 text-gray-900'
+            ? 'border-primary-300 bg-primary-50 text-gray-900'
             : 'border-gray-200 bg-white text-gray-400'
         }`}
       >
@@ -125,7 +125,7 @@ export function CustomerSelect({
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Rechercher…"
-                className="w-full h-8 border border-gray-200 rounded-lg pl-7 pr-3 text-[12px] text-gray-900 outline-none focus:border-emerald-300"
+                className="w-full h-8 border border-gray-200 rounded-lg pl-7 pr-3 text-[12px] text-gray-900 outline-none focus:border-primary-300"
               />
             </div>
           </div>
@@ -148,7 +148,7 @@ export function CustomerSelect({
                     key={item.id}
                     type="button"
                     onClick={() => handleSelect(item)}
-                    className="w-full px-3 py-2.5 text-left hover:bg-emerald-50 transition-colors border-b border-gray-50 last:border-0 flex flex-col gap-0.5"
+                    className="w-full px-3 py-2.5 text-left hover:bg-primary-50 transition-colors border-b border-gray-50 last:border-0 flex flex-col gap-0.5"
                   >
                     <span className="text-[13px] font-medium text-gray-900 truncate">{item.name}</span>
                     {item.email && (

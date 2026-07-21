@@ -111,7 +111,7 @@ export default function TresoreriePage() {
       label:  'Position de trésorerie',
       value:  snap ? fmtM(cashPos) : '—',
       sub:    snap ? `Snapshot · ${new Date(snap.snapshot_at).toLocaleDateString('fr-FR')}` : 'Chargement…',
-      color:  cashPos >= 0 ? '#1B6B45' : '#DC2626',
+      color:  cashPos >= 0 ? '#0E86E8' : '#DC2626',
     },
     {
       label:  'Créances totales',
@@ -129,7 +129,7 @@ export default function TresoreriePage() {
       label:  'Position nette (créances − dettes)',
       value:  snap ? fmtM(netPos) : '—',
       sub:    'Différentiel net consolidé',
-      color:  netPos >= 0 ? '#1B6B45' : '#DC2626',
+      color:  netPos >= 0 ? '#0E86E8' : '#DC2626',
     },
   ];
 
@@ -175,7 +175,7 @@ export default function TresoreriePage() {
               title="Évolution trésorerie nette"
               subtitle="Historique des snapshots · Millions FCFA"
               data={evoData}
-              series={[{ yKey: 'solde', yName: 'Position nette', stroke: '#1B6B45', type: 'area' }]}
+              series={[{ yKey: 'solde', yName: 'Position nette', stroke: '#0E86E8', type: 'area' }]}
               height={200}
             />
           ) : null}

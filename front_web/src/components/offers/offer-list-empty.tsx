@@ -27,7 +27,7 @@ export function OfferListEmpty({ hasSearch, hasFilter, onCreateNew }: OfferListE
           {!hasSearch && !hasFilter && (
             <button 
               onClick={onCreateNew} 
-              className="mt-1 h-9 px-5 bg-emerald-800 text-white text-sm font-semibold rounded-lg inline-flex items-center gap-1.5 shadow-sm hover:bg-emerald-900 transition-colors"
+              className="mt-1 h-9 px-5 bg-primary-800 text-white text-sm font-semibold rounded-lg inline-flex items-center gap-1.5 shadow-sm hover:bg-primary-900 transition-colors"
             >
               <PlusIcon size={14} weight="fill" />
               Nouvelle offre
