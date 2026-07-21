@@ -108,26 +108,36 @@ class ChatResult:
     turn: int               # numéro du tour dans la session (commence à 1)
 
 
-async def _get_llm(provider: str, model: str, reasoning: bool = False):  # type: ignore[return]
-    """Récupère le LLM configuré.
-    
+async def _get_llm(provider: str, model: str, reasoning: bool = False, context: str = "chat"):  # type: ignore[return]
+    """Récupère le LLM configuré avec tracking de consommation.
+
     Args:
         reasoning: Si True et provider=anthropic, active le mode thinking.
+        context: Contexte d'usage pour les logs (chat | daf | cr | offer | whatsapp).
     """
+    from app.infrastructure.ai.usage_tracker import UsageTrackerCallback
+
+    # Groq non tracké (usage interne / tests uniquement)
+    callbacks = (
+        [UsageTrackerCallback(provider=provider, model=model, context=context)]
+        if provider != "groq"
+        else []
+    )
+
     if provider == "anthropic":
         from langchain_anthropic import ChatAnthropic
-        # Si reasoning activé et modèle supporte thinking (claude-3-7-sonnet+)
         if reasoning and "claude-3" in model:
             return ChatAnthropic(
-                model=model, 
-                api_key=settings.anthropic_api_key, 
+                model=model,
+                api_key=settings.anthropic_api_key,
                 max_tokens=4096,
                 thinking={"type": "enabled", "budget_tokens": 2000},
+                callbacks=callbacks,
             )
-        return ChatAnthropic(model=model, api_key=settings.anthropic_api_key, max_tokens=4096)
+        return ChatAnthropic(model=model, api_key=settings.anthropic_api_key, max_tokens=4096, callbacks=callbacks)
     elif provider == "openai":
         from langchain_openai import ChatOpenAI
-        return ChatOpenAI(model=model, api_key=settings.openai_api_key)
+        return ChatOpenAI(model=model, api_key=settings.openai_api_key, callbacks=callbacks)
     elif provider == "groq":
         from langchain_groq import ChatGroq
         return ChatGroq(model=model, api_key=settings.groq_api_key)
@@ -137,6 +147,7 @@ async def _get_llm(provider: str, model: str, reasoning: bool = False):  # type:
             model=model,
             api_key=settings.deepseek_api_key,
             base_url=settings.deepseek_base_url,
+            callbacks=callbacks,
         )
     raise ValueError(f"Provider inconnu : {provider}")
 

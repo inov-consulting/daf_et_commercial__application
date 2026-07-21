@@ -330,12 +330,15 @@ RAPPEL: Générer un document HTML COMPLET avec ce Design System. Respecter les 
 
         def _sync_call():
             from anthropic import Anthropic
+            from app.infrastructure.ai.usage_tracker import track_anthropic_sdk_usage
+            model = settings.ai_default_model if "claude" in settings.ai_default_model else "claude-sonnet-4-5"
             client = Anthropic(api_key=settings.anthropic_api_key)
             response = client.messages.create(
-                model=settings.ai_default_model if "claude" in settings.ai_default_model else "claude-sonnet-4-5",
+                model=model,
                 max_tokens=10000,  # Augmenté pour HTML long avec Design System
                 messages=[{"role": "user", "content": prompt}],
             )
+            track_anthropic_sdk_usage(response, model=model, context="cr")
             return response.content[0].text
 
         return await asyncio.to_thread(_sync_call)
