@@ -176,7 +176,7 @@ export default function MessageriePage() {
     return n.includes(t) || c.display_phone_number.includes(t);
   });
 
-  const activeConv     = conversations.find(c => c.id === activeConvId) ?? null;
+  const activeConv     = conversations.find((c: any) => c.id === activeConvId) ?? null;
   const activeMessages = activeConvId ? (messages[activeConvId] ?? []) : [];
 
   // ── Callbacks ──
@@ -317,7 +317,7 @@ export default function MessageriePage() {
                   {search ? 'Essayez un autre filtre.' : 'Démarrez votre première conversation.'}
                 </p>
               </div>
-            ) : filtered.map(c => (
+            ) : filtered.map((c: any) => (
               <ConvItem
                 key={c.id}
                 conv={c}
