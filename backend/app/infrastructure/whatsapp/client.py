@@ -119,6 +119,11 @@ async def _persist_and_handle(_client, msg) -> None:
             conversation.contact_name = contact_name
         conversation.last_message_at = msg.timestamp
         conversation.status = "active"
+        conversation.unread_count = (conversation.unread_count or 0) + 1
+        await conversation.save()
+    else:
+        # Conversation créée à l'instant : ce premier message compte comme non lu
+        conversation.unread_count = 1
         await conversation.save()
 
     # ── Extraire le contenu selon le type (objets typés pywa) ─────────
@@ -232,6 +237,7 @@ async def _persist_and_handle(_client, msg) -> None:
         "media_filename": media_filename,
         "contact_name": contact_name,
         "meta_timestamp": msg.timestamp.isoformat() if msg.timestamp else None,
+        "unread_count": conversation.unread_count,
     }
 
     # WS — push immédiat aux clients web/flutter ouverts sur cette conversation

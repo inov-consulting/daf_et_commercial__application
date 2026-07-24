@@ -89,10 +89,14 @@ async def _odoo_execute(model: str, method: str, args: list, kwargs: dict | None
 
 
 async def list_clients_to_enrich(limit: int = 20) -> str:
-    """Liste les clients Odoo à enrichir (entreprises avec customer_rank > 0).
+    """Liste les clients Odoo à enrichir, en priorisant les moins récemment traités.
+
+    Stratégie : clients jamais enrichis d'abord (ai_insight_last_update null),
+    puis les plus anciennement mis à jour — garantit que le scheduler tourne
+    de façon utile même après un premier cycle complet.
 
     Args:
-        limit: Nombre maximum de clients à retourner (défaut: 20).
+        limit: Nombre maximum de clients à retourner.
     """
     try:
         partners: list[dict] = await _odoo_execute(  # type: ignore[assignment]
@@ -101,13 +105,14 @@ async def list_clients_to_enrich(limit: int = 20) -> str:
             [[
                 ["is_company", "=", True],
                 ["customer_rank", ">", 0],
-                "|",
-                ["ai_insight_status", "=", "to_process"],
-                ["ai_insight_status", "=", False],
             ]],
             {
-                "fields": ["id", "name", "country_id", "city", "website", "vat", "ai_insight_status"],
+                "fields": [
+                    "id", "name", "country_id", "city", "website",
+                    "vat", "ai_insight_status", "ai_insight_last_update",
+                ],
                 "limit": limit,
+                "order": "ai_insight_last_update asc",
             },
         )
     except Exception as exc:
@@ -115,19 +120,21 @@ async def list_clients_to_enrich(limit: int = 20) -> str:
         return f"Erreur lors de la récupération des clients Odoo : {exc}"
 
     if not partners:
-        return "Aucun client à enrichir (tous ont déjà été traités ou aucun client trouvé)."
+        return "Aucun client trouvé (aucune entreprise avec customer_rank > 0 dans Odoo)."
 
-    lines = [f"## {len(partners)} client(s) à enrichir\n"]
+    lines = [f"## {len(partners)} client(s) à traiter\n"]
     for p in partners:
         country = p.get("country_id")
         country_name = country[1] if isinstance(country, list | tuple) else str(country or "")
         city = p.get("city") or ""
         website = p.get("website") or ""
         vat = p.get("vat") or ""
+        last_update = p.get("ai_insight_last_update") or "jamais"
         lines.append(
             f"- ID={p['id']} | {p['name']} | {country_name} | {city}"
             + (f" | site: {website}" if website else "")
             + (f" | TVA: {vat}" if vat else "")
+            + f" | dernier enrichissement: {last_update}"
         )
 
     return "\n".join(lines)
@@ -197,33 +204,52 @@ async def _search_tavily(query: str, company_name: str, website: str | None) -> 
 
 async def _search_duckduckgo(query: str, company_name: str, website: str | None) -> str:
     results: list[str] = []
+
+    # 1. DuckDuckGo Instant Answer (Wikipedia/Wikidata — fonctionne surtout pour les grandes entreprises)
     try:
         async with httpx.AsyncClient(timeout=20.0) as client:
             resp = await client.get(
                 "https://api.duckduckgo.com/",
                 params={"q": query, "format": "json", "no_html": "1", "skip_disambig": "1"},
-                headers={"User-Agent": "PortaLis-CommercialAgent/1.0"},
+                headers={"User-Agent": "Mozilla/5.0 PortaLis-CommercialAgent/1.0"},
             )
             resp.raise_for_status()
             data = resp.json()
         if data.get("AbstractText"):
-            results.append(f"Résumé : {data['AbstractText']}")
+            results.append(f"Résumé Wikipedia : {data['AbstractText']}")
         for topic in data.get("RelatedTopics", [])[:3]:
-            if topic.get("Text"):
+            if isinstance(topic, dict) and topic.get("Text"):
                 results.append(topic["Text"][:300])
     except Exception as exc:
         logger.warning("commercial_agent.duckduckgo.failed company=%s: %s", company_name, exc)
 
-    if website and not results:
+    # 2. Site web officiel — scraping léger si disponible
+    if website:
         try:
             url = website if website.startswith("http") else f"https://{website}"
-            async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
-                resp = await client.get(url, headers={"User-Agent": "PortaLis-CommercialAgent/1.0"})
-                results.append(f"Contenu site ({website}) : {resp.text[:2000]}")
-        except Exception:
-            pass
+            async with httpx.AsyncClient(
+                timeout=15.0,
+                follow_redirects=True,
+                headers={"User-Agent": "Mozilla/5.0 PortaLis-CommercialAgent/1.0"},
+            ) as client:
+                resp = await client.get(url)
+                if resp.status_code == 200:
+                    # Extrait uniquement le texte visible (supprime balises HTML grossièrement)
+                    import re
+                    text = re.sub(r"<[^>]+>", " ", resp.text)
+                    text = re.sub(r"\s+", " ", text).strip()[:3000]
+                    if text:
+                        results.append(f"Contenu site officiel ({website}) :\n{text}")
+        except Exception as exc:
+            logger.warning("commercial_agent.website_scrape.failed company=%s: %s", company_name, exc)
 
-    return "\n\n".join(results) if results else f"Aucune information publique trouvée pour {company_name}."
+    if not results:
+        logger.warning("commercial_agent.no_web_data company=%s — Tavily non configuré", company_name)
+        return (
+            f"Aucune information publique trouvée pour {company_name}. "
+            f"Conseil : configurer TAVILY_API_KEY pour des résultats de qualité."
+        )
+    return "\n\n".join(results)
 
 
 # ── Tool 3 : save_company_insight ─────────────────────────────────────────────
@@ -433,28 +459,28 @@ def _build_tools() -> list:
     ]
 
 
+async def _build_agent(limit: int):
+    """Instancie l'agent LangGraph et retourne (agent, config, message)."""
+    run_id = uuid4()
+    config_repo = AiConfigRepository()
+    _, model_domain, _ = await config_repo.get()
+    llm = await _get_llm(model_domain.provider, model_domain.name)
+    agent = create_react_agent(model=llm, tools=_build_tools(), prompt=COMMERCIAL_AGENT_PROMPT)
+    config = {"configurable": {"thread_id": str(run_id)}, "recursion_limit": 200}
+    message = (
+        f"Lance l'analyse commerciale. "
+        f"Appelle list_clients_to_enrich avec limit={limit}. "
+        f"Traite TOUS les clients retournés un par un : enrichissement web puis prédiction."
+    )
+    return agent, config, message, run_id
+
+
 async def stream_commercial_enrichment(limit: int = 20) -> AsyncIterator[str]:
     """Lance l'agent commercial et streame sa progression token par token.
 
     Le dernier token est [RUN:{run_id}].
     """
-    run_id = uuid4()
-
-    config_repo = AiConfigRepository()
-    _, model_domain, _ = await config_repo.get()
-    llm = await _get_llm(model_domain.provider, model_domain.name)
-
-    agent = create_react_agent(
-        model=llm,
-        tools=_build_tools(),
-        prompt=COMMERCIAL_AGENT_PROMPT,
-    )
-
-    config = {"configurable": {"thread_id": str(run_id)}, "recursion_limit": 200}
-    message = (
-        f"Lance l'analyse commerciale. "
-        f"Traite au maximum {limit} clients : enrichis leur fiche et génère une prédiction pour chacun."
-    )
+    agent, config, message, run_id = await _build_agent(limit)
 
     async for event in agent.astream_events(
         {"messages": [("human", message)]},
@@ -479,20 +505,47 @@ async def stream_commercial_enrichment(limit: int = 20) -> AsyncIterator[str]:
     yield f"[RUN:{run_id}]"
 
 
-async def run_commercial_cycle(limit: int = 50, trigger: str = "scheduled") -> str:
+async def run_commercial_cycle(limit: int = 50, trigger: str = "scheduled") -> dict:
     """Lance un cycle complet d'enrichissement + prédiction sans streaming.
 
-    Consomme l'agent jusqu'à la fin et retourne le run_id.
-    Utilisé par le scheduler automatique.
+    Écoute les événements on_tool_end pour comptabiliser les enrichissements
+    et prédictions. Retourne un dict de stats utilisé par le scheduler.
     """
     logger.info("commercial.cycle.start trigger=%s limit=%d", trigger, limit)
-    run_id = "unknown"
-    tokens_count = 0
+    agent, config, message, run_id = await _build_agent(limit)
 
-    async for token in stream_commercial_enrichment(limit=limit):
-        tokens_count += 1
-        if token.startswith("[RUN:") and token.endswith("]"):
-            run_id = token[5:-1]
+    stats = {
+        "run_id": str(run_id),
+        "enriched": 0,
+        "enrichment_errors": 0,
+        "predictions": 0,
+        "prediction_errors": 0,
+    }
 
-    logger.info("commercial.cycle.done trigger=%s run_id=%s tokens=%d", trigger, run_id, tokens_count)
-    return run_id
+    async for event in agent.astream_events(
+        {"messages": [("human", message)]},
+        config=config,
+        version="v2",
+    ):
+        event_type = event.get("event")
+        if event_type != "on_tool_end":
+            continue
+        tool_name = event.get("name", "")
+        output = str(event.get("data", {}).get("output", ""))
+        if tool_name == "save_company_insight":
+            if "✅" in output:
+                stats["enriched"] += 1
+            else:
+                stats["enrichment_errors"] += 1
+        elif tool_name == "save_commercial_prediction":
+            if "🔮" in output:
+                stats["predictions"] += 1
+            else:
+                stats["prediction_errors"] += 1
+
+    logger.info(
+        "commercial.cycle.done trigger=%s run_id=%s enriched=%d errors_enrich=%d predictions=%d errors_pred=%d",
+        trigger, stats["run_id"], stats["enriched"], stats["enrichment_errors"],
+        stats["predictions"], stats["prediction_errors"],
+    )
+    return stats

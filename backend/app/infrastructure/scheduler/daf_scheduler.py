@@ -1,7 +1,7 @@
 """Scheduler APScheduler pour l'agent DAF.
 
 Démarre immédiatement au lancement de l'application (trigger=startup),
-puis relance un cycle toutes les 3 heures (trigger=scheduled).
+puis relance un cycle toutes les 6 heures (trigger=scheduled).
 
 Usage dans le lifespan FastAPI :
     from app.infrastructure.scheduler.daf_scheduler import DafScheduler
@@ -20,7 +20,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 logger = logging.getLogger(__name__)
 
-_INTERVAL_HOURS = 3
+_INTERVAL_HOURS = 6
 _JOB_ID = "daf_agent_cycle"
 
 
@@ -47,12 +47,12 @@ class DafScheduler:
     # ── Démarrage ─────────────────────────────────────────────────────────
 
     async def start(self) -> None:
-        """Démarre le scheduler : cycle immédiat puis toutes les 3h."""
+        """Démarre le scheduler : cycle immédiat puis toutes les 6h."""
         if self._running:
             logger.warning("daf.scheduler.already_running")
             return
 
-        # Cycle planifié toutes les 3h
+        # Cycle planifié toutes les 6h
         self._scheduler.add_job(
             self._run_cycle,
             trigger=IntervalTrigger(hours=_INTERVAL_HOURS),

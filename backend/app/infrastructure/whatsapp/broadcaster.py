@@ -67,11 +67,41 @@ async def publish_message(conversation_id: str, message_data: dict) -> None:
         "event": "new_message",
         "data": {
             "conversation_id": str(conversation_id),
-            **{k: v for k, v in message_data.items() if k in ("direction", "message_type", "body", "contact_name")},
+            **{k: v for k, v in message_data.items() if k in (
+                "direction", "message_type", "body", "contact_name", "unread_count",
+            )},
         },
     }
     for q in _conversation_subscribers:
         try:
             q.put_nowait(global_payload)
+        except asyncio.QueueFull:
+            pass
+
+
+async def publish_read(conversation_id: str) -> None:
+    """Publie un événement 'read' pour signaler que tous les messages ont été lus.
+
+    Le frontend met à jour le badge unread_count à 0 sans recharger la liste.
+    """
+    payload = {
+        "event": "read",
+        "data": {
+            "conversation_id": str(conversation_id),
+            "unread_count": 0,
+        },
+    }
+
+    # Notifier les clients ouverts sur cette conversation
+    for q in _subscribers.get(str(conversation_id), []):
+        try:
+            q.put_nowait(payload)
+        except asyncio.QueueFull:
+            pass
+
+    # Notifier aussi le flux global (badge dans la liste)
+    for q in _conversation_subscribers:
+        try:
+            q.put_nowait(payload)
         except asyncio.QueueFull:
             pass

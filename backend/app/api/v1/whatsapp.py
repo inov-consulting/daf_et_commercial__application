@@ -8,6 +8,7 @@ Endpoints :
   GET  /whatsapp/conversations                     → liste des conversations
   GET  /whatsapp/conversations/{id}                → détail d'une conversation
   GET  /whatsapp/conversations/{id}/messages       → messages d'une conversation
+  POST /whatsapp/conversations/{id}/read           → marquer les messages entrants comme lus
   POST /whatsapp/conversations/{id}/reply          → répondre à un contact
 """
 from __future__ import annotations
@@ -36,6 +37,7 @@ class WhatsAppConversationOut(BaseModel):
     contact_name: str | None
     display_phone_number: str | None
     status: str
+    unread_count: int
     last_message_at: datetime | None
     created_at: datetime
     message_count: int = 0
@@ -132,6 +134,7 @@ async def list_conversations(
             contact_name=c.contact_name,
             display_phone_number=c.display_phone_number,
             status=c.status,
+            unread_count=c.unread_count,
             last_message_at=c.last_message_at,
             created_at=c.created_at,
             message_count=count,
@@ -154,6 +157,7 @@ async def get_conversation(conversation_id: UUID) -> WhatsAppConversationOut:
         contact_name=conv.contact_name,
         display_phone_number=conv.display_phone_number,
         status=conv.status,
+        unread_count=conv.unread_count,
         last_message_at=conv.last_message_at,
         created_at=conv.created_at,
         message_count=count,
@@ -193,6 +197,37 @@ async def get_messages(
         )
         for m in messages
     ]
+
+
+@router.post("/conversations/{conversation_id}/read", dependencies=_write_deps)
+async def mark_as_read(conversation_id: UUID) -> dict:
+    """Marque comme lus tous les messages entrants sans statut de livraison.
+
+    Met à jour les messages où `direction='inbound'` ET `delivery_status` est null
+    en leur assignant `delivery_status='read'`.
+
+    Retourne le nombre de messages mis à jour.
+    """
+    from app.infrastructure.db.models.whatsapp import WhatsAppConversationOrm, WhatsAppMessageOrm
+
+    conv = await WhatsAppConversationOrm.get_or_none(id=conversation_id)
+    if not conv:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation non trouvée")
+
+    updated_count = await WhatsAppMessageOrm.filter(
+        conversation_id=conversation_id,
+        direction="inbound",
+        delivery_status__isnull=True,
+    ).update(delivery_status="read")
+
+    conv.unread_count = 0
+    await conv.save()
+
+    from app.infrastructure.whatsapp.broadcaster import publish_read
+    import asyncio as _asyncio
+    _asyncio.create_task(publish_read(str(conversation_id)))
+
+    return {"updated": updated_count, "unread_count": 0}
 
 
 @router.post("/conversations/start", dependencies=_write_deps, status_code=status.HTTP_201_CREATED)
