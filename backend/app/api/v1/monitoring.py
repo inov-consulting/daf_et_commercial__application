@@ -16,6 +16,7 @@ import httpx
 from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
 
 from app.api.deps import require_permission
+from app.api.v1.schemas.monitoring import AiBalanceResponse, AiUsageResponse, SystemSnapshot
 from app.core.config import settings
 
 router = APIRouter(prefix="/monitoring", tags=["monitoring"])
@@ -24,7 +25,7 @@ _auth = [Depends(require_permission("app:read"))]
 
 
 @router.get("/stats", dependencies=_auth)
-async def get_stats() -> dict:
+async def get_stats() -> SystemSnapshot:
     """Retourne un snapshot instantané des métriques CPU, mémoire et réseau."""
     from app.infrastructure.monitoring.collector import collect
     return collect()
@@ -79,7 +80,7 @@ async def monitoring_stream(websocket: WebSocket, token: str | None = Query(None
 @router.get("/ai/usage", dependencies=_auth)
 async def get_ai_usage(
     days: int = Query(30, ge=1, le=90, description="Période en jours (défaut 30)"),
-) -> dict:
+) -> AiUsageResponse:
     """Consommation de tokens et coût estimé par provider sur les N derniers jours.
 
     Retourne une agrégation par provider + l'historique journalier.
@@ -142,7 +143,7 @@ async def get_ai_usage(
 
 
 @router.get("/ai/balance", dependencies=_auth)
-async def get_ai_balance() -> dict:
+async def get_ai_balance() -> AiBalanceResponse:
     """Solde des crédits IA disponibles.
 
     - DeepSeek : solde réel via API officielle
