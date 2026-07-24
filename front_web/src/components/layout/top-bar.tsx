@@ -10,6 +10,7 @@ import { getRoleAbbreviation } from '@/lib/roleAbbreviation';
 import Image from 'next/image';
 import { useAppSelector } from '@/redux/store';
 import { NotificationsDrawer } from '@/components/layout/notifications-drawer';
+import { LogoutConfirmModal } from '@/components/layout/logout-confirm-modal';
 
 const MENU_ITEMS = [
   { Icon: UserIcon, label: 'Mon profil', danger: false },
@@ -26,9 +27,10 @@ interface TopBarProps {
 }
 
 export default function TopBar({ onToggleSidebar, user, rawUser }: TopBarProps) {
-  const [showNotifDrawer, setShowNotifDrawer] = useState(false);
-  const [showUserMenu, setShowUserMenu]       = useState(false);
+  const [showNotifDrawer, setShowNotifDrawer]   = useState(false);
+  const [showUserMenu, setShowUserMenu]         = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [showLogoutModal, setShowLogoutModal]   = useState(false);
   const [menuPos, setMenuPos]   = useState<DropdownPos>({ top: 0, right: 0 });
   const [mounted, setMounted]   = useState(false);
 
@@ -100,7 +102,7 @@ export default function TopBar({ onToggleSidebar, user, rawUser }: TopBarProps) 
           {MENU_ITEMS.map(({ Icon, label, danger }) => (
             <button
               key={label}
-              onClick={label === 'Déconnexion' ? () => logoutKeycloak() : undefined}
+              onClick={label === 'Déconnexion' ? () => { closeAll(); setShowLogoutModal(true); } : undefined}
               className={cn(
                 'w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm transition-colors hover:bg-[var(--bg-sink)]',
                 danger ? 'text-error' : 'text-[var(--tx-1)]',
@@ -112,6 +114,14 @@ export default function TopBar({ onToggleSidebar, user, rawUser }: TopBarProps) 
           ))}
         </div>,
         document.body,
+      )}
+
+      {/* Modal confirmation déconnexion */}
+      {mounted && showLogoutModal && (
+        <LogoutConfirmModal
+          onConfirm={() => { setShowLogoutModal(false); logoutKeycloak(); }}
+          onCancel={() => setShowLogoutModal(false)}
+        />
       )}
 
       {/* Notifications drawer (via portal) */}

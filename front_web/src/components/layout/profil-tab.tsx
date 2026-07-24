@@ -17,7 +17,7 @@ interface ProfilTabProps {
 
 export function ProfilTab({ showToast }: ProfilTabProps) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4 sm:gap-6 items-start">
+    <div className="grid grid-cols-1 gap-4 sm:gap-6 items-start">
       {/* Colonne principale */}
       <div className="min-w-0 space-y-5">
         {/* Section Configuration système - Mise en avant */}

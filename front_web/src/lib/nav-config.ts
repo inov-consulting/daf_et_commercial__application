@@ -6,6 +6,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   missions: 'Missions',
   pipeline: 'Pipeline',
   documents: 'Documents',
+  messagerie: 'Messagerie',
   'comptes-rendus': 'Comptes-rendus',
   offres: 'Offres',
   transport: 'Envois & voyages',

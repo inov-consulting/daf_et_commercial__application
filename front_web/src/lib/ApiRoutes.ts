@@ -113,6 +113,15 @@ export const ApiRoutes = {
   NOTIFICATIONS_DEVICE_REG:   `${BASE}/api/v1/notifications/devices/register`,
   NOTIFICATIONS_DEVICE_UNREG: `${BASE}/api/v1/notifications/devices/unregister`,
 
+  // ── WhatsApp / Messagerie ─────────────────────────────────────────────────
+  WHATSAPP_CONVERSATIONS:       `${BASE}/api/v1/whatsapp/conversations`,
+  WHATSAPP_CONVERSATION:        (id: string) => `${BASE}/api/v1/whatsapp/conversations/${id}`,
+  WHATSAPP_MESSAGES:            (convId: string) => `${BASE}/api/v1/whatsapp/conversations/${convId}/messages`,
+  WHATSAPP_CONVERSATIONS_START: `${BASE}/api/v1/whatsapp/conversations/start`,
+  WHATSAPP_REPLY:               (convId: string) => `${BASE}/api/v1/whatsapp/conversations/${convId}/reply`,
+  WHATSAPP_GENERATE_CR:         (convId: string) => `${BASE}/api/v1/whatsapp/conversations/${convId}/generate-cr`,
+  WHATSAPP_CR_LINK_PROSPECT:    (crId: string)   => `${BASE}/api/v1/compte-rendus/${crId}/link-prospect`,
+
   // ── App Config ───────────────────────────────────────────────────────────
   CONFIG_APP:            `${BASE}/api/v1/config/app`,
   CONFIG_APP_VALIDATORS: `${BASE}/api/v1/config/app/validators`,
