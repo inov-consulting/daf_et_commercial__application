@@ -149,39 +149,62 @@ async def search_company_web(
     city: str | None = None,
     website: str | None = None,
 ) -> str:
-    """Recherche des informations publiques sur une entreprise sur internet.
+    """Recherche GLOBALE sur internet pour collecter des informations publiques sur une entreprise.
+
+    Recherche partout sur le web (actualités, annuaires, presse, LinkedIn, etc.),
+    pas uniquement sur le site de l'entreprise. Le site officiel est utilisé
+    comme source complémentaire si disponible.
 
     Args:
         company_name: Nom de l'entreprise (obligatoire).
-        country: Pays de l'entreprise.
-        city: Ville de l'entreprise.
-        website: Site internet de l'entreprise (si connu).
+        country: Pays — affine la recherche géographiquement.
+        city: Ville — affine la recherche géographiquement.
+        website: Site officiel (optionnel) — enrichissement secondaire uniquement.
     """
-    query_parts = [company_name]
-    if city:
-        query_parts.append(city)
+    import re
+
+    # Requête centrée sur l'identité de l'entreprise dans son pays
+    query_parts = [f'"{company_name}"']
     if country:
         query_parts.append(country)
+    if city:
+        query_parts.append(city)
     query_parts.append("entreprise secteur activité")
     query = " ".join(query_parts)
 
+    parts: list[str] = []
+
+    # ── 1. Recherche internet globale ─────────────────────────────────────────
     if settings.tavily_api_key:
-        return await _search_tavily(query, company_name, website)
-    return await _search_duckduckgo(query, company_name, website)
+        web_result = await _search_tavily(query, company_name)
+    else:
+        web_result = await _search_ddg_html(query, company_name)
+
+    if web_result:
+        parts.append(web_result)
+
+    # ── 2. Site officiel (enrichissement optionnel) ───────────────────────────
+    if website:
+        site_content = await _fetch_website(website, company_name)
+        if site_content:
+            parts.append(site_content)
+
+    if not parts:
+        logger.warning("commercial_agent.no_web_data company=%s", company_name)
+        return f"Aucune information publique trouvée sur internet pour {company_name}."
+
+    return "\n\n---\n\n".join(parts)
 
 
-async def _search_tavily(query: str, company_name: str, website: str | None) -> str:
+async def _search_tavily(query: str, company_name: str) -> str:
+    """Recherche Tavily — parcourt l'intégralité du web (pas de restriction de domaine)."""
     payload: dict = {
         "api_key": settings.tavily_api_key,
         "query": query,
         "search_depth": "advanced",
-        "max_results": 5,
+        "max_results": 6,
         "include_answer": True,
     }
-    if website:
-        domain = website.replace("https://", "").replace("http://", "").split("/")[0]
-        payload["include_domains"] = [domain]
-
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post("https://api.tavily.com/search", json=payload)
@@ -189,67 +212,93 @@ async def _search_tavily(query: str, company_name: str, website: str | None) -> 
             data = resp.json()
     except Exception as exc:
         logger.warning("commercial_agent.tavily.failed company=%s: %s", company_name, exc)
-        return await _search_duckduckgo(query, company_name, website)
+        return await _search_ddg_html(query, company_name)
 
     parts: list[str] = []
     if data.get("answer"):
-        parts.append(f"Synthèse : {data['answer']}")
-    for r in data.get("results", [])[:4]:
-        content = r.get("content", "")[:400]
+        parts.append(f"Synthèse Tavily : {data['answer']}")
+    for r in data.get("results", [])[:5]:
+        content = r.get("content", "")[:500]
         if content:
-            parts.append(f"[{r.get('title', '')}] {content} (source: {r.get('url', '')})")
+            parts.append(f"[{r.get('title', '')}]\n{content}\n(source: {r.get('url', '')})")
 
-    return "\n\n".join(parts) if parts else f"Aucune information trouvée pour {company_name}."
+    return "\n\n".join(parts) if parts else ""
 
 
-async def _search_duckduckgo(query: str, company_name: str, website: str | None) -> str:
-    results: list[str] = []
+async def _search_ddg_html(query: str, company_name: str) -> str:
+    """Recherche DuckDuckGo HTML — vraie recherche web (pas l'Instant Answer API).
 
-    # 1. DuckDuckGo Instant Answer (Wikipedia/Wikidata — fonctionne surtout pour les grandes entreprises)
+    Utilise la version HTML allégée de DDG qui retourne de vrais résultats de recherche.
+    """
+    import re
+
     try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
+        async with httpx.AsyncClient(
+            timeout=20.0,
+            follow_redirects=True,
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                ),
+                "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
+            },
+        ) as client:
             resp = await client.get(
-                "https://api.duckduckgo.com/",
-                params={"q": query, "format": "json", "no_html": "1", "skip_disambig": "1"},
-                headers={"User-Agent": "Mozilla/5.0 PortaLis-CommercialAgent/1.0"},
+                "https://html.duckduckgo.com/html/",
+                params={"q": query, "kl": "fr-fr"},
             )
             resp.raise_for_status()
-            data = resp.json()
-        if data.get("AbstractText"):
-            results.append(f"Résumé Wikipedia : {data['AbstractText']}")
-        for topic in data.get("RelatedTopics", [])[:3]:
-            if isinstance(topic, dict) and topic.get("Text"):
-                results.append(topic["Text"][:300])
+            html = resp.text
     except Exception as exc:
-        logger.warning("commercial_agent.duckduckgo.failed company=%s: %s", company_name, exc)
+        logger.warning("commercial_agent.ddg_html.failed company=%s: %s", company_name, exc)
+        return ""
 
-    # 2. Site web officiel — scraping léger si disponible
-    if website:
-        try:
-            url = website if website.startswith("http") else f"https://{website}"
-            async with httpx.AsyncClient(
-                timeout=15.0,
-                follow_redirects=True,
-                headers={"User-Agent": "Mozilla/5.0 PortaLis-CommercialAgent/1.0"},
-            ) as client:
-                resp = await client.get(url)
-                if resp.status_code == 200:
-                    # Extrait uniquement le texte visible (supprime balises HTML grossièrement)
-                    import re
-                    text = re.sub(r"<[^>]+>", " ", resp.text)
-                    text = re.sub(r"\s+", " ", text).strip()[:3000]
-                    if text:
-                        results.append(f"Contenu site officiel ({website}) :\n{text}")
-        except Exception as exc:
-            logger.warning("commercial_agent.website_scrape.failed company=%s: %s", company_name, exc)
+    # Extraction des snippets de résultats (balises .result__snippet)
+    snippets = re.findall(r'class="result__snippet"[^>]*>(.*?)</a>', html, re.DOTALL)
+    titles = re.findall(r'class="result__a"[^>]*>(.*?)</a>', html, re.DOTALL)
+
+    results: list[str] = []
+    for title, snippet in zip(titles[:5], snippets[:5]):
+        title_clean = re.sub(r"<[^>]+>", "", title).strip()
+        snippet_clean = re.sub(r"<[^>]+>", "", snippet).strip()
+        if snippet_clean:
+            results.append(f"• {title_clean}\n  {snippet_clean}")
 
     if not results:
-        logger.warning("commercial_agent.no_web_data company=%s — Tavily non configuré", company_name)
-        return (
-            f"Aucune information publique trouvée pour {company_name}. "
-            f"Conseil : configurer TAVILY_API_KEY pour des résultats de qualité."
-        )
-    return "\n\n".join(results)
+        logger.warning("commercial_agent.ddg_html.no_results company=%s — configurer TAVILY_API_KEY", company_name)
+        return ""
+
+    return "Résultats de recherche web :\n" + "\n\n".join(results)
+
+
+async def _fetch_website(website: str, company_name: str) -> str:
+    """Récupère le contenu texte du site officiel de l'entreprise (enrichissement secondaire)."""
+    import re
+
+    try:
+        url = website if website.startswith("http") else f"https://{website}"
+        async with httpx.AsyncClient(
+            timeout=15.0,
+            follow_redirects=True,
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                ),
+            },
+        ) as client:
+            resp = await client.get(url)
+            if resp.status_code != 200:
+                return ""
+            text = re.sub(r"<[^>]+>", " ", resp.text)
+            text = re.sub(r"\s+", " ", text).strip()[:3000]
+            if len(text) < 100:
+                return ""
+            return f"Contenu site officiel ({website}) :\n{text}"
+    except Exception as exc:
+        logger.warning("commercial_agent.website_fetch.failed company=%s: %s", company_name, exc)
+        return ""
 
 
 # ── Tool 3 : save_company_insight ─────────────────────────────────────────────
