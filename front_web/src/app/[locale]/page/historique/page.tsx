@@ -25,7 +25,7 @@ export default function HistoriquePage() {
   const endIdx      = Math.min(filters.offset + filters.limit, total);
 
   return (
-    <div className="flex flex-col gap-5 p-5 md:p-6 min-h-full">
+    <div className="flex flex-col gap-5 p-5 md:p-6 min-h-full overflow-auto">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>

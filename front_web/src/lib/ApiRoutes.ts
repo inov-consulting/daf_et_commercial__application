@@ -117,9 +117,11 @@ export const ApiRoutes = {
   WHATSAPP_CONVERSATIONS:       `${BASE}/api/v1/whatsapp/conversations`,
   WHATSAPP_CONVERSATION:        (id: string) => `${BASE}/api/v1/whatsapp/conversations/${id}`,
   WHATSAPP_MESSAGES:            (convId: string) => `${BASE}/api/v1/whatsapp/conversations/${convId}/messages`,
+  WHATSAPP_STREAM:              (convId: string) => `${BASE}/api/v1/whatsapp/conversations/${convId}/stream`,
   WHATSAPP_CONVERSATIONS_START: `${BASE}/api/v1/whatsapp/conversations/start`,
   WHATSAPP_REPLY:               (convId: string) => `${BASE}/api/v1/whatsapp/conversations/${convId}/reply`,
   WHATSAPP_GENERATE_CR:         (convId: string) => `${BASE}/api/v1/whatsapp/conversations/${convId}/generate-cr`,
+  WHATSAPP_READ:                (convId: string) => `${BASE}/api/v1/whatsapp/conversations/${convId}/read`,
   WHATSAPP_CR_LINK_PROSPECT:    (crId: string)   => `${BASE}/api/v1/compte-rendus/${crId}/link-prospect`,
 
   // ── App Config ───────────────────────────────────────────────────────────

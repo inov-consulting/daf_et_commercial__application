@@ -72,7 +72,7 @@ export default function FicheCreancePage() {
   const totalRetard  = FACTURES.filter(f => f.statut === 'retard').reduce((s, f) => s + f.montant, 0);
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 mx-auto max-w-[1600px]">
+    <div className="p-3 sm:p-4 md:p-6">
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
         <button

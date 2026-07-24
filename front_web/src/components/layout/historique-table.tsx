@@ -54,7 +54,7 @@ export function HistoriqueTable({ logs, loading, onSelect }: HistoriqueTableProp
   }
 
   return (
-    <div className="rounded-xl border border-[var(--bd-def)] overflow-hidden">
+    <div className="rounded-xl border border-[var(--bd-def)]">
       <div style={{ overflowX: 'auto', overflowY: 'clip' }}>
         <table className="w-full table-fixed text-[13px]" style={{ minWidth: 860 }}>
           <colgroup>
@@ -146,7 +146,7 @@ export function HistoriqueTable({ logs, loading, onSelect }: HistoriqueTableProp
                   <td className="px-2 py-2.5 text-center">
                     <button
                       onClick={e => { e.stopPropagation(); onSelect(log); }}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--tx-3)] hover:text-[var(--p500)] hover:bg-[rgba(27,107,69,0.08)] transition-colors mx-auto"
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--tx-3)] hover:text-[var(--p500)] hover:bg-[rgba(27,107,69,0.08)] transition-colors"
                     >
                       <EyeIcon size={14} />
                     </button>

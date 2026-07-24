@@ -134,7 +134,7 @@ export default function TresoreriePage() {
   ];
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 mx-auto max-w-[1600px]">
+    <div className="p-3 sm:p-4 md:p-6">
       <FinSectionHeader
         title="Trésorerie nette"
         // secondaryAction={{ label: 'Exporter', icon: <DownloadSimpleIcon size={13} />, onClick: () => {} }}
