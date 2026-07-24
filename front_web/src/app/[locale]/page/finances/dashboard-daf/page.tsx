@@ -361,7 +361,7 @@ export default function DashboardDafPage() {
   const otherKpis   = dafAgentKpis.filter((k) => k.key !== 'daf_actions_priorite');
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 mx-auto max-w-[1600px]">
+    <div className="p-3 sm:p-4 md:p-6">
       <FinSectionHeader
         title="Dashboard DAF"
         secondaryAction={{

@@ -34,7 +34,7 @@ function fmtDate(iso: string) {
 
 function RunsSkeleton() {
   return (
-    <FinCard>
+    <FinCard className="w-full">
       <div className="flex items-center gap-2 mb-3">
         <div className="w-3.5 h-3.5 rounded bg-[var(--bg-sink)] animate-pulse" />
         <div className="h-3 w-20 bg-[var(--bg-sink)] rounded animate-pulse" />

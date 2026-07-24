@@ -195,7 +195,7 @@ export default function AlertesPage() {
   function resetFilters() { setFilterCat('all'); setFilterLevel('all'); }
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 mx-auto max-w-[1600px]">
+    <div className="p-3 sm:p-4 md:p-6">
 
       {/* Header */}
       <div className="flex items-start justify-between mb-4 sm:mb-6">

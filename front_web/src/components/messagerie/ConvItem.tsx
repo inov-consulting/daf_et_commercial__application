@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import type { WaConversation } from '@/redux/features/whatsapp/whatsappSlice';
+import type { WaConversation, WaMessage } from '@/redux/features/whatsapp/whatsappSlice';
 import { colorFromId, initials, formatTime, convName } from '@/lib/utils';
 
 // ── WhatsApp badge ─────────────────────────────────────────────────────────────
@@ -16,19 +16,59 @@ export function WhatsAppBadge() {
   );
 }
 
+// ── Delivery status icons (mini) ───────────────────────────────────────────────
+
+function StatusIcon({ status }: { status: string }) {
+  if (status === 'sending') return (
+    <svg viewBox="0 0 12 12" fill="none" className="w-[9px] h-[9px] flex-shrink-0 opacity-40">
+      <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeDasharray="8 4" />
+    </svg>
+  );
+  if (status === 'sent') return (
+    <svg viewBox="0 0 12 12" fill="none" className="w-[9px] h-[9px] flex-shrink-0 text-[var(--tx-3)]">
+      <path d="M2 6.5 5 9.5 10 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+  if (status === 'delivered' || status === 'read') return (
+    <svg viewBox="0 0 16 12" fill="none" className="w-[13px] h-[9px] flex-shrink-0">
+      <path d="M1 6.5 4 9.5 9 3.5"  stroke="#C9A227" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 6.5 8 9.5 13 3.5" stroke="#C9A227" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+  return null;
+}
+
 // ── Conversation list item ─────────────────────────────────────────────────────
 
 interface ConvItemProps {
-  conv:    WaConversation;
-  active:  boolean;
-  unread:  boolean;
-  onClick: () => void;
+  conv:     WaConversation;
+  active:   boolean;
+  unread:   boolean;
+  lastMsg?: WaMessage;
+  onClick:  () => void;
 }
 
-export function ConvItem({ conv, active, unread, onClick }: ConvItemProps) {
+export function ConvItem({ conv, active, unread, lastMsg, onClick }: ConvItemProps) {
   const name  = convName(conv);
   const color = colorFromId(conv.id);
   const done  = conv.status === 'closed';
+
+  // Préférer le message Redux (temps réel) ; fallback sur les champs enrichis de la conv
+  const direction = lastMsg?.direction        ?? conv.last_message_direction;
+  const msgType   = lastMsg?.message_type     ?? conv.last_message_type;
+  const msgBody   = lastMsg?.body             ?? conv.last_message_body;
+  const msgStatus = lastMsg?.delivery_status  ?? conv.last_message_delivery_status ?? '';
+
+  const isOut  = direction === 'outbound';
+  const status = msgStatus;
+
+  const preview = (direction != null)
+    ? msgType === 'audio'    ? 'Note vocale'
+    : msgType === 'image'    ? 'Photo'
+    : msgType === 'video'    ? 'Vidéo'
+    : msgType === 'document' ? 'Document'
+    : (msgBody || '…')
+    : null;
 
   return (
     <button
@@ -50,26 +90,35 @@ export function ConvItem({ conv, active, unread, onClick }: ConvItemProps) {
 
       <div className="flex-1 min-w-0">
         <div className="flex justify-between items-baseline gap-2 mb-[2px]">
-          <span className="text-[13px] font-semibold text-[var(--tx-1)] truncate">{name ? name : conv.display_phone_number}</span>
+          <span className="text-[13px] font-semibold text-[var(--tx-1)] truncate">
+            {name || conv.display_phone_number}
+          </span>
           <span className="text-[11px] text-[var(--tx-3)] flex-shrink-0 tabular-nums">
             {formatTime(conv.last_message_at)}
           </span>
         </div>
+
         <div className="flex items-center justify-between gap-2">
-          <p className={cn(
-            'text-[12px] truncate',
-            unread ? 'font-semibold text-[var(--tx-1)]' : 'text-[var(--tx-3)]',
-          )}>
-            {conv.message_count > 0
-              ? `${conv.message_count} message${conv.message_count > 1 ? 's' : ''}`
-              : 'Aucun message'}
-          </p>
-          {unread && <span className="w-[7px] h-[7px] rounded-full bg-[var(--p500)] flex-shrink-0" />}
-          {done && !unread && (
-            <span className="text-[10px] font-bold text-[var(--p500)] bg-[#E6F3EC] px-1.5 py-[2px] rounded-full flex-shrink-0 whitespace-nowrap">
-              Terminé
-            </span>
-          )}
+          <div className="flex items-center gap-[4px] min-w-0">
+            {isOut && <StatusIcon status={status} />}
+            <p className={cn(
+              'text-[12px] truncate',
+              unread ? 'font-semibold text-[var(--tx-1)]' : 'text-[var(--tx-3)]',
+            )}>
+              {preview ?? (conv.message_count > 0
+                ? `${conv.message_count} message${conv.message_count > 1 ? 's' : ''}`
+                : 'Aucun message')}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {unread && <span className="w-[7px] h-[7px] rounded-full bg-[var(--p500)]" />}
+            {done && !unread && (
+              <span className="text-[10px] font-bold text-[var(--p500)] bg-[#E6F3EC] px-1.5 py-[2px] rounded-full whitespace-nowrap">
+                Terminé
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </button>

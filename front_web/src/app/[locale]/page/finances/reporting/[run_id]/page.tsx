@@ -292,7 +292,7 @@ export default function RunDetailPage() {
   const snap = run.snapshots[0] ?? null;
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 mx-auto max-w-[1400px]">
+    <div className="p-3 sm:p-4 md:p-6">
 
       {/* Header */}
       <div className="flex items-start gap-3 mb-5">

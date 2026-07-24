@@ -192,7 +192,7 @@ export default function ProspectsPage() {
   const modalError = modal.mode === 'create' ? createError : updateError;
 
   return (
-    <div className="p-3 sm:p-5 md:p-7 pb-16 w-full max-w-full overflow-hidden">
+    <div className="p-3 sm:p-5 md:p-7 pb-16 w-full max-w-full overflow-auto">
 
       <ProspectFormModal
         open={modal.open}

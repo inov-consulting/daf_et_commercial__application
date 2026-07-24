@@ -30,7 +30,7 @@ type NavItem = {
 
 type NavSection = { title: string; items: NavItem[] };
 
-function buildNav(locale: string, prospectCount?: number, alerteCount?: number): NavSection[] {
+function buildNav(locale: string, prospectCount?: number, alerteCount?: number, unreadMessages?: number): NavSection[] {
   return [
     {
       title: 'PRINCIPAL',
@@ -58,7 +58,7 @@ function buildNav(locale: string, prospectCount?: number, alerteCount?: number):
     {
       title: 'OPÉRATIONS',
       items: [
-        { href: `/${locale}/page/messagerie`, label: 'Messagerie', Icon: ChatCircleDotsIcon, badge: 2 },
+        { href: `/${locale}/page/messagerie`, label: 'Messagerie', Icon: ChatCircleDotsIcon, badge: unreadMessages || undefined },
         // { href: `/${locale}/page/documents`, label: 'Documents', Icon: FilesIcon },
         { href: `/${locale}/page/comptes-rendus`, label: 'Comptes-rendus', Icon: FileTextIcon },
       ],
@@ -112,7 +112,8 @@ export default function Sidebar({ locale, open, onClose, user, rawUser }: Sideba
   const prospectTotal    = useAppSelector(s => s.prospects.total);
   const proposedActions  = useAppSelector(s => s.daf.proposedActions);
   const pendingCount     = proposedActions.filter(a => a.status === 'pending').length;
-  const sections = buildNav(locale, prospectTotal || undefined, pendingCount || undefined);
+  const unreadMessages   = useAppSelector(s => s.whatsapp.conversations.reduce((acc, c) => acc + (c.unread_count ?? 0), 0));
+  const sections = buildNav(locale, prospectTotal || undefined, pendingCount || undefined, unreadMessages || undefined);
   const sidebarRef = useRef<HTMLElement>(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 const isFirstRender = useRef(true);
