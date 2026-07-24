@@ -40,6 +40,10 @@ class WhatsAppConversationOrm(Model):
     # active   — conversation en cours (fenêtre 24h ouverte)
     # archived — plus de 24h sans message, hors fenêtre WhatsApp
 
+    unread_count = fields.IntField(default=0)
+    # Nombre de messages entrants non lus. Incrémenté à chaque message reçu,
+    # remis à 0 par POST /conversations/{id}/read.
+
     last_message_at = fields.DatetimeField(null=True)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)

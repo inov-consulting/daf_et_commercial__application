@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.error_handlers import register_error_handlers
-from app.api.v1 import ai_config, api_logs, auth, chat, companies, compte_rendus, daf, groups, health, kpi, prospects, transport, users
+from app.api.v1 import ai_config, api_logs, auth, chat, commercial_agent, commercial_predictions, companies, compte_rendus, daf, groups, health, kpi, prospects, transport, users
 from app.api.v1 import app_config, monitoring, notifications, transport_offers, whatsapp
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
@@ -38,6 +38,9 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     from app.infrastructure.scheduler.daf_scheduler import daf_scheduler
     await daf_scheduler.start()
 
+    from app.infrastructure.scheduler.commercial_scheduler import commercial_scheduler
+    await commercial_scheduler.start()
+
     import asyncio as _asyncio
     from app.infrastructure.monitoring.collector import start_monitoring_loop
     _asyncio.create_task(start_monitoring_loop(interval=2.0))
@@ -45,6 +48,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     try:
         yield
     finally:
+        await commercial_scheduler.stop()
         await daf_scheduler.stop()
         await close_db()
         logger.info("backend.shutdown")
@@ -95,6 +99,8 @@ app.include_router(api_logs.router, prefix=API_V1_PREFIX)
 app.include_router(compte_rendus.router, prefix=API_V1_PREFIX)
 app.include_router(chat.router, prefix=API_V1_PREFIX)
 app.include_router(prospects.router, prefix=API_V1_PREFIX)
+app.include_router(commercial_agent.router, prefix=API_V1_PREFIX)
+app.include_router(commercial_predictions.router, prefix=API_V1_PREFIX)
 app.include_router(transport.router, prefix=API_V1_PREFIX)
 app.include_router(transport_offers.router, prefix=API_V1_PREFIX)
 app.include_router(app_config.router, prefix=API_V1_PREFIX)

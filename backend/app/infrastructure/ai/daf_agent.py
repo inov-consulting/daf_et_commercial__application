@@ -534,7 +534,7 @@ async def run_daf_cycle(trigger: str = "scheduled") -> UUID:
     try:
         # Modèle par défaut depuis la config applicative
         _, model_domain, _ = await AiConfigRepository().get()
-        llm = await _get_llm(model_domain.provider, model_domain.name)
+        llm = await _get_llm(model_domain.provider, model_domain.name, context="daf")
 
         tools = _build_tools_for_run(ctx)
         agent = create_react_agent(model=llm, tools=tools, prompt=DAF_SYSTEM_PROMPT)

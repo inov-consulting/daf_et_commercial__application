@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     # et que NTP n'est pas parfaitement synchronisé (60s est la valeur standard).
     jwt_leeway_seconds: int = 60
 
+    
     # ── Database ───────────────────────────────────────────────────────
     app_database_url: str
 
@@ -85,6 +86,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     openai_api_key: str = ""
     groq_api_key: str = ""
+    tavily_api_key: str = ""
     deepseek_api_key: str = ""
     deepseek_base_url: str = ""
     # Modèle par défaut pour l'agent. Le provider est déduit automatiquement
