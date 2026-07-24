@@ -5,7 +5,7 @@ Pour ajouter un tool :
 2. L'enregistrer dans BUILTIN_REGISTRY (ou CUSTOM_REGISTRY)
 C'est tout — le serveur le charge automatiquement au démarrage.
 """
-
+ 
 import logging
 
 from mcp.server.fastmcp import FastMCP
