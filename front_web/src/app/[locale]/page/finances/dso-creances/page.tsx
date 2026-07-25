@@ -145,15 +145,15 @@ const BALANCE_AGEE_MOCK: BalanceAgeeItem[] = [
 
 function KpiSkeleton() {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6 w-full">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
       {[1, 2, 3, 4].map((i) => (
         <div
           key={i}
-          className="bg-white rounded-2xl border border-[var(--bd-def)] p-4 sm:p-5 animate-pulse"
+          className="bg-white rounded-2xl border border-[var(--bd-def)] p-4 sm:p-5 animate-pulse w-full"
         >
-          <div className="h-3 w-24 bg-[#EEF2F7] rounded mb-3" />
-          <div className="h-7 w-16 bg-[#EEF2F7] rounded mb-2" />
-          <div className="h-2.5 w-32 bg-[#EEF2F7] rounded" />
+          <div className="h-3 w-3/4 bg-[#EEF2F7] rounded mb-3" />
+          <div className="h-7 w-1/3 bg-[#EEF2F7] rounded mb-2" />
+          <div className="h-2.5 w-2/3 bg-[#EEF2F7] rounded" />
         </div>
       ))}
     </div>

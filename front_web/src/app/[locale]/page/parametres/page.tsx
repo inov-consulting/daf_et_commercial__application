@@ -149,7 +149,7 @@ export default function ParametresPage() {
   return (
     <div className="relative flex flex-col min-h-screen">
       {/* Contenu principal avec padding-bottom pour l'ActionBar */}
-      <div className="flex-1 overflow-auto pb-20 px-4 sm:px-5 md:px-6 pt-5 md:pt-6">
+      <div className="flex-1 pb-20 px-4 sm:px-5 md:px-6 pt-5 md:pt-6">
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
           <div>
