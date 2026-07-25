@@ -10,6 +10,7 @@ import { Responsables } from "./responsables";
 import { ValidatorsSection } from "./validators-section";
 import { SmtpSection } from "./smtp-section";
 import { KpiGroupsSection } from "./kpi-groups-section";
+import { GroupsManagementSection } from "./groups-management-section";
 
 interface ProfilTabProps {
   showToast: (message: string, type?: 'success' | 'error' | 'warning' | 'info') => void;
@@ -39,6 +40,7 @@ export function ProfilTab({ showToast }: ProfilTabProps) {
               <ValidatorsSection showToast={showToast} />
             </div>
             <SmtpSection showToast={showToast} />
+            <GroupsManagementSection showToast={showToast} />
             <KpiGroupsSection showToast={showToast} />
           </div>
         </div>

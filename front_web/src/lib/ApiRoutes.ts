@@ -23,7 +23,15 @@ export const ApiRoutes = {
   COMPANY_LIST:    `${BASE}/api/v1/companies`,
 
   // ── Group ────────────────────────────────────────────────────────
-  GROUP_LIST:    `${BASE}/api/v1/groups`,
+  GROUP_LIST:         `${BASE}/api/v1/groups`,
+  GROUP_CREATE:       `${BASE}/api/v1/groups`,
+  GROUP_DELETE:       (id: string) => `${BASE}/api/v1/groups/${id}`,
+  GROUP_ROLES:        (id: string) => `${BASE}/api/v1/groups/${id}/roles`,
+  GROUP_ROLES_ASSIGN: (id: string) => `${BASE}/api/v1/groups/${id}/roles`,
+  GROUP_ROLE_DELETE:  (id: string, role: string) => `${BASE}/api/v1/groups/${id}/roles/${role}`,
+
+  // ── Permissions (realm roles) ────────────────────────────────────
+  PERMISSIONS_LIST:   `${BASE}/api/v1/permissions`,
 
   // ── Chat & Vocal ─────────────────────────────────────────────────
   CHAT_MESSAGE:     `${BASE}/api/v1/chat`,
