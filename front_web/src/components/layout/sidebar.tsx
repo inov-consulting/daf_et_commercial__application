@@ -10,7 +10,7 @@ import {
   FilesIcon, FileTextIcon, DiamondIcon, ChartLineIcon, DownloadSimpleIcon,
   UsersIcon, GearIcon, SignOutIcon, XIcon, ClockCounterClockwiseIcon,
   FolderOpenIcon, BankIcon, CurrencyCircleDollarIcon, ReceiptIcon,
-  BellIcon, ChartBarIcon, WalletIcon, ChatCircleDotsIcon,
+  BellIcon, ChartBarIcon, WalletIcon, ChatCircleDotsIcon, ActivityIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { ApiUser, User as UserType } from '@/types/user_type';
@@ -93,6 +93,7 @@ function buildNav(locale: string, prospectCount?: number, alerteCount?: number, 
       items: [
         { href: `/${locale}/page/utilisateurs`, label: 'Utilisateurs', Icon: UsersIcon },
         { href: `/${locale}/page/historique`, label: 'Historique des activités', Icon: ClockCounterClockwiseIcon },
+        { href: `/${locale}/page/monitoring`, label: 'Monitoring', Icon: ActivityIcon },
         { href: `/${locale}/page/parametres`, label: 'Paramètres', Icon: GearIcon },
       ],
     },

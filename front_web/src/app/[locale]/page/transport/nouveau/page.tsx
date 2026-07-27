@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeftIcon, CaretRightIcon, SparkleIcon, CircleNotchIcon } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/alert';
 import { PostData } from '@/lib/ApiService';
 import { ApiRoutes } from '@/lib/ApiRoutes';
@@ -94,17 +93,31 @@ export default function NouveauDossierPage() {
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   function set(key: keyof typeof form, val: string) {
     setForm(f => ({ ...f, [key]: val }));
   }
 
-  const isValid = form.client_name.trim() && form.origine.trim() &&
-    form.destination.trim() && form.mode && form.entite;
+  function clearFieldError(key: string) {
+    setFieldErrors(p => { const n = { ...p }; delete n[key]; return n; });
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!isValid || saving) return;
+    if (saving) return;
+    const errs: Record<string, string> = {};
+    if (!form.client_name.trim())  errs.client_name  = 'Le nom du client est requis.';
+    if (!form.origine.trim())      errs.origine      = 'L\'origine est requise.';
+    if (!form.destination.trim())  errs.destination  = 'La destination est requise.';
+    if (!form.mode)                errs.mode         = 'Le mode de transport est requis.';
+    if (!form.entite)              errs.entite       = 'L\'entité de facturation est requise.';
+    if (form.date_depart && form.date_livraison && form.date_livraison < form.date_depart)
+      errs.date_livraison = 'La date de livraison doit être postérieure à la date de départ.';
+    if (form.ca_estime && Number(form.ca_estime) < 0)
+      errs.ca_estime = 'Le CA estimé ne peut pas être négatif.';
+    if (Object.keys(errs).length > 0) { setFieldErrors(errs); return; }
+    setFieldErrors({});
 
     setSaving(true);
     setError(null);
@@ -205,11 +218,11 @@ export default function NouveauDossierPage() {
               <input
                 type="text"
                 value={form.client_name}
-                onChange={e => set('client_name', e.target.value)}
+                onChange={e => { set('client_name', e.target.value); clearFieldError('client_name'); }}
                 placeholder="Nom du client"
-                required
-                className={inputBaseCls}
+                className={fieldErrors.client_name ? `${inputBaseCls} border-red-400` : inputBaseCls}
               />
+              {fieldErrors.client_name && <p className="text-[11px] text-red-500 mt-0.5">{fieldErrors.client_name}</p>}
             </Field>
             <Field label="Interlocuteur">
               <input
@@ -238,28 +251,27 @@ export default function NouveauDossierPage() {
               <input
                 type="text"
                 value={form.origine}
-                onChange={e => set('origine', e.target.value)}
+                onChange={e => { set('origine', e.target.value); clearFieldError('origine'); }}
                 placeholder="Ville, Pays"
-                required
-                className={inputBaseCls}
+                className={fieldErrors.origine ? `${inputBaseCls} border-red-400` : inputBaseCls}
               />
+              {fieldErrors.origine && <p className="text-[11px] text-red-500 mt-0.5">{fieldErrors.origine}</p>}
             </Field>
             <Field label="Destination" required>
               <input
                 type="text"
                 value={form.destination}
-                onChange={e => set('destination', e.target.value)}
+                onChange={e => { set('destination', e.target.value); clearFieldError('destination'); }}
                 placeholder="Ville, Pays"
-                required
-                className={inputBaseCls}
+                className={fieldErrors.destination ? `${inputBaseCls} border-red-400` : inputBaseCls}
               />
+              {fieldErrors.destination && <p className="text-[11px] text-red-500 mt-0.5">{fieldErrors.destination}</p>}
             </Field>
             <Field label="Mode de transport" required>
               <select
-                className={selectBaseCls}
+                className={fieldErrors.mode ? `${selectBaseCls} border-red-400` : selectBaseCls}
                 value={form.mode}
-                onChange={e => set('mode', e.target.value)}
-                required
+                onChange={e => { set('mode', e.target.value); clearFieldError('mode'); }}
                 style={{ backgroundImage: selectArrow }}
               >
                 <option value="">Sélectionner…</option>
@@ -267,6 +279,7 @@ export default function NouveauDossierPage() {
                 <option value="multimodal">Multimodal</option>
                 <option value="routier">Routier</option>
               </select>
+              {fieldErrors.mode && <p className="text-[11px] text-red-500 mt-0.5">{fieldErrors.mode}</p>}
             </Field>
             <Field label="Incoterm">
               <select
@@ -312,39 +325,41 @@ export default function NouveauDossierPage() {
                 className={inputBaseCls}
                 type="date"
                 value={form.date_depart}
-                onChange={e => set('date_depart', e.target.value)}
+                onChange={e => { set('date_depart', e.target.value); clearFieldError('date_livraison'); }}
               />
             </Field>
             <Field label="Date prévue livraison">
               <input
-                className={inputBaseCls}
+                className={fieldErrors.date_livraison ? `${inputBaseCls} border-red-400` : inputBaseCls}
                 type="date"
                 value={form.date_livraison}
-                onChange={e => set('date_livraison', e.target.value)}
+                onChange={e => { set('date_livraison', e.target.value); clearFieldError('date_livraison'); }}
               />
+              {fieldErrors.date_livraison && <p className="text-[11px] text-red-500 mt-0.5">{fieldErrors.date_livraison}</p>}
             </Field>
             <Field label="Entité facturation" required>
               <select
-                className={selectBaseCls}
+                className={fieldErrors.entite ? `${selectBaseCls} border-red-400` : selectBaseCls}
                 value={form.entite}
-                onChange={e => set('entite', e.target.value)}
-                required
+                onChange={e => { set('entite', e.target.value); clearFieldError('entite'); }}
                 style={{ backgroundImage: selectArrow }}
               >
                 <option value="">Sélectionner…</option>
                 <option value="SN">🇸🇳 PortaLis Sénégal</option>
                 <option value="CI">🇨🇮 PortaLis Côte d&apos;Ivoire</option>
               </select>
+              {fieldErrors.entite && <p className="text-[11px] text-red-500 mt-0.5">{fieldErrors.entite}</p>}
             </Field>
             <Field label="CA estimé (XOF)">
               <input
                 type="number"
                 value={form.ca_estime}
-                onChange={e => set('ca_estime', e.target.value)}
+                onChange={e => { set('ca_estime', e.target.value); clearFieldError('ca_estime'); }}
                 placeholder="Ex : 18 500 000"
                 min={0}
-                className={inputBaseCls}
+                className={fieldErrors.ca_estime ? `${inputBaseCls} border-red-400` : inputBaseCls}
               />
+              {fieldErrors.ca_estime && <p className="text-[11px] text-red-500 mt-0.5">{fieldErrors.ca_estime}</p>}
             </Field>
           </div>
 
@@ -370,7 +385,7 @@ export default function NouveauDossierPage() {
               type="submit"
               variant="gradient"
               size="md"
-              disabled={!isValid || saving}
+              disabled={saving}
               className="w-full sm:w-auto"
               style={{ boxShadow: saving ? 'none' : '0 2px 12px rgba(107,53,201,0.3)', minWidth: 160 }}
             >

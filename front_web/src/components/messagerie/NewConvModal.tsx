@@ -12,9 +12,10 @@ interface NewConvModalProps {
 }
 
 export function NewConvModal({ starting, startError, onStart, onClose }: NewConvModalProps) {
-  const [phone,   setPhone]   = useState('');
-  const [name,    setName]    = useState('');
-  const [message, setMessage] = useState('');
+  const [phone,      setPhone]      = useState('');
+  const [name,       setName]       = useState('');
+  const [message,    setMessage]    = useState('');
+  const [phoneError, setPhoneError] = useState<string | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -26,6 +27,11 @@ export function NewConvModal({ starting, startError, onStart, onClose }: NewConv
     e.preventDefault();
     const cleaned = phone.replace(/\D/g, '');
     if (!cleaned) return;
+    if (cleaned.length < 7 || cleaned.length > 15) {
+      setPhoneError('Numéro invalide — saisir entre 7 et 15 chiffres (ex: 22890123456)');
+      return;
+    }
+    setPhoneError(null);
     onStart(cleaned, message.trim() || undefined, name.trim() || undefined);
   }
 
@@ -69,12 +75,15 @@ export function NewConvModal({ starting, startError, onStart, onClose }: NewConv
                 type="tel"
                 placeholder="22890123456"
                 value={phone}
-                onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
+                onChange={e => { setPhone(e.target.value.replace(/\D/g, '')); setPhoneError(null); }}
                 className="flex-1 bg-transparent border-none outline-none text-[12.5px] text-[var(--tx-1)] placeholder:text-[var(--tx-3)] font-mono"
                 required
               />
             </div>
-            <p className="text-[11px] text-[var(--tx-3)] mt-1">Numéro international sans +, ex: 22890123456</p>
+            {phoneError
+              ? <p className="text-[11px] text-error mt-1">{phoneError}</p>
+              : <p className="text-[11px] text-[var(--tx-3)] mt-1">Numéro international sans +, ex: 22890123456</p>
+            }
           </div>
 
           {/* Contact name */}

@@ -17,8 +17,20 @@ export function SendOfferModal({ offer, onClose, onSend }: SendOfferModalProps) 
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
   async function handleSend() {
-    if (!recipient.trim() || !agreed) return;
+    if (!agreed) return;
+    if (channel === 'email') {
+      if (!recipient.trim()) { setError('L\'adresse email est requise.'); return; }
+      if (!EMAIL_RE.test(recipient.trim())) { setError('Format d\'email invalide (ex: contact@client.com).'); return; }
+    } else {
+      const digits = recipient.replace(/\D/g, '');
+      if (digits.length < 7 || digits.length > 15) {
+        setError('Numéro invalide — saisir un numéro international complet (7-15 chiffres).');
+        return;
+      }
+    }
     setSending(true);
     setError(null);
     try {
@@ -146,7 +158,7 @@ export function SendOfferModal({ offer, onClose, onSend }: SendOfferModalProps) 
           </button>
           <button
             onClick={handleSend}
-            disabled={!recipient.trim() || !agreed || sending}
+            disabled={!agreed || sending}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ background: 'var(--grad)' }}
           >
