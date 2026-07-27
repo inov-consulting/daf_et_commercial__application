@@ -17,6 +17,10 @@ class CompanyOrm(BaseModel):
     erp_id: int | None = fields.IntField(null=True)
     parent_company_id: UUID | None = fields.UUIDField(null=True)
     is_active: bool = fields.BooleanField(default=True)
+    email: str | None = fields.CharField(max_length=255, null=True, default=None)
+    phone: str | None = fields.CharField(max_length=50, null=True, default=None)
+    website: str | None = fields.CharField(max_length=512, null=True, default=None)
+    address: str | None = fields.TextField(null=True, default=None)
 
     class Meta:
         table = "companies"
@@ -32,6 +36,10 @@ class CompanyOrm(BaseModel):
             erp_id=self.erp_id,
             parent_company_id=self.parent_company_id,
             is_active=self.is_active,
+            email=self.email,
+            phone=self.phone,
+            website=self.website,
+            address=self.address,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -47,6 +55,10 @@ class CompanyOrm(BaseModel):
             erp_id=company.erp_id,
             parent_company_id=company.parent_company_id,
             is_active=company.is_active,
+            email=company.email,
+            phone=company.phone,
+            website=company.website,
+            address=company.address,
         )
 
     def apply_domain(self, company: Company) -> None:
@@ -58,3 +70,7 @@ class CompanyOrm(BaseModel):
         self.erp_id = company.erp_id
         self.parent_company_id = company.parent_company_id
         self.is_active = company.is_active
+        self.email = company.email
+        self.phone = company.phone
+        self.website = company.website
+        self.address = company.address
