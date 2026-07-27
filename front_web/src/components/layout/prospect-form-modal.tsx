@@ -183,7 +183,9 @@ export function ProspectFormModal({
   function validatePhone() {
     if (!form.phone.trim()) { setPhoneError(null); return; }
     const digits = form.phone.replace(/\D/g, '');
-    setPhoneError(digits.length >= 6 ? null : 'Numéro trop court (min. 6 chiffres)');
+    if (digits.length < 7) { setPhoneError('Numéro trop court (min. 7 chiffres)'); return; }
+    if (digits.length > 15) { setPhoneError('Numéro trop long (max. 15 chiffres)'); return; }
+    setPhoneError(null);
   }
 
   /* ── Submit ── */
@@ -193,11 +195,20 @@ export function ProspectFormModal({
       setLocalError("Veuillez sélectionner ou saisir le nom d'une entreprise.");
       return;
     }
+    if (mode === 'create' && !form.opportunity_name.trim()) {
+      setLocalError("Le nom de l'opportunité est requis.");
+      return;
+    }
+    if (form.expected_revenue !== undefined && form.expected_revenue < 0) {
+      setLocalError('Le revenu attendu ne peut pas être négatif.');
+      return;
+    }
 
     const emailOk = !form.email.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim());
-    const phoneOk = !form.phone.trim() || form.phone.replace(/\D/g, '').length >= 6;
+    const digits  = form.phone.replace(/\D/g, '');
+    const phoneOk = !form.phone.trim() || (digits.length >= 7 && digits.length <= 15);
     if (!emailOk) setEmailError('Adresse e-mail invalide');
-    if (!phoneOk) setPhoneError('Numéro trop court (min. 6 chiffres)');
+    if (!phoneOk) setPhoneError(digits.length < 7 ? 'Numéro trop court (min. 7 chiffres)' : 'Numéro trop long (max. 15 chiffres)');
     if (!emailOk || !phoneOk) return;
 
     setLocalError(null);
@@ -406,11 +417,15 @@ export function ProspectFormModal({
 
           {/* ── Opportunité ── */}
           <div>
-            <label className={lbl}>Nom de l&apos;opportunité</label>
+            <label className={lbl}>
+              Nom de l&apos;opportunité
+              {mode === 'create' && <span className="text-red-500 ml-0.5">*</span>}
+            </label>
             <input
               value={form.opportunity_name}
-              onChange={e => setField('opportunity_name', e.target.value)}
+              onChange={e => { setField('opportunity_name', e.target.value); setLocalError(null); }}
               placeholder="Ex : Audit DAF Q3"
+              maxLength={150}
               className={inp}
             />
           </div>
@@ -423,6 +438,7 @@ export function ProspectFormModal({
                 value={form.contact_name}
                 onChange={e => setField('contact_name', e.target.value)}
                 placeholder="Nom du contact"
+                maxLength={100}
                 className={inp}
               />
             </div>
@@ -549,8 +565,9 @@ export function ProspectFormModal({
               type="number"
               min={0}
               value={form.expected_revenue ?? ''}
-              onChange={e => setField('expected_revenue', e.target.value ? Number(e.target.value) : undefined)}
+              onChange={e => { setField('expected_revenue', e.target.value ? Number(e.target.value) : undefined); setLocalError(null); }}
               placeholder="0"
+              min={0}
               className={inp}
             />
           </div>
@@ -564,6 +581,7 @@ export function ProspectFormModal({
                 onChange={e => setField('portalis_notes', e.target.value)}
                 placeholder="Notes internes, remarques..."
                 rows={3}
+                maxLength={2000}
                 className={cn(
                   'w-full px-3 py-2 rounded-lg border border-[var(--bd-def)] text-sm text-[var(--tx-1)] bg-white',
                   'focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20',

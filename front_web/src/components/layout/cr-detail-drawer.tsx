@@ -73,7 +73,7 @@ function fmtDate(iso: string) {
 }
 
 function displayName(cr: GlobalCR): string {
-  return cr.parent.company_name || cr.parent.name || '–';
+  return cr.parent?.company_name ?? cr.parent?.name ?? '–';
 }
 
 const CRDetailDrawer = ({ crId, items, downloading, onClose, onDownload }: {
@@ -202,22 +202,22 @@ const CRDetailDrawer = ({ crId, items, downloading, onClose, onDownload }: {
           <div className="flex-shrink-0 border-t border-[var(--bd-def)] px-6 py-3 bg-[var(--bg-sink)] flex items-center gap-6 flex-wrap">
             <div>
               <p className="text-[10px] text-[var(--tx-3)] font-semibold uppercase tracking-wide">Parent</p>
-              <p className="text-[12px] font-medium text-[var(--tx-1)] capitalize">{cr.parent_type} · {cr.parent.name}</p>
+              <p className="text-[12px] font-medium text-[var(--tx-1)] capitalize">{cr.parent_type} · {cr.parent?.name}</p>
             </div>
             <div>
               <p className="text-[10px] text-[var(--tx-3)] font-semibold uppercase tracking-wide">Notes utilisées</p>
               <p className="text-[12px] font-medium text-[var(--tx-1)]">{cr.note_ids === null ? 0 : cr.note_ids.length}</p>
             </div>
-            {cr.parent.email && (
+            {cr.parent?.email && (
               <div>
                 <p className="text-[10px] text-[var(--tx-3)] font-semibold uppercase tracking-wide">Email</p>
-                <p className="text-[12px] font-medium text-[var(--tx-1)]">{cr.parent.email}</p>
+                <p className="text-[12px] font-medium text-[var(--tx-1)]">{cr.parent?.email}</p>
               </div>
             )}
-            {cr.parent.phone && (
+            {cr.parent?.phone && (
               <div>
                 <p className="text-[10px] text-[var(--tx-3)] font-semibold uppercase tracking-wide">Téléphone</p>
-                <p className="text-[12px] font-medium text-[var(--tx-1)]">{cr.parent.phone}</p>
+                <p className="text-[12px] font-medium text-[var(--tx-1)]">{cr.parent?.phone}</p>
               </div>
             )}
           </div>

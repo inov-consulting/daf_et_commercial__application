@@ -72,7 +72,7 @@ function toInitials(name: string): string {
 }
 
 function displayName(cr: GlobalCR): string {
-  return cr.parent.company_name || cr.parent.name || '–';
+  return cr.parent?.company_name ?? cr.parent?.name ?? '–';
 }
 
 /* ── Page ───────────────────────────────────────────────────────── */
@@ -159,8 +159,8 @@ export default function ComptesRendusPage() {
       const q = search.toLowerCase();
       r = r.filter(cr =>
         displayName(cr).toLowerCase().includes(q) ||
-        cr.parent.email?.toLowerCase().includes(q) ||
-        cr.parent.name?.toLowerCase().includes(q) ||
+        cr.parent?.email?.toLowerCase().includes(q) ||
+        cr.parent?.name?.toLowerCase().includes(q) ||
         cr.parent_type?.toLowerCase().includes(q),
       );
     }
@@ -365,8 +365,8 @@ export default function ComptesRendusPage() {
 
                 {/* Contact */}
                 <div className="min-w-0">
-                  <div className="text-[13px] text-[var(--tx-1)] font-medium truncate">{cr.parent.email || '–'}</div>
-                  <div className="text-[11px] text-[var(--tx-3)] mt-0.5 truncate">{cr.parent.phone || ''}</div>
+                  <div className="text-[13px] text-[var(--tx-1)] font-medium truncate">{cr.parent?.email || '–'}</div>
+                  <div className="text-[11px] text-[var(--tx-3)] mt-0.5 truncate">{cr.parent?.phone || ''}</div>
                 </div>
 
                 {/* Date */}

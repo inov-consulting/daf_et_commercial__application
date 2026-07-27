@@ -38,6 +38,9 @@ export function SmtpSection({ showToast }: SmtpSectionProps) {
   const [form, setForm] = useState<SmtpForm>(EMPTY_SMTP);
   const [dirty, setDirty] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [smtpErrors, setSmtpErrors] = useState<Record<string, string>>({});
+
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
   useEffect(() => {
     if (!config) dispatch(fetchAppConfig());
@@ -56,6 +59,16 @@ export function SmtpSection({ showToast }: SmtpSectionProps) {
   }
 
   async function handleSave() {
+    const errs: Record<string, string> = {};
+    if (!form.host.trim()) errs.host = 'L\'hôte SMTP est requis.';
+    if (!form.port || form.port < 1 || form.port > 65535) errs.port = 'Port invalide (1–65535).';
+    if (!form.from_email.trim()) {
+      errs.from_email = 'L\'email expéditeur est requis.';
+    } else if (!EMAIL_RE.test(form.from_email.trim())) {
+      errs.from_email = 'Format d\'email invalide.';
+    }
+    if (Object.keys(errs).length > 0) { setSmtpErrors(errs); return; }
+    setSmtpErrors({});
     const result = await dispatch(updateSmtp(form));
     if (updateSmtp.fulfilled.match(result)) {
       showToast('Configuration SMTP enregistrée', 'success');
@@ -94,20 +107,21 @@ export function SmtpSection({ showToast }: SmtpSectionProps) {
             <Field
               label="Hôte SMTP"
               icon={<SphereIcon size={13} className="text-[var(--tx-3)]" />}
+              error={smtpErrors.host}
             >
               <input
                 type="text"
                 value={form.host}
-                onChange={e => set('host', e.target.value)}
+                onChange={e => { set('host', e.target.value); setSmtpErrors(p => { const n = { ...p }; delete n.host; return n; }); }}
                 placeholder="smtp.example.com"
                 className={inputCls}
               />
             </Field>
-            <Field label="Port">
+            <Field label="Port" error={smtpErrors.port}>
               <input
                 type="number"
                 value={form.port}
-                onChange={e => set('port', Number(e.target.value))}
+                onChange={e => { set('port', Number(e.target.value)); setSmtpErrors(p => { const n = { ...p }; delete n.port; return n; }); }}
                 min={1}
                 max={65535}
                 className={inputCls}
@@ -155,11 +169,11 @@ export function SmtpSection({ showToast }: SmtpSectionProps) {
 
           {/* Expéditeur */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="Email expéditeur">
+            <Field label="Email expéditeur" error={smtpErrors.from_email}>
               <input
                 type="email"
                 value={form.from_email}
-                onChange={e => set('from_email', e.target.value)}
+                onChange={e => { set('from_email', e.target.value); setSmtpErrors(p => { const n = { ...p }; delete n.from_email; return n; }); }}
                 placeholder="noreply@portalis.app"
                 className={inputCls}
               />
@@ -237,10 +251,12 @@ const inputCls = 'w-full px-2.5 py-1.5 text-[12px] border border-[#DDE5EF] round
 function Field({
   label,
   icon,
+  error,
   children,
 }: {
   label: string;
   icon?: React.ReactNode;
+  error?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -250,6 +266,7 @@ function Field({
         {label}
       </label>
       {children}
+      {error && <p className="text-[10px] text-red-500">{error}</p>}
     </div>
   );
 }
