@@ -39,6 +39,7 @@ export function UserFormModal({ mode, user, rawUser, groups, onClose, onSubmit }
   const avatarInputId = useId();
   const [ddOpen, setDdOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Recherche entreprises avec debounce
   const [companySearch, setCompanySearch] = useState('');
@@ -96,15 +97,32 @@ export function UserFormModal({ mode, user, rawUser, groups, onClose, onSubmit }
       ? groups
       : GROUPES_LIST.map(name => ({ id: name, name, path: '' }));
 
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setErrors(prev => ({ ...prev, avatar: 'La photo doit faire moins de 2 Mo.' }));
+      e.target.value = '';
+      return;
+    }
+    setErrors(prev => { const n = { ...prev }; delete n.avatar; return n; });
     const reader = new FileReader();
     reader.onload = () => setAvatarPreview(reader.result as string);
     reader.readAsDataURL(file);
   }
 
   async function handleSubmit() {
+    const errs: Record<string, string> = {};
+    if (!email.trim()) {
+      errs.email = 'L\'adresse email est requise.';
+    } else if (!EMAIL_RE.test(email.trim())) {
+      errs.email = 'Format d\'email invalide.';
+    }
+    if (!role) errs.role = 'Veuillez sélectionner un rôle.';
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    setErrors({});
     setSubmitting(true);
     const result = await onSubmit({
       nom, prenom, email,
@@ -115,8 +133,6 @@ export function UserFormModal({ mode, user, rawUser, groups, onClose, onSubmit }
       group_ids: selectedGroupIds,
       avatar_url: avatarPreview ?? undefined,
     });
-    // Si ok : le parent ferme la modal → démontage naturel
-    // Si erreur : le parent affiche le toast, on relâche juste le bouton
     if (!result.ok) setSubmitting(false);
   }
 
@@ -193,6 +209,9 @@ export function UserFormModal({ mode, user, rawUser, groups, onClose, onSubmit }
                 Supprimer
               </button>
             )}
+            {errors.avatar && (
+              <p className="text-[11px] text-error col-span-full">{errors.avatar}</p>
+            )}
           </div>
 
           {/* Nom + Prénom */}
@@ -212,13 +231,16 @@ export function UserFormModal({ mode, user, rawUser, groups, onClose, onSubmit }
           </div>
 
           {/* Email */}
-          <Input
-            label="Adresse email professionnelle"
-            placeholder="email@entreprise.com"
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-          />
+          <div>
+            <Input
+              label="Adresse email professionnelle"
+              placeholder="email@entreprise.com"
+              type="email"
+              value={email}
+              onChange={e => { setEmail(e.target.value); setErrors(p => { const n = { ...p }; delete n.email; return n; }); }}
+            />
+            {errors.email && <p className="text-[11px] text-error mt-1">{errors.email}</p>}
+          </div>
 
           {/* Rôle */}
           <div className="flex flex-col gap-[6px]">
@@ -238,6 +260,7 @@ export function UserFormModal({ mode, user, rawUser, groups, onClose, onSubmit }
                 <option key={r.value} value={r.value}>{r.label}</option>
               ))}
             </select>
+            {errors.role && <p className="text-[11px] text-error mt-1">{errors.role}</p>}
           </div>
 
           {/* Entreprise(s) — infinite scroll */}
