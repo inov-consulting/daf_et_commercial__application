@@ -154,6 +154,118 @@ async def get_user(
 
 
 @router.patch(
+    "/{user_id}/status",
+    dependencies=[Depends(require_permission("user:update"))],
+)
+async def set_user_status(
+    user_id: UUID,
+    user_repo: UserRepoDep,
+    company_repo: CompanyRepoDep,
+    is_active: bool,
+) -> UserOut:
+    """Active ou désactive un utilisateur (synchronisé dans Keycloak).
+
+    Passe `is_active=true` pour activer, `is_active=false` pour désactiver.
+    L'état est répercuté à la fois en base locale et dans Keycloak (`enabled`).
+    """
+    user = await user_repo.get_by_id(user_id)
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Utilisateur introuvable")
+
+    user.is_active = is_active
+    user = await user_repo.update(user)
+
+    kc = KeycloakAdminClient()
+    try:
+        await kc.set_user_enabled(str(user_id), enabled=is_active)
+    except RuntimeError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    kc_user = await kc.get_user_by_id(str(user_id))
+    if kc_user:
+        user.email = kc_user.get("email", "")
+        user.first_name = kc_user.get("firstName", "")
+        user.last_name = kc_user.get("lastName", "")
+
+    companies: list[CompanyOut] = []
+    for cid in user.company_ids:
+        c = await company_repo.get_by_id(cid)
+        if c:
+            companies.append(CompanyOut.from_domain(c))
+
+    kc_groups = await kc.get_user_groups(str(user_id))
+    return UserOut.from_domain(user, companies=companies, group_ids=[g["id"] for g in kc_groups])
+
+
+@router.post(
+    "/{user_id}/avatar",
+    dependencies=[Depends(require_permission("user:update"))],
+)
+async def upload_user_avatar(
+    user_id: UUID,
+    user_repo: UserRepoDep,
+    company_repo: CompanyRepoDep,
+    file: UploadFile = File(...),
+) -> UserOut:
+    """Upload ou remplace l'image de profil d'un utilisateur.
+
+    Accepte JPEG, PNG, WEBP (max 5 Mo). L'image est automatiquement
+    compressée en WEBP 400×400 px avant stockage dans MinIO.
+    """
+    _ALLOWED = {"image/jpeg", "image/png", "image/webp"}
+    _MAX_BYTES = 5 * 1024 * 1024
+
+    if (file.content_type or "") not in _ALLOWED:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Format non supporté — utilisez JPEG, PNG ou WEBP.",
+        )
+
+    data = await file.read()
+    if len(data) > _MAX_BYTES:
+        raise HTTPException(
+            status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            "Fichier trop volumineux (max 5 Mo).",
+        )
+
+    user = await user_repo.get_by_id(user_id)
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Utilisateur introuvable")
+
+    storage = StorageService()
+    compressed, ct = StorageService.compress_image(
+        data, max_size=(400, 400), quality=85, output_format="WEBP"
+    )
+    # Clé déterministe → écrase automatiquement l'ancienne image
+    url = await storage.upload(
+        compressed,
+        filename=f"{user_id}.webp",
+        content_type=ct,
+        folder="avatars",
+        unique=False,
+    )
+
+    user.avatar_url = url
+    user = await user_repo.update(user)
+
+    kc = KeycloakAdminClient()
+    kc_user = await kc.get_user_by_id(str(user_id))
+    if kc_user:
+        user.email = kc_user.get("email", "")
+        user.first_name = kc_user.get("firstName", "")
+        user.last_name = kc_user.get("lastName", "")
+
+    companies: list[CompanyOut] = []
+    for cid in user.company_ids:
+        c = await company_repo.get_by_id(cid)
+        if c:
+            companies.append(CompanyOut.from_domain(c))
+
+    kc_groups = await kc.get_user_groups(str(user_id))
+    return UserOut.from_domain(user, companies=companies, group_ids=[g["id"] for g in kc_groups])
+
+
+@router.patch(
     "/{user_id}",
     dependencies=[Depends(require_permission("user:update"))],
 )

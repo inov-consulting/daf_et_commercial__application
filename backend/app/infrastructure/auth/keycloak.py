@@ -436,6 +436,20 @@ class KeycloakAdminClient:
                 raise RuntimeError(f"Utilisateur '{user_id}' introuvable")
             resp.raise_for_status()
 
+    async def set_user_enabled(self, user_id: str, enabled: bool) -> None:
+        """Active ou désactive un utilisateur dans Keycloak (champ `enabled`)."""
+        existing = await self.get_user_by_id(user_id)
+        if not existing:
+            raise RuntimeError(f"Utilisateur '{user_id}' introuvable dans Keycloak")
+        merged = {**existing, "enabled": enabled}
+        headers = await self._auth_header()
+        url = f"{self._base_url}/admin/realms/{self._realm}/users/{user_id}"
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.put(url, headers=headers, json=merged)
+            if resp.status_code == 404:
+                raise RuntimeError(f"Utilisateur '{user_id}' introuvable dans Keycloak")
+            resp.raise_for_status()
+
     async def get_user_groups(self, user_id: str) -> list[dict]:
         """Récupère les groupes d'un utilisateur."""
         headers = await self._auth_header()
