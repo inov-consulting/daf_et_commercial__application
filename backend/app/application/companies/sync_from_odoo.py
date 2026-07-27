@@ -28,11 +28,27 @@ class SyncCompaniesFromOdooUseCase:
             if domain_c is None:
                 continue  # mapping impossible (pays/devise inconnus)
 
+            # 1. Cherche par UUID dérivé de l'ID Odoo (cas normal)
             existing = await self._repo.get_by_id(domain_c.id)
             if existing is not None:
                 await self._repo.update(domain_c)
-            else:
-                await self._repo.add(domain_c)
+                synced.append(domain_c)
+                continue
+
+            # 2. Fallback : cherche par nom (entreprise créée localement avant sync)
+            existing_by_name = await self._repo.get_by_name(domain_c.name)
+            if existing_by_name is not None:
+                # Rattache l'erp_id Odoo à l'enregistrement local existant
+                existing_by_name.erp_id = domain_c.erp_id
+                existing_by_name.country = domain_c.country
+                existing_by_name.country_name = domain_c.country_name
+                existing_by_name.default_currency = domain_c.default_currency
+                await self._repo.update(existing_by_name)
+                synced.append(existing_by_name)
+                continue
+
+            # 3. Nouvelle entreprise inconnue localement → ajout
+            await self._repo.add(domain_c)
             synced.append(domain_c)
 
         return synced

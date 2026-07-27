@@ -15,6 +15,11 @@ class CreateCompanyInput:
     country: Country
     default_currency: Currency
     parent_company_id: UUID | None = None
+    erp_id: int | None = None
+    email: str | None = None
+    phone: str | None = None
+    website: str | None = None
+    address: str | None = None
 
 
 class CreateCompanyUseCase:
@@ -36,5 +41,11 @@ class CreateCompanyUseCase:
             country=data.country,
             default_currency=data.default_currency,
             parent_company_id=data.parent_company_id,
+            email=data.email,
+            phone=data.phone,
+            website=data.website,
+            address=data.address,
         )
+        if data.erp_id is not None:
+            company.erp_id = data.erp_id
         return await self._company_repo.add(company)

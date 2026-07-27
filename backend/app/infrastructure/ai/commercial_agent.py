@@ -89,15 +89,21 @@ async def _odoo_execute(model: str, method: str, args: list, kwargs: dict | None
 
 
 async def list_clients_to_enrich(limit: int = 20) -> str:
-    """Liste les clients Odoo à enrichir, en priorisant les moins récemment traités.
+    """Liste les clients Odoo qui ont besoin d'un enrichissement.
 
-    Stratégie : clients jamais enrichis d'abord (ai_insight_last_update null),
-    puis les plus anciennement mis à jour — garantit que le scheduler tourne
-    de façon utile même après un premier cycle complet.
+    Règle : un client est éligible seulement si :
+      - il n'a jamais été enrichi (ai_insight_last_update est null), OU
+      - son dernier enrichissement date de plus de 30 jours.
+
+    Les clients enrichis il y a moins de 30 jours sont ignorés pour économiser
+    les crédits de recherche. Résultats triés du plus ancien au plus récent.
 
     Args:
         limit: Nombre maximum de clients à retourner.
     """
+    from datetime import timedelta
+    thirty_days_ago = (datetime.now(UTC) - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
+
     try:
         partners: list[dict] = await _odoo_execute(  # type: ignore[assignment]
             "res.partner",
@@ -105,6 +111,9 @@ async def list_clients_to_enrich(limit: int = 20) -> str:
             [[
                 ["is_company", "=", True],
                 ["customer_rank", ">", 0],
+                "|",
+                ["ai_insight_last_update", "=", False],
+                ["ai_insight_last_update", "<", thirty_days_ago],
             ]],
             {
                 "fields": [
@@ -120,9 +129,9 @@ async def list_clients_to_enrich(limit: int = 20) -> str:
         return f"Erreur lors de la récupération des clients Odoo : {exc}"
 
     if not partners:
-        return "Aucun client trouvé (aucune entreprise avec customer_rank > 0 dans Odoo)."
+        return "Aucun client à enrichir pour le moment (tous les clients ont été mis à jour dans les 30 derniers jours)."
 
-    lines = [f"## {len(partners)} client(s) à traiter\n"]
+    lines = [f"## {len(partners)} client(s) à enrichir\n"]
     for p in partners:
         country = p.get("country_id")
         country_name = country[1] if isinstance(country, list | tuple) else str(country or "")
