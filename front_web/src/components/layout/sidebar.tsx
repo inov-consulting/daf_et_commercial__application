@@ -11,6 +11,7 @@ import {
   UsersIcon, GearIcon, SignOutIcon, XIcon, ClockCounterClockwiseIcon,
   FolderOpenIcon, BankIcon, CurrencyCircleDollarIcon, ReceiptIcon,
   BellIcon, ChartBarIcon, WalletIcon, ChatCircleDotsIcon, ActivityIcon,
+  CrosshairIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { ApiUser, User as UserType } from '@/types/user_type';
@@ -68,6 +69,19 @@ function buildNav(locale: string, prospectCount?: number, alerteCount?: number, 
       items: [
         { href: `/${locale}/page/transport`, label: 'Envois & voyages', Icon: FolderOpenIcon },
         { href: `/${locale}/page/offres`, label: 'Offres', Icon: DiamondIcon },
+        {
+          href: `/${locale}/page/predictions`,
+          label: 'Prédictions',
+          Icon: CrosshairIcon,
+          customBadge: (
+            <span
+              className="min-w-5 h-[18px] px-1.5 rounded-full text-[10px] font-bold flex items-center justify-center"
+              style={{ background: '#EFEAFD', color: '#6C4CE0' }}
+            >
+              Nouveau
+            </span>
+          ),
+        },
       ],
     },
     {
@@ -252,18 +266,20 @@ const isFirstRender = useRef(true);
                     {open && (
                       <>
                         <span className="flex-1 text-[13px] font-medium truncate">{label}</span>
-                        {badge !== undefined && (
-                          <span
-                            className={cn(
-                              'min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center',
-                              badgeDanger
-                                ? 'bg-error text-white'
-                                : 'bg-[rgba(27,107,69,0.1)] text-[var(--p500)]',
+                        {customBadge !== undefined
+                          ? customBadge
+                          : badge !== undefined && (
+                              <span
+                                className={cn(
+                                  'min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center',
+                                  badgeDanger
+                                    ? 'bg-error text-white'
+                                    : 'bg-[rgba(27,107,69,0.1)] text-[var(--p500)]',
+                                )}
+                              >
+                                {badge}
+                              </span>
                             )}
-                          >
-                            {badge}
-                          </span>
-                        )}
                       </>
                     )}
                   </Link>
