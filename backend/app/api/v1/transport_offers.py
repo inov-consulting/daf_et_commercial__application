@@ -392,7 +392,13 @@ async def get_offer(offer_id: UUID) -> OfferDocumentOut:
         except json.JSONDecodeError:
             pass
 
-    return _doc_to_out(offer_id, offer.status, doc, generated_at=offer.document_generated_at)
+    return _doc_to_out(
+        offer_id,
+        offer.status,
+        doc,
+        generated_at=offer.document_generated_at,
+        collected_data=offer.collected_data,
+    )
 
 
 @router.get("/", dependencies=_read_deps)
@@ -528,7 +534,9 @@ def _doc_to_out(
     status: str,
     doc: dict,
     generated_at=None,
+    collected_data: dict | None = None,
 ) -> OfferDocumentOut:
+    cd = collected_data or {}
     sections = [
         OfferDocumentSection(heading=s.get("heading", ""), content=s.get("content", ""))
         for s in doc.get("sections", [])
@@ -537,29 +545,41 @@ def _doc_to_out(
         PricingLine(label=p.get("label", ""), value=p.get("value", ""), unit=p.get("unit", ""))
         for p in doc.get("pricing", [])
     ]
+
+    # Route : document généré en priorité, sinon collected_data
     route_raw = doc.get("route") or {}
+    route = OfferRoute(
+        origin=route_raw.get("origin") or cd.get("origin"),
+        destination=route_raw.get("destination") or cd.get("destination"),
+        transport_mode=route_raw.get("transport_mode") or cd.get("transport_mode"),
+        vehicle_type=route_raw.get("vehicle_type") or cd.get("vehicle_type"),
+        planned_date=route_raw.get("planned_date") or cd.get("planned_date"),
+    ) if (route_raw or any(cd.get(k) for k in ("origin", "destination", "transport_mode"))) else None
+
+    # Client : document généré en priorité, sinon collected_data
     client_raw = doc.get("client") or {}
+    client = OfferClient(
+        name=client_raw.get("name") or cd.get("client_name"),
+        odoo_partner_id=client_raw.get("odoo_partner_id") or cd.get("odoo_partner_id"),
+    ) if (client_raw or cd.get("client_name") or cd.get("odoo_partner_id")) else None
+
+    # Titre synthétique depuis collected_data si le document n'en a pas
+    title = doc.get("title")
+    if not title and cd:
+        parts = [p for p in [cd.get("client_name"), cd.get("product_description")] if p]
+        title = " — ".join(parts) if parts else None
 
     return OfferDocumentOut(
         offer_id=offer_id,
         status=status,
-        title=doc.get("title"),
+        title=title,
         reference=doc.get("reference"),
-        date=doc.get("date"),
-        validity_days=doc.get("validity_days"),
+        date=doc.get("date") or cd.get("planned_date"),
+        validity_days=doc.get("validity_days") or cd.get("validity_days"),
         sections=sections,
         pricing=pricing,
-        route=OfferRoute(
-            origin=route_raw.get("origin"),
-            destination=route_raw.get("destination"),
-            transport_mode=route_raw.get("transport_mode"),
-            vehicle_type=route_raw.get("vehicle_type"),
-            planned_date=route_raw.get("planned_date"),
-        ) if route_raw else None,
-        client=OfferClient(
-            name=client_raw.get("name"),
-            odoo_partner_id=client_raw.get("odoo_partner_id"),
-        ) if client_raw else None,
+        route=route,
+        client=client,
         footer=doc.get("footer"),
         document_generated_at=generated_at,
         parse_error=doc.get("parse_error", False),
