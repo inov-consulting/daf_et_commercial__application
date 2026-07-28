@@ -421,360 +421,6 @@ export default function DsoCreancesPage() {
               />
             </div>
           ) : null}
-
-          {/* Factures clients impayées */}
-          <FinCard padding={false}>
-            <div className="px-4 sm:px-5 pt-4 pb-2">
-              <FinCardHeader
-                title="Factures clients impayées"
-                badge={
-                  <span className="text-[10px] font-semibold text-[#DC2626] bg-[rgba(239,68,68,.1)] px-2 py-0.5 rounded-full">
-                    {nbClientRetard} en retard
-                  </span>
-                }
-                action={facturesClients.length > 0 ? "Exporter" : undefined}
-                onAction={
-                  facturesClients.length > 0 ? exportFacturesCsv : undefined
-                }
-              />
-            </div>
-
-            {catalogLoading && facturesClients.length === 0 ? (
-              <div className="flex items-center justify-center h-32">
-                <SpinnerGapIcon
-                  size={22}
-                  className="animate-spin text-[var(--tx-3)]"
-                />
-              </div>
-            ) : facturesClients.length === 0 ? (
-              <p className="text-center text-[12px] text-[var(--tx-3)] italic py-8">
-                Aucune facture client impayée.
-              </p>
-            ) : (
-              <table className="w-full text-xs table-fixed">
-                <thead>
-                  <tr className="border-t border-b border-[var(--bd-def)] bg-[var(--bg-sink)]">
-                    <th className="w-[40px] px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-[var(--tx-3)] text-left">
-                      #
-                    </th>
-                    <th className="px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-[var(--tx-3)] text-left">
-                      Client
-                    </th>
-                    <th className="w-[110px] px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-[var(--tx-3)] text-right">
-                      N° Facture
-                    </th>
-                    <th className="w-[120px] px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-[var(--tx-3)] text-right">
-                      Montant dû
-                    </th>
-                    <th className="w-[95px] px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-[var(--tx-3)] text-right">
-                      Échéance
-                    </th>
-                    <th className="w-[65px] px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-[var(--tx-3)] text-right">
-                      Retard
-                    </th>
-                    <th className="w-[90px] px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-[var(--tx-3)] text-right">
-                      Statut
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--bd-def)]">
-                  {facturesClients.map((f, i) => {
-                    const status = getFactureStatus(f.jours_retard);
-                    const s = FACTURE_STATUS[status];
-                    const pct = Math.round(
-                      (f.montant / maxMontantClient) * 100,
-                    );
-                    return (
-                      <tr
-                        key={f.numero}
-                        className="hover:bg-[var(--bg-sink)] transition-colors"
-                      >
-                        {/* # */}
-                        <td className="px-4 py-2.5 text-[var(--tx-3)] font-mono text-[11px] text-left">
-                          {i + 1}
-                        </td>
-
-                        {/* Client - avec barre de progression */}
-                        <td className="px-4 py-2.5">
-                          <div className="min-w-0">
-                            <p className="font-semibold text-[var(--tx-1)] text-[12px] truncate">
-                              {f.client}
-                            </p>
-                            <div className="mt-1.5 h-[3px] bg-[var(--bg-sink)] rounded-full overflow-hidden w-full">
-                              <div
-                                className="h-full rounded-full bg-[#F97316] transition-all"
-                                style={{ width: `${pct}%` }}
-                              />
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* N° Facture */}
-                        <td className="px-4 py-2.5 text-right font-mono text-[var(--tx-3)] text-[11px]">
-                          {f.numero}
-                        </td>
-
-                        {/* Montant dû */}
-                        <td className="px-4 py-2.5 text-right font-mono font-semibold text-[var(--tx-1)] text-[11px]">
-                          {fmtSolde(f.montant)}
-                        </td>
-
-                        {/* Échéance */}
-                        <td className="px-4 py-2.5 text-right text-[var(--tx-2)] text-[11px]">
-                          {fmtIsoDate(f.echeance)}
-                        </td>
-
-                        {/* Retard */}
-                        <td
-                          className={cn(
-                            "px-4 py-2.5 text-right font-semibold text-[11px]",
-                            f.jours_retard > 0
-                              ? "text-[#DC2626]"
-                              : "text-[var(--tx-3)]",
-                          )}
-                        >
-                          {f.jours_retard > 0 ? `+${f.jours_retard}j` : "—"}
-                        </td>
-
-                        {/* Statut */}
-                        <td className="px-4 py-2.5 text-right">
-                          <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold">
-                            <span
-                              className={cn(
-                                "w-[6px] h-[6px] rounded-full flex-shrink-0",
-                                s.dot,
-                              )}
-                            />
-                            <span className={s.text}>{s.label}</span>
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t-2 border-[var(--bd-def)] bg-[var(--bg-sink)] font-bold">
-                    <td colSpan={3} className="px-4 py-3 text-sm">
-                      Total ({facturesClients.length} facture
-                      {facturesClients.length > 1 ? "s" : ""})
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-[#DC2626]">
-                      {fmtSolde(totalFacturesClient)}
-                    </td>
-                    <td colSpan={3} />
-                  </tr>
-                </tfoot>
-              </table>
-            )}
-          </FinCard>
-
-          {/* Actions proposées */}
-          <FinCard padding={false}>
-            <div className="px-4 sm:px-5 pt-4 pb-3 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 min-w-0">
-                <h3 className="font-space-grotesk text-sm font-semibold text-[var(--tx-1)]">
-                  Actions proposées par l&apos;agent DAF
-                </h3>
-                {criticalCount > 0 ? (
-                  <span className="text-[10px] font-semibold text-[#DC2626] bg-[rgba(239,68,68,.1)] px-2 py-0.5 rounded-full flex-shrink-0">
-                    {criticalCount} critique{criticalCount > 1 ? "s" : ""}
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-[var(--tx-3)] bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded px-1.5 py-0.5 flex-shrink-0">
-                    {actions.length} action{actions.length !== 1 ? "s" : ""}
-                  </span>
-                )}
-              </div>
-              {actions.length > 0 && (
-                <button
-                  onClick={() =>
-                    router.push(`/${locale}/page/finances/alertes`)
-                  }
-                  className="text-[11px] font-medium text-[var(--p500)] hover:underline flex-shrink-0 whitespace-nowrap"
-                >
-                  Vue complète
-                </button>
-              )}
-            </div>
-
-            {proposedActionsLoading && actions.length === 0 && (
-              <div className="divide-y divide-[var(--bd-def)] border-t border-[var(--bd-def)]">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-3 px-4 py-4 animate-pulse"
-                  >
-                    <div className="flex-1 space-y-2">
-                      <div className="h-3 w-48 bg-[#EEF2F7] rounded" />
-                      <div className="h-2.5 w-64 bg-[#EEF2F7] rounded" />
-                    </div>
-                    <div className="h-6 w-16 bg-[#EEF2F7] rounded-full" />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {!proposedActionsLoading && actions.length === 0 && (
-              <div className="border-t border-[var(--bd-def)] py-10 text-center">
-                <CheckIcon
-                  size={28}
-                  className="mx-auto mb-2 text-[var(--ok500)] opacity-60"
-                />
-                <p className="text-[12px] text-[var(--tx-3)]">
-                  Aucune action en attente
-                </p>
-              </div>
-            )}
-
-            {actions.length > 0 && (
-              <>
-                <div className="overflow-x-auto border-t border-[var(--bd-def)]">
-                  <table className="w-full text-[12px]">
-                    <thead>
-                      <tr className="bg-[var(--bg-sink)] text-[var(--tx-3)] text-left">
-                        <th className="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap w-[80px]">
-                          Priorité
-                        </th>
-                        <th className="px-3 sm:px-4 py-2.5 font-semibold">
-                          Titre
-                        </th>
-                        <th className="px-3 sm:px-4 py-2.5 font-semibold hidden md:table-cell">
-                          Description
-                        </th>
-                        <th className="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap hidden sm:table-cell w-[100px]">
-                          Date
-                        </th>
-                        <th className="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap w-[90px]">
-                          Statut
-                        </th>
-                        <th className="px-3 sm:px-4 py-2.5 font-semibold text-right w-[130px]">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--bd-def)]">
-                      {paginatedActions.map((action) => {
-                        const p =
-                          PRIORITY_STYLE[action.priority] ?? PRIORITY_STYLE.low;
-                        const s =
-                          STATUS_STYLE[action.status] ?? STATUS_STYLE.pending;
-                        const isDeciding = decidingId === action.id;
-                        return (
-                          <tr
-                            key={action.id}
-                            className="hover:bg-[var(--bg-sink)] transition-colors"
-                          >
-                            <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
-                              <span
-                                className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-                                style={{
-                                  background: p.bg,
-                                  color: p.text,
-                                  border: `1px solid ${p.border}`,
-                                }}
-                              >
-                                {p.label}
-                              </span>
-                            </td>
-                            <td className="px-3 sm:px-4 py-3">
-                              <p className="font-semibold text-[var(--tx-1)] leading-snug line-clamp-2">
-                                {action.title}
-                              </p>
-                            </td>
-                            <td className="px-3 sm:px-4 py-3 hidden md:table-cell">
-                              <p className="text-[var(--tx-2)] line-clamp-2 max-w-[200px]">
-                                {action.description}
-                              </p>
-                            </td>
-                            <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-[var(--tx-3)] hidden sm:table-cell">
-                              {fmtDate(action.proposed_at)}
-                            </td>
-                            <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
-                              <span
-                                className="font-semibold text-[11px]"
-                                style={{ color: s.text }}
-                              >
-                                {s.label}
-                              </span>
-                            </td>
-                            <td className="px-3 sm:px-4 py-3">
-                              <div className="flex items-center gap-1.5 justify-end">
-                                <button
-                                  onClick={() => setDetailAction(action)}
-                                  className="h-7 w-7 rounded-lg text-[11px] flex items-center justify-center text-[var(--tx-3)] border border-[var(--bd-def)] hover:bg-[var(--bg-sink)] transition-colors"
-                                  title="Voir détails"
-                                >
-                                  <EyeIcon size={12} />
-                                </button>
-                                {action.status === "pending" && (
-                                  <>
-                                    <button
-                                      onClick={() => handleApprove(action.id)}
-                                      disabled={isDeciding}
-                                      className="h-7 w-7 sm:w-auto sm:px-2.5 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 bg-[rgba(16,185,129,.1)] text-[var(--ok600)] hover:bg-[rgba(16,185,129,.2)] disabled:opacity-50 transition-colors"
-                                      title="Valider"
-                                    >
-                                      {isDeciding ? (
-                                        <SpinnerGapIcon
-                                          size={12}
-                                          className="animate-spin"
-                                        />
-                                      ) : (
-                                        <CheckIcon size={12} weight="bold" />
-                                      )}
-                                      <span className="hidden sm:inline">
-                                        Valider
-                                      </span>
-                                    </button>
-                                    <button
-                                      onClick={() => handleReject(action.id)}
-                                      disabled={isDeciding}
-                                      className="h-7 w-7 sm:w-auto sm:px-2.5 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 bg-[rgba(239,68,68,.08)] text-[#DC2626] hover:bg-[rgba(239,68,68,.15)] disabled:opacity-50 transition-colors"
-                                      title="Rejeter"
-                                    >
-                                      <XIcon size={12} weight="bold" />
-                                      <span className="hidden sm:inline">
-                                        Rejeter
-                                      </span>
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Pagination */}
-                {pageCount > 1 && (
-                  <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--bd-def)]">
-                    <button
-                      onClick={() => setActionPage((p) => Math.max(0, p - 1))}
-                      disabled={actionPage === 0}
-                      className="h-7 px-3 rounded-lg text-[11px] font-semibold bg-[var(--bg-sink)] border border-[var(--bd-def)] text-[var(--tx-2)] hover:bg-[var(--bd-def)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Précédent
-                    </button>
-                    <span className="text-[11px] text-[var(--tx-3)]">
-                      {actionPage + 1} / {pageCount}
-                    </span>
-                    <button
-                      onClick={() =>
-                        setActionPage((p) => Math.min(pageCount - 1, p + 1))
-                      }
-                      disabled={actionPage >= pageCount - 1}
-                      className="h-7 px-3 rounded-lg text-[11px] font-semibold bg-[var(--bg-sink)] border border-[var(--bd-def)] text-[var(--tx-2)] hover:bg-[var(--bd-def)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Suivant
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-          </FinCard>
         </div>
 
         {/* Colonne droite - Sidebar */}
@@ -860,6 +506,358 @@ export default function DsoCreancesPage() {
             </div>
           </FinCard>
         </div>
+      </div>
+
+      <div className="flex flex-col gap-4 sm:gap-5 min-w-0">
+        {/* Factures clients impayées */}
+        <FinCard padding={false}>
+          <div className="px-4 sm:px-5 pt-4 pb-2">
+            <FinCardHeader
+              title="Factures clients impayées"
+              badge={
+                <span className="text-[10px] font-semibold text-[#DC2626] bg-[rgba(239,68,68,.1)] px-2 py-0.5 rounded-full">
+                  {nbClientRetard} en retard
+                </span>
+              }
+              action={facturesClients.length > 0 ? "Exporter" : undefined}
+              onAction={
+                facturesClients.length > 0 ? exportFacturesCsv : undefined
+              }
+            />
+          </div>
+
+          {catalogLoading && facturesClients.length === 0 ? (
+            <div className="flex items-center justify-center h-32">
+              <SpinnerGapIcon
+                size={22}
+                className="animate-spin text-[var(--tx-3)]"
+              />
+            </div>
+          ) : facturesClients.length === 0 ? (
+            <p className="text-center text-[12px] text-[var(--tx-3)] italic py-8">
+              Aucune facture client impayée.
+            </p>
+          ) : (
+            <table className="w-full text-xs table-fixed">
+              <thead>
+                <tr className="border-t border-b border-[var(--bd-def)] bg-[var(--bg-sink)]">
+                  <th className="w-[40px] px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-[var(--tx-3)] text-left">
+                    #
+                  </th>
+                  <th className="px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-[var(--tx-3)] text-left">
+                    Client
+                  </th>
+                  <th className="px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-[var(--tx-3)] text-right">
+                    N° Facture
+                  </th>
+                  <th className="px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-[var(--tx-3)] text-right">
+                    Montant dû
+                  </th>
+                  <th className="px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-[var(--tx-3)] text-right">
+                    Échéance
+                  </th>
+                  <th className="px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-[var(--tx-3)] text-right">
+                    Retard
+                  </th>
+                  <th className="px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-[var(--tx-3)] text-right">
+                    Statut
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--bd-def)]">
+                {facturesClients.map((f, i) => {
+                  const status = getFactureStatus(f.jours_retard);
+                  const s = FACTURE_STATUS[status];
+                  const pct = Math.round((f.montant / maxMontantClient) * 100);
+                  return (
+                    <tr
+                      key={f.numero}
+                      className="hover:bg-[var(--bg-sink)] transition-colors"
+                    >
+                      {/* # */}
+                      <td className="px-4 py-2.5 text-[var(--tx-3)] font-mono text-[11px] text-left">
+                        {i + 1}
+                      </td>
+
+                      {/* Client - avec barre de progression */}
+                      <td className="px-4 py-2.5">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-[var(--tx-1)] text-[12px] truncate" title={f.client}>
+                            {f.client}
+                          </p>
+                          <div className="mt-1.5 h-[3px] bg-[var(--bg-sink)] rounded-full overflow-hidden w-full">
+                            <div
+                              className="h-full rounded-full bg-[#F97316] transition-all"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* N° Facture */}
+                      <td className="px-4 py-2.5 text-right font-mono text-[var(--tx-3)] text-[11px]">
+                        {f.numero}
+                      </td>
+
+                      {/* Montant dû */}
+                      <td className="px-4 py-2.5 text-right font-mono font-semibold text-[var(--tx-1)] text-[11px]">
+                        {fmtSolde(f.montant)}
+                      </td>
+
+                      {/* Échéance */}
+                      <td className="px-4 py-2.5 text-right text-[var(--tx-2)] text-[11px]">
+                        {fmtIsoDate(f.echeance)}
+                      </td>
+
+                      {/* Retard */}
+                      <td
+                        className={cn(
+                          "px-4 py-2.5 text-right font-semibold text-[11px]",
+                          f.jours_retard > 0
+                            ? "text-[#DC2626]"
+                            : "text-[var(--tx-3)]",
+                        )}
+                      >
+                        {f.jours_retard > 0 ? `+${f.jours_retard}j` : "—"}
+                      </td>
+
+                      {/* Statut */}
+                      <td className="px-4 py-2.5 text-right">
+                        <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold">
+                          <span
+                            className={cn(
+                              "w-[6px] h-[6px] rounded-full flex-shrink-0",
+                              s.dot,
+                            )}
+                          />
+                          <span className={s.text}>{s.label}</span>
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-[var(--bd-def)] bg-[var(--bg-sink)] font-bold">
+                  <td colSpan={3} className="px-4 py-3 text-sm">
+                    Total ({facturesClients.length} facture
+                    {facturesClients.length > 1 ? "s" : ""})
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono text-[#DC2626]">
+                    {fmtSolde(totalFacturesClient)}
+                  </td>
+                  <td colSpan={3} />
+                </tr>
+              </tfoot>
+            </table>
+          )}
+        </FinCard>
+
+        {/* Actions proposées */}
+        <FinCard padding={false}>
+          <div className="px-4 sm:px-5 pt-4 pb-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <h3 className="font-space-grotesk text-sm font-semibold text-[var(--tx-1)]">
+                Actions proposées par l&apos;agent DAF
+              </h3>
+              {criticalCount > 0 ? (
+                <span className="text-[10px] font-semibold text-[#DC2626] bg-[rgba(239,68,68,.1)] px-2 py-0.5 rounded-full flex-shrink-0">
+                  {criticalCount} critique{criticalCount > 1 ? "s" : ""}
+                </span>
+              ) : (
+                <span className="text-[10px] text-[var(--tx-3)] bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded px-1.5 py-0.5 flex-shrink-0">
+                  {actions.length} action{actions.length !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+            {actions.length > 0 && (
+              <button
+                onClick={() => router.push(`/${locale}/page/finances/alertes`)}
+                className="text-[11px] font-medium text-[var(--p500)] hover:underline flex-shrink-0 whitespace-nowrap"
+              >
+                Vue complète
+              </button>
+            )}
+          </div>
+
+          {proposedActionsLoading && actions.length === 0 && (
+            <div className="divide-y divide-[var(--bd-def)] border-t border-[var(--bd-def)]">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 px-4 py-4 animate-pulse"
+                >
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 w-48 bg-[#EEF2F7] rounded" />
+                    <div className="h-2.5 w-64 bg-[#EEF2F7] rounded" />
+                  </div>
+                  <div className="h-6 w-16 bg-[#EEF2F7] rounded-full" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!proposedActionsLoading && actions.length === 0 && (
+            <div className="border-t border-[var(--bd-def)] py-10 text-center">
+              <CheckIcon
+                size={28}
+                className="mx-auto mb-2 text-[var(--ok500)] opacity-60"
+              />
+              <p className="text-[12px] text-[var(--tx-3)]">
+                Aucune action en attente
+              </p>
+            </div>
+          )}
+
+          {actions.length > 0 && (
+            <>
+              <div className="overflow-x-auto border-t border-[var(--bd-def)]">
+                <table className="w-full text-[12px]">
+                  <thead>
+                    <tr className="bg-[var(--bg-sink)] text-[var(--tx-3)] text-left">
+                      <th className="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap w-[80px]">
+                        Priorité
+                      </th>
+                      <th className="px-3 sm:px-4 py-2.5 font-semibold">
+                        Titre
+                      </th>
+                      <th className="px-3 sm:px-4 py-2.5 font-semibold hidden md:table-cell">
+                        Description
+                      </th>
+                      <th className="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap hidden sm:table-cell w-[100px]">
+                        Date
+                      </th>
+                      <th className="px-3 sm:px-4 py-2.5 font-semibold whitespace-nowrap w-[90px]">
+                        Statut
+                      </th>
+                      <th className="px-3 sm:px-4 py-2.5 font-semibold text-right w-[130px]">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--bd-def)]">
+                    {paginatedActions.map((action) => {
+                      const p =
+                        PRIORITY_STYLE[action.priority] ?? PRIORITY_STYLE.low;
+                      const s =
+                        STATUS_STYLE[action.status] ?? STATUS_STYLE.pending;
+                      const isDeciding = decidingId === action.id;
+                      return (
+                        <tr
+                          key={action.id}
+                          className="hover:bg-[var(--bg-sink)] transition-colors"
+                        >
+                          <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+                            <span
+                              className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                              style={{
+                                background: p.bg,
+                                color: p.text,
+                                border: `1px solid ${p.border}`,
+                              }}
+                            >
+                              {p.label}
+                            </span>
+                          </td>
+                          <td className="px-3 sm:px-4 py-3">
+                            <p className="font-semibold text-[var(--tx-1)] leading-snug line-clamp-2">
+                              {action.title}
+                            </p>
+                          </td>
+                          <td className="px-3 sm:px-4 py-3 hidden md:table-cell">
+                            <p className="text-[var(--tx-2)] line-clamp-2 max-w-[200px]">
+                              {action.description}
+                            </p>
+                          </td>
+                          <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-[var(--tx-3)] hidden sm:table-cell">
+                            {fmtDate(action.proposed_at)}
+                          </td>
+                          <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+                            <span
+                              className="font-semibold text-[11px]"
+                              style={{ color: s.text }}
+                            >
+                              {s.label}
+                            </span>
+                          </td>
+                          <td className="px-3 sm:px-4 py-3">
+                            <div className="flex items-center gap-1.5 justify-end">
+                              <button
+                                onClick={() => setDetailAction(action)}
+                                className="h-7 w-7 rounded-lg text-[11px] flex items-center justify-center text-[var(--tx-3)] border border-[var(--bd-def)] hover:bg-[var(--bg-sink)] transition-colors"
+                                title="Voir détails"
+                              >
+                                <EyeIcon size={12} />
+                              </button>
+                              {action.status === "pending" && (
+                                <>
+                                  <button
+                                    onClick={() => handleApprove(action.id)}
+                                    disabled={isDeciding}
+                                    className="h-7 w-7 sm:w-auto sm:px-2.5 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 bg-[rgba(16,185,129,.1)] text-[var(--ok600)] hover:bg-[rgba(16,185,129,.2)] disabled:opacity-50 transition-colors"
+                                    title="Valider"
+                                  >
+                                    {isDeciding ? (
+                                      <SpinnerGapIcon
+                                        size={12}
+                                        className="animate-spin"
+                                      />
+                                    ) : (
+                                      <CheckIcon size={12} weight="bold" />
+                                    )}
+                                    <span className="hidden sm:inline">
+                                      Valider
+                                    </span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleReject(action.id)}
+                                    disabled={isDeciding}
+                                    className="h-7 w-7 sm:w-auto sm:px-2.5 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 bg-[rgba(239,68,68,.08)] text-[#DC2626] hover:bg-[rgba(239,68,68,.15)] disabled:opacity-50 transition-colors"
+                                    title="Rejeter"
+                                  >
+                                    <XIcon size={12} weight="bold" />
+                                    <span className="hidden sm:inline">
+                                      Rejeter
+                                    </span>
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              {pageCount > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--bd-def)]">
+                  <button
+                    onClick={() => setActionPage((p) => Math.max(0, p - 1))}
+                    disabled={actionPage === 0}
+                    className="h-7 px-3 rounded-lg text-[11px] font-semibold bg-[var(--bg-sink)] border border-[var(--bd-def)] text-[var(--tx-2)] hover:bg-[var(--bd-def)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Précédent
+                  </button>
+                  <span className="text-[11px] text-[var(--tx-3)]">
+                    {actionPage + 1} / {pageCount}
+                  </span>
+                  <button
+                    onClick={() =>
+                      setActionPage((p) => Math.min(pageCount - 1, p + 1))
+                    }
+                    disabled={actionPage >= pageCount - 1}
+                    className="h-7 px-3 rounded-lg text-[11px] font-semibold bg-[var(--bg-sink)] border border-[var(--bd-def)] text-[var(--tx-2)] hover:bg-[var(--bd-def)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Suivant
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </FinCard>
       </div>
 
       <ActionDetailDrawer

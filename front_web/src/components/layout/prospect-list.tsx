@@ -293,8 +293,8 @@ export function ProspectList({
                         >
                           {toInitials(p.company_name)}
                         </div>
-                        <div className="min-w-0">
-                          <span className="text-[var(--tx-1)] text-[13px] font-semibold font-display whitespace-nowrap">
+                        <div className="min-w-0 max-w-[160px]">
+                          <span className="text-[var(--tx-1)] text-[13px] font-semibold font-display truncate block">
                             {p.company_name || p.lead_name}
                           </span>
                           {p.lead_name && p.lead_name !== p.company_name && (
@@ -306,10 +306,12 @@ export function ProspectList({
 
                     {/* Contact */}
                     <td className="py-3.5 pr-4">
-                      <p className="text-[var(--tx-1)] text-[13px] font-medium whitespace-nowrap">
-                        {p.contact_name || '–'}
-                      </p>
-                      <p className="text-[var(--tx-3)] text-xs whitespace-nowrap truncate">{p.email || ''}</p>
+                      <div className="max-w-[150px]">
+                        <p className="text-[var(--tx-1)] text-[13px] font-medium truncate">
+                          {p.contact_name || '–'}
+                        </p>
+                        <p className="text-[var(--tx-3)] text-xs truncate">{p.email || ''}</p>
+                      </div>
                     </td>
 
                     {/* Secteur */}
@@ -352,8 +354,10 @@ export function ProspectList({
                     </td>
 
                     {/* Équipe */}
-                    <td className="py-3.5 pr-4 text-[var(--tx-2)] text-[13px] whitespace-nowrap">
-                      {p.team_name ?? '–'}
+                    <td className="py-3.5 pr-4">
+                      <div className="max-w-[110px] truncate text-[var(--tx-2)] text-[13px]">
+                        {p.team_name ?? '–'}
+                      </div>
                     </td>
 
                     {/* Dossiers */}

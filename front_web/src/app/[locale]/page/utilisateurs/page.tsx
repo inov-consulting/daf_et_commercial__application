@@ -1,32 +1,38 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 
-import { ExportIcon, UserPlusIcon, WarningIcon, TrashIcon, CheckIcon } from '@phosphor-icons/react';
-import { Button } from '@/components/ui/button';
-import { UserDetailPanel } from '@/components/layout/user-detail-panel';
-import { UserFormModal } from '@/components/layout/user-form-modal';
-import { Toast } from '@/components/ui/toast';
-import { useAppDispatch, useAppSelector } from '@/redux/store';
+import {
+  ExportIcon,
+  UserPlusIcon,
+  WarningIcon,
+  TrashIcon,
+  CheckIcon,
+} from "@phosphor-icons/react";
+import { Button } from "@/components/ui/button";
+import { UserDetailPanel } from "@/components/layout/user-detail-panel";
+import { UserFormModal } from "@/components/layout/user-form-modal";
+import { Toast } from "@/components/ui/toast";
+import { useAppDispatch, useAppSelector } from "@/redux/store";
 import {
   fetchUsers,
   createUser,
   updateUser,
   removeUser,
-} from '@/redux/features/users/usersSlice';
-import { fetchGroups } from '@/redux/features/groups/groupsSlice';
-import { mapApiUser, type User } from '@/types/user_type';
-import { UserTable } from '@/components/layout/user-table';
-import { UserKpiRow } from '@/components/layout/user-kpi-row';
-import type { UserFormSubmitData } from '@/components/layout/user-form-modal';
+} from "@/redux/features/users/usersSlice";
+import { fetchGroups } from "@/redux/features/groups/groupsSlice";
+import { mapApiUser, type User } from "@/types/user_type";
+import { UserTable } from "@/components/layout/user-table";
+import { UserKpiRow } from "@/components/layout/user-kpi-row";
+import type { UserFormSubmitData } from "@/components/layout/user-form-modal";
 import {
   CheckCircleIcon,
   WarningCircleIcon,
   InfoIcon,
   XCircleIcon,
-} from '@phosphor-icons/react';
+} from "@phosphor-icons/react";
 
-type ToastType = 'success' | 'error' | 'warning' | 'info';
+type ToastType = "success" | "error" | "warning" | "info";
 
 interface ToastState {
   id: number;
@@ -36,39 +42,47 @@ interface ToastState {
 }
 
 // Configuration des toasts selon le type
-const toastConfig: Record<ToastType, { title: string; icon: React.ReactNode }> = {
-  success: {
-    title: 'Succès',
-    icon: <CheckCircleIcon size={18} weight="fill" />,
-  },
-  error: {
-    title: 'Erreur',
-    icon: <XCircleIcon size={18} weight="fill" />,
-  },
-  warning: {
-    title: 'Attention',
-    icon: <WarningCircleIcon size={18} weight="fill" />,
-  },
-  info: {
-    title: 'Information',
-    icon: <InfoIcon size={18} weight="fill" />,
-  },
-};
+const toastConfig: Record<ToastType, { title: string; icon: React.ReactNode }> =
+  {
+    success: {
+      title: "Succès",
+      icon: <CheckCircleIcon size={18} weight="fill" />,
+    },
+    error: {
+      title: "Erreur",
+      icon: <XCircleIcon size={18} weight="fill" />,
+    },
+    warning: {
+      title: "Attention",
+      icon: <WarningCircleIcon size={18} weight="fill" />,
+    },
+    info: {
+      title: "Information",
+      icon: <InfoIcon size={18} weight="fill" />,
+    },
+  };
 
 export default function UtilisateursPage() {
   const dispatch = useAppDispatch();
-  const { list: apiUsers, loading, error: apiError } = useAppSelector(state => state.users);
-  const { list: groups } = useAppSelector(state => state.groups);
+  const {
+    list: apiUsers,
+    loading,
+    error: apiError,
+  } = useAppSelector((state) => state.users);
+  const { list: groups } = useAppSelector((state) => state.groups);
 
   // Mapping API → UI à chaque changement de la liste Redux
   const users = useMemo(() => apiUsers.map(mapApiUser), [apiUsers]);
 
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
-  const [formModal, setFormModal] = useState<{ mode: 'invite' | 'edit'; uid?: string } | null>(null);
+  const [formModal, setFormModal] = useState<{
+    mode: "invite" | "edit";
+    uid?: string;
+  } | null>(null);
   const [deleteUid, setDeleteUid] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastState[]>([]);
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
-  
+
   const toastIdRef = useRef(0);
   const timersRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
 
@@ -82,38 +96,49 @@ export default function UtilisateursPage() {
   useEffect(() => {
     const currentTimers = timersRef.current;
     return () => {
-      currentTimers.forEach(timer => clearTimeout(timer));
+      currentTimers.forEach((timer) => clearTimeout(timer));
       currentTimers.clear();
     };
   }, []);
 
-  const selectedUser = selectedUid ? (users.find(u => u.uid === selectedUid) ?? null) : null;
-  const editUser = formModal?.uid ? users.find(u => u.uid === formModal.uid) : undefined;
-  const rawEditUser = formModal?.uid ? apiUsers.find(u => u.id === formModal.uid) : undefined;
-  const deleteUser = deleteUid ? (users.find(u => u.uid === deleteUid) ?? null) : null;
+  const selectedUser = selectedUid
+    ? (users.find((u) => u.uid === selectedUid) ?? null)
+    : null;
+  const editUser = formModal?.uid
+    ? users.find((u) => u.uid === formModal.uid)
+    : undefined;
+  const rawEditUser = formModal?.uid
+    ? apiUsers.find((u) => u.id === formModal.uid)
+    : undefined;
+  const deleteUser = deleteUid
+    ? (users.find((u) => u.uid === deleteUid) ?? null)
+    : null;
 
   // Fonction pour afficher un toast avec le composant Toast
-  const showToast = useCallback((
-    message: string,
-    sub?: string,
-    type: ToastType = 'success',
-    duration = 5000
-  ) => {
-    const id = toastIdRef.current++;
-    const newToast: ToastState = { id, message, sub, type };
+  const showToast = useCallback(
+    (
+      message: string,
+      sub?: string,
+      type: ToastType = "success",
+      duration = 5000,
+    ) => {
+      const id = toastIdRef.current++;
+      const newToast: ToastState = { id, message, sub, type };
 
-    setToasts(prev => [...prev, newToast]);
+      setToasts((prev) => [...prev, newToast]);
 
-    // Auto-dismiss après la durée spécifiée
-    if (duration > 0) {
-      const timer = setTimeout(() => {
-        setToasts(prev => prev.filter(t => t.id !== id));
-        timersRef.current.delete(id);
-      }, duration);
+      // Auto-dismiss après la durée spécifiée
+      if (duration > 0) {
+        const timer = setTimeout(() => {
+          setToasts((prev) => prev.filter((t) => t.id !== id));
+          timersRef.current.delete(id);
+        }, duration);
 
-      timersRef.current.set(id, timer);
-    }
-  }, []);
+        timersRef.current.set(id, timer);
+      }
+    },
+    [],
+  );
 
   // Fonction pour fermer manuellement un toast
   const dismissToast = useCallback((id: number) => {
@@ -122,7 +147,7 @@ export default function UtilisateursPage() {
       clearTimeout(timer);
       timersRef.current.delete(id);
     }
-    setToasts(prev => prev.filter(t => t.id !== id));
+    setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   async function handleDelete() {
@@ -134,45 +159,64 @@ export default function UtilisateursPage() {
     // Suppression optimiste + désactivation côté backend (pas de DELETE endpoint)
     dispatch(removeUser(uid));
     await dispatch(updateUser({ id: uid, payload: { is_active: false } }));
-    showToast('Utilisateur supprimé', 'Le compte a été désactivé', 'success');
+    showToast("Utilisateur supprimé", "Le compte a été désactivé", "success");
   }
 
-  async function handleFormSubmit(data: UserFormSubmitData): Promise<{ ok: boolean; error?: string }> {
-    if (formModal?.mode === 'edit' && formModal.uid) {
-      const result = await dispatch(updateUser({
-        id: formModal.uid,
-        payload: {
-          ...(data.prenom !== undefined && { first_name: data.prenom }),
-          ...(data.nom !== undefined && { last_name: data.nom }),
-          ...(data.email !== undefined && { email: data.email }),
-          ...(data.company_ids.length > 0 && { company_ids: data.company_ids }),
-          ...(data.group_ids && data.group_ids.length > 0 && { group_ids: data.group_ids }),
-          ...(data.avatar_url !== undefined && { avatar_url: data.avatar_url }),
-        },
-      }));
+  async function handleFormSubmit(
+    data: UserFormSubmitData,
+  ): Promise<{ ok: boolean; error?: string }> {
+    if (formModal?.mode === "edit" && formModal.uid) {
+      const result = await dispatch(
+        updateUser({
+          id: formModal.uid,
+          payload: {
+            ...(data.prenom !== undefined && { first_name: data.prenom }),
+            ...(data.nom !== undefined && { last_name: data.nom }),
+            ...(data.email !== undefined && { email: data.email }),
+            ...(data.company_ids.length > 0 && {
+              company_ids: data.company_ids,
+            }),
+            ...(data.group_ids &&
+              data.group_ids.length > 0 && { group_ids: data.group_ids }),
+            ...(data.avatar_url !== undefined && {
+              avatar_url: data.avatar_url,
+            }),
+          },
+        }),
+      );
       if (updateUser.rejected.match(result)) {
         const error = result.payload as string;
-        showToast('Erreur de modification', error, 'error');
+        showToast("Erreur de modification", error, "error");
         return { ok: false, error };
       }
       setFormModal(null);
-      showToast('Modifications enregistrées', 'Profil mis à jour avec succès', 'success');
+      showToast(
+        "Modifications enregistrées",
+        "Profil mis à jour avec succès",
+        "success",
+      );
       return { ok: true };
     } else {
-      const result = await dispatch(createUser({
-        email: data.email ?? '',
-        first_name: data.prenom ?? '',
-        last_name: data.nom ?? '',
-        company_ids: data.company_ids,
-        group_ids: data.group_ids,
-      }));
+      const result = await dispatch(
+        createUser({
+          email: data.email ?? "",
+          first_name: data.prenom ?? "",
+          last_name: data.nom ?? "",
+          company_ids: data.company_ids,
+          group_ids: data.group_ids,
+        }),
+      );
       if (createUser.fulfilled.match(result)) {
         setFormModal(null);
-        showToast('Invitation envoyée', "Email d'invitation envoyé avec succès", 'success');
+        showToast(
+          "Invitation envoyée",
+          "Email d'invitation envoyé avec succès",
+          "success",
+        );
         return { ok: true };
       }
       const error = result.payload as string;
-      showToast('Erreur d\'invitation', error, 'error');
+      showToast("Erreur d'invitation", error, "error");
       return { ok: false, error };
     }
   }
@@ -180,9 +224,11 @@ export default function UtilisateursPage() {
   async function handleToggleActive(uid: string, active: boolean) {
     await dispatch(updateUser({ id: uid, payload: { is_active: active } }));
     showToast(
-      active ? 'Compte réactivé' : 'Compte désactivé',
-      active ? "L'utilisateur a de nouveau accès à PortaLis" : "L'accès à PortaLis a été retiré",
-      'success'
+      active ? "Compte réactivé" : "Compte désactivé",
+      active
+        ? "L'utilisateur a de nouveau accès à PortaLis"
+        : "L'accès à PortaLis a été retiré",
+      "success",
     );
   }
 
@@ -199,11 +245,15 @@ export default function UtilisateursPage() {
           <h1 className="font-display text-[22px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight">
             Utilisateurs
           </h1>
-          {(loading) && (
-            <p className="text-sm text-foreground-3 mt-1">Chargement des utilisateurs...</p>
+          {loading && (
+            <p className="text-sm text-foreground-3 mt-1">
+              Chargement des utilisateurs...
+            </p>
           )}
-          {(apiError) && (
-            <p className="text-sm text-red-500 mt-1">Erreur lors du chargement des utilisateurs: {apiError}</p>
+          {apiError && (
+            <p className="text-sm text-red-500 mt-1">
+              Erreur lors du chargement des utilisateurs: {apiError}
+            </p>
           )}
         </div>
         <div className="flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
@@ -216,7 +266,7 @@ export default function UtilisateursPage() {
             variant="gradient"
             size="sm"
             className="flex-1 sm:flex-none"
-            onClick={() => setFormModal({ mode: 'invite' })}
+            onClick={() => setFormModal({ mode: "invite" })}
           >
             <UserPlusIcon size={14} weight="fill" />
             <span className="hidden xs:inline ml-1.5">Inviter un membre</span>
@@ -226,41 +276,51 @@ export default function UtilisateursPage() {
       </div>
 
       {/* KPI + Table + Detail Panel - grille alignée */}
-      <div className="grid grid-cols-4 gap-4">
+      {/* items-stretch : les deux colonnes s'étirent à la hauteur de la plus grande,
+          ce qui permet au sticky du panel de s'activer quand la table est plus longue */}
+      <div className="grid grid-cols-4 gap-4 items-stretch">
         {/* KPI Row - prend toute la largeur */}
         <div className="col-span-4">
           <UserKpiRow users={users} />
         </div>
 
-        {/* Table - occupe les 3 premières colonnes */}
+        {/* Table - occupe les 3 premières colonnes (pas de sticky : thead est déjà sticky) */}
         <div className="col-span-4 lg:col-span-3 min-w-0">
           <UserTable
             users={users}
             selectedUid={selectedUid}
             onSelectUser={handleSelectUser}
-            onEditUser={uid => setFormModal({ mode: 'edit', uid })}
-            onDeleteUser={uid => setDeleteUid(uid)}
+            onEditUser={(uid) => setFormModal({ mode: "edit", uid })}
+            onDeleteUser={(uid) => setDeleteUid(uid)}
             onToggleActiveUser={(uid) => {
-              const user = users.find(u => u.uid === uid);
+              const user = users.find((u) => u.uid === uid);
               if (user) {
-                handleToggleActive(uid, user.status !== 'active');
+                handleToggleActive(uid, user.status !== "active");
               }
             }}
-            onResendInvite={uid => {
-              const u = users.find(x => x.uid === uid);
-              showToast('Invitation renvoyée', `${u?.email} · Lien 7 jours`, 'info');
+            onResendInvite={(uid) => {
+              const u = users.find((x) => x.uid === uid);
+              showToast(
+                "Invitation renvoyée",
+                `${u?.email} · Lien 7 jours`,
+                "info",
+              );
             }}
           />
         </div>
 
-        {/* Desktop panel - occupe exactement la 4ème colonne */}
+        {/* Desktop panel - occupe exactement la 4ème colonne
+            max-h + overflow-y-auto : le panel défile en interne si son contenu
+            dépasse la hauteur du viewport */}
         <div className="hidden lg:block lg:col-span-1">
-          <UserDetailPanel
-            user={selectedUser}
-            onEdit={uid => setFormModal({ mode: 'edit', uid })}
-            onDelete={uid => setDeleteUid(uid)}
-            onToggleActive={handleToggleActive}
-          />
+          <div className="lg:sticky lg:top-[88px] max-h-[calc(100vh-108px)] overflow-y-auto">
+            <UserDetailPanel
+              user={selectedUser}
+              onEdit={(uid) => setFormModal({ mode: "edit", uid })}
+              onDelete={(uid) => setDeleteUid(uid)}
+              onToggleActive={handleToggleActive}
+            />
+          </div>
         </div>
       </div>
 
@@ -273,7 +333,10 @@ export default function UtilisateursPage() {
             aria-label="Fermer le panneau"
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setMobilePanelOpen(false)}
-            onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') setMobilePanelOpen(false); }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape" || e.key === "Enter")
+                setMobilePanelOpen(false);
+            }}
           />
           <div className="relative w-full max-w-[480px] max-h-[85vh] flex flex-col bg-surface rounded-2xl border border-border shadow-[var(--sh-xl)] overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
@@ -288,14 +351,18 @@ export default function UtilisateursPage() {
               >
                 <span className="sr-only">Fermer</span>
                 <svg
-                  xmlns="http://www.w3.org/2000/svg" 
+                  xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
                   strokeWidth={1.5}
                   stroke="currentColor"
                   className="w-5 h-5"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </Button>
             </div>
@@ -303,11 +370,11 @@ export default function UtilisateursPage() {
               <UserDetailPanel
                 naked
                 user={selectedUser}
-                onEdit={uid => {
-                  setFormModal({ mode: 'edit', uid });
+                onEdit={(uid) => {
+                  setFormModal({ mode: "edit", uid });
                   setMobilePanelOpen(false);
                 }}
-                onDelete={uid => {
+                onDelete={(uid) => {
                   setDeleteUid(uid);
                   setMobilePanelOpen(false);
                 }}
@@ -338,7 +405,7 @@ export default function UtilisateursPage() {
         >
           <div
             className="bg-[#1B2633] rounded-2xl p-4 sm:p-5 max-w-[420px] w-full flex flex-col sm:flex-row items-start gap-3 sm:gap-4"
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="w-9 h-9 rounded-lg bg-error/20 flex items-center justify-center text-error flex-shrink-0">
               <WarningIcon size={16} weight="fill" />
@@ -348,8 +415,9 @@ export default function UtilisateursPage() {
                 Supprimer {deleteUser.prenom} {deleteUser.nom} ?
               </p>
               <p className="text-[11px] sm:text-xs text-neutral-400 leading-relaxed mb-4">
-                Cette action est irréversible. Le compte sera supprimé et l&apos;accès à
-                PortaLis retiré immédiatement. Les données créées sont conservées.
+                Cette action est irréversible. Le compte sera supprimé et
+                l&apos;accès à PortaLis retiré immédiatement. Les données créées
+                sont conservées.
               </p>
               <div className="flex flex-col sm:flex-row gap-2">
                 <Button
@@ -385,7 +453,9 @@ export default function UtilisateursPage() {
             <Toast
               type={toast.type}
               title={toastConfig[toast.type].title}
-              message={toast.sub ? `${toast.message}\n${toast.sub}` : toast.message}
+              message={
+                toast.sub ? `${toast.message}\n${toast.sub}` : toast.message
+              }
               icon={toastConfig[toast.type].icon}
               onDismiss={() => dismissToast(toast.id)}
             />

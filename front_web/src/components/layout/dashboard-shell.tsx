@@ -68,7 +68,9 @@ export default function DashboardShell({
           onClose={handleClose}
         />
         <main className="flex-1 overflow-y-auto flex flex-col min-w-0">
-          <BreadcrumbBar />
+          <div className="sticky top-0 z-10 bg-[var(--bg-surf)] flex-shrink-0">
+            <BreadcrumbBar />
+          </div>
           <div className="flex-1 min-h-0 flex flex-col">{children}</div>
         </main>
       </div>

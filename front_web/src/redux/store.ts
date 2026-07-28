@@ -19,6 +19,7 @@ import dafReducer from "./features/daf/dafSlice";
 import notificationsReducer from "./features/notifications/notificationsSlice";
 import whatsappReducer from "./features/whatsapp/whatsappSlice";
 import monitoringReducer from "./features/monitoring/monitoringSlice";
+import predictionsReducer from "./features/predictions/predictionsSlice";
 
 const persistConfig = {
   key: "root",
@@ -45,6 +46,7 @@ const rootReducer = {
   notifications: notificationsReducer,
   whatsapp:      whatsappReducer,
   monitoring:    monitoringReducer,
+  predictions:   predictionsReducer,
 };
 
 const persistedReducer = persistReducer(persistConfig, combineReducers(rootReducer));
