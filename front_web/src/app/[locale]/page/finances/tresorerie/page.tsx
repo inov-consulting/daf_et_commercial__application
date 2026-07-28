@@ -23,8 +23,6 @@ function fmtDate(d: Date) {
   return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 }
 
-/* Converts "Jul 2026" → "2026-07" so KpiChartCard.fillMonthlyGaps
-   recognises the ISO format and fills all months Jan → current.       */
 const EN_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 function normalizeTresoKpi(kpi: KpiItem): KpiItem {
@@ -92,7 +90,7 @@ export default function TresoreriePage() {
     .sort((a, b) => new Date(a.snapshot_at).getTime() - new Date(b.snapshot_at).getTime())
     .map(s => ({ mois: FR_MONTHS_SHORT[new Date(s.snapshot_at).getMonth()], solde: +(s.cash_position / 1_000_000).toFixed(2) }));
 
-  // Projection J+90 calculée depuis la position réelle, dates dynamiques
+  // Projection J+90
   const today = new Date();
   const d30 = new Date(today); d30.setDate(today.getDate() + 30);
   const d60 = new Date(today); d60.setDate(today.getDate() + 60);
@@ -137,9 +135,6 @@ export default function TresoreriePage() {
     <div className="p-3 sm:p-4 md:p-6">
       <FinSectionHeader
         title="Trésorerie nette"
-        // secondaryAction={{ label: 'Exporter', icon: <DownloadSimpleIcon size={13} />, onClick: () => {} }}
-        // actionLabel="+ Virement"
-        // onAction={() => {}}
       />
 
       {/* KPI row */}
@@ -162,10 +157,11 @@ export default function TresoreriePage() {
         }
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-3 sm:gap-4">
-        <div className="flex flex-col gap-3 sm:gap-4">
+      {/* ✅ Correction : ajout de items-start */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-3 sm:gap-4 items-start">
+        <div className="flex flex-col gap-3 sm:gap-4 min-w-0">
 
-          {/* Évolution trésorerie (données réelles depuis snapshots) */}
+          {/* Évolution trésorerie */}
           {snapshotsLoading && evoData.length === 0 ? (
             <div className="bg-white rounded-2xl border border-[var(--bd-def)] p-4 h-[240px] flex items-center justify-center">
               <SpinnerGapIcon size={24} className="animate-spin text-[var(--tx-3)]" />
@@ -180,7 +176,7 @@ export default function TresoreriePage() {
             />
           ) : null}
 
-          {/* Flux entrants vs sortants (KPI catalogue) */}
+          {/* Flux entrants vs sortants */}
           {catalogLoading && !tresoKpi ? (
             <KpiChartCardSkeleton />
           ) : tresoKpi ? (
@@ -188,9 +184,9 @@ export default function TresoreriePage() {
           ) : null}
         </div>
 
-        {/* Panneau droit */}
-        <div className="flex flex-col gap-3 sm:gap-4">
-          {/* Projection J+90 (calculée depuis la position réelle) */}
+        {/* ✅ Panneau droit avec sticky corrigé */}
+        <div className="xl:sticky xl:top-4 flex flex-col gap-3 sm:gap-4">
+          {/* Projection J+90 */}
           <FinCard>
             <SectionLabel className="mb-3">Solde prévisionnel J+90</SectionLabel>
             {latestSnapshotLoading && !snap ? (

@@ -44,14 +44,14 @@ function buildNav(locale: string, prospectCount?: number, alerteCount?: number, 
               IA
             </span>
           ),
-          customBadge: (
-            <span
-              className="min-w-5 h-7 px-1 rounded-full text-[10px] font-bold flex items-center justify-center"
-              style={{ background: 'var(--grad)' }}
-            >
-              3
-            </span>
-          ),
+          // customBadge: (
+          //   <span
+          //     className="min-w-5 h-7 px-1 rounded-full text-[10px] font-bold flex items-center justify-center"
+          //     style={{ background: 'var(--grad)' }}
+          //   >
+          //     3
+          //   </span>
+          // ),
         },
         { href: `/${locale}/page/prospects`, label: 'Prospections', Icon: UserIcon, badge: prospectCount },
       ],
@@ -73,14 +73,6 @@ function buildNav(locale: string, prospectCount?: number, alerteCount?: number, 
           href: `/${locale}/page/predictions`,
           label: 'Prédictions',
           Icon: CrosshairIcon,
-          customBadge: (
-            <span
-              className="min-w-5 h-[18px] px-1.5 rounded-full text-[10px] font-bold flex items-center justify-center"
-              style={{ background: '#EFEAFD', color: '#6C4CE0' }}
-            >
-              Nouveau
-            </span>
-          ),
         },
       ],
     },
