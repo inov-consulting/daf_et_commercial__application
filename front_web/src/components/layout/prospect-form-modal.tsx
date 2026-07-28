@@ -567,7 +567,6 @@ export function ProspectFormModal({
               value={form.expected_revenue ?? ''}
               onChange={e => { setField('expected_revenue', e.target.value ? Number(e.target.value) : undefined); setLocalError(null); }}
               placeholder="0"
-              min={0}
               className={inp}
             />
           </div>
