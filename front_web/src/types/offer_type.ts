@@ -71,6 +71,41 @@ export interface TransportOfferConfirmResponse {
   confirmed_at: string;
 }
 
+/** Réponse PATCH /offers/{id}/form */
+export interface TransportOfferFormResponse {
+  id: string;
+  session_id: string;
+  status: string;
+  title: string;
+  reference: string;
+  date: string;
+  validity_days: number;
+  route: Route;
+  amount_ttc: number;
+  odoo_shipment_id: number | null;
+  odoo_shipment_name: string | null;
+  created_at: string;
+  confirmed_at: string | null;
+}
+
+/** Corps PATCH /offers/{id}/form — tous les champs sont optionnels (PATCH partiel) */
+export interface OfferFormPatchPayload {
+  client_name?: string;
+  odoo_partner_id?: number;
+  product_description?: string;
+  quantity?: number;
+  quantity_unit?: string;
+  origin?: string;
+  destination?: string;
+  transport_mode?: string;
+  vehicle_type?: string;
+  planned_date?: string;
+  price_unit?: number;
+  validity_days?: number;
+  payment_conditions?: string;
+  remarks?: string;
+}
+
 // Mapping transport status → OfferStatus UI
 export function mapTransportStatus(status: string): OfferStatus {
   const s = status?.toLowerCase() ?? '';
