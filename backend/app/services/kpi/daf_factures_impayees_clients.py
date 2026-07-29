@@ -12,10 +12,12 @@ from datetime import date
 from app.api.v1.schemas.kpi import KpiChartData
 
 
-async def compute(date_from: date | None = None, date_to: date | None = None) -> KpiChartData:
+async def compute(date_from: date | None = None, date_to: date | None = None, erp_company_id: int | None = None, company_id=None) -> KpiChartData:
     from app.infrastructure.db.models.daf_agent import DafFinancialSnapshotOrm
 
     qs = DafFinancialSnapshotOrm.all()
+    if company_id:
+        qs = qs.filter(run__company_id=company_id)
     if date_from:
         qs = qs.filter(snapshot_at__gte=date_from)
     if date_to:
