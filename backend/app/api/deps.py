@@ -5,9 +5,10 @@ from collections.abc import Callable
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, Header, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from app.domain.shared.company import Company
 from app.domain.shared.role import Role
 from app.domain.shared.user import User
 from app.infrastructure.auth.keycloak import KeycloakClient
@@ -106,6 +107,43 @@ async def get_current_user(
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+# ── Entreprise courante (multi-tenant) ──────────────────────────────────────
+
+async def get_current_company(
+    x_company_id: Annotated[str | None, Header(alias="X-Company-Id")] = None,
+) -> Company:
+    """Résout l'entreprise courante depuis le header X-Company-Id.
+
+    Le header doit contenir l'UUID Portalis de la company (table companies).
+    Retourne la Company avec son erp_id pour filtrer les appels Odoo.
+    Lève 400 si le header est absent, 404 si la company est inconnue.
+    """
+    if not x_company_id:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="Header X-Company-Id obligatoire.",
+        )
+    try:
+        company_uuid = UUID(x_company_id)
+    except ValueError:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="X-Company-Id doit être un UUID valide.",
+        )
+
+    repo = CompanyRepository()
+    company = await repo.get_by_id(company_uuid)
+    if company is None:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            detail=f"Entreprise {x_company_id} introuvable.",
+        )
+    return company
+
+
+CurrentCompany = Annotated[Company, Depends(get_current_company)]
 
 
 # ── Autorisation (RBAC) ─────────────────────────────────────────────────

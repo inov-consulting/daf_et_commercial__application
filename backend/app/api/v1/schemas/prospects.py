@@ -64,9 +64,9 @@ class ProspectCreate(BaseModel):
     # Lead/Opportunité (crm.lead.name)
     opportunity_name: str = Field(..., min_length=1, description="Nom du lead ou de l'opportunité")
     
-    # Entreprise/Client (lien via company Portalis → erp_id Odoo)
-    company_id: UUID | None = Field(None, description="ID company Portalis - récupère erp_id Odoo auto ou crée le partner si inexistant")
-    partner_name: str | None = Field(None, description="Nom entreprise à créer dans Odoo (si company_id non fourni)")
+    # Client/Entreprise prospectée (res.partner Odoo)
+    odoo_partner_id: int | None = Field(None, description="ID Odoo du client existant (res.partner) à lier à ce lead")
+    partner_name: str | None = Field(None, description="Nom du client à créer dans Odoo si odoo_partner_id non fourni")
     
     # Contact
     contact_name: str | None = Field(None, description="Nom du contact")

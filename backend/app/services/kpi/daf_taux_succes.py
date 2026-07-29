@@ -11,10 +11,12 @@ from datetime import date
 from app.api.v1.schemas.kpi import AgSeries, KpiChartData
 
 
-async def compute(date_from: date | None = None, date_to: date | None = None) -> KpiChartData:
+async def compute(date_from: date | None = None, date_to: date | None = None, erp_company_id: int | None = None, company_id=None) -> KpiChartData:
     from app.infrastructure.db.models.daf_agent import DafAgentRunOrm
 
     qs = DafAgentRunOrm.all()
+    if company_id:
+        qs = qs.filter(company_id=company_id)
     if date_from:
         qs = qs.filter(started_at__gte=date_from)
     if date_to:

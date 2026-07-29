@@ -9,11 +9,14 @@ from app.infrastructure.db.models.commercial_run import CommercialRunOrm
 
 class CommercialRunRepository:
 
-    async def start(self, trigger: str, started_at: datetime) -> CommercialRunOrm:
+    async def start(
+        self, trigger: str, started_at: datetime, company_id: UUID | None = None
+    ) -> CommercialRunOrm:
         return await CommercialRunOrm.create(
             trigger=trigger,
             status="running",
             started_at=started_at,
+            company_id=company_id,
         )
 
     async def complete(self, run_db_id: UUID, stats: dict) -> CommercialRunOrm:
@@ -35,8 +38,16 @@ class CommercialRunRepository:
         await run.save()
         return run
 
-    async def list_recent(self, limit: int = 20) -> list[CommercialRunOrm]:
-        return await CommercialRunOrm.all().order_by("-started_at").limit(limit)
+    async def list_recent(
+        self, limit: int = 20, company_id: UUID | None = None
+    ) -> list[CommercialRunOrm]:
+        qs = CommercialRunOrm.all()
+        if company_id is not None:
+            qs = qs.filter(company_id=company_id)
+        return await qs.order_by("-started_at").limit(limit)
 
-    async def get_last(self) -> CommercialRunOrm | None:
-        return await CommercialRunOrm.all().order_by("-started_at").first()
+    async def get_last(self, company_id: UUID | None = None) -> CommercialRunOrm | None:
+        qs = CommercialRunOrm.all()
+        if company_id is not None:
+            qs = qs.filter(company_id=company_id)
+        return await qs.order_by("-started_at").first()

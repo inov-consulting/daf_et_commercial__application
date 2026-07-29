@@ -12,7 +12,7 @@ from collections import defaultdict
 from app.api.v1.schemas.kpi import AgSeries, KpiChartData
 
 
-async def compute(date_from: date | None = None, date_to: date | None = None) -> KpiChartData:
+async def compute(date_from: date | None = None, date_to: date | None = None, erp_company_id: int | None = None, company_id=None) -> KpiChartData:
     from app.infrastructure.db.models.daf_agent import DafFinancialSnapshotOrm
 
     # Par défaut : année en cours
@@ -20,11 +20,10 @@ async def compute(date_from: date | None = None, date_to: date | None = None) ->
     effective_from = date_from or date(current_year, 1, 1)
     effective_to = date_to or date(current_year, 12, 31)
 
-    snapshots = await (
-        DafFinancialSnapshotOrm
-        .filter(snapshot_at__gte=effective_from, snapshot_at__lte=effective_to)
-        .order_by("snapshot_at")
-    )
+    qs = DafFinancialSnapshotOrm.filter(snapshot_at__gte=effective_from, snapshot_at__lte=effective_to)
+    if company_id:
+        qs = qs.filter(run__company_id=company_id)
+    snapshots = await qs.order_by("snapshot_at")
 
     # Garder le dernier snapshot par mois (period_label "YYYY-MM")
     by_month: dict[str, object] = {}

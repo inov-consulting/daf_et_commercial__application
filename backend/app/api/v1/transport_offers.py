@@ -20,7 +20,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.deps import get_current_user, require_permission
+from app.api.deps import CurrentCompany, get_current_user, require_permission
 from app.api.v1.schemas.transport_offer import (
     OfferChatIn,
     OfferChatOut,
@@ -58,6 +58,7 @@ _confirm_deps = [Depends(require_permission("transport:confirm"))]
 @router.post("/chat", dependencies=_write_deps)
 async def offer_chat(
     body: OfferChatIn,
+    company: CurrentCompany,
     current_user=Depends(get_current_user),
 ) -> OfferChatOut:
     """Tour de conversation avec l'agent IA pour créer une offre transport.
@@ -72,7 +73,7 @@ async def offer_chat(
     if body.offer_id is None:
         from uuid import uuid4
         session_id = body.session_id or uuid4()
-        offer = await repo.create(session_id=session_id, user_id=current_user.id)
+        offer = await repo.create(session_id=session_id, user_id=current_user.id, company_id=company.id)
     else:
         offer = await repo.get(body.offer_id)
         if offer is None:
@@ -115,6 +116,7 @@ async def offer_chat(
 @router.post("/form", dependencies=_write_deps, status_code=status.HTTP_201_CREATED)
 async def create_offer_form(
     body: OfferFormIn,
+    company: CurrentCompany,
     current_user=Depends(get_current_user),
 ) -> OfferSummaryOut:
     """Crée une offre transport directement via formulaire (sans IA).
@@ -129,6 +131,7 @@ async def create_offer_form(
     offer = await repo.create_manual(
         collected_data=body.to_collected_data(),
         user_id=current_user.id,
+        company_id=company.id,
     )
     return OfferSummaryOut(
         id=offer.id,
@@ -267,6 +270,7 @@ async def generate_document(
         offer_id=offer_id,
         offer_title=doc.get("title"),
         author_name=current_user.display_name,
+        company_id=offer.company_id,
     )
 
     out = _doc_to_out(offer_id, offer.status if offer else "generated", doc)  # type: ignore[union-attr]
@@ -392,16 +396,23 @@ async def get_offer(offer_id: UUID) -> OfferDocumentOut:
         except json.JSONDecodeError:
             pass
 
-    return _doc_to_out(offer_id, offer.status, doc, generated_at=offer.document_generated_at)
+    return _doc_to_out(
+        offer_id,
+        offer.status,
+        doc,
+        generated_at=offer.document_generated_at,
+        collected_data=offer.collected_data,
+    )
 
 
 @router.get("/", dependencies=_read_deps)
 async def list_offers(
+    company: CurrentCompany,
     current_user=Depends(get_current_user),
 ) -> list[OfferSummaryOut]:
-    """Liste les offres de l'utilisateur connecté."""
+    """Liste les offres de l'entreprise courante."""
     repo = TransportOfferRepository()
-    offers = await repo.list(current_user.id)
+    offers = await repo.list(current_user.id, company_id=company.id)
     return [
         OfferSummaryOut(
             id=o.id,
@@ -528,7 +539,9 @@ def _doc_to_out(
     status: str,
     doc: dict,
     generated_at=None,
+    collected_data: dict | None = None,
 ) -> OfferDocumentOut:
+    cd = collected_data or {}
     sections = [
         OfferDocumentSection(heading=s.get("heading", ""), content=s.get("content", ""))
         for s in doc.get("sections", [])
@@ -537,29 +550,41 @@ def _doc_to_out(
         PricingLine(label=p.get("label", ""), value=p.get("value", ""), unit=p.get("unit", ""))
         for p in doc.get("pricing", [])
     ]
+
+    # Route : document généré en priorité, sinon collected_data
     route_raw = doc.get("route") or {}
+    route = OfferRoute(
+        origin=route_raw.get("origin") or cd.get("origin"),
+        destination=route_raw.get("destination") or cd.get("destination"),
+        transport_mode=route_raw.get("transport_mode") or cd.get("transport_mode"),
+        vehicle_type=route_raw.get("vehicle_type") or cd.get("vehicle_type"),
+        planned_date=route_raw.get("planned_date") or cd.get("planned_date"),
+    ) if (route_raw or any(cd.get(k) for k in ("origin", "destination", "transport_mode"))) else None
+
+    # Client : document généré en priorité, sinon collected_data
     client_raw = doc.get("client") or {}
+    client = OfferClient(
+        name=client_raw.get("name") or cd.get("client_name"),
+        odoo_partner_id=client_raw.get("odoo_partner_id") or cd.get("odoo_partner_id"),
+    ) if (client_raw or cd.get("client_name") or cd.get("odoo_partner_id")) else None
+
+    # Titre synthétique depuis collected_data si le document n'en a pas
+    title = doc.get("title")
+    if not title and cd:
+        parts = [p for p in [cd.get("client_name"), cd.get("product_description")] if p]
+        title = " — ".join(parts) if parts else None
 
     return OfferDocumentOut(
         offer_id=offer_id,
         status=status,
-        title=doc.get("title"),
+        title=title,
         reference=doc.get("reference"),
-        date=doc.get("date"),
-        validity_days=doc.get("validity_days"),
+        date=doc.get("date") or cd.get("planned_date"),
+        validity_days=doc.get("validity_days") or cd.get("validity_days"),
         sections=sections,
         pricing=pricing,
-        route=OfferRoute(
-            origin=route_raw.get("origin"),
-            destination=route_raw.get("destination"),
-            transport_mode=route_raw.get("transport_mode"),
-            vehicle_type=route_raw.get("vehicle_type"),
-            planned_date=route_raw.get("planned_date"),
-        ) if route_raw else None,
-        client=OfferClient(
-            name=client_raw.get("name"),
-            odoo_partner_id=client_raw.get("odoo_partner_id"),
-        ) if client_raw else None,
+        route=route,
+        client=client,
         footer=doc.get("footer"),
         document_generated_at=generated_at,
         parse_error=doc.get("parse_error", False),

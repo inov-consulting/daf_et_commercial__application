@@ -13,7 +13,7 @@ from collections.abc import AsyncIterator
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 
-from app.api.deps import require_permission
+from app.api.deps import CurrentCompany, require_permission
 from app.api.v1.schemas.commercial_agent import AgentStatusOut, CommercialRunOut, EnrichRequest, TriggerOut
 from app.infrastructure.ai.commercial_agent import stream_commercial_enrichment
 
@@ -32,6 +32,7 @@ async def get_agent_status() -> AgentStatusOut:
 
 @router.get("/runs", dependencies=_read_deps)
 async def list_runs(
+    company: CurrentCompany,
     limit: int = Query(20, ge=1, le=100),
 ) -> list[CommercialRunOut]:
     """Historique persistant des cycles de l'agent commercial (base de données).
@@ -41,7 +42,7 @@ async def list_runs(
     """
     from app.infrastructure.db.repositories.commercial_run import CommercialRunRepository
     repo = CommercialRunRepository()
-    runs = await repo.list_recent(limit=limit)
+    runs = await repo.list_recent(limit=limit, company_id=company.id)
     return [
         CommercialRunOut(
             id=r.id,

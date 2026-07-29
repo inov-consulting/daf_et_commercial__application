@@ -12,7 +12,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 
-from app.api.deps import CurrentUser, require_permission
+from app.api.deps import CurrentCompany, CurrentUser, require_permission
 from app.api.v1.schemas.prospects import (
     CompteRenduGenerate,
     CompteRenduGenerationStatus,
@@ -214,27 +214,28 @@ async def _enrich_prospect(prospect: ProspectOrm, force_refresh: bool = False) -
 
 @router.get("", dependencies=_prospect_deps)
 async def list_prospects(
+    company: CurrentCompany,
     filters: Annotated[ProspectFilters, Depends()],
     enrich: Annotated[bool, Query(description="Enrichir avec données Odoo (plus lent)")] = False,
 ) -> ProspectListOut:
     """Liste paginée des prospects avec filtres et agrégations.
-    
+
     Args:
         filters: Filtres de pagination et statut
         enrich: Si True, récupère les données fraîches d'Odoo (plus lent, défaut: False)
     """
 
-    # Compteurs par statut pour agrégation
+    # Compteurs par statut pour agrégation (filtrés par company)
     status_counts = {}
     for status_enum in ProspectStatus:
-        count = await ProspectOrm.filter(status=status_enum.value).count()
+        count = await ProspectOrm.filter(status=status_enum.value, company_id=company.id).count()
         status_counts[status_enum.value] = count
 
     # Total pipeline value
     total_pipeline = Decimal("0")
 
     # Pagination avec filtres
-    query = ProspectOrm.all()
+    query = ProspectOrm.filter(company_id=company.id)
     if filters.status:
         query = query.filter(status=filters.status)
 
@@ -325,81 +326,61 @@ async def list_prospects(
 @router.post("", dependencies=_prospect_write_deps, status_code=status.HTTP_201_CREATED)
 async def create_prospect(
     user: CurrentUser,
+    company: CurrentCompany,
     payload: ProspectCreate,
 ) -> ProspectOut:
     """Crée un nouveau prospect (dans Portalis + Odoo).
-    
-    Logique:
-    - Si company_id fourni: récupère l'erp_id de la company (ou crée le partner si inexistant)
-    - Sinon si partner_name fourni: crée le client dans Odoo puis l'utilise
-    - Sinon: crée lead sans client lié
+
+    Logique client :
+    - Si odoo_partner_id fourni : lie directement ce partenaire Odoo existant au lead
+    - Sinon si partner_name fourni : crée le client dans Odoo (res.partner) puis le lie
+    - Sinon : crée le lead sans client lié
+
+    Le prospect est automatiquement rattaché à l'entreprise du header X-Company-Id.
     """
     sync_service = _get_sync_service()
+    erp_company_id = company.erp_id  # tenant Odoo
 
-    # 1. Déterminer le partner_id à utiliser
-    partner_id = None
-    
-    # Si company_id fourni, récupérer l'erp_id de la company
-    if payload.company_id:
-        from app.application.companies.get_company import GetCompanyUseCase
-        from app.infrastructure.db.repositories.company import CompanyRepository
-        
-        company = await GetCompanyUseCase(CompanyRepository()).execute(payload.company_id)
-        if company:
-            if company.erp_id:
-                # Company a déjà un erp_id → l'utiliser
-                partner_id = company.erp_id
-            elif payload.partner_name:
-                # Company n'a pas d'erp_id → créer le partner dans Odoo
-                partner_id = await sync_service.create_partner_in_odoo(
-                    name=payload.partner_name,
-                    email=payload.email,
-                    phone=payload.phone,
-                    is_company=True,
-                )
-                # Mettre à jour la company avec l'erp_id
-                company.erp_id = partner_id
-                await company.save()
-    
+    # 1. Déterminer le partner_id (client Odoo, res.partner)
+    partner_id: int | None = payload.odoo_partner_id
+
     if not partner_id and payload.partner_name:
-        # Créer le client dans Odoo
         partner_id = await sync_service.create_partner_in_odoo(
             name=payload.partner_name,
             email=payload.email,
             phone=payload.phone,
             is_company=True,
+            erp_company_id=erp_company_id,
         )
-        
-    # 2. Création dans Odoo (lead ou opportunity)
-   
-    tag_ids = None  # TODO: mapping sector → tag_ids
+
+    # 2. Création du lead dans Odoo
     odoo_lead_id = await sync_service.create_in_odoo(
         name=payload.opportunity_name,
-        partner_name=payload.partner_name,  # ← Nom de l'entreprise
+        partner_name=payload.partner_name,
         contact_name=payload.contact_name,
         email=payload.email,
         phone=payload.phone,
         user_id=payload.user_id,
         team_id=payload.team_id,
         expected_revenue=payload.expected_revenue,
-        tag_ids=tag_ids,
         partner_id=partner_id,
         lead_type=payload.lead_type,
         probability=payload.probability,
         date_deadline=payload.date_deadline,
+        erp_company_id=erp_company_id,
     )
-    
+
     if not odoo_lead_id:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Échec création lead dans Odoo - odoo_lead_id est None"
+            detail="Échec création lead dans Odoo - odoo_lead_id est None",
         )
-    
-    # 3. Construction des erp_metadata avec les données Odoo
+
+    # 3. Construction des erp_metadata
     erp_metadata = {
         "id": odoo_lead_id,
-        "name": payload.opportunity_name,  # ← Titre du lead
-        "partner_name": payload.partner_name,  # ← Nom de l'entreprise
+        "name": payload.opportunity_name,
+        "partner_name": payload.partner_name,
         "type": payload.lead_type or "lead",
         "contact_name": payload.contact_name,
         "email_from": payload.email,
@@ -411,13 +392,14 @@ async def create_prospect(
         "team_id": payload.team_id,
         "date_deadline": payload.date_deadline.isoformat() if payload.date_deadline else None,
     }
-    
-    # 4. Création dans Portalis
+
+    # 4. Création dans Portalis (rattaché à l'entreprise du header)
     prospect = await ProspectOrm.create(
         odoo_lead_id=odoo_lead_id,
         status="nouveau",
         portalis_sector=payload.portalis_sector,
         created_by=user.id,
+        company_id=company.id,
         erp_metadata=erp_metadata,
     )
     
@@ -816,6 +798,7 @@ async def _run_cr_generation_task(
     note_ids: list[UUID] | None,
     author_id: UUID,
     prospect_name: str | None,
+    company_id: UUID | None = None,
 ) -> None:
     """Tâche de fond : génère le CR puis notifie l'auteur par email."""
     from app.infrastructure.storage.minio import StorageService
@@ -852,6 +835,7 @@ async def _run_cr_generation_task(
             prospect_name=prospect_name,
             author_name="",
             download_url=download_url,
+            company_id=company_id,
         )
     else:
         await notify_author_cr_failed(
@@ -910,6 +894,7 @@ async def generate_compte_rendu(
         note_ids=data.note_ids,
         author_id=current_user.id,
         prospect_name=prospect_name,
+        company_id=prospect.company_id,
     )
 
     return CompteRenduPendingOut(

@@ -177,13 +177,47 @@ def _send_smtp(smtp_cfg, to_email: str, subject: str, html_body: str) -> None:
     server.quit()
 
 
+async def _get_offer_validator(company_id: UUID | None) -> tuple[UUID | None, str]:
+    """Résout l'ID du validateur d'offres et un hint pour le message d'erreur.
+
+    Cherche d'abord dans les validateurs par entreprise, puis dans la config globale.
+    """
+    if company_id is not None:
+        from app.infrastructure.db.repositories.company_validators import CompanyValidatorsRepository
+        vid = await CompanyValidatorsRepository().get_offer_validator(company_id)
+        if vid:
+            return vid, f"company {company_id}"
+
+    from app.infrastructure.db.repositories.app_config import AppConfigRepository
+    config = await AppConfigRepository().get()
+    return config.validators.offer_validator_user_id, "config globale"
+
+
+async def _get_cr_validator(company_id: UUID | None) -> tuple[UUID | None, str]:
+    """Résout l'ID du validateur de CR.
+
+    Cherche d'abord dans les validateurs par entreprise, puis dans la config globale.
+    """
+    if company_id is not None:
+        from app.infrastructure.db.repositories.company_validators import CompanyValidatorsRepository
+        vid = await CompanyValidatorsRepository().get_cr_validator(company_id)
+        if vid:
+            return vid, f"company {company_id}"
+
+    from app.infrastructure.db.repositories.app_config import AppConfigRepository
+    config = await AppConfigRepository().get()
+    return config.validators.cr_validator_user_id, "config globale"
+
+
 async def notify_offer_generated(
     offer_id: UUID,
     offer_title: str | None,
     author_name: str,
+    company_id: UUID | None = None,
 ) -> list[str]:
     """Envoie un email au validateur désigné quand une offre transport est générée.
 
+    Cherche le validateur de l'entreprise (company_id) en priorité, puis la config globale.
     Retourne une liste de warnings (non bloquants) à remonter dans la réponse API.
     """
     warnings: list[str] = []
@@ -191,14 +225,18 @@ async def notify_offer_generated(
         from app.infrastructure.db.repositories.app_config import AppConfigRepository
         config = await AppConfigRepository().get()
         smtp = config.smtp
-        validator_id = config.validators.offer_validator_user_id
+        validator_id, validator_source = await _get_offer_validator(company_id)
 
         if not validator_id:
             msg = (
-                "Aucun validateur d'offres n'est configuré. "
-                "Rendez-vous dans PATCH /api/v1/config/app/validators pour en désigner un."
+                "Aucun validateur d'offres n'est configuré pour cette entreprise. "
+                "Rendez-vous dans PATCH /api/v1/config/app/validators/companies/{company_id} "
+                "ou PATCH /api/v1/config/app/validators pour en désigner un."
             )
-            logger.warning("notification.offer_generated.no_validator_configured offer_id=%s", offer_id)
+            logger.warning(
+                "notification.offer_generated.no_validator_configured offer_id=%s company_id=%s",
+                offer_id, company_id,
+            )
             warnings.append(msg)
             return warnings
 
@@ -403,9 +441,11 @@ async def notify_compte_rendu_generated(
     prospect_name: str | None,
     author_name: str,
     download_url: str | None,
+    company_id: UUID | None = None,
 ) -> list[str]:
     """Envoie un email au validateur désigné quand un compte rendu est généré.
 
+    Cherche le validateur de l'entreprise (company_id) en priorité, puis la config globale.
     Retourne une liste de warnings (non bloquants) à remonter dans la réponse API.
     """
     warnings: list[str] = []
@@ -413,14 +453,18 @@ async def notify_compte_rendu_generated(
         from app.infrastructure.db.repositories.app_config import AppConfigRepository
         config = await AppConfigRepository().get()
         smtp = config.smtp
-        validator_id = config.validators.cr_validator_user_id
+        validator_id, _ = await _get_cr_validator(company_id)
 
         if not validator_id:
             msg = (
-                "Aucun validateur de comptes rendus n'est configuré. "
-                "Rendez-vous dans PATCH /api/v1/config/app/validators pour en désigner un."
+                "Aucun validateur de comptes rendus n'est configuré pour cette entreprise. "
+                "Rendez-vous dans PATCH /api/v1/config/app/validators/companies/{company_id} "
+                "ou PATCH /api/v1/config/app/validators pour en désigner un."
             )
-            logger.warning("notification.cr_generated.no_validator_configured cr_id=%s", cr_id)
+            logger.warning(
+                "notification.cr_generated.no_validator_configured cr_id=%s company_id=%s",
+                cr_id, company_id,
+            )
             warnings.append(msg)
             return warnings
 

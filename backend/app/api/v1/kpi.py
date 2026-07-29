@@ -14,7 +14,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.api.deps import get_current_user
+from app.api.deps import CurrentCompany, get_current_user
 from app.api.v1.schemas.kpi import KpiCatalogOut, KpiChartData, KpiOut
 from app.core.logging import get_logger
 from app.domain.shared import kpi_catalog
@@ -45,6 +45,7 @@ def _user_groups(request: Request) -> list[str]:
 @router.get("/catalog")
 async def get_kpi_catalog(
     request: Request,
+    company: CurrentCompany,
     _user=Depends(get_current_user),
     date_from: Annotated[date | None, Query(description="Début de période (YYYY-MM-DD)")] = None,
     date_to: Annotated[date | None, Query(description="Fin de période (YYYY-MM-DD)")] = None,
@@ -71,7 +72,7 @@ async def get_kpi_catalog(
 
     async def _build_kpi_out(defn) -> KpiOut:
         try:
-            chart = await _compute_kpi(defn.key, date_from, date_to)
+            chart = await _compute_kpi(defn.key, date_from, date_to, erp_company_id=company.erp_id, company_id=company.id)
         except Exception as exc:
             logger.warning("kpi.catalog.compute_failed key=%s error=%s", defn.key, exc)
             chart = KpiChartData(data=[], series=[])
@@ -93,6 +94,7 @@ async def get_kpi_catalog(
 async def get_kpi(
     key: str,
     request: Request,
+    company: CurrentCompany,
     _user=Depends(get_current_user),
     date_from: Annotated[date | None, Query(description="Début de période (YYYY-MM-DD)")] = None,
     date_to: Annotated[date | None, Query(description="Fin de période (YYYY-MM-DD)")] = None,
@@ -114,7 +116,7 @@ async def get_kpi(
                 detail=f"Votre groupe n'a pas accès à l'indicateur '{key}'.",
             )
 
-    chart = await _compute_kpi(key, date_from, date_to)
+    chart = await _compute_kpi(key, date_from, date_to, erp_company_id=company.erp_id, company_id=company.id)
 
     period = None
     if date_from and date_to:
@@ -137,7 +139,7 @@ async def get_kpi(
 
 # ── Calcul ─────────────────────────────────────────────────────────────────────
 
-async def _compute_kpi(key: str, date_from: date | None, date_to: date | None):
+async def _compute_kpi(key: str, date_from: date | None, date_to: date | None, erp_company_id: int | None = None, company_id=None):
     """Dispatch vers le service de calcul du KPI."""
     try:
         if key == "ca_mois":
@@ -178,7 +180,7 @@ async def _compute_kpi(key: str, date_from: date | None, date_to: date | None):
         else:
             raise HTTPException(status_code=404, detail=f"Calcul non implémenté pour '{key}'.")
 
-        return await compute(date_from=date_from, date_to=date_to)
+        return await compute(date_from=date_from, date_to=date_to, erp_company_id=erp_company_id, company_id=company_id)
 
     except HTTPException:
         raise

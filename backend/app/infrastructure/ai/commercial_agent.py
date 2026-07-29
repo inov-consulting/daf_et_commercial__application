@@ -88,24 +88,41 @@ async def _odoo_execute(model: str, method: str, args: list, kwargs: dict | None
 # ── Tool 1 : list_clients_to_enrich ──────────────────────────────────────────
 
 
-async def list_clients_to_enrich(limit: int = 20) -> str:
-    """Liste les clients Odoo à enrichir, en priorisant les moins récemment traités.
+_current_erp_id: int | None = None       # injecté par run_commercial_cycle avant chaque cycle
+_current_company_id = None               # UUID Portalis, pour associer les prédictions
 
-    Stratégie : clients jamais enrichis d'abord (ai_insight_last_update null),
-    puis les plus anciennement mis à jour — garantit que le scheduler tourne
-    de façon utile même après un premier cycle complet.
+
+async def list_clients_to_enrich(limit: int = 20) -> str:
+    """Liste les clients Odoo qui ont besoin d'un enrichissement.
+
+    Règle : un client est éligible seulement si :
+      - il n'a jamais été enrichi (ai_insight_last_update est null), OU
+      - son dernier enrichissement date de plus de 30 jours.
+
+    Les clients enrichis il y a moins de 30 jours sont ignorés pour économiser
+    les crédits de recherche. Résultats triés du plus ancien au plus récent.
 
     Args:
         limit: Nombre maximum de clients à retourner.
     """
+    from datetime import timedelta
+    thirty_days_ago = (datetime.now(UTC) - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
+
+    domain: list = [
+        ["is_company", "=", True],
+        ["customer_rank", ">", 0],
+        "|",
+        ["ai_insight_last_update", "=", False],
+        ["ai_insight_last_update", "<", thirty_days_ago],
+    ]
+    if _current_erp_id is not None:
+        domain.insert(0, ["company_id", "=", _current_erp_id])
+
     try:
         partners: list[dict] = await _odoo_execute(  # type: ignore[assignment]
             "res.partner",
             "search_read",
-            [[
-                ["is_company", "=", True],
-                ["customer_rank", ">", 0],
-            ]],
+            [domain],
             {
                 "fields": [
                     "id", "name", "country_id", "city", "website",
@@ -120,9 +137,9 @@ async def list_clients_to_enrich(limit: int = 20) -> str:
         return f"Erreur lors de la récupération des clients Odoo : {exc}"
 
     if not partners:
-        return "Aucun client trouvé (aucune entreprise avec customer_rank > 0 dans Odoo)."
+        return "Aucun client à enrichir pour le moment (tous les clients ont été mis à jour dans les 30 derniers jours)."
 
-    lines = [f"## {len(partners)} client(s) à traiter\n"]
+    lines = [f"## {len(partners)} client(s) à enrichir\n"]
     for p in partners:
         country = p.get("country_id")
         country_name = country[1] if isinstance(country, list | tuple) else str(country or "")
@@ -478,6 +495,7 @@ async def save_commercial_prediction(
                 "has_shipments": True,
                 "generated_at": datetime.now(UTC).isoformat(),
             },
+            company_id=_current_company_id,
         )
     except Exception as exc:
         logger.error("commercial_agent.save_prediction.failed partner_id=%s: %s", partner_id, exc)
@@ -554,13 +572,25 @@ async def stream_commercial_enrichment(limit: int = 20) -> AsyncIterator[str]:
     yield f"[RUN:{run_id}]"
 
 
-async def run_commercial_cycle(limit: int = 50, trigger: str = "scheduled") -> dict:
+async def run_commercial_cycle(
+    limit: int = 50,
+    trigger: str = "scheduled",
+    company_id=None,
+    erp_id: int | None = None,
+) -> dict:
     """Lance un cycle complet d'enrichissement + prédiction sans streaming.
 
     Écoute les événements on_tool_end pour comptabiliser les enrichissements
     et prédictions. Retourne un dict de stats utilisé par le scheduler.
     """
-    logger.info("commercial.cycle.start trigger=%s limit=%d", trigger, limit)
+    global _current_erp_id, _current_company_id
+    _current_erp_id = erp_id
+    _current_company_id = company_id
+
+    logger.info(
+        "commercial.cycle.start trigger=%s limit=%d erp_id=%s",
+        trigger, limit, erp_id,
+    )
     agent, config, message, run_id = await _build_agent(limit)
 
     stats = {

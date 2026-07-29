@@ -34,13 +34,33 @@ class DafScheduler:
     # ── Cycle unique ──────────────────────────────────────────────────────
 
     async def _run_cycle(self, trigger: str = "scheduled") -> None:
-        """Wrapper sécurisé autour de run_daf_cycle. Ne lève jamais d'exception."""
+        """Itère sur toutes les companies actives et lance un cycle DAF pour chacune."""
         from app.infrastructure.ai.daf_agent import run_daf_cycle
+        from app.infrastructure.db.repositories.company import CompanyRepository
 
         logger.info("daf.scheduler.cycle_start trigger=%s", trigger)
         try:
-            run_id = await run_daf_cycle(trigger=trigger)
-            logger.info("daf.scheduler.cycle_done run_id=%s", run_id)
+            companies = await CompanyRepository().list_all()
+            active = [c for c in companies if c.erp_id is not None and c.is_active]
+            if not active:
+                logger.warning("daf.scheduler.no_active_company")
+                return
+            for company in active:
+                try:
+                    run_id = await run_daf_cycle(
+                        trigger=trigger,
+                        company_id=company.id,
+                        erp_id=company.erp_id,
+                    )
+                    logger.info(
+                        "daf.scheduler.cycle_done company=%s run_id=%s",
+                        company.name, run_id,
+                    )
+                except Exception:
+                    logger.exception(
+                        "daf.scheduler.cycle_error company=%s trigger=%s",
+                        company.name, trigger,
+                    )
         except Exception:
             logger.exception("daf.scheduler.cycle_unhandled_error trigger=%s", trigger)
 

@@ -107,6 +107,84 @@ class OdooClient:
             offset += page_size
         return records
 
+    def create_company(
+        self,
+        name: str,
+        country_code: str,
+        email: str | None = None,
+        phone: str | None = None,
+        website: str | None = None,
+        address: str | None = None,
+    ) -> int:
+        """Crée une entreprise dans Odoo et retourne son ID.
+
+        Recherche d'abord le country_id Odoo à partir du code ISO 2 lettres,
+        puis crée un enregistrement res.company.
+        """
+        uid = self._authenticate()
+        proxy = self._object_proxy()
+        pwd = self._api_key or self._password
+
+        # Résolution du pays Odoo depuis le code ISO
+        country_ids: list[int] = proxy.execute_kw(
+            self._db, uid, pwd,
+            "res.country", "search",
+            [[["code", "=", country_code.upper()]]],
+        )
+        vals: dict = {"name": name}
+        if country_ids:
+            vals["country_id"] = country_ids[0]
+        if email:
+            vals["email"] = email
+        if phone:
+            vals["phone"] = phone
+        if website:
+            vals["website"] = website
+        if address:
+            vals["street"] = address
+
+        new_id: int = proxy.execute_kw(
+            self._db, uid, pwd,
+            "res.company", "create",
+            [vals],
+        )
+        return new_id
+
+    def update_company(
+        self,
+        erp_id: int,
+        name: str | None = None,
+        email: str | None = None,
+        phone: str | None = None,
+        website: str | None = None,
+        address: str | None = None,
+    ) -> None:
+        """Met à jour une entreprise existante dans Odoo."""
+        uid = self._authenticate()
+        proxy = self._object_proxy()
+        pwd = self._api_key or self._password
+
+        vals: dict = {}
+        if name is not None:
+            vals["name"] = name
+        if email is not None:
+            vals["email"] = email
+        if phone is not None:
+            vals["phone"] = phone
+        if website is not None:
+            vals["website"] = website
+        if address is not None:
+            vals["street"] = address
+
+        if not vals:
+            return
+
+        proxy.execute_kw(
+            self._db, uid, pwd,
+            "res.company", "write",
+            [[erp_id], vals],
+        )
+
     def list_companies(self) -> list[OdooCompany]:
         """Récupère toutes les entreprises actives depuis Odoo."""
         uid = self._authenticate()

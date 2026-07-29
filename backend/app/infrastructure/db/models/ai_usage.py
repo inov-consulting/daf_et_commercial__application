@@ -13,6 +13,7 @@ class AiUsageLogOrm(BaseModel):
     et track_anthropic_sdk_usage (SDK direct).
     """
 
+    company_id = fields.UUIDField(null=True, index=True)
     provider: str = fields.CharField(max_length=32, index=True)   # anthropic | openai | groq | deepseek
     model: str    = fields.CharField(max_length=64, index=True)
     context: str  = fields.CharField(max_length=64, default="unknown")  # chat | daf | cr | offer | whatsapp

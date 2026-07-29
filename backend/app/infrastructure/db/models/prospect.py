@@ -19,6 +19,8 @@ class ProspectOrm(BaseModel):
     Fait référence à crm.lead via odoo_lead_id.
     """
 
+    company_id = fields.UUIDField(null=True, index=True)
+
     # Lien vers Odoo crm.lead (nullable car prospect peut être créé avant sync Odoo)
     odoo_lead_id: int | None = fields.IntField(unique=True, index=True, null=True)
 
