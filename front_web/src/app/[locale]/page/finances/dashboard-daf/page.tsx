@@ -376,6 +376,7 @@ export default function DashboardDafPage() {
         }}
         // actionLabel={triggering ? "Déclenchement…" : "Déclencher Agent"}
         onAction={handleTrigger}
+        onCompanyChange={handleRefresh}
       />
 
       {/* KPI row */}

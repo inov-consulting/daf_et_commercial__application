@@ -105,6 +105,10 @@ export default function ReportingPage() {
       <FinSectionHeader
         title="Reporting financier"
         onAction={() => {}}
+        onCompanyChange={() => {
+          dispatch(fetchRuns(35));
+          dispatch(fetchLatestSnapshot());
+        }}
       />
 
       {/* Grille principale : Synthèse IA + Rapports */}
