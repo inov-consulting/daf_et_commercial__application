@@ -340,7 +340,16 @@ export default function DsoCreancesPage() {
 
   return (
     <div className="p-3 sm:p-4 md:p-6 mx-auto space-y-4 sm:space-y-6">
-      <FinSectionHeader title="DSO & Créances clients" onAction={() => {}} />
+      <FinSectionHeader
+        title="DSO & Créances clients"
+        onAction={() => {}}
+        onCompanyChange={() => {
+          dispatch(fetchLatestSnapshot());
+          dispatch(fetchSnapshots(10));
+          dispatch(fetchProposedActions({ status: 'pending', limit: 50 }));
+          dispatch(fetchKpiCatalog());
+        }}
+      />
 
       {/* KPI row */}
       {isLoading && !snap ? (

@@ -135,6 +135,11 @@ export default function TresoreriePage() {
     <div className="p-3 sm:p-4 md:p-6">
       <FinSectionHeader
         title="Trésorerie nette"
+        onCompanyChange={() => {
+          dispatch(fetchLatestSnapshot());
+          dispatch(fetchSnapshots(10));
+          dispatch(fetchKpiCatalog());
+        }}
       />
 
       {/* KPI row */}
