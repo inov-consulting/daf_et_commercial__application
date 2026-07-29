@@ -176,6 +176,34 @@ async def get_ai_balance() -> AiBalanceResponse:
     }
 
     async with httpx.AsyncClient(timeout=10.0) as client:
+        # ── OpenAI Balance via session token navigateur ───────────────────────
+        # Le session token (sess-...) s'obtient dans les DevTools de platform.openai.com
+        if settings.openai_session_token:
+            try:
+                resp = await client.get(
+                    "https://api.openai.com/dashboard/billing/credit_grants",
+                    headers={
+                        "Authorization": f"Bearer {settings.openai_session_token}",
+                        "Content-Type": "application/json",
+                    },
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    result["openai"] = {
+                        "available":       True,
+                        "total_granted":   data.get("total_granted"),
+                        "total_used":      data.get("total_used"),
+                        "total_available": data.get("total_available"),
+                        "local_cost_usd_30d": round(local_cost.get("openai", 0.0), 4),
+                        "source": "dashboard/billing (session token)",
+                    }
+                elif resp.status_code == 401:
+                    result["openai"]["message"] = "Session token expiré — renouveler OPENAI_SESSION_TOKEN dans .env"
+                else:
+                    result["openai"]["message"] = f"Erreur API OpenAI : HTTP {resp.status_code}"
+            except Exception as exc:
+                result["openai"]["message"] = f"Erreur réseau OpenAI : {exc}"
+
         # ── DeepSeek Balance (API officielle disponible) ──────────────────────
         if settings.deepseek_api_key:
             try:
