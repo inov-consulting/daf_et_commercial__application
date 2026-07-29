@@ -44,18 +44,7 @@ export default function PageLayout({ children, params }: PageLayoutProps) {
         />
 
         <div className="relative z-10 flex flex-col items-center select-none">
-          {/* Logo avec glow animé */}
           <div className="relative mb-8">
-            <div
-              className="absolute animate-pulse pointer-events-none"
-              style={{
-                inset: "-16px",
-                background: "var(--grad)",
-                opacity: 0.18,
-                filter: "blur(24px)",
-                borderRadius: "32px",
-              }}
-            />
             <Image
               src="/assets/images/logo_portalis.png"
               alt="PortaLis"
