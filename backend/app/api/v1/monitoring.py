@@ -146,32 +146,54 @@ async def get_ai_usage(
 async def get_ai_balance() -> AiBalanceResponse:
     """Solde des crédits IA disponibles.
 
+    - OpenAI   : solde réel via Admin API (clé sk-admin-... requise)
     - DeepSeek : solde réel via API officielle
-    - Anthropic / OpenAI : non disponible publiquement (tracking local uniquement)
+    - Anthropic : non disponible publiquement (tracking local uniquement)
     """
     result: dict[str, dict] = {
         "anthropic": {"available": None, "message": "API de solde non disponible — consommation suivie localement"},
-        "openai":    {"available": None, "message": "API de solde non disponible — consommation suivie localement"},
+        "openai":    {"available": None, "message": "Clé admin OpenAI non configurée (OPENAI_ADMIN_API_KEY)"},
         "deepseek":  {"available": False, "message": "Clé API non configurée"},
     }
 
-    if settings.deepseek_api_key:
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        # ── OpenAI Organization Balance ────────────────────────────────────────
+        if settings.openai_admin_api_key:
+            try:
+                resp = await client.get(
+                    "https://api.openai.com/v1/organization/balance",
+                    headers={"Authorization": f"Bearer {settings.openai_admin_api_key}"},
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    result["openai"] = {
+                        "available": data.get("available", []),
+                        "pending":   data.get("pending", []),
+                    }
+                else:
+                    result["openai"] = {
+                        "available": None,
+                        "message": f"Erreur API OpenAI : HTTP {resp.status_code} — {resp.text[:200]}",
+                    }
+            except Exception as exc:
+                result["openai"] = {"available": None, "message": f"Erreur réseau OpenAI : {exc}"}
+
+        # ── DeepSeek Balance ──────────────────────────────────────────────────
+        if settings.deepseek_api_key:
+            try:
                 resp = await client.get(
                     "https://api.deepseek.com/user/balance",
                     headers={"Authorization": f"Bearer {settings.deepseek_api_key}"},
                 )
-            if resp.status_code == 200:
-                data = resp.json()
-                balance_infos = data.get("balance_infos", [])
-                result["deepseek"] = {
-                    "available":      data.get("is_available", False),
-                    "balance_infos":  balance_infos,
-                }
-            else:
-                result["deepseek"] = {"available": False, "message": f"Erreur API DeepSeek : HTTP {resp.status_code}"}
-        except Exception as exc:
-            result["deepseek"] = {"available": False, "message": f"Erreur réseau : {exc}"}
+                if resp.status_code == 200:
+                    data = resp.json()
+                    result["deepseek"] = {
+                        "available":     data.get("is_available", False),
+                        "balance_infos": data.get("balance_infos", []),
+                    }
+                else:
+                    result["deepseek"] = {"available": False, "message": f"Erreur API DeepSeek : HTTP {resp.status_code}"}
+            except Exception as exc:
+                result["deepseek"] = {"available": False, "message": f"Erreur réseau : {exc}"}
 
     return result
