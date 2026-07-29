@@ -123,7 +123,7 @@ export function mapApiUser(u: ApiUser): User {
     lastLogin: formatDate(u.last_login_at, true),
     created: formatDate(u.created_at),
     bg: hashColor(u.id),
-    avatar: u.avatar_url,
+    avatar: u.avatar_url ?? undefined,
   };
 }
 
