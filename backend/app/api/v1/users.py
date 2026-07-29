@@ -6,10 +6,10 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 
-from app.api.deps import CompanyRepoDep, UserRepoDep, require_permission
+from app.api.deps import CompanyRepoDep, CurrentUser, UserRepoDep, require_permission
 from app.api.v1.schemas.companies import CompanyOut
 from app.api.v1.schemas.pagination import Page, PageParams
-from app.api.v1.schemas.users import UserCreate, UserOut, UserUpdate
+from app.api.v1.schemas.users import ChangePasswordIn, UserCreate, UserOut, UserUpdate
 from app.application.users.create_user import CreateUserInput, CreateUserUseCase
 from app.application.users.get_user import GetUserUseCase
 from app.application.users.list_users import ListUsersUseCase
@@ -339,3 +339,32 @@ async def update_user(
     user_group_ids = [g["id"] for g in kc_groups]
 
     return UserOut.from_domain(user, companies=companies, group_ids=user_group_ids)
+
+
+@router.patch("/me/password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_my_password(
+    payload: ChangePasswordIn,
+    current_user: CurrentUser,
+) -> None:
+    """Change le mot de passe de l'utilisateur connecté.
+
+    Vérifie d'abord le mot de passe actuel via Keycloak (ROPC flow) avant
+    d'appliquer le nouveau. Retourne 401 si le mot de passe actuel est incorrect.
+    """
+    kc = KeycloakAdminClient()
+
+    password_ok = await kc.verify_user_password(
+        email=current_user.email,
+        password=payload.current_password,
+    )
+    if not password_ok:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Mot de passe actuel incorrect.",
+        )
+
+    await kc.set_user_password(
+        user_id=str(current_user.id),
+        password=payload.new_password,
+        temporary=False,
+    )

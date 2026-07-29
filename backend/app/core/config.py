@@ -85,6 +85,7 @@ class Settings(BaseSettings):
     # ── IA ─────────────────────────────────────────────────────────────
     anthropic_api_key: str = ""
     openai_api_key: str = ""
+    openai_admin_api_key: str = ""  # Clé admin organisation (sk-admin-...) pour /organization/balance
     groq_api_key: str = ""
     tavily_api_key: str = ""
     deepseek_api_key: str = ""

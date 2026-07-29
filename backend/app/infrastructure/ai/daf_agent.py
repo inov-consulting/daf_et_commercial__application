@@ -102,7 +102,7 @@ class _RunContext:
 
 # ── Factory d'outils pour un cycle donné ─────────────────────────────────────
 
-def _build_tools_for_run(ctx: _RunContext) -> list:
+def _build_tools_for_run(ctx: _RunContext, erp_id: int | None = None) -> list:
     """Construit les outils LangChain pour ce cycle d'exécution."""
     from app.infrastructure.ai.tools.daf_financial_tools import (
         calculate_dso as _calculate_dso,
@@ -118,7 +118,7 @@ def _build_tools_for_run(ctx: _RunContext) -> list:
     @lc_tool
     async def fetch_overdue_receivables() -> str:
         """Récupère toutes les factures clients en retard de paiement depuis Odoo."""
-        data = await _get_overdue_receivables()
+        data = await _get_overdue_receivables(erp_id=erp_id)
         ctx.snapshot_data["overdue_receivables"] = data["total_overdue"]
         ctx.snapshot_data["overdue_receivables_count"] = data["count"]
         ctx.snapshot_data["overdue_receivables_detail"] = data["invoices"]
@@ -128,7 +128,7 @@ def _build_tools_for_run(ctx: _RunContext) -> list:
     @lc_tool
     async def fetch_all_receivables() -> str:
         """Récupère le total des créances clients (toutes factures non soldées)."""
-        data = await _get_all_receivables()
+        data = await _get_all_receivables(erp_id=erp_id)
         ctx.snapshot_data["total_receivables"] = data["total_receivables"]
         ctx.log_event("analysis", f"Total créances : {data['total_receivables']:,.0f} XOF ({data['count']} factures)")
         return str(data)
@@ -136,7 +136,7 @@ def _build_tools_for_run(ctx: _RunContext) -> list:
     @lc_tool
     async def fetch_overdue_payables() -> str:
         """Récupère toutes les factures fournisseurs en retard de paiement depuis Odoo."""
-        data = await _get_overdue_payables()
+        data = await _get_overdue_payables(erp_id=erp_id)
         ctx.snapshot_data["overdue_payables"] = data["total_overdue"]
         ctx.snapshot_data["overdue_payables_count"] = data["count"]
         ctx.snapshot_data["overdue_payables_detail"] = data["invoices"]
@@ -146,7 +146,7 @@ def _build_tools_for_run(ctx: _RunContext) -> list:
     @lc_tool
     async def fetch_all_payables() -> str:
         """Récupère le total des dettes fournisseurs (toutes factures non soldées)."""
-        data = await _get_all_payables()
+        data = await _get_all_payables(erp_id=erp_id)
         ctx.snapshot_data["total_payables"] = data["total_payables"]
         ctx.log_event("analysis", f"Total dettes : {data['total_payables']:,.0f} XOF ({data['count']} factures)")
         return str(data)
@@ -154,7 +154,7 @@ def _build_tools_for_run(ctx: _RunContext) -> list:
     @lc_tool
     async def calculate_dso_tool() -> str:
         """Calcule le DSO (Days Sales Outstanding) sur 90 jours."""
-        data = await _calculate_dso(period_days=90)
+        data = await _calculate_dso(period_days=90, erp_id=erp_id)
         ctx.snapshot_data["dso_days"] = data["dso_days"]
         ctx.log_event("analysis", f"DSO : {data['dso_days']} jours (CA 90j : {data['ca_period']:,.0f} XOF)", data)
         return str(data)
@@ -162,7 +162,7 @@ def _build_tools_for_run(ctx: _RunContext) -> list:
     @lc_tool
     async def fetch_cash_position() -> str:
         """Récupère la position de trésorerie depuis les journaux bancaires Odoo."""
-        data = await _get_cash_position()
+        data = await _get_cash_position(erp_id=erp_id)
         ctx.snapshot_data["cash_position"] = data["total_cash"]
         ctx.log_event(
             "analysis" if data["total_cash"] >= 0 else "alert",
@@ -174,7 +174,7 @@ def _build_tools_for_run(ctx: _RunContext) -> list:
     @lc_tool
     async def fetch_aging_report() -> str:
         """Génère la balance âgée des créances clients par tranche de retard."""
-        data = await _get_aging_report()
+        data = await _get_aging_report(erp_id=erp_id)
         ctx.snapshot_data["aging_report"] = data
         ctx.log_event("analysis", f"Balance âgée calculée. Total retards : {data['total_overdue']:,.0f} XOF", data)
         return str(data)
@@ -182,7 +182,7 @@ def _build_tools_for_run(ctx: _RunContext) -> list:
     @lc_tool
     async def fetch_top_debtors() -> str:
         """Retourne les 10 clients avec les créances en retard les plus élevées."""
-        data = await _get_top_debtors(limit=10)
+        data = await _get_top_debtors(limit=10, erp_id=erp_id)
         ctx.snapshot_data["top_debtors"] = data["top_debtors"]
         ctx.log_event("analysis", f"Top débiteurs identifiés : {len(data['top_debtors'])} clients", data)
         return str(data)
@@ -521,12 +521,9 @@ async def run_daf_cycle(
         erp_id: ID Odoo de l'entreprise (res.company.id)
     """
     from app.infrastructure.ai.agent import _get_llm
-    from app.infrastructure.ai.tools.daf_financial_tools import set_company_context
     from app.infrastructure.db.models.daf_agent import DafAgentRunOrm
     from app.infrastructure.db.repositories.ai_config import AiConfigRepository
     from langgraph.prebuilt import create_react_agent
-
-    set_company_context(erp_id)
 
     run_id = uuid4()
     run = await DafAgentRunOrm.create(
@@ -546,7 +543,7 @@ async def run_daf_cycle(
         _, model_domain, _ = await AiConfigRepository().get()
         llm = await _get_llm(model_domain.provider, model_domain.name, context="daf")
 
-        tools = _build_tools_for_run(ctx)
+        tools = _build_tools_for_run(ctx, erp_id=erp_id)
         agent = create_react_agent(model=llm, tools=tools, prompt=DAF_SYSTEM_PROMPT)
 
         await agent.ainvoke({"messages": [("human", "Démarre l'analyse financière complète.")]})

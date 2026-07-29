@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -32,6 +33,10 @@ API_V1_PREFIX = "/api/v1"
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     logger.info("backend.startup", environment=settings.environment)
+
+    from app.infrastructure.ai.usage_tracker import set_main_loop
+    set_main_loop(asyncio.get_running_loop())
+
     await init_db()
     await AiModelRepository().seed()
 
@@ -41,9 +46,8 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     from app.infrastructure.scheduler.commercial_scheduler import commercial_scheduler
     await commercial_scheduler.start()
 
-    import asyncio as _asyncio
     from app.infrastructure.monitoring.collector import start_monitoring_loop
-    _asyncio.create_task(start_monitoring_loop(interval=2.0))
+    asyncio.create_task(start_monitoring_loop(interval=2.0))
 
     try:
         yield

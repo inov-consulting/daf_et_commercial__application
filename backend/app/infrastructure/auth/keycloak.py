@@ -450,6 +450,26 @@ class KeycloakAdminClient:
                 raise RuntimeError(f"Utilisateur '{user_id}' introuvable dans Keycloak")
             resp.raise_for_status()
 
+    async def verify_user_password(self, email: str, password: str) -> bool:
+        """Vérifie le mot de passe actuel d'un utilisateur via le ROPC flow Keycloak.
+
+        Tente d'obtenir un token avec les credentials fournis.
+        Retourne True si le mot de passe est correct, False sinon.
+        N'utilise PAS l'API Admin — c'est une requête directe au token endpoint.
+        """
+        url = f"{self._base_url}/realms/{self._realm}/protocol/openid-connect/token"
+        data = {
+            "grant_type": "password",
+            "client_id": settings.keycloak_client_id,
+            "client_secret": settings.keycloak_client_secret,
+            "username": email,
+            "password": password,
+            "scope": "openid",
+        }
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(url, data=data)
+        return resp.status_code == 200
+
     async def get_user_groups(self, user_id: str) -> list[dict]:
         """Récupère les groupes d'un utilisateur."""
         headers = await self._auth_header()
