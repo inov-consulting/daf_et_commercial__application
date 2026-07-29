@@ -270,6 +270,11 @@ export default function DettesFournisseursPage() {
         // secondaryAction={{ label: 'Exporter', icon: <DownloadSimpleIcon size={13} />, onClick: () => {} }}
         // actionLabel="+ Règlement"
         onAction={() => {}}
+        onCompanyChange={() => {
+          dispatch(fetchLatestSnapshot());
+          dispatch(fetchSnapshots(10));
+          dispatch(fetchKpiCatalog());
+        }}
       />
 
       {/* KPI row */}

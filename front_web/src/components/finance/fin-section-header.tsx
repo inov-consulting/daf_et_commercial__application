@@ -1,24 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useAppSelector } from '@/redux/store';
+import { setCompanyContext } from '@/lib/ApiService';
 import Image from 'next/image';
-import type { EntityKey } from '@/types/finance_type';
-
-const ENTITIES = [
-  { key: 'all' as EntityKey, label: 'Toutes', flag: null },
-  { key: 'sn'  as EntityKey, label: 'Sénégal',        flag: 'sn' },
-  { key: 'ci'  as EntityKey, label: "Côte d'Ivoire",  flag: 'ci' },
-];
 
 interface FinSectionHeaderProps {
-  title:       string;
-  actionLabel?: string;
-  actionIcon?:  React.ReactNode;
-  onAction?:   () => void;
-  showEntities?: boolean;
-  secondaryAction?:  { label: string; icon?: React.ReactNode; onClick: () => void };
+  title:            string;
+  actionLabel?:     string;
+  actionIcon?:      React.ReactNode;
+  onAction?:        () => void;
+  showEntities?:    boolean;
+  secondaryAction?: { label: string; icon?: React.ReactNode; onClick: () => void };
+  onCompanyChange?: (companyId: string) => void;
 }
 
 export function FinSectionHeader({
@@ -28,8 +24,24 @@ export function FinSectionHeader({
   onAction,
   showEntities = true,
   secondaryAction,
+  onCompanyChange,
 }: FinSectionHeaderProps) {
-  const [entity, setEntity] = useState<EntityKey>('all');
+  const me = useAppSelector(s => s.me.me);
+  const companies = useMemo(() => me?.companies ?? [], [me]);
+  const [selectedId, setSelectedId] = useState('');
+
+  useEffect(() => {
+    if (companies.length > 0 && !selectedId) {
+      setSelectedId(companies[0].id);
+    }
+  }, [companies, selectedId]);
+
+  function handleSelect(id: string) {
+    if (id === selectedId) return;
+    setCompanyContext(id);
+    setSelectedId(id);
+    onCompanyChange?.(id);
+  }
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
@@ -38,24 +50,29 @@ export function FinSectionHeader({
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        {showEntities && (
+        {showEntities && companies.length > 0 && (
           <div className="flex items-center gap-0.5 bg-white border border-[var(--bd-def)] rounded-lg p-0.5 shadow-[var(--sh-xs)]">
-            {ENTITIES.map(({ key, label, flag }) => (
+            {companies.map(c => (
               <button
-                key={key}
-                onClick={() => setEntity(key)}
+                key={c.id}
+                onClick={() => handleSelect(c.id)}
                 className={cn(
                   'flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
-                  entity === key
+                  selectedId === c.id
                     ? 'bg-[var(--p500)] text-white'
                     : 'text-[var(--tx-2)] hover:bg-[var(--bg-sink)]',
                 )}
               >
-                {flag && (
-                  <Image src={`https://flagcdn.com/16x12/${flag}.png`} width={16} height={12} alt={label} className="rounded-[2px] flex-shrink-0" />
+                {c.country_code && (
+                  <Image
+                    src={`https://flagcdn.com/16x12/${c.country_code.toLowerCase()}.png`}
+                    width={16}
+                    height={12}
+                    alt={c.country ?? c.country_code}
+                    className="rounded-[2px] flex-shrink-0"
+                  />
                 )}
-                <span className="hidden sm:inline">{label}</span>
-                {!flag && <span className="sm:hidden">Toutes</span>}
+                <span className="hidden sm:inline">{c.name ?? c.id}</span>
               </button>
             ))}
           </div>
