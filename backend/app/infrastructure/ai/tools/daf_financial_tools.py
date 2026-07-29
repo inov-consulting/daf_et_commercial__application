@@ -12,6 +12,18 @@ from datetime import date, datetime, timezone
 
 logger = logging.getLogger(__name__)
 
+# Contexte injecté par run_daf_cycle avant chaque exécution
+_current_erp_id: int | None = None
+
+
+def set_company_context(erp_id: int | None) -> None:
+    global _current_erp_id
+    _current_erp_id = erp_id
+
+
+def _company_filter() -> list:
+    return [("company_id", "=", _current_erp_id)] if _current_erp_id is not None else []
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -45,7 +57,7 @@ async def get_overdue_receivables() -> dict:
 
     today = _today()
     client = OdooClient()
-    domain = [
+    domain = _company_filter() + [
         ("move_type", "=", "out_invoice"),
         ("state", "=", "posted"),
         ("payment_state", "in", ["not_paid", "partial"]),
@@ -94,7 +106,7 @@ async def get_all_receivables() -> dict:
     from app.infrastructure.odoo.client import OdooClient
 
     client = OdooClient()
-    domain = [
+    domain = _company_filter() + [
         ("move_type", "=", "out_invoice"),
         ("state", "=", "posted"),
         ("payment_state", "in", ["not_paid", "partial"]),
@@ -117,7 +129,7 @@ async def get_overdue_payables() -> dict:
 
     today = _today()
     client = OdooClient()
-    domain = [
+    domain = _company_filter() + [
         ("move_type", "=", "in_invoice"),
         ("state", "=", "posted"),
         ("payment_state", "in", ["not_paid", "partial"]),
@@ -165,7 +177,7 @@ async def get_all_payables() -> dict:
     from app.infrastructure.odoo.client import OdooClient
 
     client = OdooClient()
-    domain = [
+    domain = _company_filter() + [
         ("move_type", "=", "in_invoice"),
         ("state", "=", "posted"),
         ("payment_state", "in", ["not_paid", "partial"]),
@@ -201,7 +213,7 @@ async def calculate_dso(period_days: int = 90) -> dict:
     total_receivables = receivables_data["total_receivables"]
 
     # CA facturé sur la période (factures validées et payées ou non)
-    ca_domain = [
+    ca_domain = _company_filter() + [
         ("move_type", "=", "out_invoice"),
         ("state", "=", "posted"),
         ("invoice_date", ">=", period_start),
@@ -236,7 +248,7 @@ async def get_cash_position() -> dict:
     client = OdooClient()
 
     # Récupérer les journaux de type bank/cash
-    journal_domain = [("type", "in", ["bank", "cash"])]
+    journal_domain = _company_filter() + [("type", "in", ["bank", "cash"])]
     journal_fields = ["id", "name", "type"]
     journals = await asyncio.to_thread(
         client.fetch_all, "account.journal", journal_domain, journal_fields

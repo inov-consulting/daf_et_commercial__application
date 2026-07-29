@@ -11,7 +11,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.deps import require_permission
+from app.api.deps import CurrentCompany, require_permission
 from app.api.v1.schemas.transport import (
     ChargeOut,
     DashboardModeStats,
@@ -123,6 +123,7 @@ def _voyage_to_out(r: dict) -> VoyageListItem:
 
 @router.get("/shipments", dependencies=_read_deps)
 async def list_shipments(
+    company: CurrentCompany,
     state: Annotated[str | None, Query(description="draft|confirmed|in_progress|done|cancelled")] = None,
     transport_mode: Annotated[str | None, Query(description="terrestre|maritime|aerien|multimodal")] = None,
     partner_id: Annotated[int | None, Query()] = None,
@@ -134,6 +135,8 @@ async def list_shipments(
 ) -> ShipmentListOut:
     """Liste paginée des commandes de transport Odoo."""
     domain: list = []
+    if company.erp_id:
+        domain.append(("company_id", "=", company.erp_id))
     if state:
         domain.append(("state", "=", state))
     if transport_mode:
@@ -165,14 +168,17 @@ async def list_shipments(
 
 
 @router.get("/shipments/{shipment_id}", dependencies=_read_deps)
-async def get_shipment(shipment_id: int) -> ShipmentDetail:
+async def get_shipment(shipment_id: int, company: CurrentCompany) -> ShipmentDetail:
     """Détail complet d'une commande de transport avec voyages, charges, immobilisations et workflow."""
     client = OdooClient()
 
+    domain = [("id", "=", shipment_id)]
+    if company.erp_id:
+        domain.append(("company_id", "=", company.erp_id))
     records = await asyncio.to_thread(
         client.execute,
         "transport.shipment", "search_read",
-        [[("id", "=", shipment_id)]],
+        [domain],
         {"fields": SHIPMENT_FIELDS + ["product_description", "planned_qty", "date_order"]},
     )
     if not records:
@@ -443,6 +449,7 @@ async def shipment_next_step(
 @router.get("/shipments/{shipment_id}/voyages", dependencies=_read_deps)
 async def list_voyages(
     shipment_id: int,
+    company: CurrentCompany,
     state: Annotated[str | None, Query()] = None,
     transport_mode: Annotated[str | None, Query()] = None,
     vehicle_id: Annotated[int | None, Query()] = None,
@@ -454,6 +461,8 @@ async def list_voyages(
 ) -> VoyageListOut:
     """Liste paginée des voyages d'un dossier de transport."""
     domain: list = [("shipment_id", "=", shipment_id)]
+    if company.erp_id:
+        domain.append(("company_id", "=", company.erp_id))
     if state:
         domain.append(("state", "=", state))
     if transport_mode:
@@ -484,13 +493,16 @@ async def list_voyages(
 
 
 @router.get("/voyages/{voyage_id}", dependencies=_read_deps)
-async def get_voyage(voyage_id: int) -> VoyageDetail:
+async def get_voyage(voyage_id: int, company: CurrentCompany) -> VoyageDetail:
     """Détail complet d'un voyage avec charges et immobilisations."""
     client = OdooClient()
 
+    voyage_domain = [("id", "=", voyage_id)]
+    if company.erp_id:
+        voyage_domain.append(("company_id", "=", company.erp_id))
     records = await asyncio.to_thread(
         client.execute, "transport.voyage", "search_read",
-        [[("id", "=", voyage_id)]],
+        [voyage_domain],
         {"fields": VOYAGE_FIELDS},
     )
     if not records:
@@ -514,14 +526,15 @@ async def get_voyage(voyage_id: int) -> VoyageDetail:
 
 @router.get("/dashboard", dependencies=_read_deps)
 async def get_dashboard(
+    company: CurrentCompany,
     date_from: Annotated[date | None, Query(description="Début de période (ISO 8601)")] = None,
     date_to: Annotated[date | None, Query(description="Fin de période (ISO 8601)")] = None,
 ) -> DashboardOut:
     """Agrégations transport par mode et période."""
     client = OdooClient()
 
-    shipment_domain: list = []
-    voyage_domain: list = []
+    shipment_domain: list = [("company_id", "=", company.erp_id)] if company.erp_id else []
+    voyage_domain: list = [("company_id", "=", company.erp_id)] if company.erp_id else []
     shipment_domain.extend(_odoo_domain_date("date_start", date_from, date_to))
     voyage_domain.extend(_odoo_domain_date("date_departure", date_from, date_to))
 

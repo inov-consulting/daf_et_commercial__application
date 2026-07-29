@@ -88,6 +88,10 @@ async def _odoo_execute(model: str, method: str, args: list, kwargs: dict | None
 # ── Tool 1 : list_clients_to_enrich ──────────────────────────────────────────
 
 
+_current_erp_id: int | None = None       # injecté par run_commercial_cycle avant chaque cycle
+_current_company_id = None               # UUID Portalis, pour associer les prédictions
+
+
 async def list_clients_to_enrich(limit: int = 20) -> str:
     """Liste les clients Odoo qui ont besoin d'un enrichissement.
 
@@ -104,17 +108,21 @@ async def list_clients_to_enrich(limit: int = 20) -> str:
     from datetime import timedelta
     thirty_days_ago = (datetime.now(UTC) - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
 
+    domain: list = [
+        ["is_company", "=", True],
+        ["customer_rank", ">", 0],
+        "|",
+        ["ai_insight_last_update", "=", False],
+        ["ai_insight_last_update", "<", thirty_days_ago],
+    ]
+    if _current_erp_id is not None:
+        domain.insert(0, ["company_id", "=", _current_erp_id])
+
     try:
         partners: list[dict] = await _odoo_execute(  # type: ignore[assignment]
             "res.partner",
             "search_read",
-            [[
-                ["is_company", "=", True],
-                ["customer_rank", ">", 0],
-                "|",
-                ["ai_insight_last_update", "=", False],
-                ["ai_insight_last_update", "<", thirty_days_ago],
-            ]],
+            [domain],
             {
                 "fields": [
                     "id", "name", "country_id", "city", "website",
@@ -487,6 +495,7 @@ async def save_commercial_prediction(
                 "has_shipments": True,
                 "generated_at": datetime.now(UTC).isoformat(),
             },
+            company_id=_current_company_id,
         )
     except Exception as exc:
         logger.error("commercial_agent.save_prediction.failed partner_id=%s: %s", partner_id, exc)
@@ -563,13 +572,25 @@ async def stream_commercial_enrichment(limit: int = 20) -> AsyncIterator[str]:
     yield f"[RUN:{run_id}]"
 
 
-async def run_commercial_cycle(limit: int = 50, trigger: str = "scheduled") -> dict:
+async def run_commercial_cycle(
+    limit: int = 50,
+    trigger: str = "scheduled",
+    company_id=None,
+    erp_id: int | None = None,
+) -> dict:
     """Lance un cycle complet d'enrichissement + prédiction sans streaming.
 
     Écoute les événements on_tool_end pour comptabiliser les enrichissements
     et prédictions. Retourne un dict de stats utilisé par le scheduler.
     """
-    logger.info("commercial.cycle.start trigger=%s limit=%d", trigger, limit)
+    global _current_erp_id, _current_company_id
+    _current_erp_id = erp_id
+    _current_company_id = company_id
+
+    logger.info(
+        "commercial.cycle.start trigger=%s limit=%d erp_id=%s",
+        trigger, limit, erp_id,
+    )
     agent, config, message, run_id = await _build_agent(limit)
 
     stats = {

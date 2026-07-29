@@ -16,6 +16,9 @@ from app.infrastructure.db.base import BaseModel
 class CommercialPredictionOrm(BaseModel):
     """Prédiction commerciale IA en attente de validation humaine."""
 
+    # Entreprise Portalis
+    company_id = fields.UUIDField(null=True, index=True)
+
     # Référence client Odoo
     partner_id: int = fields.IntField(index=True, description="ID res.partner Odoo")
     partner_name: str = fields.CharField(max_length=255)

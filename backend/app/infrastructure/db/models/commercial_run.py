@@ -7,6 +7,7 @@ from app.infrastructure.db.base import BaseModel
 class CommercialRunOrm(BaseModel):
     """Enregistre chaque cycle d'exécution de l'agent commercial."""
 
+    company_id = fields.UUIDField(null=True, index=True)
     trigger = fields.CharField(max_length=30)
     # "startup" | "scheduled_morning" | "scheduled_evening" | "manual"
 

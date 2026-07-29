@@ -16,6 +16,9 @@ class TransportOfferOrm(BaseModel):
       cancelled  → abandonnée
     """
 
+    company_id = fields.UUIDField(null=True, index=True)
+    """UUID local de la Company Portalis (table companies)."""
+
     session_id = fields.UUIDField(index=True)
     """ID de session LangGraph associée à la conversation."""
 

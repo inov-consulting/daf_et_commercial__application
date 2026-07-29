@@ -20,7 +20,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.deps import get_current_user, require_permission
+from app.api.deps import CurrentCompany, get_current_user, require_permission
 from app.api.v1.schemas.transport_offer import (
     OfferChatIn,
     OfferChatOut,
@@ -58,6 +58,7 @@ _confirm_deps = [Depends(require_permission("transport:confirm"))]
 @router.post("/chat", dependencies=_write_deps)
 async def offer_chat(
     body: OfferChatIn,
+    company: CurrentCompany,
     current_user=Depends(get_current_user),
 ) -> OfferChatOut:
     """Tour de conversation avec l'agent IA pour créer une offre transport.
@@ -72,7 +73,7 @@ async def offer_chat(
     if body.offer_id is None:
         from uuid import uuid4
         session_id = body.session_id or uuid4()
-        offer = await repo.create(session_id=session_id, user_id=current_user.id)
+        offer = await repo.create(session_id=session_id, user_id=current_user.id, company_id=company.id)
     else:
         offer = await repo.get(body.offer_id)
         if offer is None:
@@ -115,6 +116,7 @@ async def offer_chat(
 @router.post("/form", dependencies=_write_deps, status_code=status.HTTP_201_CREATED)
 async def create_offer_form(
     body: OfferFormIn,
+    company: CurrentCompany,
     current_user=Depends(get_current_user),
 ) -> OfferSummaryOut:
     """Crée une offre transport directement via formulaire (sans IA).
@@ -129,6 +131,7 @@ async def create_offer_form(
     offer = await repo.create_manual(
         collected_data=body.to_collected_data(),
         user_id=current_user.id,
+        company_id=company.id,
     )
     return OfferSummaryOut(
         id=offer.id,
@@ -267,6 +270,7 @@ async def generate_document(
         offer_id=offer_id,
         offer_title=doc.get("title"),
         author_name=current_user.display_name,
+        company_id=offer.company_id,
     )
 
     out = _doc_to_out(offer_id, offer.status if offer else "generated", doc)  # type: ignore[union-attr]
@@ -403,11 +407,12 @@ async def get_offer(offer_id: UUID) -> OfferDocumentOut:
 
 @router.get("/", dependencies=_read_deps)
 async def list_offers(
+    company: CurrentCompany,
     current_user=Depends(get_current_user),
 ) -> list[OfferSummaryOut]:
-    """Liste les offres de l'utilisateur connecté."""
+    """Liste les offres de l'entreprise courante."""
     repo = TransportOfferRepository()
-    offers = await repo.list(current_user.id)
+    offers = await repo.list(current_user.id, company_id=company.id)
     return [
         OfferSummaryOut(
             id=o.id,

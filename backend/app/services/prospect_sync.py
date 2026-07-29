@@ -215,6 +215,7 @@ class ProspectSyncService:
         lead_type: str = "lead",
         probability: float | None = None,
         date_deadline: str | None = None,
+        erp_company_id: int | None = None,
     ) -> int:
         """Crée un lead ou opportunité dans Odoo et retourne son ID.
         
@@ -257,6 +258,8 @@ class ProspectSyncService:
             values["probability"] = probability
         if date_deadline:
             values["date_deadline"] = date_deadline
+        if erp_company_id:
+            values["company_id"] = erp_company_id
 
         try:
             import asyncio
@@ -287,6 +290,7 @@ class ProspectSyncService:
         email: str | None = None,
         phone: str | None = None,
         is_company: bool = True,
+        erp_company_id: int | None = None,
     ) -> int:
         """Crée un client/entreprise (res.partner) dans Odoo.
 
@@ -308,11 +312,13 @@ class ProspectSyncService:
             values["email"] = email
         if phone:
             values["phone"] = phone
+        if erp_company_id:
+            values["company_id"] = erp_company_id
 
         try:
             import asyncio
             oc = self._get_odoo_client()
-            
+
             logger.info(f"[Sync] Création partner dans Odoo: {values}")
             
             partner_id = await asyncio.to_thread(
