@@ -11,13 +11,15 @@ from datetime import date
 from app.api.v1.schemas.kpi import AgSeries, KpiChartData
 
 
-async def compute(date_from: date | None = None, date_to: date | None = None) -> KpiChartData:
+async def compute(date_from: date | None = None, date_to: date | None = None, erp_company_id: int | None = None, company_id=None) -> KpiChartData:
     from app.infrastructure.db.models.daf_agent import DafProposedActionOrm
 
     qs = DafProposedActionOrm.filter(
         status__in=["approved", "rejected"],
         decided_at__not_isnull=True,
     )
+    if company_id:
+        qs = qs.filter(run__company_id=company_id)
     if date_from:
         qs = qs.filter(proposed_at__gte=date_from)
     if date_to:

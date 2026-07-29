@@ -20,9 +20,11 @@ _STATE_LABELS: dict[str, str] = {
 }
 
 
-async def compute(date_from: date | None = None, date_to: date | None = None) -> KpiChartData:
+async def compute(date_from: date | None = None, date_to: date | None = None, erp_company_id: int | None = None, company_id=None) -> KpiChartData:
     client = OdooClient()
     domain: list = []
+    if erp_company_id:
+        domain.append(("company_id", "=", erp_company_id))
     if date_from:
         domain.append(("date_order", ">=", str(date_from)))
     if date_to:

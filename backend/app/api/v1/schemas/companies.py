@@ -34,6 +34,7 @@ class CompanyOut(BaseModel):
     id: UUID
     name: str
     country: str
+    country_code: str
     default_currency: str
     erp_id: int | None = None
     parent_company_id: UUID | None = None
@@ -47,11 +48,13 @@ class CompanyOut(BaseModel):
 
     @classmethod
     def from_domain(cls, company: Company) -> "CompanyOut":
-        country_display = company.country_name or company.country.value
+        country_code = company.country.value  # ex: "SN", "CI", "FR"
+        country_display = company.country_name or country_code
         return cls(
             id=company.id,
             name=company.name,
             country=country_display,
+            country_code=country_code,
             default_currency=company.default_currency.value,
             erp_id=company.erp_id,
             parent_company_id=company.parent_company_id,
