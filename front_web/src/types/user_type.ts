@@ -5,13 +5,14 @@ export interface ApiUser {
   email: string;
   first_name: string;
   last_name: string;
-  company_ids: string[];
+  company_ids?: string[];
   companies: ApiCompany[];
+  group_ids?: string[];
   is_active: boolean;
-  avatar_url?: string;
-  created_at?: string;
-  updated_at?: string;
-  last_login_at?: string;
+  avatar_url?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  last_login_at?: string | null;
 }
 
 // ── Palette déterministe basée sur l'id ───────────────────────────────────
