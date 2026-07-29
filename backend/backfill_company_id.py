@@ -37,8 +37,8 @@ async def main(dry_run: bool = False) -> None:
     conn = Tortoise.get_connection("default")
 
     try:
-        # ── Lister les entreprises ────────────────────────────────────────────
-        rows, _ = await conn.execute_query(
+        # execute_query retourne (rowcount: int, results: list[dict])
+        _rc, rows = await conn.execute_query(
             "SELECT id, name, country_name, is_active FROM companies ORDER BY created_at ASC"
         )
 
@@ -48,8 +48,8 @@ async def main(dry_run: bool = False) -> None:
 
         print("\n=== Entreprises disponibles ===")
         for i, row in enumerate(rows):
-            status = "✓ active" if row["is_active"] else "✗ inactive"
-            print(f"  [{i + 1}] {row['name']}  ({row['country_name']})  {status}")
+            active_label = "✓ active" if row["is_active"] else "✗ inactive"
+            print(f"  [{i + 1}] {row['name']}  ({row['country_name']})  {active_label}")
             print(f"       id = {row['id']}")
         print()
 
@@ -73,7 +73,7 @@ async def main(dry_run: bool = False) -> None:
         print("\n=== Lignes NULL à corriger ===")
         totals: dict[str, int] = {}
         for table in TABLES:
-            result, _ = await conn.execute_query(
+            _rc, result = await conn.execute_query(
                 f"SELECT COUNT(*) AS n FROM {table} WHERE company_id IS NULL"  # noqa: S608
             )
             count = result[0]["n"]
