@@ -20,7 +20,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.deps import get_current_user, require_permission
+from app.api.deps import CurrentCompany, get_current_user, require_permission
 from app.api.v1.schemas.daf import (
     DafActionStatus,
     DafAgentStatusOut,
@@ -97,14 +97,14 @@ def _action_to_out(orm) -> DafProposedActionOut:
 # ── Agent status & trigger ────────────────────────────────────────────────────
 
 @router.get("/agent/status", dependencies=_read_deps)
-async def get_agent_status() -> DafAgentStatusOut:
+async def get_agent_status(company: CurrentCompany) -> DafAgentStatusOut:
     """Retourne l'état courant du scheduler DAF et du dernier cycle."""
     from app.infrastructure.db.models.daf_agent import DafAgentRunOrm
     from app.infrastructure.scheduler.daf_scheduler import daf_scheduler
 
     sched_status = daf_scheduler.status()
 
-    last_run = await DafAgentRunOrm.first()
+    last_run = await DafAgentRunOrm.filter(company_id=company.id).first()
     last_run_id = None
     last_run_status = None
     last_run_at = None
@@ -140,11 +140,11 @@ async def trigger_agent_cycle() -> DafTriggerOut:
 # ── Runs ──────────────────────────────────────────────────────────────────────
 
 @router.get("/runs", dependencies=_read_deps)
-async def list_runs(limit: int = Query(20, ge=1, le=100)) -> list[DafRunOut]:
+async def list_runs(company: CurrentCompany, limit: int = Query(20, ge=1, le=100)) -> list[DafRunOut]:
     """Historique des cycles d'exécution de l'agent DAF."""
     from app.infrastructure.db.models.daf_agent import DafAgentRunOrm, DafProposedActionOrm
 
-    runs = await DafAgentRunOrm.all().order_by("-started_at").limit(limit)
+    runs = await DafAgentRunOrm.filter(company_id=company.id).order_by("-started_at").limit(limit)
     result = []
     for r in runs:
         count = await DafProposedActionOrm.filter(run_id=r.id).count()
@@ -200,22 +200,22 @@ async def get_run(run_id: UUID) -> DafRunDetailOut:
 # ── Snapshots financiers ──────────────────────────────────────────────────────
 
 @router.get("/snapshots/latest", dependencies=_read_deps)
-async def get_latest_snapshot() -> DafSnapshotOut:
+async def get_latest_snapshot(company: CurrentCompany) -> DafSnapshotOut:
     """Retourne le dernier snapshot financier calculé par l'agent."""
     from app.infrastructure.db.models.daf_agent import DafFinancialSnapshotOrm
 
-    snapshot = await DafFinancialSnapshotOrm.first()
+    snapshot = await DafFinancialSnapshotOrm.filter(run__company_id=company.id).order_by("-snapshot_at").first()
     if not snapshot:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Aucun snapshot disponible. Lancez un cycle d'analyse.")
     return _snapshot_to_out(snapshot)
 
 
 @router.get("/snapshots", dependencies=_read_deps)
-async def list_snapshots(limit: int = Query(10, ge=1, le=50)) -> list[DafSnapshotOut]:
+async def list_snapshots(company: CurrentCompany, limit: int = Query(10, ge=1, le=50)) -> list[DafSnapshotOut]:
     """Historique des snapshots financiers."""
     from app.infrastructure.db.models.daf_agent import DafFinancialSnapshotOrm
 
-    rows = await DafFinancialSnapshotOrm.all().order_by("-snapshot_at").limit(limit)
+    rows = await DafFinancialSnapshotOrm.filter(run__company_id=company.id).order_by("-snapshot_at").limit(limit)
     return [_snapshot_to_out(r) for r in rows]
 
 
@@ -223,6 +223,7 @@ async def list_snapshots(limit: int = Query(10, ge=1, le=50)) -> list[DafSnapsho
 
 @router.get("/proposed-actions", dependencies=_read_deps)
 async def list_proposed_actions(
+    company: CurrentCompany,
     status_filter: str | None = Query(None, alias="status"),
     priority: str | None = None,
     limit: int = Query(50, ge=1, le=200),
@@ -230,7 +231,7 @@ async def list_proposed_actions(
     """Liste des actions proposées par l'agent, filtrables par statut et priorité."""
     from app.infrastructure.db.models.daf_agent import DafProposedActionOrm
 
-    qs = DafProposedActionOrm.all().order_by("-proposed_at")
+    qs = DafProposedActionOrm.filter(run__company_id=company.id).order_by("-proposed_at")
     if status_filter:
         qs = qs.filter(status=status_filter)
     if priority:

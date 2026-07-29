@@ -73,3 +73,20 @@ class AppConfigOut(BaseModel):
     validators: ValidatorsConfigOut
     smtp: SmtpConfigOut
     updated_at: datetime | None = None
+
+
+class CompanyValidatorsOut(BaseModel):
+    company_id: UUID
+    offer_validator: ValidatorInfo | None = None
+    cr_validator: ValidatorInfo | None = None
+
+
+class CompanyValidatorsIn(BaseModel):
+    offer_validator_user_id: UUID | None = Field(
+        None,
+        description="ID Portalis du validateur des offres pour cette entreprise",
+    )
+    cr_validator_user_id: UUID | None = Field(
+        None,
+        description="ID Portalis du validateur des comptes rendus pour cette entreprise",
+    )

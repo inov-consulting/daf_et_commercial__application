@@ -1,11 +1,13 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { GetData, PostData } from '@/lib/ApiService';
+import { GetData, PostData, PatchData } from '@/lib/ApiService';
 import { ApiRoutes } from '@/lib/ApiRoutes';
 import type {
   TransportOfferListItem,
   TransportOfferDetail,
   TransportOfferValidateResponse,
   TransportOfferConfirmResponse,
+  TransportOfferFormResponse,
+  OfferFormPatchPayload,
 } from '@/types/offer_type';
 
 // ── State ──────────────────────────────────────────────────────────────────────
@@ -27,6 +29,9 @@ interface OffersState {
 
   cancelling:    boolean;
   cancelError:   string | null;
+
+  updating:      boolean;
+  updateError:   string | null;
 }
 
 const initialState: OffersState = {
@@ -42,6 +47,8 @@ const initialState: OffersState = {
   confirmError:  null,
   cancelling:    false,
   cancelError:   null,
+  updating:      false,
+  updateError:   null,
 };
 
 // ── Thunks ─────────────────────────────────────────────────────────────────────
@@ -103,6 +110,26 @@ export const confirmOffer = createAsyncThunk(
   },
 );
 
+/** PATCH /api/v1/transport/offers/{offer_id}/form
+ *  Modifie les champs de l'offre (fusion partielle).
+ *  Si l'offre avait un doc généré/validé, le statut repasse à completed.
+ *  Les offres confirmed ou cancelled retournent 409. */
+export const updateOfferForm = createAsyncThunk(
+  'offers/updateForm',
+  async (
+    { id, payload }: { id: string; payload: OfferFormPatchPayload },
+    { rejectWithValue },
+  ) => {
+    const res = await PatchData<TransportOfferFormResponse>({
+      url: ApiRoutes.TRANSPORT_OFFERS_FORM(id),
+      data: payload as Record<string, unknown>,
+      protected: true,
+    });
+    if (!res.ok) return rejectWithValue(res.error ?? "Erreur lors de la modification de l'offre");
+    return res.data!;
+  },
+);
+
 /** POST /api/v1/transport/offers/{offer_id}/cancel */
 export const cancelOffer = createAsyncThunk(
   'offers/cancel',
@@ -133,6 +160,9 @@ const offersSlice = createSlice({
     clearDetail(state) {
       state.detail      = null;
       state.detailError = null;
+    },
+    clearUpdateError(state) {
+      state.updateError = null;
     },
   },
   extraReducers(builder) {
@@ -240,9 +270,41 @@ const offersSlice = createSlice({
       .addCase(cancelOffer.rejected, (state, action) => {
         state.cancelling  = false;
         state.cancelError = action.payload as string;
+      })
+
+      // ── updateOfferForm ────────────────────────────────────────────────────
+      .addCase(updateOfferForm.pending, state => {
+        state.updating    = true;
+        state.updateError = null;
+      })
+      .addCase(updateOfferForm.fulfilled, (state, action) => {
+        state.updating = false;
+        const r = action.payload;
+        // Met à jour l'item dans la liste
+        const idx = state.list.findIndex(o => o.id === r.id);
+        if (idx !== -1) {
+          state.list[idx] = {
+            ...state.list[idx],
+            status:             r.status,
+            title:              r.title,
+            reference:          r.reference,
+            date:               r.date,
+            validity_days:      r.validity_days,
+            route:              r.route,
+            amount_ttc:         r.amount_ttc,
+            odoo_shipment_id:   r.odoo_shipment_id,
+            odoo_shipment_name: r.odoo_shipment_name,
+            created_at:         r.created_at,
+            confirmed_at:       r.confirmed_at,
+          };
+        }
+      })
+      .addCase(updateOfferForm.rejected, (state, action) => {
+        state.updating    = false;
+        state.updateError = action.payload as string;
       });
   },
 });
 
-export const { clearOfferErrors, clearDetail } = offersSlice.actions;
+export const { clearOfferErrors, clearDetail, clearUpdateError } = offersSlice.actions;
 export default offersSlice.reducer;

@@ -28,6 +28,7 @@ class WhatsAppConversationOrm(Model):
     id = fields.UUIDField(pk=True)
 
     # ── Contact (côté client) ──────────────────────────────────────────
+    company_id = fields.UUIDField(null=True, index=True)
     wa_id = fields.CharField(max_length=50)          # numéro client ex: "22890123456"
     contact_name = fields.CharField(max_length=200, null=True)  # nom profil WhatsApp
 

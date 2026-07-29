@@ -3,6 +3,7 @@
 # AiModelOrm doit être importé avant AiConfigOrm (FK dependency)
 from app.infrastructure.db.models.ai_config import AiConfigOrm, AiModelOrm
 from app.infrastructure.db.models.app_config import AppConfigOrm
+from app.infrastructure.db.models.company_validators import CompanyValidatorsOrm
 from app.infrastructure.db.models.kpi_group_access import KpiGroupAccessOrm
 from app.infrastructure.db.models.api_log import ApiRequestLogOrm
 from app.infrastructure.db.models.company import CompanyOrm
@@ -27,6 +28,7 @@ __all__ = [
     "AiUsageLogOrm",
     "CommercialPredictionOrm",
     "CommercialRunOrm",
+    "CompanyValidatorsOrm",
     "AiConfigOrm",
     "AiModelOrm",
     "AppConfigOrm",

@@ -47,6 +47,7 @@ class CompteRenduOrm(BaseModel):
     Stocke les métadonnées du CR. Le fichier PDF est sur MinIO.
     """
 
+    company_id = fields.UUIDField(null=True, index=True)
     parent_type: str = fields.CharField(max_length=20)  # prospect | service
     parent_id: UUID = fields.UUIDField(index=True)
 

@@ -21,7 +21,10 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { fetchKpiCatalog } from "@/redux/features/kpi/kpiSlice";
-import { fetchProspects, createProspect } from "@/redux/features/prospects/prospectsSlice";
+import {
+  fetchProspects,
+  createProspect,
+} from "@/redux/features/prospects/prospectsSlice";
 import { fetchOffers } from "@/redux/features/offers/offersSlice";
 import type { UpdateProspectBody } from "@/types/prospect_type";
 import {
@@ -33,9 +36,12 @@ import { useRouter, useParams } from "next/navigation";
 
 function fmtM(v: number): string {
   if (!v) return "–";
-  if (v >= 1_000_000_000) return `${(v / 1_000_000_000).toLocaleString("fr-FR", { maximumFractionDigits: 1 })}Md`;
-  if (v >= 1_000_000) return `${(v / 1_000_000).toLocaleString("fr-FR", { maximumFractionDigits: 1 })}M`;
-  if (v >= 1_000) return `${(v / 1_000).toLocaleString("fr-FR", { maximumFractionDigits: 0 })}k`;
+  if (v >= 1_000_000_000)
+    return `${(v / 1_000_000_000).toLocaleString("fr-FR", { maximumFractionDigits: 1 })}Md`;
+  if (v >= 1_000_000)
+    return `${(v / 1_000_000).toLocaleString("fr-FR", { maximumFractionDigits: 1 })}M`;
+  if (v >= 1_000)
+    return `${(v / 1_000).toLocaleString("fr-FR", { maximumFractionDigits: 0 })}k`;
   return v.toLocaleString("fr-FR");
 }
 
@@ -89,7 +95,6 @@ const AGENTS = [
   },
 ];
 
-
 const ALERTS = [
   {
     id: 1,
@@ -116,7 +121,6 @@ const ALERTS = [
     sub: "2 CR + 1 offre · règle R-05",
   },
 ];
-
 
 const ACTIVITY = [
   {
@@ -152,7 +156,6 @@ const ACTIVITY = [
     time: "Hier",
   },
 ];
-
 
 /* ── Shared helpers ──────────────────────────────────────────────────── */
 
@@ -425,20 +428,21 @@ function IACenter() {
 
 function KpiRow() {
   const prospects = useAppSelector((s) => s.prospects);
-  const offers    = useAppSelector((s) => s.offers);
+  const offers = useAppSelector((s) => s.offers);
 
-  const pipelineValue  = prospects.totalPipelineValue ?? 0;
+  const pipelineValue = prospects.totalPipelineValue ?? 0;
   const totalProspects = prospects.total ?? 0;
-  const offersTotal    = offers.list?.length ?? 0;
-  const converted      = prospects.byStatus?.converti ?? 0;
-  const convRate       = totalProspects > 0 ? Math.round((converted / totalProspects) * 100) : 0;
+  const offersTotal = offers.list?.length ?? 0;
+  const converted = prospects.byStatus?.converti ?? 0;
+  const convRate =
+    totalProspects > 0 ? Math.round((converted / totalProspects) * 100) : 0;
 
   // Max pipeline stage count for the progress bar (relative to largest stage)
   const maxStage = Math.max(
-    prospects.byStatus?.nouveau   ?? 0,
-    prospects.byStatus?.contacte  ?? 0,
-    prospects.byStatus?.qualifie  ?? 0,
-    prospects.byStatus?.converti  ?? 0,
+    prospects.byStatus?.nouveau ?? 0,
+    prospects.byStatus?.contacte ?? 0,
+    prospects.byStatus?.qualifie ?? 0,
+    prospects.byStatus?.converti ?? 0,
     1,
   );
 
@@ -452,16 +456,25 @@ function KpiRow() {
         trend={pipelineValue > 0 ? "up" : undefined}
         trendValue={prospects.loading ? "…" : `${totalProspects} prospects`}
         accent="primary"
-        sparkline={<Progress value={converted} max={Math.max(totalProspects, 1)} size="sm" shimmer={prospects.loading} />}
+        sparkline={
+          <Progress
+            value={converted}
+            max={Math.max(totalProspects, 1)}
+            size="sm"
+            shimmer={prospects.loading}
+          />
+        }
       />
       <KpiCard
         label="Offres transport générées"
         value={prospects.loading || offers.loading ? "…" : String(offersTotal)}
         icon={<TruckIcon size={17} />}
         trend={offersTotal > 0 ? "up" : undefined}
-        trendValue={offers.list?.filter(o => o.status === "confirmed").length
-          ? `${offers.list.filter(o => o.status === "confirmed").length} confirmées`
-          : undefined}
+        trendValue={
+          offers.list?.filter((o) => o.status === "confirmed").length
+            ? `${offers.list.filter((o) => o.status === "confirmed").length} confirmées`
+            : undefined
+        }
         accent="primary"
       />
       <KpiCard
@@ -469,7 +482,11 @@ function KpiRow() {
         value={prospects.loading ? "…" : String(totalProspects)}
         icon={<UserIcon size={17} />}
         trend={totalProspects > 0 ? "up" : undefined}
-        trendValue={prospects.byStatus?.nouveau ? `+${prospects.byStatus.nouveau} nouveaux` : undefined}
+        trendValue={
+          prospects.byStatus?.nouveau
+            ? `+${prospects.byStatus.nouveau} nouveaux`
+            : undefined
+        }
         accent="primary"
       />
       <KpiCard
@@ -540,17 +557,17 @@ function isFinancialKpi(kpi: KpiItem): boolean {
   );
 }
 
-const DAF_CATEGORIES = new Set(['Agent DAF', 'Finance DAF']);
+const DAF_CATEGORIES = new Set(["Agent DAF", "Finance DAF"]);
 
 function ChartsSection() {
   const { displayed, catalogLoading } = useAppSelector((s) => s.kpi);
-  const nonDaf          = displayed.filter((k) => !DAF_CATEGORIES.has(k.category));
-  const revenueKpi      = findRevenueKpi(nonDaf);
-  const otherKpis       = nonDaf.filter((k) => k.key !== revenueKpi?.key);
+  const nonDaf = displayed.filter((k) => !DAF_CATEGORIES.has(k.category));
+  const revenueKpi = findRevenueKpi(nonDaf);
+  const otherKpis = nonDaf.filter((k) => k.key !== revenueKpi?.key);
   const financialOthers = otherKpis.filter(isFinancialKpi);
   const otherIndicators = otherKpis.filter((k) => !isFinancialKpi(k));
-  const hasFinancial    = financialOthers.length > 0;
-  const hasOthers       = otherIndicators.length > 0;
+  const hasFinancial = financialOthers.length > 0;
+  const hasOthers = otherIndicators.length > 0;
 
   if (!catalogLoading && nonDaf.length === 0) return null;
 
@@ -578,14 +595,17 @@ function ChartsSection() {
             </p>
             {!catalogLoading && (
               <span className="text-[10px] text-[var(--tx-3)] bg-[var(--bg-sink)] px-2 py-0.5 rounded-full border border-[var(--bd-def)]">
-                {financialOthers.length} graphique{financialOthers.length !== 1 ? "s" : ""}
+                {financialOthers.length} graphique
+                {financialOthers.length !== 1 ? "s" : ""}
               </span>
             )}
           </div>
           <div className="flex flex-col gap-3">
             {catalogLoading
               ? [1, 2].map((i) => <KpiChartCardSkeleton key={i} />)
-              : financialOthers.map((kpi) => <KpiChartCard key={kpi.key} kpi={kpi} />)}
+              : financialOthers.map((kpi) => (
+                  <KpiChartCard key={kpi.key} kpi={kpi} />
+                ))}
           </div>
         </Card>
       )}
@@ -599,14 +619,17 @@ function ChartsSection() {
             </p>
             {!catalogLoading && (
               <span className="text-[10px] text-[var(--tx-3)] bg-[var(--bg-sink)] px-2 py-0.5 rounded-full border border-[var(--bd-def)]">
-                {otherIndicators.length} graphique{otherIndicators.length !== 1 ? "s" : ""}
+                {otherIndicators.length} graphique
+                {otherIndicators.length !== 1 ? "s" : ""}
               </span>
             )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {catalogLoading
               ? [1, 2, 3, 4].map((i) => <KpiChartCardSkeleton key={i} />)
-              : otherIndicators.map((kpi) => <KpiChartCard key={kpi.key} kpi={kpi} />)}
+              : otherIndicators.map((kpi) => (
+                  <KpiChartCard key={kpi.key} kpi={kpi} />
+                ))}
           </div>
         </Card>
       )}
@@ -614,23 +637,36 @@ function ChartsSection() {
   );
 }
 
-const OFFER_STATUS_MAP: Record<string, { label: string; color: "primary" | "warning" | "success" | "error" | "neutral"; dot: string }> = {
-  generated:  { label: "Générée",   color: "primary",  dot: "bg-[var(--p500)]" },
-  validated:  { label: "Validée",   color: "warning",  dot: "bg-[var(--warn500)]" },
-  confirmed:  { label: "Confirmée", color: "success",  dot: "bg-[var(--ok500)]" },
-  cancelled:  { label: "Annulée",   color: "error",    dot: "bg-red-400" },
-  canceled:   { label: "Annulée",   color: "error",    dot: "bg-red-400" },
+const OFFER_STATUS_MAP: Record<
+  string,
+  {
+    label: string;
+    color: "primary" | "warning" | "success" | "error" | "neutral";
+    dot: string;
+  }
+> = {
+  generated: { label: "Générée", color: "primary", dot: "bg-[var(--p500)]" },
+  validated: { label: "Validée", color: "warning", dot: "bg-[var(--warn500)]" },
+  confirmed: { label: "Confirmée", color: "success", dot: "bg-[var(--ok500)]" },
+  cancelled: { label: "Annulée", color: "error", dot: "bg-red-400" },
+  canceled: { label: "Annulée", color: "error", dot: "bg-red-400" },
 };
 
 function RecentMissions() {
   const { list, loading } = useAppSelector((s) => s.offers);
   const recent = [...(list ?? [])]
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    )
     .slice(0, 5);
 
   const router = useRouter();
   const params = useParams();
-  const locale = typeof params.locale === "string" ? params.locale : String(params.locale ?? "fr");
+  const locale =
+    typeof params.locale === "string"
+      ? params.locale
+      : String(params.locale ?? "fr");
 
   return (
     <Card className="p-4 sm:p-5">
@@ -638,14 +674,17 @@ function RecentMissions() {
         <p className="font-semibold text-sm sm:text-base text-[var(--tx-1)]">
           Transports récents
         </p>
-        <button onClick={() => router.push(`/${locale}/page/offres`)} className="text-xs sm:text-sm font-medium text-[var(--p500)] hover:underline flex items-center gap-1">
+        <button
+          onClick={() => router.push(`/${locale}/page/offres`)}
+          className="text-xs sm:text-sm font-medium text-[var(--p500)] hover:underline flex items-center gap-1"
+        >
           Voir tout <ArrowUpRightIcon size={13} />
         </button>
       </div>
 
       {loading && (
         <div className="flex flex-col gap-2">
-          {[1,2,3].map(i => (
+          {[1, 2, 3].map((i) => (
             <div key={i} className="flex items-center gap-3 py-2">
               <div className="w-2 h-2 rounded-full bg-[#EEF2F7] animate-pulse flex-shrink-0" />
               <div className="flex-1 space-y-1.5">
@@ -659,28 +698,45 @@ function RecentMissions() {
       )}
 
       {!loading && recent.length === 0 && (
-        <p className="text-[12px] text-[var(--tx-3)] py-4 text-center">Aucune offre chargée</p>
+        <p className="text-[12px] text-[var(--tx-3)] py-4 text-center">
+          Aucune offre chargée
+        </p>
       )}
 
       {!loading && recent.length > 0 && (
         <div className="flex flex-col">
           {recent.map((o) => {
-            const s = OFFER_STATUS_MAP[o.status] ?? { label: o.status, color: "neutral" as const, dot: "text-[var(--tx-3)]" };
+            const s = OFFER_STATUS_MAP[o.status] ?? {
+              label: o.status,
+              color: "neutral" as const,
+              dot: "text-[var(--tx-3)]",
+            };
             return (
               <div
                 key={o.id}
                 className="flex items-center gap-2 sm:gap-3 py-2 sm:py-2.5 border-b border-[var(--bd-def)] last:border-0"
               >
-                <span className={cn("w-2 h-2 rounded-full flex-shrink-0 inline-block", s.dot)} />
+                <span
+                  className={cn(
+                    "w-2 h-2 rounded-full flex-shrink-0 inline-block",
+                    s.dot,
+                  )}
+                />
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] sm:text-[11px] font-semibold text-[var(--tx-3)]">
-                    {o.reference ?? o.odoo_shipment_name ?? o.id.slice(0, 8).toUpperCase()}
+                    {o.reference ??
+                      o.odoo_shipment_name ??
+                      o.id.slice(0, 8).toUpperCase()}
                   </p>
                   <p className="text-xs sm:text-sm font-medium text-[var(--tx-1)] truncate">
                     {o.title ?? o.odoo_shipment_name ?? "Offre transport"}
                   </p>
                 </div>
-                <Badge color={s.color} variant="subtle" className="text-[10px] sm:text-xs flex-shrink-0">
+                <Badge
+                  color={s.color}
+                  variant="subtle"
+                  className="text-[10px] sm:text-xs flex-shrink-0"
+                >
                   {s.label}
                 </Badge>
               </div>
@@ -719,7 +775,11 @@ function ActiveAlerts() {
                 <CheckIcon size={14} weight="bold" style={{ color: a.color }} />
               )}
               {a.type === "warning" && (
-                <WarningIcon size={14} weight="fill" style={{ color: a.color }} />
+                <WarningIcon
+                  size={14}
+                  weight="fill"
+                  style={{ color: a.color }}
+                />
               )}
               {a.type === "info" && (
                 <span
@@ -887,7 +947,10 @@ function DashboardSkeleton() {
       {/* KpiRow skeleton */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="bg-white rounded-2xl border border-[var(--bd-def)] shadow-[var(--sh-xs)] p-4 sm:p-5 h-[90px]">
+          <div
+            key={i}
+            className="bg-white rounded-2xl border border-[var(--bd-def)] shadow-[var(--sh-xs)] p-4 sm:p-5 h-[90px]"
+          >
             <div className="h-3 w-24 bg-[#EEF2F7] rounded mb-3" />
             <div className="h-7 w-16 bg-[#EEF2F7] rounded" />
           </div>
@@ -908,7 +971,10 @@ function DashboardSkeleton() {
             <div className="h-3 w-28 bg-[#EEF2F7] rounded mb-4" />
             <div className="grid grid-cols-2 gap-3">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="rounded-2xl border border-[#DDE5EF] h-[240px] bg-[#F7F9FC]" />
+                <div
+                  key={i}
+                  className="rounded-2xl border border-[#DDE5EF] h-[240px] bg-[#F7F9FC]"
+                />
               ))}
             </div>
           </div>
@@ -932,7 +998,10 @@ function DashboardSkeleton() {
           <div className="bg-white rounded-2xl border border-[var(--bd-def)] shadow-[var(--sh-xs)] p-4 sm:p-5">
             <div className="h-4 w-28 bg-[#EEF2F7] rounded mb-4" />
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="flex items-center gap-3 py-2.5 border-b border-[var(--bd-def)] last:border-0">
+              <div
+                key={i}
+                className="flex items-center gap-3 py-2.5 border-b border-[var(--bd-def)] last:border-0"
+              >
                 <div className="w-2 h-2 rounded-full bg-[#EEF2F7] flex-shrink-0" />
                 <div className="flex-1">
                   <div className="h-2.5 w-20 bg-[#EEF2F7] rounded mb-1.5" />
@@ -953,34 +1022,40 @@ function DashboardSkeleton() {
 export default function DashboardPage() {
   const dispatch = useAppDispatch();
 
-  const { catalog, catalogLoading }  = useAppSelector((s) => s.kpi);
-  const { total: prospectsTotal, loading: prospectsLoading } = useAppSelector((s) => s.prospects);
-  const { list: offersList, loading: offersLoading }         = useAppSelector((s) => s.offers);
+  const { catalog, catalogLoading } = useAppSelector((s) => s.kpi);
+  const { total: prospectsTotal, loading: prospectsLoading } = useAppSelector(
+    (s) => s.prospects,
+  );
+  const { list: offersList, loading: offersLoading } = useAppSelector(
+    (s) => s.offers,
+  );
 
   // Chaque source est "prête" quand elle a fini de charger OU qu'elle a déjà des données
-  const kpiReady       = !catalogLoading  || catalog.length > 0;
+  const kpiReady = !catalogLoading || catalog.length > 0;
   const prospectsReady = !prospectsLoading || prospectsTotal > 0;
-  const offersReady    = !offersLoading    || (offersList?.length ?? 0) > 0;
-  const isFirstLoad    = !kpiReady || !prospectsReady || !offersReady;
+  const offersReady = !offersLoading || (offersList?.length ?? 0) > 0;
+  const isFirstLoad = !kpiReady || !prospectsReady || !offersReady;
 
   useEffect(() => {
-    if (catalog.length === 0)  dispatch(fetchKpiCatalog());
-    if (!prospectsTotal)       dispatch(fetchProspects({ limit: 200 }));
-    if (!offersList?.length)   dispatch(fetchOffers());
+    if (catalog.length === 0) dispatch(fetchKpiCatalog());
+    if (!prospectsTotal) dispatch(fetchProspects({ limit: 200 }));
+    if (!offersList?.length) dispatch(fetchOffers());
   }, [dispatch, catalog.length, prospectsTotal, offersList?.length]);
 
   if (isFirstLoad) return <DashboardSkeleton />;
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 mx-auto max-w-[1600px]">
+    <div className="p-3 sm:p-4 md:p-6">
       <PageHeader />
       {/* <IACenter /> */}
       <KpiRow />
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-3 sm:gap-4 mb-4 sm:mb-6">
         <ChartsSection />
         <div className="flex flex-col gap-4">
-          <CommercialPipeline />
-          <RecentMissions />
+          <div className="xl:sticky xl:top-4 flex flex-col gap-4">
+            <CommercialPipeline />
+            <RecentMissions />
+          </div>
         </div>
       </div>
     </div>

@@ -25,11 +25,17 @@ def _to_domain(orm: TransportOfferOrm) -> TransportOffer:
 
 
 class TransportOfferRepository:
-    async def create(self, session_id: UUID, user_id: UUID | None = None) -> TransportOffer:
+    async def create(
+        self,
+        session_id: UUID,
+        user_id: UUID | None = None,
+        company_id: UUID | None = None,
+    ) -> TransportOffer:
         orm = await TransportOfferOrm.create(
             id=uuid4(),
             session_id=session_id,
             user_id=user_id,
+            company_id=company_id,
             status="draft",
         )
         return _to_domain(orm)
@@ -92,12 +98,23 @@ class TransportOfferRepository:
         rows = await TransportOfferOrm.filter(user_id=user_id).order_by("-created_at").limit(limit)
         return [_to_domain(r) for r in rows]
 
-    async def list(self, user_id: UUID, limit: int = 20) -> list[TransportOffer]:
-        rows = await TransportOfferOrm.filter().order_by("-created_at").limit(limit)
+    async def list(
+        self,
+        user_id: UUID,
+        limit: int = 20,
+        company_id: UUID | None = None,
+    ) -> list[TransportOffer]:
+        qs = TransportOfferOrm.all()
+        if company_id is not None:
+            qs = qs.filter(company_id=company_id)
+        rows = await qs.order_by("-created_at").limit(limit)
         return [_to_domain(r) for r in rows]
 
     async def create_manual(
-        self, collected_data: dict, user_id: UUID | None = None
+        self,
+        collected_data: dict,
+        user_id: UUID | None = None,
+        company_id: UUID | None = None,
     ) -> TransportOffer:
         """Crée une offre directement depuis un formulaire (sans passage par l'IA).
 
@@ -107,6 +124,7 @@ class TransportOfferRepository:
             id=uuid4(),
             session_id=uuid4(),
             user_id=user_id,
+            company_id=company_id,
             status="completed",
             collected_data=collected_data,
         )

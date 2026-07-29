@@ -14,6 +14,7 @@ from app.infrastructure.db.base import BaseModel
 
 
 class NotificationOrm(BaseModel):
+    company_id = fields.UUIDField(null=True, index=True)
     user_id = fields.UUIDField(index=True)
 
     # Type sémantique de la notification

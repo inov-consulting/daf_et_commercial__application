@@ -460,7 +460,7 @@ export default function DettesFournisseursPage() {
         </div>
 
         {/* Panneau droit */}
-        <div className="flex flex-col gap-3 sm:gap-4">
+        <div className="flex flex-col gap-3 sm:gap-4 xl:sticky xl:top-4 self-start">
           {/* Résumé snapshot */}
           {snap && (
             <FinCard>

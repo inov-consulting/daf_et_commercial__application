@@ -21,6 +21,8 @@ from app.api.v1.schemas.app_config import (
     AppConfigOut,
     AppConfigSmtpIn,
     AppConfigValidatorsIn,
+    CompanyValidatorsIn,
+    CompanyValidatorsOut,
     SmtpConfigOut,
     ValidatorInfo,
     ValidatorsConfigOut,
@@ -28,6 +30,7 @@ from app.api.v1.schemas.app_config import (
 from app.domain.shared import kpi_catalog
 from app.domain.shared.app_config import SmtpConfig, ValidatorsConfig
 from app.infrastructure.db.repositories.app_config import AppConfigRepository
+from app.infrastructure.db.repositories.company_validators import CompanyValidatorsRepository
 from app.infrastructure.db.repositories.kpi_group_access import KpiGroupAccessRepository
 
 router = APIRouter(prefix="/config/app", tags=["configuration"])
@@ -126,6 +129,58 @@ async def update_smtp(body: AppConfigSmtpIn) -> AppConfigOut:
         )
     )
     return await _to_out(config)
+
+
+# ── Validateurs par entreprise ────────────────────────────────────────────────
+
+async def _company_validators_to_out(company_id: UUID, obj) -> CompanyValidatorsOut:
+    offer_v = await _resolve_validator(obj.get_offer_validator_id() if obj else None)
+    cr_v = await _resolve_validator(obj.get_cr_validator_id() if obj else None)
+    return CompanyValidatorsOut(
+        company_id=company_id,
+        offer_validator=offer_v,
+        cr_validator=cr_v,
+    )
+
+
+@router.get("/validators/companies", dependencies=_read_deps)
+async def list_company_validators() -> list[CompanyValidatorsOut]:
+    """Liste les validateurs configurés pour toutes les entreprises."""
+    repo = CompanyValidatorsRepository()
+    rows = await repo.get_all()
+    result = []
+    for row in rows:
+        result.append(await _company_validators_to_out(row.company_id, row))
+    return result
+
+
+@router.get("/validators/companies/{company_id}", dependencies=_read_deps)
+async def get_company_validators(company_id: UUID) -> CompanyValidatorsOut:
+    """Lit les validateurs configurés pour une entreprise donnée."""
+    repo = CompanyValidatorsRepository()
+    obj = await repo.get(company_id)
+    return await _company_validators_to_out(company_id, obj)
+
+
+@router.patch("/validators/companies/{company_id}", dependencies=_write_deps)
+async def set_company_validators(
+    company_id: UUID,
+    body: CompanyValidatorsIn,
+) -> CompanyValidatorsOut:
+    """Définit les validateurs d'une entreprise.
+
+    - `offer_validator_user_id` : utilisateur qui valide les offres de cette entreprise
+    - `cr_validator_user_id`    : utilisateur qui valide les CR de cette entreprise
+
+    Ces validateurs prennent le dessus sur la config globale pour cette entreprise.
+    """
+    repo = CompanyValidatorsRepository()
+    obj = await repo.set(
+        company_id=company_id,
+        offer_validator_user_id=body.offer_validator_user_id,
+        cr_validator_user_id=body.cr_validator_user_id,
+    )
+    return await _company_validators_to_out(company_id, obj)
 
 
 # ── Configuration KPI : mapping groupe ↔ KPIs ─────────────────────────────────

@@ -101,7 +101,7 @@ export default function ReportingPage() {
   );
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 mx-auto max-w-[1600px] space-y-4 sm:space-y-5">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-5">
       <FinSectionHeader
         title="Reporting financier"
         onAction={() => {}}
@@ -192,7 +192,7 @@ export default function ReportingPage() {
         </div>
 
         {/* Colonne droite : Runs récents */}
-        <div className="flex flex-col gap-4 sm:gap-5">
+        <div className="flex flex-col gap-4 sm:gap-5 xl:sticky xl:top-4 self-start">
           {/* Loading skeleton */}
           {runsLoading && (
             <RunsSkeleton />
@@ -208,7 +208,7 @@ export default function ReportingPage() {
                 </p>
               </div>
               <div className="divide-y divide-[var(--bd-def)] -mx-4 sm:-mx-5">
-                {runs.slice(0, 35).map((r) => (
+                {runs.slice(0, 15).map((r) => (
                   <Link
                     key={r.id}
                     href={`/${locale}/page/finances/reporting/${r.id}`}

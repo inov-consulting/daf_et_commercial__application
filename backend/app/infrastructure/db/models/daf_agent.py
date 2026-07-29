@@ -15,6 +15,7 @@ from app.infrastructure.db.base import BaseModel
 class DafAgentRunOrm(BaseModel):
     """Représente un cycle d'exécution de l'agent DAF."""
 
+    company_id = fields.UUIDField(null=True, index=True)
     trigger = fields.CharField(max_length=20)
     # "startup" | "scheduled" | "manual"
 

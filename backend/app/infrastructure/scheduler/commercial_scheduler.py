@@ -41,48 +41,40 @@ class CommercialScheduler:
 
     # ── Cycle ─────────────────────────────────────────────────────────────
 
-    async def _run_cycle(self, trigger: str = "scheduled") -> None:
-        """Wrapper sécurisé autour de run_commercial_cycle. Ne lève jamais."""
+    async def _run_cycle_for_company(
+        self, trigger: str, company_id, erp_id: int, company_name: str
+    ) -> None:
+        """Exécute un cycle complet pour une entreprise donnée."""
         from app.infrastructure.ai.commercial_agent import run_commercial_cycle
         from app.infrastructure.db.repositories.commercial_run import CommercialRunRepository
 
         repo = CommercialRunRepository()
         started_at = datetime.now(timezone.utc)
-        started_at_iso = started_at.isoformat()
-
-        self._current_run = {
-            "trigger": trigger,
-            "started_at": started_at_iso,
-            "status": "running",
-            "run_id": None,
-            "enriched": 0,
-            "enrichment_errors": 0,
-            "predictions": 0,
-            "prediction_errors": 0,
-        }
-        logger.info("commercial.scheduler.cycle_start trigger=%s", trigger)
 
         db_run = None
         try:
-            db_run = await repo.start(trigger=trigger, started_at=started_at)
-            stats = await run_commercial_cycle(limit=_LIMIT_PER_CYCLE, trigger=trigger)
+            db_run = await repo.start(
+                trigger=trigger, started_at=started_at, company_id=company_id
+            )
+            stats = await run_commercial_cycle(
+                limit=_LIMIT_PER_CYCLE,
+                trigger=trigger,
+                company_id=company_id,
+                erp_id=erp_id,
+            )
             await repo.complete(run_db_id=db_run.id, stats=stats)
-
+            logger.info(
+                "commercial.scheduler.cycle_done company=%s run_id=%s enriched=%d predictions=%d",
+                company_name, stats["run_id"], stats["enriched"], stats["predictions"],
+            )
             self._last_run = {
                 "trigger": trigger,
-                "started_at": started_at_iso,
+                "company": company_name,
+                "started_at": started_at.isoformat(),
                 "completed_at": datetime.now(timezone.utc).isoformat(),
                 "status": "completed",
-                "run_id": stats["run_id"],
-                "enriched": stats["enriched"],
-                "enrichment_errors": stats["enrichment_errors"],
-                "predictions": stats["predictions"],
-                "prediction_errors": stats["prediction_errors"],
+                **{k: stats[k] for k in ("run_id", "enriched", "enrichment_errors", "predictions", "prediction_errors")},
             }
-            logger.info(
-                "commercial.scheduler.cycle_done run_id=%s enriched=%d predictions=%d",
-                stats["run_id"], stats["enriched"], stats["predictions"],
-            )
         except Exception:
             if db_run is not None:
                 try:
@@ -91,7 +83,8 @@ class CommercialScheduler:
                     logger.exception("commercial.scheduler.db_fail_update_error")
             self._last_run = {
                 "trigger": trigger,
-                "started_at": started_at_iso,
+                "company": company_name,
+                "started_at": started_at.isoformat(),
                 "completed_at": datetime.now(timezone.utc).isoformat(),
                 "status": "error",
                 "run_id": None,
@@ -100,7 +93,34 @@ class CommercialScheduler:
                 "predictions": 0,
                 "prediction_errors": 0,
             }
-            logger.exception("commercial.scheduler.cycle_error trigger=%s", trigger)
+            logger.exception(
+                "commercial.scheduler.cycle_error trigger=%s company=%s", trigger, company_name
+            )
+
+    async def _run_cycle(self, trigger: str = "scheduled") -> None:
+        """Itère sur toutes les companies actives et lance un cycle pour chacune."""
+        from app.infrastructure.db.repositories.company import CompanyRepository
+
+        if self._current_run is not None:
+            logger.warning("commercial.scheduler.cycle_skipped reason=already_running")
+            return
+
+        self._current_run = {"trigger": trigger, "started_at": datetime.now(timezone.utc).isoformat(), "status": "running"}
+        logger.info("commercial.scheduler.cycle_start trigger=%s", trigger)
+
+        try:
+            companies = await CompanyRepository().list_all()
+            active = [c for c in companies if c.erp_id is not None and c.is_active]
+            if not active:
+                logger.warning("commercial.scheduler.no_active_company")
+                return
+            for company in active:
+                await self._run_cycle_for_company(
+                    trigger=trigger,
+                    company_id=company.id,
+                    erp_id=company.erp_id,
+                    company_name=company.name,
+                )
         finally:
             self._current_run = None
 

@@ -140,6 +140,12 @@ export const ApiRoutes = {
   CONFIG_KPI_GROUPS:     `${BASE}/api/v1/config/app/kpi/groups`,
   CONFIG_KPI_GROUP:      (groupId: string) => `${BASE}/api/v1/config/app/kpi/groups/${groupId}`,
 
+  // ── Prédictions commerciales ─────────────────────────────────────────────
+  PREDICTIONS_LIST:     `${BASE}/api/v1/commercial/predictions`,
+  PREDICTIONS_DETAIL:   (id: string) => `${BASE}/api/v1/commercial/predictions/${id}`,
+  PREDICTIONS_VALIDATE: (id: string) => `${BASE}/api/v1/commercial/predictions/${id}/validate`,
+  PREDICTIONS_REJECT:   (id: string) => `${BASE}/api/v1/commercial/predictions/${id}/reject`,
+
   // ── Monitoring ──────────────────────────────────────────────────────────
   MONITORING_STATS:      `${BASE}/api/v1/monitoring/stats`,
   MONITORING_AI_USAGE:   (days = 30) => `${BASE}/api/v1/monitoring/ai/usage?days=${days}`,

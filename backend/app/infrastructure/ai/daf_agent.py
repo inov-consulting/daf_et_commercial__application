@@ -508,22 +508,32 @@ async def _notify_daf_status(event: str, trigger: str | None = None) -> None:
 
 # ── Cœur du cycle ────────────────────────────────────────────────────────────
 
-async def run_daf_cycle(trigger: str = "scheduled") -> UUID:
+async def run_daf_cycle(
+    trigger: str = "scheduled",
+    company_id=None,
+    erp_id: int | None = None,
+) -> UUID:
     """Exécute un cycle complet d'analyse DAF. Retourne l'ID du run.
 
     Args:
         trigger: "startup" | "scheduled" | "manual"
+        company_id: UUID de l'entreprise PortaLis
+        erp_id: ID Odoo de l'entreprise (res.company.id)
     """
     from app.infrastructure.ai.agent import _get_llm
+    from app.infrastructure.ai.tools.daf_financial_tools import set_company_context
     from app.infrastructure.db.models.daf_agent import DafAgentRunOrm
     from app.infrastructure.db.repositories.ai_config import AiConfigRepository
     from langgraph.prebuilt import create_react_agent
+
+    set_company_context(erp_id)
 
     run_id = uuid4()
     run = await DafAgentRunOrm.create(
         id=run_id,
         trigger=trigger,
         status="running",
+        company_id=company_id,
     )
 
     logger.info("daf.cycle.start run_id=%s trigger=%s", run_id, trigger)
