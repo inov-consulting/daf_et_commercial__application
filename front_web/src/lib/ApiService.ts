@@ -1,5 +1,13 @@
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
+// Company context — populated once the user session is loaded.
+// Set via setCompanyContext() from a Redux-connected component.
+let _companyId = '';
+
+export function setCompanyContext(id: string): void {
+  _companyId = id;
+}
+
 /* ── Types ───────────────────────────────────────────────────────────── */
 
 export interface ApiRequestOptions<TBody = Record<string, unknown>> {
@@ -42,6 +50,7 @@ function buildHeaders(isProtected: boolean, isMultipart: boolean, token: string 
   const headers: Record<string, string> = {};
   if (!isMultipart) headers["Content-Type"] = "application/json";
   if (isProtected && token) headers["Authorization"] = `Bearer ${token}`;
+  if (_companyId) headers["X-Company-Id"] = _companyId;
   return headers;
 }
 

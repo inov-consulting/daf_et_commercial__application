@@ -16,7 +16,6 @@ import {
 import { cn } from '@/lib/utils';
 import type { ApiUser, User as UserType } from '@/types/user_type';
 import { getRoleAbbreviation } from '@/lib/roleAbbreviation';
-import Image from 'next/image';
 import { LogoutConfirmModal } from '@/components/layout/logout-confirm-modal';
 
 type NavItem = {
@@ -157,6 +156,17 @@ const isFirstRender = useRef(true);
     : rawUser?.email?.split('@')[0] ?? 'Utilisateur';
   const role = user?.role ?? '';
 
+  // Workspace info derived from the connected user's companies
+  const wsCompanies = rawUser?.companies ?? [];
+  const wsName      = wsCompanies[0]?.name ?? 'Organisation';
+  const wsInitials  = wsName.split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('') || '?';
+  const wsCountries = wsCompanies.reduce<{ name: string; code: string }[]>((acc, c) => {
+    if (c.country && c.country_code && !acc.some(x => x.code === c.country_code)) {
+      acc.push({ name: c.country, code: c.country_code.toLowerCase() });
+    }
+    return acc;
+  }, []);
+
   return (
     <>
       {/* Backdrop mobile */}
@@ -203,16 +213,19 @@ const isFirstRender = useRef(true);
           {open ? (
             <div className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg transition-colors text-left">
               <div className="min-w-0">
-                <p className="text-[var(--tx-1)] text-[13px] font-semibold truncate">Group Holding</p>
-                <div className="flex items-center gap-1 text-[var(--tx-3)] text-[11px] min-w-0">
-                  <span>Sénégal</span>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <Image src="https://flagcdn.com/16x12/sn.png" width={16} height={12} alt="" className="rounded-[2px] flex-shrink-0" />
-                  <span>·</span>
-                  <span className="truncate">Côte d&apos;Ivoire</span>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <Image src="https://flagcdn.com/16x12/ci.png" width={16} height={12} alt="" className="rounded-[2px] flex-shrink-0" />
-                </div>
+                <p className="text-[var(--tx-1)] text-[13px] font-semibold truncate">{wsName}</p>
+                {wsCountries.length > 0 && (
+                  <div className="flex items-center gap-1.5 text-[var(--tx-3)] text-[11px] min-w-0 flex-wrap">
+                    {wsCountries.map((c, i) => (
+                      <span key={c.code} className="flex items-center gap-1">
+                        {i > 0 && <span>·</span>}
+                        <span>{c.name}</span>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={`https://flagcdn.com/16x12/${c.code}.png`} width={16} height={12} alt={c.name} className="rounded-[2px] flex-shrink-0" />
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -221,7 +234,7 @@ const isFirstRender = useRef(true);
                 className="w-7 h-7 rounded-md flex items-center justify-center"
                 style={{ background: 'var(--grad-subtle)' }}
               >
-                <span className="text-[10px] font-bold text-[var(--p500)]">GH</span>
+                <span className="text-[10px] font-bold text-[var(--p500)]">{wsInitials}</span>
               </div>
             </div>
           )}
@@ -285,20 +298,24 @@ const isFirstRender = useRef(true);
         <div className="flex-shrink-0 border-t border-[var(--bd-def)] p-3">
           {open ? (
             <div className="flex items-center gap-2.5">
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ background: 'var(--grad)' }}
+              {/* Avatar + nom → lien vers Mon profil */}
+              <Link
+                href={`/${locale}/page/profil`}
+                className="flex items-center gap-2.5 flex-1 min-w-0 rounded-lg hover:bg-[var(--bg-sink)] px-1.5 py-1 -mx-1.5 -my-1 transition-colors"
               >
-                <span className="text-white text-xs font-bold">{initials}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[var(--tx-1)] text-[13px] font-medium truncate">{fullName}</p>
-                {role && (
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[var(--tx-3)] text-[11px] truncate">{role}</span>
-                  </div>
-                )}
-              </div>
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'var(--grad)' }}
+                >
+                  <span className="text-white text-xs font-bold">{initials}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[var(--tx-1)] text-[13px] font-medium truncate">{fullName}</p>
+                  {role && (
+                    <span className="text-[var(--tx-3)] text-[11px] truncate block">{role}</span>
+                  )}
+                </div>
+              </Link>
               <button
                 onClick={() => setShowLogoutModal(true)}
                 className="text-[var(--tx-3)] hover:text-error transition-colors p-1 rounded flex-shrink-0"
@@ -309,12 +326,14 @@ const isFirstRender = useRef(true);
             </div>
           ) : (
             <div className="flex flex-col items-center gap-2">
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center"
+              <Link
+                href={`/${locale}/page/profil`}
+                title="Mon profil"
+                className="w-8 h-8 rounded-full flex items-center justify-center hover:opacity-80 transition-opacity"
                 style={{ background: 'var(--grad)' }}
               >
                 <span className="text-white text-xs font-bold">{initials}</span>
-              </div>
+              </Link>
               {role && (
                 <div className="w-6 h-6 rounded-full bg-[var(--bg-sink)] border border-[var(--bd-def)] flex items-center justify-center">
                   <span className="text-[8px] font-bold text-[var(--tx-3)]">

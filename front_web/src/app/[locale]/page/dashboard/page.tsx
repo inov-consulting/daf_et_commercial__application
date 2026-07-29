@@ -18,15 +18,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
+import { setCompanyContext } from "@/lib/ApiService";
+import type { ApiCompany } from "@/types/company_type";
 import { fetchKpiCatalog } from "@/redux/features/kpi/kpiSlice";
-import {
-  fetchProspects,
-  createProspect,
-} from "@/redux/features/prospects/prospectsSlice";
+import { fetchProspects } from "@/redux/features/prospects/prospectsSlice";
 import { fetchOffers } from "@/redux/features/offers/offersSlice";
-import type { UpdateProspectBody } from "@/types/prospect_type";
 import {
   KpiChartCard,
   KpiChartCardSkeleton,
@@ -195,68 +192,50 @@ function Card({
 
 /* ── Sections ────────────────────────────────────────────────────────── */
 
-const ENTITIES = [
-  { key: "all", label: "Toutes", flag: null },
-  { key: "sn", label: "Sénégal", flag: "sn" },
-  { key: "ci", label: "Côte d'Ivoire", flag: "ci" },
-] as const;
+interface PageHeaderProps {
+  companies: ApiCompany[];
+  selectedCompanyId: string;
+  onCompanyChange: (id: string) => void;
+}
 
-type EntityKey = (typeof ENTITIES)[number]["key"];
-
-function PageHeader() {
-  const [entity, setEntity] = useState<EntityKey>("all");
-  const [modalOpen, setModalOpen] = useState(false);
-  const dispatch = useAppDispatch();
-  const { creating, createError } = useAppSelector((s) => s.prospects);
-
-  async function handleSave(body: UpdateProspectBody) {
-    const res = await dispatch(createProspect(body));
-    if (createProspect.fulfilled.match(res)) {
-      setModalOpen(false);
-      dispatch(fetchProspects({ limit: 200 }));
-    }
-  }
-
+function PageHeader({ companies, selectedCompanyId, onCompanyChange }: PageHeaderProps) {
   return (
-    <>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
-        <div className="min-w-0">
-          <h1 className="font-display font-bold text-xl sm:text-2xl text-[var(--tx-1)]">
-            Tableau de bord
-          </h1>
-          {/* <p className="text-xs sm:text-sm text-[var(--tx-3)] mt-0.5">Vue DG</p> */}
-        </div>
-        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-          <div className="flex items-center gap-0.5 bg-white border border-[var(--bd-def)] rounded-lg p-0.5 shadow-[var(--sh-xs)]">
-            {ENTITIES.map(({ key, label, flag }) => (
-              <button
-                key={key}
-                onClick={() => setEntity(key)}
-                className={cn(
-                  "flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors",
-                  entity === key
-                    ? "bg-[var(--p500)] text-white"
-                    : "text-[var(--tx-2)] hover:bg-[var(--bg-sink)]",
-                )}
-              >
-                {flag && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <Image
-                    src={`https://flagcdn.com/16x12/${flag}.png`}
-                    width={16}
-                    height={12}
-                    alt={label}
-                    className="rounded-[2px] flex-shrink-0"
-                  />
-                )}
-                <span className="hidden sm:inline">{label}</span>
-                {!flag && <span className="sm:hidden">Toutes</span>}
-              </button>
-            ))}
-          </div>
-        </div>
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+      <div className="min-w-0">
+        <h1 className="font-display font-bold text-xl sm:text-2xl text-[var(--tx-1)]">
+          Tableau de bord
+        </h1>
       </div>
-    </>
+
+      {companies.length > 0 && (
+        <div className="flex items-center gap-0.5 bg-white border border-[var(--bd-def)] rounded-lg p-0.5 shadow-[var(--sh-xs)]">
+          {companies.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => onCompanyChange(c.id)}
+              className={cn(
+                "flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors",
+                c.id === selectedCompanyId
+                  ? "bg-[var(--p500)] text-white"
+                  : "text-[var(--tx-2)] hover:bg-[var(--bg-sink)]",
+              )}
+            >
+              {c.country_code && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`https://flagcdn.com/16x12/${c.country_code.toLowerCase()}.png`}
+                  width={16}
+                  height={12}
+                  alt={c.country ?? ""}
+                  className="rounded-[2px] flex-shrink-0"
+                />
+              )}
+              <span className="hidden sm:inline">{c.name ?? c.id}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1022,6 +1001,28 @@ function DashboardSkeleton() {
 export default function DashboardPage() {
   const dispatch = useAppDispatch();
 
+  const me = useAppSelector((s) => s.me.me);
+  const wsCompanies = me?.companies ?? [];
+
+  const [selectedCompanyId, setSelectedCompanyId] = useState('');
+
+  // Initialise sur la première compagnie dès que me est chargé
+  useEffect(() => {
+    if (wsCompanies.length > 0 && !selectedCompanyId) {
+      setSelectedCompanyId(wsCompanies[0].id);
+    }
+  }, [wsCompanies, selectedCompanyId]);
+
+  function handleCompanyChange(id: string) {
+    if (id === selectedCompanyId) return;
+    setCompanyContext(id);
+    setSelectedCompanyId(id);
+    // Re-fetch toutes les données du dashboard avec la nouvelle compagnie
+    dispatch(fetchKpiCatalog());
+    dispatch(fetchProspects({ limit: 200 }));
+    dispatch(fetchOffers());
+  }
+
   const { catalog, catalogLoading } = useAppSelector((s) => s.kpi);
   const { total: prospectsTotal, loading: prospectsLoading } = useAppSelector(
     (s) => s.prospects,
@@ -1046,7 +1047,11 @@ export default function DashboardPage() {
 
   return (
     <div className="p-3 sm:p-4 md:p-6">
-      <PageHeader />
+      <PageHeader
+        companies={wsCompanies}
+        selectedCompanyId={selectedCompanyId}
+        onCompanyChange={handleCompanyChange}
+      />
       {/* <IACenter /> */}
       <KpiRow />
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-3 sm:gap-4 mb-4 sm:mb-6">
