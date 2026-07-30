@@ -146,32 +146,84 @@ async def get_ai_usage(
 async def get_ai_balance() -> AiBalanceResponse:
     """Solde des crédits IA disponibles.
 
-    - DeepSeek : solde réel via API officielle
-    - Anthropic / OpenAI : non disponible publiquement (tracking local uniquement)
+    - DeepSeek  : solde réel via API officielle
+    - OpenAI    : coût trackés localement (API billing fermée aux clés API)
+    - Anthropic : coût trackés localement (pas d'API de solde publique)
     """
+    from datetime import datetime, timedelta, timezone
+    from app.infrastructure.db.models.ai_usage import AiUsageLogOrm
+
+    # Coûts trackés localement sur 30 jours pour OpenAI et Anthropic
+    since = datetime.now(timezone.utc) - timedelta(days=30)
+    logs = await AiUsageLogOrm.filter(created_at__gte=since)
+
+    local_cost: dict[str, float] = {}
+    for log in logs:
+        local_cost[log.provider] = round(local_cost.get(log.provider, 0.0) + log.cost_usd, 6)
+
     result: dict[str, dict] = {
-        "anthropic": {"available": None, "message": "API de solde non disponible — consommation suivie localement"},
-        "openai":    {"available": None, "message": "API de solde non disponible — consommation suivie localement"},
-        "deepseek":  {"available": False, "message": "Clé API non configurée"},
+        "anthropic": {
+            "available": None,
+            "message": "Solde non disponible via API — coût estimé sur 30j ci-dessous",
+            "local_cost_usd_30d": round(local_cost.get("anthropic", 0.0), 4),
+        },
+        "openai": {
+            "available": None,
+            "message": "API billing OpenAI fermée aux clés API — coût estimé sur 30j ci-dessous",
+            "local_cost_usd_30d": round(local_cost.get("openai", 0.0), 4),
+        },
+        "deepseek": {"available": False, "message": "Clé API non configurée"},
     }
 
-    if settings.deepseek_api_key:
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        # ── OpenAI Balance via session token navigateur ───────────────────────
+        # Le session token (sess-...) s'obtient dans les DevTools de platform.openai.com
+        if settings.openai_session_token:
+            try:
+                resp = await client.get(
+                    "https://api.openai.com/dashboard/billing/credit_grants",
+                    headers={
+                        "Authorization": f"Bearer {settings.openai_session_token}",
+                        "Content-Type": "application/json",
+                    },
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    result["openai"] = {
+                        "available":       True,
+                        "total_granted":   data.get("total_granted"),
+                        "total_used":      data.get("total_used"),
+                        "total_available": data.get("total_available"),
+                        "local_cost_usd_30d": round(local_cost.get("openai", 0.0), 4),
+                        "source": "dashboard/billing (session token)",
+                    }
+                elif resp.status_code == 401:
+                    result["openai"]["message"] = "Session token expiré — renouveler OPENAI_SESSION_TOKEN dans .env"
+                else:
+                    result["openai"]["message"] = f"Erreur API OpenAI : HTTP {resp.status_code}"
+            except Exception as exc:
+                result["openai"]["message"] = f"Erreur réseau OpenAI : {exc}"
+
+        # ── DeepSeek Balance (API officielle disponible) ──────────────────────
+        if settings.deepseek_api_key:
+            try:
                 resp = await client.get(
                     "https://api.deepseek.com/user/balance",
                     headers={"Authorization": f"Bearer {settings.deepseek_api_key}"},
                 )
-            if resp.status_code == 200:
-                data = resp.json()
-                balance_infos = data.get("balance_infos", [])
-                result["deepseek"] = {
-                    "available":      data.get("is_available", False),
-                    "balance_infos":  balance_infos,
-                }
-            else:
-                result["deepseek"] = {"available": False, "message": f"Erreur API DeepSeek : HTTP {resp.status_code}"}
-        except Exception as exc:
-            result["deepseek"] = {"available": False, "message": f"Erreur réseau : {exc}"}
+                if resp.status_code == 200:
+                    data = resp.json()
+                    result["deepseek"] = {
+                        "available":          data.get("is_available", False),
+                        "balance_infos":      data.get("balance_infos", []),
+                        "local_cost_usd_30d": round(local_cost.get("deepseek", 0.0), 4),
+                    }
+                else:
+                    result["deepseek"] = {
+                        "available": False,
+                        "message": f"Erreur API DeepSeek : HTTP {resp.status_code}",
+                    }
+            except Exception as exc:
+                result["deepseek"] = {"available": False, "message": f"Erreur réseau : {exc}"}
 
     return result

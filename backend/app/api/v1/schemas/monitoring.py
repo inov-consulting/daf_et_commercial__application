@@ -93,12 +93,42 @@ class DeepSeekBalanceInfo(BaseModel):
     topped_up_balance: str = Field(..., description="Crédits rechargés restants")
 
 
+class OpenAiBalanceFunds(BaseModel):
+    """Une ligne de solde retournée par l'Admin API OpenAI."""
+    object: str | None = None
+    amount: float | None = None
+    currency: str | None = None
+
+
 class ProviderBalance(BaseModel):
-    available: bool | None = Field(None, description="True si le compte est actif et utilisable")
+    model_config = {"extra": "allow"}
+
+    # Champ commun — état disponible (bool pour DeepSeek, None si inconnu)
+    available: bool | list[OpenAiBalanceFunds] | None = Field(
+        None,
+        description="True/False (DeepSeek) ou liste de soldes (OpenAI Admin API)",
+    )
     message: str | None = Field(None, description="Message d'erreur ou d'information")
+
+    # DeepSeek
     balance_infos: list[DeepSeekBalanceInfo] | None = Field(
         None,
-        description="Détail du solde par devise (DeepSeek uniquement)",
+        description="Détail du solde par devise (DeepSeek)",
+    )
+
+    # OpenAI Admin API (organization/balance)
+    pending: list[OpenAiBalanceFunds] | None = Field(None, description="Solde en attente (OpenAI Admin API)")
+    source: str | None = Field(None, description="Endpoint source utilisé")
+
+    # OpenAI legacy (dashboard/billing/credit_grants)
+    total_granted: float | None = Field(None, description="Crédits offerts totaux (OpenAI legacy)")
+    total_used: float | None = Field(None, description="Crédits consommés (OpenAI legacy)")
+    total_available: float | None = Field(None, description="Crédits restants (OpenAI legacy)")
+
+    # Tracking local (tous providers)
+    local_cost_usd_30d: float | None = Field(
+        None,
+        description="Coût estimé en USD sur les 30 derniers jours (depuis ai_usage_logs)",
     )
 
 

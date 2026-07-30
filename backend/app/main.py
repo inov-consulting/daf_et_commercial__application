@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -8,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.error_handlers import register_error_handlers
-from app.api.v1 import ai_config, api_logs, auth, chat, commercial_agent, commercial_predictions, companies, compte_rendus, daf, groups, health, kpi, prospects, transport, users
+from app.api.v1 import ai_config, api_logs, auth, chat, commercial_agent, commercial_predictions, companies, compte_rendus, daf, groups, health, kpi, prospects, search, transport, users
 from app.api.v1 import app_config, monitoring, notifications, transport_offers, whatsapp
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
@@ -32,6 +33,10 @@ API_V1_PREFIX = "/api/v1"
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     logger.info("backend.startup", environment=settings.environment)
+
+    from app.infrastructure.ai.usage_tracker import set_main_loop
+    set_main_loop(asyncio.get_running_loop())
+
     await init_db()
     await AiModelRepository().seed()
 
@@ -41,9 +46,8 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     from app.infrastructure.scheduler.commercial_scheduler import commercial_scheduler
     await commercial_scheduler.start()
 
-    import asyncio as _asyncio
     from app.infrastructure.monitoring.collector import start_monitoring_loop
-    _asyncio.create_task(start_monitoring_loop(interval=2.0))
+    asyncio.create_task(start_monitoring_loop(interval=2.0))
 
     try:
         yield
@@ -109,3 +113,4 @@ app.include_router(daf.router, prefix=API_V1_PREFIX)
 app.include_router(notifications.router, prefix=API_V1_PREFIX)
 app.include_router(monitoring.router, prefix=API_V1_PREFIX)
 app.include_router(whatsapp.router, prefix=API_V1_PREFIX)
+app.include_router(search.router, prefix=API_V1_PREFIX)

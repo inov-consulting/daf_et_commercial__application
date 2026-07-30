@@ -12,17 +12,10 @@ from datetime import date, datetime, timezone
 
 logger = logging.getLogger(__name__)
 
-# Contexte injecté par run_daf_cycle avant chaque exécution
-_current_erp_id: int | None = None
 
-
-def set_company_context(erp_id: int | None) -> None:
-    global _current_erp_id
-    _current_erp_id = erp_id
-
-
-def _company_filter() -> list:
-    return [("company_id", "=", _current_erp_id)] if _current_erp_id is not None else []
+def _company_filter(erp_id: int | None) -> list:
+    """Retourne le filtre Odoo pour l'entreprise, ou [] si erp_id non fourni."""
+    return [("company_id", "=", erp_id)] if erp_id is not None else []
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -37,7 +30,7 @@ def _odoo_bool(val) -> bool:
 
 # ── Créances clients ──────────────────────────────────────────────────────────
 
-async def get_overdue_receivables() -> dict:
+async def get_overdue_receivables(erp_id: int | None = None) -> dict:
     """Retourne toutes les factures clients (out_invoice) en retard de paiement.
 
     Retourne :
@@ -57,7 +50,7 @@ async def get_overdue_receivables() -> dict:
 
     today = _today()
     client = OdooClient()
-    domain = _company_filter() + [
+    domain = _company_filter(erp_id) + [
         ("move_type", "=", "out_invoice"),
         ("state", "=", "posted"),
         ("payment_state", "in", ["not_paid", "partial"]),
@@ -101,12 +94,12 @@ async def get_overdue_receivables() -> dict:
     return {"total_overdue": round(total, 2), "count": len(invoices), "invoices": invoices}
 
 
-async def get_all_receivables() -> dict:
+async def get_all_receivables(erp_id: int | None = None) -> dict:
     """Retourne le total des créances clients (factures non soldées, incluant non échues)."""
     from app.infrastructure.odoo.client import OdooClient
 
     client = OdooClient()
-    domain = _company_filter() + [
+    domain = _company_filter(erp_id) + [
         ("move_type", "=", "out_invoice"),
         ("state", "=", "posted"),
         ("payment_state", "in", ["not_paid", "partial"]),
@@ -120,7 +113,7 @@ async def get_all_receivables() -> dict:
 
 # ── Dettes fournisseurs ───────────────────────────────────────────────────────
 
-async def get_overdue_payables() -> dict:
+async def get_overdue_payables(erp_id: int | None = None) -> dict:
     """Retourne toutes les factures fournisseurs (in_invoice) en retard de paiement.
 
     Même structure que get_overdue_receivables mais pour les dettes.
@@ -129,7 +122,7 @@ async def get_overdue_payables() -> dict:
 
     today = _today()
     client = OdooClient()
-    domain = _company_filter() + [
+    domain = _company_filter(erp_id) + [
         ("move_type", "=", "in_invoice"),
         ("state", "=", "posted"),
         ("payment_state", "in", ["not_paid", "partial"]),
@@ -172,12 +165,12 @@ async def get_overdue_payables() -> dict:
     return {"total_overdue": round(total, 2), "count": len(invoices), "invoices": invoices}
 
 
-async def get_all_payables() -> dict:
+async def get_all_payables(erp_id: int | None = None) -> dict:
     """Retourne le total des dettes fournisseurs (factures non soldées)."""
     from app.infrastructure.odoo.client import OdooClient
 
     client = OdooClient()
-    domain = _company_filter() + [
+    domain = _company_filter(erp_id) + [
         ("move_type", "=", "in_invoice"),
         ("state", "=", "posted"),
         ("payment_state", "in", ["not_paid", "partial"]),
@@ -190,13 +183,14 @@ async def get_all_payables() -> dict:
 
 # ── DSO (Days Sales Outstanding) ──────────────────────────────────────────────
 
-async def calculate_dso(period_days: int = 90) -> dict:
+async def calculate_dso(period_days: int = 90, erp_id: int | None = None) -> dict:
     """Calcule le DSO (délai moyen de recouvrement des créances).
 
     DSO = (Créances clients en cours / CA sur la période) × nombre de jours
 
     Args:
         period_days: Nombre de jours de la période de référence (défaut 90j).
+        erp_id: Identifiant Odoo de la société (filtre multi-société).
 
     Retourne :
         {"dso_days": float, "total_receivables": float, "ca_period": float, "period_days": int}
@@ -209,11 +203,11 @@ async def calculate_dso(period_days: int = 90) -> dict:
     period_start = (today - timedelta(days=period_days)).isoformat()
 
     # Créances clients en cours
-    receivables_data = await get_all_receivables()
+    receivables_data = await get_all_receivables(erp_id=erp_id)
     total_receivables = receivables_data["total_receivables"]
 
     # CA facturé sur la période (factures validées et payées ou non)
-    ca_domain = _company_filter() + [
+    ca_domain = _company_filter(erp_id) + [
         ("move_type", "=", "out_invoice"),
         ("state", "=", "posted"),
         ("invoice_date", ">=", period_start),
@@ -237,7 +231,7 @@ async def calculate_dso(period_days: int = 90) -> dict:
 
 # ── Trésorerie ────────────────────────────────────────────────────────────────
 
-async def get_cash_position() -> dict:
+async def get_cash_position(erp_id: int | None = None) -> dict:
     """Retourne la position de trésorerie depuis les journaux de banque/caisse Odoo.
 
     Retourne :
@@ -248,7 +242,7 @@ async def get_cash_position() -> dict:
     client = OdooClient()
 
     # Récupérer les journaux de type bank/cash
-    journal_domain = _company_filter() + [("type", "in", ["bank", "cash"])]
+    journal_domain = _company_filter(erp_id) + [("type", "in", ["bank", "cash"])]
     journal_fields = ["id", "name", "type"]
     journals = await asyncio.to_thread(
         client.fetch_all, "account.journal", journal_domain, journal_fields
@@ -286,9 +280,9 @@ def _age_bucket(days: int) -> str:
     return "+90j"
 
 
-async def get_aging_report() -> dict:
+async def get_aging_report(erp_id: int | None = None) -> dict:
     """Balance âgée des créances clients groupée par tranche de retard."""
-    data = await get_overdue_receivables()
+    data = await get_overdue_receivables(erp_id=erp_id)
     buckets: dict[str, float] = {"0-30j": 0, "31-60j": 0, "61-90j": 0, "+90j": 0}
     counts: dict[str, int] = {"0-30j": 0, "31-60j": 0, "61-90j": 0, "+90j": 0}
 
@@ -308,9 +302,9 @@ async def get_aging_report() -> dict:
 
 # ── Top débiteurs ─────────────────────────────────────────────────────────────
 
-async def get_top_debtors(limit: int = 10) -> dict:
+async def get_top_debtors(limit: int = 10, erp_id: int | None = None) -> dict:
     """Retourne les N clients avec les créances en retard les plus élevées."""
-    data = await get_overdue_receivables()
+    data = await get_overdue_receivables(erp_id=erp_id)
     by_partner: dict[int, dict] = {}
 
     for inv in data["invoices"]:

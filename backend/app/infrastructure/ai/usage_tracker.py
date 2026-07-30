@@ -10,6 +10,17 @@ import asyncio
 import logging
 from typing import Any
 
+# Référence à la boucle principale — initialisée au démarrage via set_main_loop().
+# Nécessaire car asyncio.get_event_loop() lève RuntimeError depuis les threads workers
+# (asyncio.to_thread) en Python 3.10+.
+_main_loop: asyncio.AbstractEventLoop | None = None
+
+
+def set_main_loop(loop: asyncio.AbstractEventLoop) -> None:
+    """À appeler depuis le lifespan FastAPI pour enregistrer la boucle principale."""
+    global _main_loop
+    _main_loop = loop
+
 from langchain_core.callbacks import AsyncCallbackHandler
 from langchain_core.outputs import LLMResult
 
@@ -125,8 +136,12 @@ def track_anthropic_sdk_usage(response: Any, model: str, context: str = "cr") ->
         output_tokens = int(getattr(usage, "output_tokens", 0) or 0)
         if input_tokens == 0 and output_tokens == 0:
             return
-        # On est dans un thread (asyncio.to_thread) → on schedule la coroutine
-        loop = asyncio.get_event_loop()
+        # En Python 3.10+, asyncio.get_event_loop() lève RuntimeError depuis un thread
+        # worker (asyncio.to_thread). On utilise la boucle principale stockée au démarrage.
+        loop = _main_loop
+        if loop is None or not loop.is_running():
+            logger.debug("ai_usage.sdk_track.no_loop model=%s — skipped", model)
+            return
         asyncio.run_coroutine_threadsafe(
             _persist("anthropic", model, context, input_tokens, output_tokens),
             loop,

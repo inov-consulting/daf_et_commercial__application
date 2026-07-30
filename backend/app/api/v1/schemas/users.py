@@ -26,6 +26,11 @@ class UserCreate(BaseModel):
         return v
 
 
+class ChangePasswordIn(BaseModel):
+    current_password: str = Field(..., min_length=1, description="Mot de passe actuel.")
+    new_password: str = Field(..., min_length=8, description="Nouveau mot de passe (min 8 caractères).")
+
+
 class UserUpdate(BaseModel):
     company_ids: list[UUID] | None = None
     group_ids: list[str] | None = None

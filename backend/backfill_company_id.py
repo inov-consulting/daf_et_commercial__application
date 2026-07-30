@@ -37,8 +37,13 @@ async def main(dry_run: bool = False) -> None:
     conn = Tortoise.get_connection("default")
 
     try:
+<<<<<<< Updated upstream
         # execute_query retourne (rowcount: int, results: list[dict])
         _rc, rows = await conn.execute_query(
+=======
+        # ── Lister les entreprises ────────────────────────────────────────────
+        _, rows = await conn.execute_query(
+>>>>>>> Stashed changes
             "SELECT id, name, country_name, is_active FROM companies ORDER BY created_at ASC"
         )
 
@@ -73,7 +78,11 @@ async def main(dry_run: bool = False) -> None:
         print("\n=== Lignes NULL à corriger ===")
         totals: dict[str, int] = {}
         for table in TABLES:
+<<<<<<< Updated upstream
             _rc, result = await conn.execute_query(
+=======
+            _, result = await conn.execute_query(
+>>>>>>> Stashed changes
                 f"SELECT COUNT(*) AS n FROM {table} WHERE company_id IS NULL"  # noqa: S608
             )
             count = result[0]["n"]
