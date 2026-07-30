@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 _checkpointer = MemorySaver()
 
 # Nombre maximum de messages conservés dans le contexte (hors SystemMessage).
-MAX_CONTEXT_MESSAGES = 15
+MAX_CONTEXT_MESSAGES = 40
 
 
 def _trim_hook(state: dict) -> dict:
