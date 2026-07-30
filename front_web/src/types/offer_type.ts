@@ -125,8 +125,16 @@ function clientFromTitle(title: string | null | undefined): string {
 
 // Calcule la date d'expiry depuis date d'émission + validité en jours
 function computeExpiryDate(date: string | null, validityDays: number | null): string {
-  if (!date || !validityDays) return new Date(0).toISOString(); // passé lointain → expiré
-  const d = new Date(date);
+  if (!date || validityDays == null || validityDays <= 0) {
+    return new Date(0).toISOString(); // passé lointain → expiré
+  }
+
+  const parsedDate = new Date(date);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return new Date(0).toISOString(); // date invalide → expiré
+  }
+
+  const d = new Date(parsedDate);
   d.setDate(d.getDate() + validityDays);
   return d.toISOString();
 }
@@ -259,7 +267,8 @@ export interface Offer {
   date_emission: string;        // ISO
   validity_days: number;
   date_expiry: string;          // ISO
-  date_planned?: string;        // ISO
+  date_planned?: string; 
+  date?: string;        // ISO
   state: OfferStatus;
   commercial_name?: string;
   ai_generated?: boolean;

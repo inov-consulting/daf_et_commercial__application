@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import {
   ArrowRightIcon,
   TruckIcon,
@@ -20,6 +20,7 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { setCompanyContext } from "@/lib/ApiService";
+import { setActiveCompany } from "@/redux/features/activeCompany/activeCompanySlice";
 import type { ApiCompany } from "@/types/company_type";
 import { fetchKpiCatalog } from "@/redux/features/kpi/kpiSlice";
 import { fetchProspects } from "@/redux/features/prospects/prospectsSlice";
@@ -1003,21 +1004,12 @@ export default function DashboardPage() {
 
   const me = useAppSelector((s) => s.me.me);
   const wsCompanies = me?.companies ?? [];
-
-  const [selectedCompanyId, setSelectedCompanyId] = useState('');
-
-  // Initialise sur la première compagnie dès que me est chargé
-  useEffect(() => {
-    if (wsCompanies.length > 0 && !selectedCompanyId) {
-      setSelectedCompanyId(wsCompanies[0].id);
-    }
-  }, [wsCompanies, selectedCompanyId]);
+  const selectedCompanyId = useAppSelector(s => s.activeCompany.selectedId);
 
   function handleCompanyChange(id: string) {
     if (id === selectedCompanyId) return;
     setCompanyContext(id);
-    setSelectedCompanyId(id);
-    // Re-fetch toutes les données du dashboard avec la nouvelle compagnie
+    dispatch(setActiveCompany(id));
     dispatch(fetchKpiCatalog());
     dispatch(fetchProspects({ limit: 200 }));
     dispatch(fetchOffers());

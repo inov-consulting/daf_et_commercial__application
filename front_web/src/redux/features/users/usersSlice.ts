@@ -17,6 +17,12 @@ interface UsersState {
   // updateUser
   updating: boolean;
   updateError: string | null;
+  // toggleUserStatus
+  togglingStatus: boolean;
+  toggleStatusError: string | null;
+  // uploadAvatar
+  uploadingAvatar: boolean;
+  uploadAvatarError: string | null;
 }
 
 const initialState: UsersState = {
@@ -28,6 +34,10 @@ const initialState: UsersState = {
   createError: null,
   updating: false,
   updateError: null,
+  togglingStatus: false,
+  toggleStatusError: null,
+  uploadingAvatar: false,
+  uploadAvatarError: null,
 };
 
 // ── Payload types ──────────────────────────────────────────────────────────
@@ -43,7 +53,7 @@ type CreateUserPayload = {
   first_name: string;
   last_name: string;
   company_ids: string[];
-  group_ids: string[]; // Même si le backend ne les utilise pas encore, on les envoie pour éviter des mises à jour locales non synchronisées.
+  group_ids: string[];
 };
 
 type UpdateUserPayload = {
@@ -113,6 +123,35 @@ export const updateUser = createAsyncThunk(
   },
 );
 
+// is_active est passé en query param — PATCH /api/v1/users/{id}/status?is_active=...
+export const toggleUserStatus = createAsyncThunk(
+  'users/toggleStatus',
+  async ({ id, isActive }: { id: string; isActive: boolean }, { rejectWithValue }) => {
+    const qs = new URLSearchParams({ is_active: String(isActive) });
+    const res = await PatchData<ApiUser>({
+      url: `${ApiRoutes.USERS_STATUS(id)}?${qs}`,
+      protected: true,
+    });
+    if (!res.ok) return rejectWithValue(res.error ?? 'Erreur lors du changement de statut');
+    return res.data!;
+  },
+);
+
+// Envoie le fichier image en multipart — POST /api/v1/users/{id}/avatar
+export const uploadAvatar = createAsyncThunk(
+  'users/uploadAvatar',
+  async ({ id, file }: { id: string; file: File }, { rejectWithValue }) => {
+    const res = await PostData<ApiUser, { file: File }>({
+      url: ApiRoutes.USERS_AVATAR(id),
+      data: { file },
+      protected: true,
+      isMultipart: true,
+    });
+    if (!res.ok) return rejectWithValue(res.error ?? "Erreur lors de l'upload de l'avatar");
+    return res.data!;
+  },
+);
+
 // ── Slice ──────────────────────────────────────────────────────────────────
 
 const usersSlice = createSlice({
@@ -123,7 +162,6 @@ const usersSlice = createSlice({
       state.list = state.list.filter(u => u.id !== action.payload);
       state.total = Math.max(0, state.total - 1);
     },
-    // Mise à jour locale pour les champs pas encore supportés par le PATCH backend
     updateUserLocal(state, action: PayloadAction<{ id: string; changes: Partial<ApiUser> }>) {
       const idx = state.list.findIndex(u => u.id === action.payload.id);
       if (idx !== -1) Object.assign(state.list[idx], action.payload.changes);
@@ -132,14 +170,14 @@ const usersSlice = createSlice({
       state.error = null;
       state.createError = null;
       state.updateError = null;
+      state.toggleStatusError = null;
+      state.uploadAvatarError = null;
     },
   },
   extraReducers(builder) {
     builder
-      .addCase(fetchUsers.pending, state => {
-        state.loading = true;
-        state.error = null;
-      })
+      // fetchUsers
+      .addCase(fetchUsers.pending, state => { state.loading = true; state.error = null; })
       .addCase(fetchUsers.fulfilled, (state, action) => {
         state.loading = false;
         state.list = action.payload.results;
@@ -149,10 +187,8 @@ const usersSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
-      .addCase(createUser.pending, state => {
-        state.creating = true;
-        state.createError = null;
-      })
+      // createUser
+      .addCase(createUser.pending, state => { state.creating = true; state.createError = null; })
       .addCase(createUser.fulfilled, (state, action) => {
         state.creating = false;
         state.list.unshift(action.payload);
@@ -162,10 +198,8 @@ const usersSlice = createSlice({
         state.creating = false;
         state.createError = action.payload as string;
       })
-      .addCase(updateUser.pending, state => {
-        state.updating = true;
-        state.updateError = null;
-      })
+      // updateUser
+      .addCase(updateUser.pending, state => { state.updating = true; state.updateError = null; })
       .addCase(updateUser.fulfilled, (state, action) => {
         state.updating = false;
         const idx = state.list.findIndex(u => u.id === action.payload.id);
@@ -174,6 +208,28 @@ const usersSlice = createSlice({
       .addCase(updateUser.rejected, (state, action) => {
         state.updating = false;
         state.updateError = action.payload as string;
+      })
+      // toggleUserStatus
+      .addCase(toggleUserStatus.pending, state => { state.togglingStatus = true; state.toggleStatusError = null; })
+      .addCase(toggleUserStatus.fulfilled, (state, action) => {
+        state.togglingStatus = false;
+        const idx = state.list.findIndex(u => u.id === action.payload.id);
+        if (idx !== -1) state.list[idx] = action.payload;
+      })
+      .addCase(toggleUserStatus.rejected, (state, action) => {
+        state.togglingStatus = false;
+        state.toggleStatusError = action.payload as string;
+      })
+      // uploadAvatar — met à jour me dans usersSlice (si présent) + liste
+      .addCase(uploadAvatar.pending, state => { state.uploadingAvatar = true; state.uploadAvatarError = null; })
+      .addCase(uploadAvatar.fulfilled, (state, action) => {
+        state.uploadingAvatar = false;
+        const idx = state.list.findIndex(u => u.id === action.payload.id);
+        if (idx !== -1) state.list[idx] = action.payload;
+      })
+      .addCase(uploadAvatar.rejected, (state, action) => {
+        state.uploadingAvatar = false;
+        state.uploadAvatarError = action.payload as string;
       });
   },
 });

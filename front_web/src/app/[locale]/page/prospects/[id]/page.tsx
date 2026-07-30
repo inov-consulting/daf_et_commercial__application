@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { GetData, PatchData } from '@/lib/ApiService';
 import { ApiRoutes } from '@/lib/ApiRoutes';
@@ -9,7 +9,7 @@ import { ProspectDetailHeader } from '@/components/layout/prospect-detail-header
 import { ProspectNotesSection } from '@/components/layout/prospect-notes-section';
 import { ProspectCRSection } from '@/components/layout/prospect-cr-section';
 import { ProspectFormModal } from '@/components/layout/prospect-form-modal';
-import { useAppDispatch } from '@/redux/store';
+import { useAppDispatch, useAppSelector } from '@/redux/store';
 import { executeProspectAction } from '@/redux/features/prospects/prospectsSlice';
 
 export default function ProspectDetailPage() {
@@ -18,6 +18,11 @@ export default function ProspectDetailPage() {
   const locale = (params?.locale as string) || 'fr';
   const id = params?.id as string;
   const dispatch = useAppDispatch();
+
+  // Use the Redux list cache as an immediate fallback while the fresh fetch runs.
+  // This makes the header visible right away when navigating from the prospects list.
+  const cachedList = useAppSelector(state => state.prospects.list);
+  const cachedProspect = useMemo(() => cachedList.find(p => p.id === id) ?? null, [cachedList, id]);
 
   const [prospect, setProspect] = useState<ApiProspect | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,7 +67,10 @@ export default function ProspectDetailPage() {
     dispatch(executeProspectAction({ id, action }));
   }
 
-  if (loading) {
+  // Fresh API data takes priority; fall back to the Redux list cache while loading.
+  const displayProspect = prospect ?? cachedProspect;
+
+  if (loading && !displayProspect) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-3 text-[var(--tx-3)]">
@@ -73,7 +81,7 @@ export default function ProspectDetailPage() {
     );
   }
 
-  if (!prospect) {
+  if (!displayProspect) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <p className="text-[13px] text-[var(--tx-3)]">Prospect introuvable.</p>
@@ -85,7 +93,7 @@ export default function ProspectDetailPage() {
     <div className="flex flex-col gap-5 p-5 md:p-6 min-h-full">
       {/* Header */}
       <ProspectDetailHeader
-        prospect={prospect}
+        prospect={displayProspect}
         locale={locale}
         onEdit={() => { setSaveError(null); setEditOpen(true); }}
         onMove={moveProspect}
@@ -94,14 +102,14 @@ export default function ProspectDetailPage() {
       {/* Body: two columns on lg */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <ProspectNotesSection prospectId={id} />
-        <ProspectCRSection prospectId={id} prospectName={prospect.company_name ?? prospect.lead_name} />
+        <ProspectCRSection prospectId={id} prospectName={displayProspect.company_name ?? displayProspect.lead_name} />
       </div>
 
       {/* Edit modal */}
       <ProspectFormModal
         open={editOpen}
         mode="edit"
-        initial={prospect}
+        initial={displayProspect}
         saving={saving}
         serverError={saveError}
         onClose={() => setEditOpen(false)}

@@ -62,7 +62,7 @@ export function ProspectDetailHeader({ prospect, locale, onEdit, onMove }: Prosp
   }, [statusOpen]);
 
   return (
-    <div className="bg-[var(--bg-surf)] border border-[var(--bd-def)] rounded-2xl overflow-hidden">
+    <div className="bg-[var(--bg-surf)] border border-[var(--bd-def)] rounded-2xl ">
       {/* Gradient top bar */}
       <div className="h-[3px]" style={{ background: 'var(--grad)' }} />
 
