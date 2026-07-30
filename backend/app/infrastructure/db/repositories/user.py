@@ -17,9 +17,14 @@ class UserRepository:
         orm = await UserOrm.get_or_none(id=user_id)
         return orm.to_domain() if orm else None
 
-    async def get_by_email(self, email: str) -> User | None:
-        orm = await UserOrm.get_or_none(email=email.strip().lower())
-        return orm.to_domain() if orm else None
+    async def list_all(
+        self,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> Sequence[User]:
+        rows = await UserOrm.all().order_by("id").offset(offset).limit(limit)
+        return [r.to_domain() for r in rows]
 
     async def list_by_company(
         self,
@@ -28,9 +33,10 @@ class UserRepository:
         limit: int = 100,
         offset: int = 0,
     ) -> Sequence[User]:
+        # Tortoise JSONField filter : recherche dans la liste
         rows = (
-            await UserOrm.filter(company_id=company_id)
-            .order_by("email")
+            await UserOrm.filter(company_ids__contains=str(company_id))
+            .order_by("id")
             .offset(offset)
             .limit(limit)
         )

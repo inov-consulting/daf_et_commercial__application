@@ -66,7 +66,7 @@ class InMemoryUserRepository:
         limit: int = 100,
         offset: int = 0,
     ) -> Sequence[User]:
-        filtered = [u for u in self._by_id.values() if u.company_id == company_id]
+        filtered = [u for u in self._by_id.values() if company_id in u.company_ids]
         filtered.sort(key=lambda u: u.email)
         return [deepcopy(u) for u in filtered[offset : offset + limit]]
 
