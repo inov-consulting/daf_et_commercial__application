@@ -48,14 +48,15 @@ logger = get_logger(__name__)
 
 router = APIRouter(prefix="/transport/offers", tags=["transport-offers"])
 
-_read_deps = [Depends(require_permission("transport:read"))]
-_write_deps = [Depends(require_permission("transport:read"))]
+_read_deps    = [Depends(require_permission("transport:read"))]
+_create_deps  = [Depends(require_permission("transport:create"))]
+_update_deps  = [Depends(require_permission("transport:update"))]
 _confirm_deps = [Depends(require_permission("transport:confirm"))]
 
 
 # ── Chat ──────────────────────────────────────────────────────────────────────
 
-@router.post("/chat", dependencies=_write_deps)
+@router.post("/chat", dependencies=_create_deps)
 async def offer_chat(
     body: OfferChatIn,
     company: CurrentCompany,
@@ -113,7 +114,7 @@ async def offer_chat(
 
 # ── Formulaire (création & modification) ─────────────────────────────────────
 
-@router.post("/form", dependencies=_write_deps, status_code=status.HTTP_201_CREATED)
+@router.post("/form", dependencies=_create_deps, status_code=status.HTTP_201_CREATED)
 async def create_offer_form(
     body: OfferFormIn,
     company: CurrentCompany,
@@ -145,7 +146,7 @@ async def create_offer_form(
     )
 
 
-@router.patch("/{offer_id}/form", dependencies=_write_deps)
+@router.patch("/{offer_id}/form", dependencies=_update_deps)
 async def update_offer_form(
     offer_id: UUID,
     body: OfferFormIn,
@@ -199,9 +200,17 @@ async def list_odoo_clients(
 
     Chaque entrée contient : nom, type (entreprise/particulier), email, téléphone,
     mobile, adresse complète (rue, ville, code postal, pays).
+    Retourne 502 si Odoo est inaccessible ou retourne une erreur.
     """
     from app.infrastructure.ai.tools.odoo_client_list import list_odoo_clients as _odoo_partners
-    records = await _odoo_partners(search=search, companies_only=companies_only, suppliers=False)
+    try:
+        records = await _odoo_partners(search=search, companies_only=companies_only, suppliers=False)
+    except Exception as exc:
+        logger.error("transport.customers.odoo_failed search=%s error=%s", search, exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Impossible de récupérer les clients depuis Odoo : {exc}",
+        ) from exc
     return [OdooClientOut(**r) for r in records]
 
 
@@ -213,15 +222,23 @@ async def list_odoo_suppliers(
     """Retourne les fournisseurs Odoo (supplier_rank > 0).
 
     Même structure que /customers : nom, type, email, téléphone, mobile, adresse.
+    Retourne 502 si Odoo est inaccessible ou retourne une erreur.
     """
     from app.infrastructure.ai.tools.odoo_client_list import list_odoo_clients as _odoo_partners
-    records = await _odoo_partners(search=search, companies_only=companies_only, suppliers=True)
+    try:
+        records = await _odoo_partners(search=search, companies_only=companies_only, suppliers=True)
+    except Exception as exc:
+        logger.error("transport.suppliers.odoo_failed search=%s error=%s", search, exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Impossible de récupérer les fournisseurs depuis Odoo : {exc}",
+        ) from exc
     return [OdooClientOut(**r) for r in records]
 
 
 # ── Génération du document ────────────────────────────────────────────────────
 
-@router.post("/{offer_id}/generate", dependencies=_write_deps)
+@router.post("/{offer_id}/generate", dependencies=_create_deps)
 async def generate_document(
     offer_id: UUID,
     current_user=Depends(get_current_user),
@@ -280,7 +297,7 @@ async def generate_document(
 
 # ── Validation (côté Portalis uniquement) ────────────────────────────────────
 
-@router.post("/{offer_id}/validate", dependencies=_write_deps)
+@router.post("/{offer_id}/validate", dependencies=_create_deps)
 async def validate_offer(
     offer_id: UUID,
     current_user=Depends(get_current_user),
@@ -328,7 +345,7 @@ async def validate_offer(
 
 # ── Envoi vers Odoo (action explicite) ───────────────────────────────────────
 
-@router.post("/{offer_id}/confirm", dependencies=_write_deps)
+@router.post("/{offer_id}/confirm", dependencies=_confirm_deps)
 async def send_offer_to_odoo(offer_id: UUID) -> OfferConfirmOut:
     """Crée le dossier transport dans Odoo via MCP et lie l'offre.
 
@@ -428,7 +445,7 @@ async def list_offers(
     ]
 
 
-@router.post("/{offer_id}/cancel", dependencies=_write_deps)
+@router.post("/{offer_id}/cancel", dependencies=_create_deps)
 async def cancel_offer(offer_id: UUID) -> OfferSummaryOut:
     """Annule une offre en cours."""
     repo = TransportOfferRepository()

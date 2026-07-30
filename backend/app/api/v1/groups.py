@@ -41,7 +41,7 @@ async def list_groups() -> list[dict]:
 
 @router.post(
     "/groups",
-    dependencies=[Depends(require_permission("group:read"))],
+    dependencies=[Depends(require_permission("group:create"))],
     status_code=status.HTTP_201_CREATED,
 )
 async def create_group(payload: GroupCreate) -> dict:
@@ -118,7 +118,7 @@ async def list_group_roles(group_id: str) -> list[dict]:
 
 @router.post(
     "/groups/{group_id}/roles",
-    dependencies=[Depends(require_permission("group:update"))],
+    dependencies=[Depends(require_permission("group:create"))],
 )
 async def assign_roles_to_group(group_id: str, payload: GroupRoleAssign) -> dict:
     """Assigne des rôles realm à un groupe Keycloak.
@@ -151,7 +151,7 @@ async def assign_roles_to_group(group_id: str, payload: GroupRoleAssign) -> dict
 
 @router.delete(
     "/groups/{group_id}/roles/{role_name}",
-    dependencies=[Depends(require_permission("group:update"))],
+    dependencies=[Depends(require_permission("group:delete"))],
 )
 async def remove_role_from_group(group_id: str, role_name: str) -> dict:
     """Retire un rôle realm d'un groupe Keycloak."""

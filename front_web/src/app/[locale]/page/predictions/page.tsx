@@ -42,7 +42,13 @@ function normalizeType(s: string): string {
   return s.toLowerCase().replace(/_/g, ' ').normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
+const OPPORTUNITY_TYPE_DISPLAY: Record<string, string> = {
+  upsell: 'Vente incitative',
+};
+
 function fmtOpportunityType(type: string): string {
+  const lower = type.toLowerCase();
+  if (OPPORTUNITY_TYPE_DISPLAY[lower]) return OPPORTUNITY_TYPE_DISPLAY[lower];
   const s = type.replace(/_/g, ' ');
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
@@ -696,7 +702,7 @@ export default function PredictionsPage() {
                 {TYPE_LABELS.map(key => {
                   const c = TYPE_PALETTE[key];
                   const count = items.filter(p => normalizeType(p.opportunity_type).includes(normalizeType(key))).length;
-                  const label = key.charAt(0).toUpperCase() + key.slice(1);
+                  const label = fmtOpportunityType(key);
                   return (
                     <div key={key} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">

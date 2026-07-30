@@ -1,7 +1,7 @@
 """Router /auth : authentification et profil utilisateur (Keycloak)."""
 
 import httpx
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from app.api.deps import CompanyRepoDep, CurrentUser
@@ -95,8 +95,8 @@ async def refresh(payload: RefreshRequest) -> TokenResponse:
 
 
 @router.get("/me")
-async def me(user: CurrentUser, company_repo: CompanyRepoDep) -> UserOut:
-    """Retourne le profil de l'utilisateur connecté avec entreprises et groupes."""
+async def me(request: Request, user: CurrentUser, company_repo: CompanyRepoDep) -> UserOut:
+    """Retourne le profil de l'utilisateur connecté avec entreprises, groupes et permissions."""
     kc = KeycloakAdminClient()
 
     # Récupère les données Keycloak
@@ -117,4 +117,8 @@ async def me(user: CurrentUser, company_repo: CompanyRepoDep) -> UserOut:
     kc_groups = await kc.get_user_groups(str(user.id))
     user_group_ids = [g["id"] for g in kc_groups]
 
-    return UserOut.from_domain(user, companies=companies, group_ids=user_group_ids)
+    # Permissions extraites du JWT par get_current_user (realm_access.roles)
+    roles: set[str] = getattr(request.state, "keycloak_roles", set())
+    permissions = sorted(roles)
+
+    return UserOut.from_domain(user, companies=companies, group_ids=user_group_ids, permissions=permissions)

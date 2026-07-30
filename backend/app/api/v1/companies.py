@@ -87,7 +87,7 @@ async def create_company(payload: CompanyCreate, company_repo: CompanyRepoDep) -
     return CompanyOut.from_domain(company)
 
 
-@router.get("")
+@router.get("", dependencies=[Depends(require_permission("company:read"))])
 async def list_companies(
     company_repo: CompanyRepoDep,
     params: Annotated[PageParams, Depends()],
@@ -122,7 +122,7 @@ async def sync_companies_from_odoo(company_repo: CompanyRepoDep) -> None:
         ) from exc
 
 
-@router.get("/{company_id}")
+@router.get("/{company_id}", dependencies=[Depends(require_permission("company:read"))])
 async def get_company(company_id: UUID, company_repo: CompanyRepoDep) -> CompanyOut:
     company = await GetCompanyUseCase(company_repo).execute(company_id)
     return CompanyOut.from_domain(company)
