@@ -8,7 +8,7 @@ export interface ApiUser {
   last_name: string;
   company_ids?: string[];
   companies: ApiCompany[];
-  group?: Groupe[];
+  groups?: Groupe[];
   is_active: boolean;
   avatar_url?: string | null;
   created_at?: string | null;

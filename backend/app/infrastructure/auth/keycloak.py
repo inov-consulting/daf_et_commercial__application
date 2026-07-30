@@ -274,7 +274,7 @@ class KeycloakAdminClient:
         headers = await self._auth_header()
         url = f"{self._base_url}/admin/realms/{self._realm}/groups/{group_id}/role-mappings/realm"
         async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.delete(url, headers=headers, json=roles)
+            resp = await client.request("DELETE", url, headers=headers, json=roles)
             resp.raise_for_status()
 
     # ── Users ────────────────────────────────────────────────────────────
