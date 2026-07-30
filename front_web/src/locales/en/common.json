@@ -1,0 +1,12 @@
+{
+  "pageTitle": "Frontend base ready for your DAF & Commercial application.",
+  "pageDescription": "Next.js project structured with best practices to build a maintainable, typed, and scalable application.",
+  "features": [
+    "Next.js App Router architecture",
+    "Strict TypeScript mode",
+    "Tailwind CSS ready to use",
+    "Scalable domain-based structure"
+  ],
+  "currentLocale": "Current language: English",
+  "switchLocale": "Voir en français"
+}

@@ -1,14 +1,7 @@
-async def _login(client, email: str, password: str) -> str:
-    r = client.post("/api/v1/auth/login", json={"email": email, "password": password})
-    assert r.status_code == 200, r.text
-    return r.json()["access_token"]
-
-
 async def test_admin_can_create_company(client, seeded_admin) -> None:
-    token = await _login(client, "admin@inov.com", "AdminPass123!")
     r = client.post(
         "/api/v1/companies",
-        headers={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {seeded_admin.email}"},
         json={
             "name": "Hawa Paraiso Côte d'Ivoire",
             "country": "CI",
@@ -22,20 +15,18 @@ async def test_admin_can_create_company(client, seeded_admin) -> None:
 
 
 async def test_commercial_cannot_create_company(client, seeded_commercial) -> None:
-    token = await _login(client, "commercial@hawaparaiso.sn", "CommPass123!")
     r = client.post(
         "/api/v1/companies",
-        headers={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {seeded_commercial.email}"},
         json={"name": "X", "country": "SN", "default_currency": "XOF"},
     )
     assert r.status_code == 403
 
 
 async def test_list_companies_paginated(client, seeded_admin) -> None:
-    token = await _login(client, "admin@inov.com", "AdminPass123!")
     r = client.get(
         "/api/v1/companies?limit=10&offset=0",
-        headers={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {seeded_admin.email}"},
     )
     assert r.status_code == 200
     body = r.json()
@@ -45,13 +36,16 @@ async def test_list_companies_paginated(client, seeded_admin) -> None:
 
 
 async def test_duplicate_company_name_returns_409(client, seeded_admin) -> None:
-    token = await _login(client, "admin@inov.com", "AdminPass123!")
     payload = {"name": "Dup", "country": "SN", "default_currency": "XOF"}
     r1 = client.post(
-        "/api/v1/companies", headers={"Authorization": f"Bearer {token}"}, json=payload
+        "/api/v1/companies",
+        headers={"Authorization": f"Bearer {seeded_admin.email}"},
+        json=payload,
     )
     assert r1.status_code == 201
     r2 = client.post(
-        "/api/v1/companies", headers={"Authorization": f"Bearer {token}"}, json=payload
+        "/api/v1/companies",
+        headers={"Authorization": f"Bearer {seeded_admin.email}"},
+        json=payload,
     )
     assert r2.status_code == 409

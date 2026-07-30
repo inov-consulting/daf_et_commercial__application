@@ -28,6 +28,11 @@ class Role(StrEnum):
     """Accès comptable limité (lecture)."""
 
 
+# Permissions communes réutilisées dans plusieurs rôles
+_PERM_TRANSPORT_READ_ALL = "transport_file:read_all"
+_PERM_REPORT_READ_ALL = "report:read_all"
+_PERM_INVOICE_READ_ALL = "invoice:read_all"
+
 # Permissions agrégées par rôle. Évite de disperser des `if role == ...` dans le code.
 # À étendre quand de nouvelles actions sensibles apparaissent.
 _PERMISSIONS: dict[Role, frozenset[str]] = {
@@ -36,6 +41,7 @@ _PERMISSIONS: dict[Role, frozenset[str]] = {
         "meeting_report:create", "meeting_report:read_own",
         "offer:create_draft", "offer:read_own",
         "opportunity:read_own",
+        "kpi:read_transport",
     }),
     Role.MANAGER_PAYS: frozenset({
         "prospect:read_country", "prospect:update_country",
@@ -43,34 +49,36 @@ _PERMISSIONS: dict[Role, frozenset[str]] = {
         "offer:validate", "offer:read_country",
         "opportunity:read_country", "opportunity:update_country",
         "user:read_country",
+        "kpi:read_finance", "kpi:read_transport",
     }),
     Role.DIRECTION: frozenset({
         "prospect:read_all",
         "meeting_report:read_all",
         "offer:read_all",
         "opportunity:read_all",
-        "transport_file:read_all",
+        _PERM_TRANSPORT_READ_ALL,
         "kpi:read_all",
-        "report:read_all",
+        _PERM_REPORT_READ_ALL,
     }),
     Role.FINANCE: frozenset({
-        "transport_file:read_all", "transport_file:update_all",
+        _PERM_TRANSPORT_READ_ALL, "transport_file:update_all",
         "cost_line:create", "cost_line:read_all", "cost_line:update_all",
         "revenue_line:create", "revenue_line:read_all", "revenue_line:update_all",
-        "invoice:read_all",
+        _PERM_INVOICE_READ_ALL,
         "treasury:read_all",
-        "report:read_all",
+        _PERM_REPORT_READ_ALL,
+        "kpi:read_finance", "kpi:read_transport",
     }),
     Role.ADMIN_INOV: frozenset({
-        "user:create", "user:read_all", "user:update_all", "user:delete",
-        "company:create", "company:read_all", "company:update_all",
+        "user:create", "user:read", "user:update", "user:delete",
+        "company:create", "company:read", "company:update", "company:delete",
         "role:assign",
         "system:read_logs", "system:configure",
     }),
     Role.CABINET_COMPTABLE: frozenset({
-        "invoice:read_all",
-        "transport_file:read_all",
-        "report:read_all",
+        _PERM_INVOICE_READ_ALL,
+        _PERM_TRANSPORT_READ_ALL,
+        _PERM_REPORT_READ_ALL,
     }),
 }
 

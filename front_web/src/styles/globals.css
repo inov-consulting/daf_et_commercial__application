@@ -2,17 +2,297 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: 210 40% 98%;
-  --foreground: 222 47% 11%;
-  --primary: 221 83% 53%;
-  --primary-foreground: 210 40% 98%;
+/* ============================================================
+   PORTALIS SÉNÉGAL – DESIGN TOKENS v2.0
+   Brand: Vert Signature #1B6B45 · Or Accessible #8B6914
+   Conformité WCAG AA/AAA vérifiée
+   ============================================================ */
+
+@layer base {
+  :root {
+    /* ── PRIMARY – Vert PortaLis ──────────────────────────── */
+    --p50:  #F5F9F6; --p100: #DDF2E8; --p200: #B8E4CC; --p300: #72C79A;
+    --p400: #4CAF7C; --p500: #1B6B45; --p600: #166239; --p700: #0F3D27;
+    --p800: #0B2E1C; --p900: #071D12; --p950: #030F09;
+
+    /* ── SECONDARY – Or PortaLis ─────────────────────────── */
+    --s50:  #FDF8EE; --s100: #FAF0D0; --s200: #F2DFA9; --s300: #E4C070;
+    --s400: #D4A843; --s500: #8B6914; --s600: #7A5A0A; --s700: #6B4E0A;
+    --s800: #3D2A00; --s900: #2A1C00; --s950: #1A1100;
+
+    /* ── ACCENT – Or chaud / Ambre ───────────────────────── */
+    --a50:  #FEF8EC; --a100: #FAEECF; --a200: #F3D88C; --a300: #E8BF50;
+    --a400: #D4A843; --a500: #8B6914; --a600: #7A5A0A; --a700: #6B4E0A;
+    --a800: #3D2A00; --a900: #2A1C00; --a950: #1A1100;
+
+    /* ── NEUTRAL – Vert grisé ─────────────────────────────── */
+    --n50:  #F8FAF9; --n100: #EEF4F0; --n200: #DDE8E2; --n300: #C4D4CB;
+    --n400: #9EB0A6; --n500: #7A8E82; --n600: #5C7066; --n700: #4A5E52;
+    --n800: #2D3E36; --n900: #1A2E22; --n950: #111F18;
+
+    /* ── SEMANTIC ─────────────────────────────────────────── */
+    --ok50: #E8F5ED; --ok500: #4CAF7C; --ok600: #1B5E35;
+    --warn50: #FDF8EE; --warn500: #D4A843; --warn600: #7A5A0A;
+    --err50: #FDE8E8; --err500: #E57373; --err600: #8B1A1A;
+
+    /* ── GRADIENTS ────────────────────────────────────────── */
+    --grad: linear-gradient(135deg, #2E7D52 0%, #1B6B45 50%, #6B4E0A 100%);
+    --grad-h: linear-gradient(135deg, #166239 0%, #0F3D27 50%, #3D2A00 100%);
+    --grad-subtle: linear-gradient(135deg, rgba(27,107,69,.08) 0%, rgba(27,107,69,.06) 50%, rgba(139,105,20,.06) 100%);
+
+    /* ── TYPOGRAPHY ───────────────────────────────────────── */
+    --fd: var(--font-display, 'Space Grotesk'), system-ui, sans-serif;
+    --fb: var(--font-body, 'Inter'), system-ui, sans-serif;
+    --fm: var(--font-mono, 'JetBrains Mono'), 'Courier New', monospace;
+
+    --t2xs: .625rem; --txs: .75rem;  --tsm: .875rem; --tmd: 1rem;
+    --tlg: 1.125rem; --txl: 1.25rem;
+    --dxs: 1.5rem;  --dsm: 1.875rem; --dmd: 2.25rem;
+    --dlg: 3rem;    --dxl: 3.75rem;  --d2xl: 4.5rem;
+
+    --lh-tight: 1.2; --lh-snug: 1.35; --lh-normal: 1.5;
+    --lh-relaxed: 1.625; --lh-loose: 2;
+
+    --fw-light: 300; --fw-reg: 400; --fw-med: 500;
+    --fw-semi: 600;  --fw-bold: 700; --fw-xbold: 800;
+
+    --ls-tight: -.025em; --ls-normal: 0em;
+    --ls-wide: .025em; --ls-wider: .05em; --ls-widest: .1em;
+
+    /* ── SPACING (base 4px) ───────────────────────────────── */
+    --sp0: 0;       --sp05: .125rem; --sp1: .25rem;  --sp15: .375rem;
+    --sp2: .5rem;   --sp25: .625rem; --sp3: .75rem;  --sp35: .875rem;
+    --sp4: 1rem;    --sp5: 1.25rem;  --sp6: 1.5rem;  --sp7: 1.75rem;
+    --sp8: 2rem;    --sp10: 2.5rem;  --sp12: 3rem;   --sp14: 3.5rem;
+    --sp16: 4rem;   --sp20: 5rem;    --sp24: 6rem;
+
+    /* ── BORDER RADIUS ────────────────────────────────────── */
+    --r0: 0;       --rxs: .125rem; --rsm: .25rem; --rmd: .375rem;
+    --rlg: .5rem;  --rxl: .75rem;  --r2xl: 1rem;  --r3xl: 1.5rem;
+    --rfull: 9999px;
+
+    /* ── SHADOWS (green-tinted) ───────────────────────────── */
+    --sh-xs: 0 1px 2px rgba(27,107,69,.06), 0 1px 1px rgba(0,0,0,.04);
+    --sh-sm: 0 2px 8px rgba(27,107,69,.09), 0 1px 3px rgba(0,0,0,.05);
+    --sh-md: 0 4px 16px rgba(27,107,69,.13), 0 2px 6px rgba(0,0,0,.06);
+    --sh-lg: 0 8px 32px rgba(27,107,69,.17), 0 4px 12px rgba(0,0,0,.08);
+    --sh-xl: 0 16px 48px rgba(27,107,69,.22), 0 8px 24px rgba(0,0,0,.10);
+
+    /* ── MOTION ───────────────────────────────────────────── */
+    --dur-fast: 100ms; --dur-norm: 200ms;
+    --dur-slow: 300ms; --dur-slower: 500ms;
+    --ease: cubic-bezier(.4, 0, .2, 1);
+    --ease-in: cubic-bezier(.4, 0, 1, 1);
+    --ease-out: cubic-bezier(0, 0, .2, 1);
+    --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+
+    /* ── Z-INDEX ──────────────────────────────────────────── */
+    --z0: 0; --z10: 10; --z100: 100; --z200: 200; --z300: 300;
+    --z400: 400; --z500: 500; --z600: 600; --z700: 700;
+
+    /* ── SEMANTIC TOKENS – LIGHT MODE ────────────────────── */
+    --bg-page:   #F8FAF9;
+    --bg-surf:   #FFFFFF;
+    --bg-raised: #FFFFFF;
+    --bg-sink:   #EEF4F0;
+    --bg-mute:   #E5EDE8;
+    --tx-1:      #1A2E22;
+    --tx-2:      #4A5E52;
+    --tx-3:      #5C7066;
+    --tx-dis:    #9EB0A6;
+    --tx-inv:    #FFFFFF;
+    --tx-brand:  #1B6B45;
+    --bd-def:    #DDE8E2;
+    --bd-str:    #C4D4CB;
+    --bd-focus:  #1B6B45;
+  }
+
+  /* ── DARK MODE ─────────────────────────────────────────── */
+  [data-theme="dark"] {
+    --bg-page:   #050F08;
+    --bg-surf:   #0A1E10;
+    --bg-raised: #122718;
+    --bg-sink:   #030B05;
+    --bg-mute:   #0C1A0E;
+    --tx-1:      #EEF4F0;
+    --tx-2:      #C4D4CB;
+    --tx-3:      #9EB0A6;
+    --tx-dis:    #5C7066;
+    --tx-brand:  #4CAF7C;
+    --bd-def:    #1A3820;
+    --bd-str:    #2E5035;
+    --sh-xs: 0 1px 2px rgba(0,0,0,.5);
+    --sh-sm: 0 2px 8px rgba(0,0,0,.6);
+    --sh-md: 0 4px 16px rgba(0,0,0,.7);
+    --sh-lg: 0 8px 32px rgba(0,0,0,.8);
+    --sh-xl: 0 16px 48px rgba(0,0,0,.9);
+    --grad-subtle: linear-gradient(135deg, rgba(27,107,69,.12) 0%, rgba(139,105,20,.10) 100%);
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--fb);
+    font-size: var(--tmd);
+    line-height: var(--lh-normal);
+    color: var(--tx-1);
+    background: var(--bg-page);
+    transition:
+      background var(--dur-norm) var(--ease),
+      color var(--dur-norm) var(--ease);
+  }
+
+  a {
+    color: var(--tx-brand);
+    text-decoration: none;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--bd-focus);
+    outline-offset: 3px;
+    border-radius: var(--rsm);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .01ms !important;
+      transition-duration: .01ms !important;
+    }
+  }
 }
 
-* {
-  box-sizing: border-box;
+/* ============================================================
+   COMPONENT LAYERS
+   ============================================================ */
+
+@layer components {
+  /* Outline gradient button */
+  .btn-outline-grad {
+    background-image: linear-gradient(var(--bg-surf), var(--bg-surf)), var(--grad);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+  }
+  .btn-outline-grad:hover:not(:disabled) {
+    background-image: linear-gradient(var(--bg-mute), var(--bg-mute)), var(--grad);
+  }
+
+  /* Skeleton loading */
+  .skeleton {
+    background: linear-gradient(90deg, var(--bg-sink) 25%, var(--bg-mute) 50%, var(--bg-sink) 75%);
+    background-size: 200% 100%;
+    animation: skel-wave 1.5s ease-in-out infinite;
+    border-radius: var(--rsm);
+  }
+
+  /* Progress bar with shimmer */
+  .progress-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .progress-shimmer::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: 80px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.3), transparent);
+    animation: progress-shimmer 2s infinite;
+  }
+
+  /* Gradient text */
+  .text-gradient {
+    background: var(--grad);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Login button: gradient on mobile, solid primary on desktop */
+  .btn-login {
+    background: var(--grad);
+    transition: opacity var(--dur-norm) var(--ease);
+  }
+  .btn-login:not(:disabled):hover {
+    opacity: 0.9;
+  }
+  @media (min-width: 1024px) {
+    .btn-login {
+      background: var(--p500);
+      transition: background-color var(--dur-fast) var(--ease);
+    }
+    .btn-login:not(:disabled):hover {
+      background: var(--p600);
+      opacity: 1;
+    }
+  }
 }
 
-body {
-  margin: 0;
+@keyframes skel-wave {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes progress-shimmer {
+  0%   { transform: translateX(-80px); }
+  100% { transform: translateX(200%); }
+}
+
+@keyframes pulse-dot {
+  0%   { box-shadow: 0 0 0 3px rgba(27,107,69,.4); }
+  100% { box-shadow: 0 0 0 8px rgba(27,107,69,0); }
+}
+
+/* ─── Custom scrollbar ──────────────────────────────────── */
+.sidebar-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--bd-def) transparent;
+}
+.sidebar-scrollbar::-webkit-scrollbar        { width: 4px; }
+.sidebar-scrollbar::-webkit-scrollbar-track  { background: transparent; }
+.sidebar-scrollbar::-webkit-scrollbar-thumb  {
+  background: var(--bd-def);
+  border-radius: 2px;
+}
+.sidebar-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--tx-3); }
+
+/* Page/content scrollbar (thin, subtle) */
+.content-scrollbar,
+main {
+  scrollbar-width: thin;
+  scrollbar-color: var(--bd-def) transparent;
+}
+.content-scrollbar::-webkit-scrollbar,
+main::-webkit-scrollbar        { width: 5px; }
+.content-scrollbar::-webkit-scrollbar-track,
+main::-webkit-scrollbar-track  { background: transparent; }
+.content-scrollbar::-webkit-scrollbar-thumb,
+main::-webkit-scrollbar-thumb  {
+  background: var(--bd-def);
+  border-radius: 3px;
+}
+.content-scrollbar::-webkit-scrollbar-thumb:hover,
+main::-webkit-scrollbar-thumb:hover { background: var(--tx-3); }
+
+.kanban-scrollbar::-webkit-scrollbar {
+  height: 6px;
+}
+
+.kanban-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.kanban-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.1);
+  border-radius: 3px;
+}
+
+.kanban-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.2);
 }
