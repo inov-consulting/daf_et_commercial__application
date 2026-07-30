@@ -17,9 +17,16 @@ class Company:
     id: UUID
     name: str
     country: Country
+    country_name: str = ""
     default_currency: Currency
+    erp_id: int | None = None
     parent_company_id: UUID | None = None
     is_active: bool = True
+    # Informations de contact
+    email: str | None = None
+    phone: str | None = None
+    website: str | None = None
+    address: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -29,8 +36,14 @@ class Company:
         *,
         name: str,
         country: Country,
+        country_name: str = "",
         default_currency: Currency,
+        erp_id: int | None = None,
         parent_company_id: UUID | None = None,
+        email: str | None = None,
+        phone: str | None = None,
+        website: str | None = None,
+        address: str | None = None,
     ) -> "Company":
         if not name.strip():
             raise ValueError("Company.name ne peut pas être vide")
@@ -38,8 +51,14 @@ class Company:
             id=uuid4(),
             name=name.strip(),
             country=country,
+            country_name=country_name,
             default_currency=default_currency,
+            erp_id=erp_id,
             parent_company_id=parent_company_id,
+            email=email,
+            phone=phone,
+            website=website,
+            address=address,
         )
 
     def deactivate(self) -> None:

@@ -29,7 +29,7 @@ build/
 # OS
 .DS_Store
 Thumbs.db
-
+backend/app/portalis-4add6-firebase-adminsdk-fbsvc-dbb26ca65f.json
 # Logs
 *.log
 npm-debug.log*

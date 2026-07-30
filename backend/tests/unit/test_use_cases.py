@@ -4,25 +4,16 @@ Pas de DB, pas de HTTP — uniquement la logique métier.
 """
 
 import pytest
-
-from app.application.auth.login_user import LoginUserUseCase
-from app.application.auth.refresh_token import RefreshTokenUseCase
 from app.application.companies.create_company import (
     CreateCompanyInput,
     CreateCompanyUseCase,
 )
-from app.application.shared.exceptions import (
-    AuthenticationError,
-    ConflictError,
-    NotFoundError,
-)
+from app.application.shared.exceptions import ConflictError, NotFoundError
 from app.application.users.create_user import CreateUserInput, CreateUserUseCase
 from app.application.users.list_users import ListUsersUseCase
-from app.core.security import hash_password
 from app.domain.shared.company import Company
-from app.domain.shared.role import Role
-from app.domain.shared.user import User
 from app.domain.shared.value_objects import Country, Currency
+
 from tests.fakes.repositories import InMemoryCompanyRepository, InMemoryUserRepository
 
 
@@ -82,39 +73,26 @@ async def test_create_user_requires_existing_company() -> None:
     with pytest.raises(NotFoundError):
         await uc.execute(
             CreateUserInput(
-                company_id=uuid4(),
-                email="a@b.com",
-                password="motdepasse",
-                role=Role.COMMERCIAL,
+                keycloak_id=uuid4(),
+                company_ids=[uuid4()],
             )
         )
 
 
-async def test_create_user_duplicate_email_rejected() -> None:
+async def test_create_user_duplicate_keycloak_id_rejected() -> None:
+    from uuid import uuid4
+
     users = InMemoryUserRepository()
     companies = InMemoryCompanyRepository()
     company = await companies.add(
         Company.new(name="C1", country=Country.SN, default_currency=Currency.XOF)
     )
+    kid = uuid4()
 
     uc = CreateUserUseCase(users, companies)
-    await uc.execute(
-        CreateUserInput(
-            company_id=company.id,
-            email="x@y.com",
-            password="pwd-abcdefg",
-            role=Role.COMMERCIAL,
-        )
-    )
+    await uc.execute(CreateUserInput(keycloak_id=kid, company_ids=[company.id]))
     with pytest.raises(ConflictError):
-        await uc.execute(
-            CreateUserInput(
-                company_id=company.id,
-                email="x@y.com",
-                password="pwd-abcdefg",
-                role=Role.FINANCE,
-            )
-        )
+        await uc.execute(CreateUserInput(keycloak_id=kid, company_ids=[company.id]))
 
 
 async def test_list_users_filters_by_company() -> None:
@@ -126,75 +104,17 @@ async def test_list_users_filters_by_company() -> None:
     c2 = await companies.add(
         Company.new(name="C2", country=Country.CI, default_currency=Currency.XOF)
     )
+    from uuid import uuid4
+
     create = CreateUserUseCase(users, companies)
-    await create.execute(
-        CreateUserInput(
-            company_id=c1.id, email="a@c1.com", password="pwd12345", role=Role.COMMERCIAL
-        )
-    )
-    await create.execute(
-        CreateUserInput(
-            company_id=c2.id, email="b@c2.com", password="pwd12345", role=Role.COMMERCIAL
-        )
-    )
+    u1 = await create.execute(CreateUserInput(keycloak_id=uuid4(), company_ids=[c1.id]))
+    u2 = await create.execute(CreateUserInput(keycloak_id=uuid4(), company_ids=[c2.id]))
 
     list_c1 = await ListUsersUseCase(users).execute(company_id=c1.id)
     list_c2 = await ListUsersUseCase(users).execute(company_id=c2.id)
     assert len(list_c1) == 1
-    assert list_c1[0].email == "a@c1.com"
+    assert list_c1[0].id == u1.id
     assert len(list_c2) == 1
-    assert list_c2[0].email == "b@c2.com"
+    assert list_c2[0].id == u2.id
 
 
-# ── Auth ────────────────────────────────────────────────────────────────
-async def test_login_with_valid_credentials() -> None:
-    users = InMemoryUserRepository()
-    companies = InMemoryCompanyRepository()
-    company = await companies.add(
-        Company.new(name="C", country=Country.SN, default_currency=Currency.XOF)
-    )
-    await users.add(
-        User.new(
-            company_id=company.id,
-            email="hawa@paraiso.sn",
-            password_hash=hash_password("MyStrongPassword!"),
-            role=Role.DIRECTION,
-        )
-    )
-
-    result = await LoginUserUseCase(users).execute(
-        email="hawa@paraiso.sn", password="MyStrongPassword!"
-    )
-    assert result.access_token
-    assert result.refresh_token
-    assert result.token_type == "bearer"
-
-
-async def test_login_unknown_user_returns_auth_error() -> None:
-    users = InMemoryUserRepository()
-    with pytest.raises(AuthenticationError):
-        await LoginUserUseCase(users).execute(email="ghost@nowhere.com", password="x")
-
-
-async def test_login_wrong_password_returns_auth_error() -> None:
-    users = InMemoryUserRepository()
-    companies = InMemoryCompanyRepository()
-    company = await companies.add(
-        Company.new(name="C", country=Country.SN, default_currency=Currency.XOF)
-    )
-    await users.add(
-        User.new(
-            company_id=company.id,
-            email="u@e.com",
-            password_hash=hash_password("right-password"),
-            role=Role.COMMERCIAL,
-        )
-    )
-    with pytest.raises(AuthenticationError):
-        await LoginUserUseCase(users).execute(email="u@e.com", password="wrong-password")
-
-
-async def test_refresh_with_invalid_token_rejected() -> None:
-    users = InMemoryUserRepository()
-    with pytest.raises(AuthenticationError):
-        await RefreshTokenUseCase(users).execute(refresh_token="not-a-jwt")
