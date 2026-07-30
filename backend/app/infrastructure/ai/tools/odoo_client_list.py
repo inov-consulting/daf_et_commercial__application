@@ -30,65 +30,60 @@ async def list_odoo_clients(
 
     logger = logging.getLogger(__name__)
 
-    try:
-        client = OdooClient()
+    client = OdooClient()
 
-        domain: list = [("active", "=", True)]
-        if suppliers:
-            domain.append(("supplier_rank", ">", 0))
-        else:
-            domain.append(("customer_rank", ">", 0))
-        if companies_only:
-            domain.append(("is_company", "=", True))
-        if search:
-            domain.append(("name", "ilike", search))
+    domain: list = [("active", "=", True)]
+    if suppliers:
+        domain.append(("supplier_rank", ">", 0))
+    else:
+        domain.append(("customer_rank", ">", 0))
+    if companies_only:
+        domain.append(("is_company", "=", True))
+    if search:
+        domain.append(("name", "ilike", search))
 
-        fields = [
-            "id", "name", "is_company",
-            "email", "phone", "mobile",
-            "street", "street2", "city", "zip", "country_id",
-        ]
+    fields = [
+        "id", "name", "is_company",
+        "email", "phone", "mobile",
+        "street", "street2", "city", "zip", "country_id",
+    ]
 
-        if limit is None:
-            partners = await asyncio.to_thread(client.fetch_all, "res.partner", domain, fields)
-        else:
-            partners = await asyncio.to_thread(
-                client.execute,
-                "res.partner",
-                "search_read",
-                [domain],
-                {"fields": fields, "limit": limit, "order": "name asc"},
-            )
+    if limit is None:
+        partners = await asyncio.to_thread(client.fetch_all, "res.partner", domain, fields)
+    else:
+        partners = await asyncio.to_thread(
+            client.execute,
+            "res.partner",
+            "search_read",
+            [domain],
+            {"fields": fields, "limit": limit, "order": "name asc"},
+        )
 
-        result = []
-        for p in sorted(partners, key=lambda x: x.get("name", "").lower()):
-            street = p.get("street") or ""
-            street2 = p.get("street2") or ""
-            city = p.get("city") or ""
-            zip_code = p.get("zip") or ""
-            country_raw = p.get("country_id")
-            country = country_raw[1] if isinstance(country_raw, list) and len(country_raw) > 1 else None
+    result = []
+    for p in sorted(partners, key=lambda x: x.get("name", "").lower()):
+        street = p.get("street") or ""
+        street2 = p.get("street2") or ""
+        city = p.get("city") or ""
+        zip_code = p.get("zip") or ""
+        country_raw = p.get("country_id")
+        country = country_raw[1] if isinstance(country_raw, list) and len(country_raw) > 1 else None
 
-            address_parts = [part for part in [street, street2, zip_code, city, country] if part]
-            address = ", ".join(address_parts) or None
+        address_parts = [part for part in [street, street2, zip_code, city, country] if part]
+        address = ", ".join(address_parts) or None
 
-            result.append({
-                "id": p["id"],
-                "name": p.get("name", ""),
-                "is_company": bool(p.get("is_company")),
-                "email": p.get("email") or None,
-                "phone": p.get("phone") or None,
-                "mobile": p.get("mobile") or None,
-                "street": street or None,
-                "street2": street2 or None,
-                "city": city or None,
-                "zip": zip_code or None,
-                "country": country,
-                "address": address,
-            })
+        result.append({
+            "id": p["id"],
+            "name": p.get("name", ""),
+            "is_company": bool(p.get("is_company")),
+            "email": p.get("email") or None,
+            "phone": p.get("phone") or None,
+            "mobile": p.get("mobile") or None,
+            "street": street or None,
+            "street2": street2 or None,
+            "city": city or None,
+            "zip": zip_code or None,
+            "country": country,
+            "address": address,
+        })
 
-        return result
-
-    except Exception:
-        logger.exception("odoo.list_clients.failed search=%s limit=%s", search, limit)
-        return []
+    return result

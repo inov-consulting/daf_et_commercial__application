@@ -19,8 +19,8 @@ from app.infrastructure.ai.commercial_agent import stream_commercial_enrichment
 
 router = APIRouter(prefix="/commercial/agent", tags=["commercial-agent"])
 
-_read_deps = [Depends(require_permission("prospects:read"))]
-_write_deps = [Depends(require_permission("prospects:write"))]
+_read_deps   = [Depends(require_permission("commercial:read"))]
+_create_deps = [Depends(require_permission("commercial:create"))]
 
 
 @router.get("/status", dependencies=_read_deps)
@@ -60,7 +60,7 @@ async def list_runs(
     ]
 
 
-@router.post("/trigger", dependencies=_write_deps)
+@router.post("/trigger", dependencies=_create_deps)
 async def trigger_cycle() -> TriggerOut:
     """Déclenche immédiatement un cycle d'enrichissement en arrière-plan.
 
@@ -78,7 +78,7 @@ async def trigger_cycle() -> TriggerOut:
     return TriggerOut(message="Cycle déclenché en arrière-plan", skipped=False)
 
 
-@router.post("/enrich", dependencies=_write_deps)
+@router.post("/enrich", dependencies=_create_deps)
 async def enrich_clients(body: EnrichRequest) -> StreamingResponse:
     """Lance l'agent commercial avec streaming SSE (run interactif).
 

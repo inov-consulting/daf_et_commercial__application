@@ -20,7 +20,8 @@ from app.infrastructure.storage.minio import StorageService
 
 router = APIRouter(prefix="/compte-rendus", tags=["compte-rendus"])
 
-_cr_deps = [Depends(require_permission("compte-rendus:read"))]
+_cr_deps        = [Depends(require_permission("cr:read"))]
+_cr_update_deps = [Depends(require_permission("cr:update"))]
 
 
 def _build_prospect_parent(
@@ -140,7 +141,7 @@ class LinkProspectIn(BaseModel):
     prospect_id: UUID
 
 
-@router.patch("/{cr_id}/link-prospect", dependencies=[Depends(require_permission("compte-rendus:write"))])
+@router.patch("/{cr_id}/link-prospect", dependencies=_cr_update_deps)
 async def link_to_prospect(cr_id: UUID, body: LinkProspectIn) -> dict:
     """Associe un compte rendu existant (ex: issu d'une conversation WhatsApp) à une prospection.
 

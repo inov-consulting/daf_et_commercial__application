@@ -25,8 +25,8 @@ from app.api.deps import require_permission
 
 router = APIRouter(prefix="/whatsapp", tags=["whatsapp"])
 
-_read_deps = [Depends(require_permission("transport:read"))]
-_write_deps = [Depends(require_permission("transport:write"))]
+_read_deps   = [Depends(require_permission("messaging:read"))]
+_create_deps = [Depends(require_permission("messaging:create"))]
 
 
 # ── Schémas ───────────────────────────────────────────────────────────────────
@@ -199,7 +199,7 @@ async def get_messages(
     ]
 
 
-@router.post("/conversations/{conversation_id}/read", dependencies=_write_deps)
+@router.post("/conversations/{conversation_id}/read", dependencies=_create_deps)
 async def mark_as_read(conversation_id: UUID) -> dict:
     """Marque comme lus tous les messages entrants sans statut de livraison.
 
@@ -230,7 +230,7 @@ async def mark_as_read(conversation_id: UUID) -> dict:
     return {"updated": updated_count, "unread_count": 0}
 
 
-@router.post("/conversations/start", dependencies=_write_deps, status_code=status.HTTP_201_CREATED)
+@router.post("/conversations/start", dependencies=_create_deps, status_code=status.HTTP_201_CREATED)
 async def start_conversation(
     phone: str = Form(..., description="Numéro international sans '+', ex: 22890123456"),
     text: str | None = Form(None),
@@ -318,7 +318,7 @@ async def start_conversation(
     }
 
 
-@router.post("/conversations/{conversation_id}/reply", dependencies=_write_deps, status_code=status.HTTP_201_CREATED)
+@router.post("/conversations/{conversation_id}/reply", dependencies=_create_deps, status_code=status.HTTP_201_CREATED)
 async def reply_to_conversation(
     conversation_id: UUID,
     text: str | None = Form(None),
@@ -446,7 +446,7 @@ class GenerateCRIn(BaseModel):
     extra_note_ids: list[UUID] = []   # notes existantes à combiner avec les messages
 
 
-@router.post("/conversations/{conversation_id}/generate-cr", dependencies=_write_deps, status_code=status.HTTP_201_CREATED)
+@router.post("/conversations/{conversation_id}/generate-cr", dependencies=_create_deps, status_code=status.HTTP_201_CREATED)
 async def generate_cr_from_conversation(
     conversation_id: UUID,
     body: GenerateCRIn = GenerateCRIn(),
