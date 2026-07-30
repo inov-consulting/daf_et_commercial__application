@@ -104,11 +104,20 @@ async function parseResponse<TData>(res: Response): Promise<ApiResponse<TData>> 
       return { data: null, status: res.status, ok: false, error: errMsg || `HTTP ${res.status}` };
     }
 
+    // `detail` can be a plain string (FastAPI default) or a structured object
+    // like { code: "NO_WORKFLOW", message: "..." } — extract the string safely.
+    let detailMsg: string | undefined;
+    if (typeof payload?.detail === 'string') {
+      detailMsg = payload.detail;
+    } else if (payload?.detail && typeof payload.detail === 'object') {
+      detailMsg = (payload.detail as { message?: string }).message;
+    }
+
     const errMsg =
-      (payload?.message as string) ??
-      (payload?.detail as string) ??
-      (payload?.error_description as string) ??
-      (payload?.error as string) ??
+      (payload?.message as string | undefined) ??
+      detailMsg ??
+      (payload?.error_description as string | undefined) ??
+      (payload?.error as string | undefined) ??
       `HTTP ${res.status}`;
     return { data: null, status: res.status, ok: false, error: errMsg };
   }

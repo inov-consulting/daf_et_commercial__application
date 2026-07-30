@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import {
   ArrowsClockwiseIcon, CheckCircleIcon, ArrowUpIcon, ArrowDownIcon,
   WifiHighIcon, CpuIcon, HardDriveIcon, WarningCircleIcon,
@@ -14,6 +14,24 @@ import {
   type MonitoringStatus,
   type ProviderBalance,
 } from '@/redux/features/monitoring/monitoringSlice';
+
+// ── WebSocket types ────────────────────────────────────────────────────────
+
+type WsConnStatus = 'connecting' | 'connected' | 'reconnecting';
+
+interface WsSnapshot {
+  timestamp: string;
+  status: 'ok' | 'warning' | 'critical';
+  cpu: { percent: number; count: number; status: 'ok' | 'warning' | 'critical' };
+  memory: { total_mb: number; used_mb: number; available_mb: number; percent: number; status: 'ok' | 'warning' | 'critical' };
+  network: { send_rate_kbps: number; recv_rate_kbps: number; bytes_sent_total: number; bytes_recv_total: number; status: 'ok' | 'warning' | 'critical' };
+}
+
+function normalizeStatus(s: string): MonitoringStatus {
+  if (s === 'warning') return 'warn';
+  if (s === 'critical') return 'crit';
+  return 'ok';
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -126,6 +144,70 @@ export default function MonitoringPage() {
   const [spinning, setSpinning] = useState(false);
   const [usageDays, setUsageDays] = useState(30);
 
+  /* ── WebSocket live stream ── */
+  const [wsSnapshot, setWsSnapshot] = useState<WsSnapshot | null>(null);
+  const [wsConnStatus, setWsConnStatus] = useState<WsConnStatus>('connecting');
+  const destroyedRef  = useRef(false);
+  const reconnectRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeWsRef   = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    const base    = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
+    const wsBase  = base.replace(/^https:\/\//, 'wss://').replace(/^http:\/\//, 'ws://');
+    const wsUrl   = `${wsBase}/api/v1/monitoring/stream`;
+    destroyedRef.current = false;
+
+    function connect() {
+      if (destroyedRef.current) return;
+      let token = '';
+      try {
+        const kc = (require('@/lib/keycloak') as typeof import('@/lib/keycloak')).getKeycloakInstance();
+        token = kc?.token ?? '';
+      } catch { /* keycloak indisponible */ }
+
+      setWsConnStatus('connecting');
+      const url = token ? `${wsUrl}?token=${encodeURIComponent(token)}` : wsUrl;
+      const ws  = new WebSocket(url);
+      activeWsRef.current = ws;
+
+      ws.onopen = () => {
+        if (!destroyedRef.current) setWsConnStatus('connected');
+      };
+
+      ws.onmessage = (e) => {
+        if (destroyedRef.current) return;
+        try { setWsSnapshot(JSON.parse(e.data) as WsSnapshot); } catch { /* payload invalide */ }
+      };
+
+      ws.onclose = () => {
+        if (destroyedRef.current) return;
+        setWsConnStatus('reconnecting');
+        reconnectRef.current = setTimeout(connect, 3_000);
+      };
+
+      ws.onerror = () => { ws.close(); };
+    }
+
+    connect();
+
+    return () => {
+      destroyedRef.current = true;
+      if (reconnectRef.current) clearTimeout(reconnectRef.current);
+      activeWsRef.current?.close();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* Données affichées : WS en temps réel → REST en fallback */
+  const displayStats = wsSnapshot
+    ? {
+        timestamp: wsSnapshot.timestamp,
+        cpu:     { ...wsSnapshot.cpu,     status: normalizeStatus(wsSnapshot.cpu.status)     },
+        memory:  { ...wsSnapshot.memory,  status: normalizeStatus(wsSnapshot.memory.status)  },
+        network: { ...wsSnapshot.network, status: normalizeStatus(wsSnapshot.network.status) },
+      }
+    : stats;
+
   const fetchAll = useCallback((days = usageDays) => {
     setSpinning(true);
     setTimeout(() => setSpinning(false), 600);
@@ -141,12 +223,13 @@ export default function MonitoringPage() {
     dispatch(fetchAiUsage(days));
   };
 
-  // Statut global
-  const systemLevel: MonitoringStatus =
-    stats?.cpu.status === 'crit' || stats?.memory.status === 'crit' ? 'crit' :
-    stats?.cpu.status === 'warn' || stats?.memory.status === 'warn' ? 'warn' : 'ok';
+  // Statut global — WS en priorité, sinon calcul depuis REST
+  const systemLevel: MonitoringStatus = wsSnapshot
+    ? normalizeStatus(wsSnapshot.status)
+    : displayStats?.cpu.status === 'crit' || displayStats?.memory.status === 'crit' ? 'crit' :
+      displayStats?.cpu.status === 'warn' || displayStats?.memory.status === 'warn' ? 'warn' : 'ok';
 
-  const isLoading = statsLoading && !stats;
+  const isLoading = statsLoading && !stats && !wsSnapshot;
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -215,11 +298,32 @@ export default function MonitoringPage() {
               </p>
             </div>
             <div className="text-right flex-shrink-0">
-              <p className="text-[13px] font-semibold text-[var(--tx-1)] tabular-nums">{fmtTimestamp(stats?.timestamp)}</p>
-              <p className="text-[11px] text-[var(--tx-3)] mt-0.5">Dernière vérification · {fmtDate(stats?.timestamp)}</p>
+              <p className="text-[13px] font-semibold text-[var(--tx-1)] tabular-nums">{fmtTimestamp(displayStats?.timestamp)}</p>
+              <p className="text-[11px] text-[var(--tx-3)] mt-0.5">Dernière vérification · {fmtDate(displayStats?.timestamp)}</p>
             </div>
           </div>
         )}
+
+        {/* Live stream status */}
+        <div className="flex items-center justify-between -mb-2">
+          <p className="text-[12px] font-semibold text-[var(--tx-3)]">Métriques système</p>
+          <span className={cn(
+            'flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border',
+            wsConnStatus === 'connected'   && 'text-emerald-700 bg-emerald-50 border-emerald-200',
+            wsConnStatus === 'reconnecting' && 'text-amber-700 bg-amber-50 border-amber-200',
+            wsConnStatus === 'connecting'   && 'text-[var(--tx-3)] bg-[var(--bg-sink)] border-[var(--bd-def)]',
+          )}>
+            <span className={cn(
+              'w-1.5 h-1.5 rounded-full animate-pulse',
+              wsConnStatus === 'connected'    && 'bg-emerald-500',
+              wsConnStatus === 'reconnecting' && 'bg-amber-500',
+              wsConnStatus === 'connecting'   && 'bg-[var(--tx-3)]',
+            )} />
+            {wsConnStatus === 'connected'    && 'Temps réel'}
+            {wsConnStatus === 'reconnecting' && 'Reconnexion…'}
+            {wsConnStatus === 'connecting'   && 'Connexion…'}
+          </span>
+        </div>
 
         {/* Metric cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -233,8 +337,8 @@ export default function MonitoringPage() {
               </span>
               {isLoading ? <Skeleton className="h-5 w-20" /> : (
                 <StatusBadge
-                  level={stats?.cpu.status ?? 'ok'}
-                  label={stats?.cpu.status === 'ok' ? 'Faible charge' : stats?.cpu.status === 'warn' ? 'Charge élevée' : 'Critique'}
+                  level={displayStats?.cpu.status ?? 'ok'}
+                  label={displayStats?.cpu.status === 'ok' ? 'Faible charge' : displayStats?.cpu.status === 'warn' ? 'Charge élevée' : 'Critique'}
                 />
               )}
             </div>
@@ -243,10 +347,10 @@ export default function MonitoringPage() {
             ) : (
               <>
                 <p className="text-[28px] font-bold text-[var(--tx-1)] leading-none tabular-nums">
-                  {stats?.cpu.percent ?? '—'}
-                  <span className="text-[13px] font-normal text-[var(--tx-3)] ml-1">% · {stats?.cpu.count ?? '—'} cœurs</span>
+                  {displayStats?.cpu.percent ?? '—'}
+                  <span className="text-[13px] font-normal text-[var(--tx-3)] ml-1">% · {displayStats?.cpu.count ?? '—'} cœurs</span>
                 </p>
-                <MetricBar pct={stats?.cpu.percent ?? 0} level={stats?.cpu.status ?? 'ok'} />
+                <MetricBar pct={displayStats?.cpu.percent ?? 0} level={displayStats?.cpu.status ?? 'ok'} />
                 <p className="text-[11px] text-[var(--tx-3)]">Snapshot instantané</p>
               </>
             )}
@@ -261,8 +365,8 @@ export default function MonitoringPage() {
               </span>
               {isLoading ? <Skeleton className="h-5 w-16" /> : (
                 <StatusBadge
-                  level={stats?.memory.status ?? 'ok'}
-                  label={stats?.memory.status === 'ok' ? 'Normal' : stats?.memory.status === 'warn' ? 'Élevée' : 'Critique'}
+                  level={displayStats?.memory.status ?? 'ok'}
+                  label={displayStats?.memory.status === 'ok' ? 'Normal' : displayStats?.memory.status === 'warn' ? 'Élevée' : 'Critique'}
                 />
               )}
             </div>
@@ -271,14 +375,14 @@ export default function MonitoringPage() {
             ) : (
               <>
                 <p className="text-[28px] font-bold text-[var(--tx-1)] leading-none tabular-nums">
-                  {stats?.memory.percent ?? '—'}
+                  {displayStats?.memory.percent ?? '—'}
                   <span className="text-[13px] font-normal text-[var(--tx-3)] ml-1">
-                    % · {stats ? fmtBytes(stats.memory.total_mb * 1_048_576) : '—'}
+                    % · {displayStats ? (stats?.memory?.total_mb ? fmtBytes(stats.memory.total_mb * 1_048_576) : '—') : '—'}
                   </span>
                 </p>
-                <MetricBar pct={stats?.memory.percent ?? 0} level={stats?.memory.status ?? 'ok'} />
+                <MetricBar pct={displayStats?.memory.percent ?? 0} level={displayStats?.memory.status ?? 'ok'} />
                 <p className="text-[11px] text-[var(--tx-3)] tabular-nums">
-                  {stats ? fmtBytes(stats.memory.available_mb * 1_048_576) : '—'} disponibles
+                  {displayStats ? (stats?.memory?.available_mb ? fmtBytes(stats.memory.available_mb * 1_048_576) : '—') : '—'} disponibles
                 </p>
               </>
             )}
@@ -292,7 +396,7 @@ export default function MonitoringPage() {
                 Réseau
               </span>
               {isLoading ? <Skeleton className="h-5 w-16" /> : (
-                <StatusBadge level={stats?.network.status ?? 'ok'} label="Normal" />
+                <StatusBadge level={displayStats?.network.status ?? 'ok'} label="Normal" />
               )}
             </div>
             {isLoading ? (
@@ -309,7 +413,7 @@ export default function MonitoringPage() {
                       Envoi
                     </span>
                     <span className="text-[17px] font-bold text-[var(--tx-1)] tabular-nums">
-                      {stats?.network.send_rate_kbps ?? '—'} <span className="text-[12px] font-normal text-[var(--tx-3)]">kbps</span>
+                      {displayStats?.network.send_rate_kbps ?? '—'} <span className="text-[12px] font-normal text-[var(--tx-3)]">kbps</span>
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -318,13 +422,13 @@ export default function MonitoringPage() {
                       Réception
                     </span>
                     <span className="text-[17px] font-bold text-[var(--tx-1)] tabular-nums">
-                      {stats?.network.recv_rate_kbps ?? '—'} <span className="text-[12px] font-normal text-[var(--tx-3)]">kbps</span>
+                      {displayStats?.network.recv_rate_kbps ?? '—'} <span className="text-[12px] font-normal text-[var(--tx-3)]">kbps</span>
                     </span>
                   </div>
                 </div>
                 <div className="flex justify-between mt-4 pt-3 border-t border-[var(--bd-def)] text-[11px] text-[var(--tx-3)] tabular-nums">
-                  <span>{stats ? fmtBytes(stats.network.bytes_sent_total) : '—'} envoyés</span>
-                  <span>{stats ? fmtBytes(stats.network.bytes_recv_total) : '—'} reçus</span>
+                  <span>{displayStats ? fmtBytes(displayStats.network.bytes_sent_total) : '—'} envoyés</span>
+                  <span>{displayStats ? fmtBytes(displayStats.network.bytes_recv_total) : '—'} reçus</span>
                 </div>
               </>
             )}

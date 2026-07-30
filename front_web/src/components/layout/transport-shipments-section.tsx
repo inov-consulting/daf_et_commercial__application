@@ -529,10 +529,16 @@ export function TransportShipmentsSection() {
                     <div className="flex items-center gap-2">
                       {detail.state !== 'cancelled' && detail.state !== 'done' && (
                         <button
-                          onClick={() => setShowNextStep(true)}
-                          className="h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-[11px] font-semibold text-white transition-all hover:opacity-90"
-                          style={{ background: 'linear-gradient(135deg,#1B6B45,#8B6914)' }}
-                          title="Avancer le workflow"
+                          onClick={() => detail.workflow && setShowNextStep(true)}
+                          disabled={!detail.workflow}
+                          className={cn(
+                            'h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-[11px] font-semibold transition-all',
+                            detail.workflow
+                              ? 'text-white hover:opacity-90'
+                              : 'text-[var(--tx-3)] bg-[var(--bg-sink)] border border-[var(--bd-def)] cursor-not-allowed',
+                          )}
+                          style={detail.workflow ? { background: 'linear-gradient(135deg,#1B6B45,#8B6914)' } : {}}
+                          title={detail.workflow ? 'Avancer le workflow' : 'Aucun workflow actif sur ce dossier'}
                         >
                           <ArrowArcRightIcon size={12} weight="bold" />
                           Étape suivante

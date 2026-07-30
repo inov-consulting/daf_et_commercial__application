@@ -8,20 +8,16 @@ import { ApiRoutes } from '@/lib/ApiRoutes';
 import { cn } from '@/lib/utils';
 import { COUNTRY_CODES } from '@/data/country-code-data';
 import Image from 'next/image';
+import { useAppSelector } from '@/redux/store';
 
-/* ── Company types ─────────────────────────────────────────────────────── */
+/* ── Customer type (source: /api/v1/transport/offers/customers) ─────────── */
 
-interface Company {
-  id: string;
+interface CustomerItem {
+  id: number;
   name: string;
-  country: string;
-  default_currency: string;
-  erp_id: number;
-}
-
-interface CompanyListResponse {
-  items: Company[];
-  count: number;
+  email: string;
+  phone: string;
+  address: string;
 }
 
 /* ── Form state (sans company qui est géré séparément) ─────────────────── */
@@ -63,13 +59,18 @@ export function ProspectFormModal({
   open, mode, initial, saving, serverError, onClose, onSave,
 }: ProspectFormModalProps) {
 
-  /* ── Companies cache ── */
-  const [companies, setCompanies] = useState<Company[]>([]);
+  /* ── Active company context ── */
+  const activeCompanyId = useAppSelector(state => state.activeCompany.selectedId);
+  const meCompanies = useAppSelector(state => state.me.me?.companies ?? []);
+  const activeCompanyName = meCompanies.find(c => c.id === activeCompanyId)?.name ?? "l'entreprise en cours";
+
+  /* ── Customers cache ── */
+  const [companies, setCompanies] = useState<CustomerItem[]>([]);
   const [loadingCompanies, setLoadingCompanies] = useState(false);
 
   /* ── Combobox state ── */
   const [companyQuery, setCompanyQuery] = useState('');
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const [selectedCompany, setSelectedCompany] = useState<CustomerItem | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const comboRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -92,11 +93,11 @@ export function ProspectFormModal({
   const [codePickerUp, setCodePickerUp]     = useState(false);
   const codePickerRef = useRef<HTMLDivElement>(null);
 
-  /* ── Fetch companies once on mount (modal always stays in DOM) ── */
+  /* ── Fetch customers once on mount (modal always stays in DOM) ── */
   useEffect(() => {
     setLoadingCompanies(true);
-    GetData<CompanyListResponse>({ url: ApiRoutes.COMPANY_LIST, protected: true })
-      .then(res => { if (res.ok && res.data) setCompanies(res.data.items); })
+    GetData<CustomerItem[]>({ url: ApiRoutes.TRANSPORT_OFFERS_CUSTOMERS, protected: true })
+      .then(res => { if (res.ok && res.data) setCompanies(res.data); })
       .finally(() => setLoadingCompanies(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -155,7 +156,7 @@ export function ProspectFormModal({
     .filter(c => !companyQuery || c.name.toLowerCase().includes(companyQuery.toLowerCase()))
     .slice(0, 10);
 
-  function selectCompany(c: Company) {
+  function selectCompany(c: CustomerItem) {
     setSelectedCompany(c);
     setCompanyQuery(c.name);
     setShowDropdown(false);
@@ -219,7 +220,7 @@ export function ProspectFormModal({
       : undefined;
 
     const companyField = selectedCompany
-      ? { company_id: selectedCompany.id }
+      ? { company_id: String(selectedCompany.id) }
       : { partner_name: companyQuery.trim() };
 
     const body: UpdateProspectBody = {
@@ -282,7 +283,7 @@ export function ProspectFormModal({
               </label>
               {selectedCompany ? (
                 <span className="text-[10px] font-semibold text-primary-600 bg-primary-50 border border-primary-100 px-1.5 py-0.5 rounded-full">
-                  Liée à Portalis
+                  Liée à {activeCompanyName}
                 </span>
               ) : companyQuery.trim() ? (
                 <span className="text-[10px] font-medium text-amber-600">
@@ -300,9 +301,9 @@ export function ProspectFormModal({
                   <span className="flex-1 text-sm font-medium text-[var(--tx-1)] truncate">
                     {selectedCompany.name}
                   </span>
-                  {selectedCompany.country && (
-                    <span className="text-[10px] text-[var(--tx-3)] flex-shrink-0">
-                      {selectedCompany.country}
+                  {selectedCompany.email && (
+                    <span className="text-[10px] text-[var(--tx-3)] flex-shrink-0 truncate max-w-[120px]">
+                      {selectedCompany.email}
                     </span>
                   )}
                   <button
@@ -374,9 +375,9 @@ export function ProspectFormModal({
                             <span className="flex-1 text-[13px] font-medium text-[var(--tx-1)] truncate">
                               {c.name}
                             </span>
-                            {c.country && (
-                              <span className="text-[10px] text-[var(--tx-3)] flex-shrink-0">
-                                {c.country}
+                            {c.email && (
+                              <span className="text-[10px] text-[var(--tx-3)] flex-shrink-0 truncate max-w-[130px]">
+                                {c.email}
                               </span>
                             )}
                           </button>
@@ -407,10 +408,9 @@ export function ProspectFormModal({
                   : 'Sélectionnez parmi les entreprises Portalis ou saisissez un nom libre'}
               </p>
             )}
-            {selectedCompany && selectedCompany.country && (
+            {selectedCompany && selectedCompany.address && (
               <p className="mt-1 text-[11px] text-[var(--tx-3)]">
-                Pays : {selectedCompany.country}
-                {selectedCompany.default_currency && ` · Devise : ${selectedCompany.default_currency}`}
+                {selectedCompany.address}
               </p>
             )}
           </div>
@@ -559,7 +559,7 @@ export function ProspectFormModal({
           {/* ── Revenu ── */}
           <div>
             <label className={lbl}>
-              Revenu attendu ({selectedCompany?.default_currency || 'FCFA'})
+              Revenu attendu (FCFA)
             </label>
             <input
               type="number"
