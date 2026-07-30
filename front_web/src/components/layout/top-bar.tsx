@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { logoutKeycloak } from '@/lib/keycloak';
 import type { ApiUser, User } from '@/types/user_type';
 import { getRoleAbbreviation } from '@/lib/roleAbbreviation';
+import { hasPermission } from '@/lib/permissions';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -106,14 +107,16 @@ export default function TopBar({ onToggleSidebar, user, rawUser }: TopBarProps) 
             <UserIcon size={15} />
             Mon profil
           </Link>
-          <Link
-            href={`/${locale}/page/parametres`}
-            onClick={closeAll}
-            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm transition-colors hover:bg-[var(--bg-sink)] text-[var(--tx-1)]"
-          >
-            <GearIcon size={15} />
-            Paramètres
-          </Link>
+          {hasPermission(rawUser?.permissions, 'system:configure') && (
+            <Link
+              href={`/${locale}/page/parametres`}
+              onClick={closeAll}
+              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm transition-colors hover:bg-[var(--bg-sink)] text-[var(--tx-1)]"
+            >
+              <GearIcon size={15} />
+              Paramètres
+            </Link>
+          )}
           <button
             onClick={() => { closeAll(); setShowLogoutModal(true); }}
             className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm transition-colors hover:bg-[var(--bg-sink)] text-error"

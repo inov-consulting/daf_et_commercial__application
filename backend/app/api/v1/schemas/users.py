@@ -39,6 +39,11 @@ class UserUpdate(BaseModel):
     is_active: bool | None = None
 
 
+class GroupOut(BaseModel):
+    id: str
+    name: str
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
@@ -46,7 +51,7 @@ class UserOut(BaseModel):
     first_name: str
     last_name: str
     companies: list[CompanyOut] = []
-    group_ids: list[str] = []
+    groups: list[GroupOut] = []
     permissions: list[str] = []
     is_active: bool
     avatar_url: str | None = None
@@ -58,7 +63,7 @@ class UserOut(BaseModel):
         cls,
         user: User,
         companies: list[CompanyOut] | None = None,
-        group_ids: list[str] | None = None,
+        groups: list[GroupOut] | None = None,
         permissions: list[str] | None = None,
     ) -> "UserOut":
         return cls(
@@ -67,7 +72,7 @@ class UserOut(BaseModel):
             first_name=user.first_name,
             last_name=user.last_name,
             companies=companies or [],
-            group_ids=group_ids or [],
+            groups=groups or [],
             permissions=permissions or [],
             is_active=user.is_active,
             avatar_url=user.avatar_url,

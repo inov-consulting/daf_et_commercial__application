@@ -284,10 +284,10 @@ function MobileUserCard({
             <div className="mt-0.5 flex gap-1 flex-wrap">
               {user.groupes.slice(0, 2).map(g => (
                 <span
-                  key={g}
+                  key={g.id}
                   className="text-[10px] font-medium text-foreground-2 bg-surface-sink border border-border px-2 py-[2px] rounded-full"
                 >
-                  {g}
+                  {g.name}
                 </span>
               ))}
               {user.groupes.length > 2 && (
@@ -582,15 +582,17 @@ export function UserTable({
                   <RoleBadge role={user.role} pending={user.status === 'pending'} />
                 </td>
                 {/* Groupes */}
+               
                 <td className="px-4">
+                  
                   {user.groupes.length > 0 ? (
                     <div className="flex gap-1 flex-wrap">
-                      {user.groupes.slice(0, 2).map(g => (
+                      {user.groupes.map(g => (
                         <span
-                          key={g}
+                          key={g.id}
                           className="px-2 py-[2px] rounded-full text-[11px] font-medium text-foreground-2 bg-surface-sink border border-border"
                         >
-                          {g}
+                          {g.name}
                         </span>
                       ))}
                       {user.groupes.length > 2 && (

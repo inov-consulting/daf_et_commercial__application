@@ -73,8 +73,24 @@ export default function UtilisateursPage() {
   const { list: groups } = useAppSelector((state) => state.groups);
   const me = useAppSelector((state) => state.me.me);
 
+  // {id: name} pour résoudre les group_ids en noms lisibles
+  const groupNameById = useMemo(
+    () => Object.fromEntries(groups.map((g) => [g.name])),
+    [groups],
+  );
+
   // Mapping API → UI à chaque changement de la liste Redux
-  const users = useMemo(() => apiUsers.map(mapApiUser), [apiUsers]);
+  const users = useMemo(
+    () =>
+      apiUsers.map((u) => {
+        const mapped = mapApiUser(u);
+        return {
+          ...mapped,
+          groupes: (u.groups ?? []).map((id) => groupNameById[id.id] ?? id),
+        };
+      }),
+    [apiUsers, groupNameById],
+  );
 
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [formModal, setFormModal] = useState<{
