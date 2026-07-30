@@ -16,6 +16,7 @@ from app.api.v1.schemas.prospects import (
 )
 from app.infrastructure.db.models.note import CompteRenduOrm
 from app.infrastructure.db.models.prospect import ProspectOrm
+from app.infrastructure.db.models.whatsapp import WhatsAppConversationOrm
 from app.infrastructure.storage.minio import StorageService
 
 router = APIRouter(prefix="/compte-rendus", tags=["compte-rendus"])
@@ -28,7 +29,6 @@ def _build_prospect_parent(
     parent_id: UUID,
     prospect: ProspectOrm | None,
 ) -> CompteRenduParentInfo:
-    """Construit le parent à partir du prospect (ou un objet minimal si introuvable)."""
     erp_data = (prospect.erp_metadata or {}) if prospect else {}
     return CompteRenduParentInfo(
         type="prospect",
@@ -38,6 +38,18 @@ def _build_prospect_parent(
         email=erp_data.get("email_from"),
         phone=erp_data.get("phone"),
         company_name=erp_data.get("partner_name"),
+    )
+
+
+def _build_whatsapp_parent(
+    parent_id: UUID,
+    conv: WhatsAppConversationOrm | None,
+) -> CompteRenduParentInfo:
+    return CompteRenduParentInfo(
+        type="whatsapp",
+        id=parent_id,
+        name=conv.contact_name or conv.wa_id if conv else str(parent_id),
+        phone=conv.wa_id if conv else None,
     )
 
 
@@ -67,6 +79,8 @@ async def list_compte_rendus(
             "parent_id": cr.parent_id,
             "version": cr.version,
             "status": cr.status,
+            "generation_status": cr.generation_status,
+            "generation_error": cr.generation_error,
             "file_size": cr.file_size,
             "download_url": download_url,
             "generated_by": cr.generated_by,
@@ -78,16 +92,10 @@ async def list_compte_rendus(
 
         if cr.parent_type in ("prospect", "prospections", "prospection"):
             prospect = await ProspectOrm.get_or_none(id=cr.parent_id)
-            erp_data = (prospect.erp_metadata or {}) if prospect else {}
-            cr_data["parent"] = CompteRenduParentInfo(
-                type="prospect",
-                id=cr.parent_id,
-                name=erp_data.get("name") or erp_data.get("partner_name") or "Prospect sans nom",
-                status=prospect.status if prospect else None,
-                email=erp_data.get("email_from"),
-                phone=erp_data.get("phone"),
-                company_name=erp_data.get("partner_name"),
-            )
+            cr_data["parent"] = _build_prospect_parent(cr.parent_id, prospect)
+        elif cr.parent_type == "whatsapp":
+            conv = await WhatsAppConversationOrm.get_or_none(id=cr.parent_id)
+            cr_data["parent"] = _build_whatsapp_parent(cr.parent_id, conv)
 
         items.append(CompteRenduListItemOut.model_validate(cr_data))
 
@@ -120,6 +128,8 @@ async def get_compte_rendu(cr_id: UUID) -> CompteRenduWithParentOut:
         "parent_id": cr.parent_id,
         "version": cr.version,
         "status": cr.status,
+        "generation_status": cr.generation_status,
+        "generation_error": cr.generation_error,
         "file_size": cr.file_size,
         "download_url": download_url,
         "generated_by": cr.generated_by,
@@ -133,8 +143,12 @@ async def get_compte_rendu(cr_id: UUID) -> CompteRenduWithParentOut:
     if cr.parent_type in ("prospect", "prospections", "prospection"):
         prospect = await ProspectOrm.get_or_none(id=cr.parent_id)
         cr_data["parent"] = _build_prospect_parent(cr.parent_id, prospect)
+    elif cr.parent_type == "whatsapp":
+        conv = await WhatsAppConversationOrm.get_or_none(id=cr.parent_id)
+        cr_data["parent"] = _build_whatsapp_parent(cr.parent_id, conv)
 
     return CompteRenduWithParentOut.model_validate(cr_data)
+
 
 
 class LinkProspectIn(BaseModel):
