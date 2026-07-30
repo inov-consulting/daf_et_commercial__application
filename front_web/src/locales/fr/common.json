@@ -1,0 +1,12 @@
+{
+  "pageTitle": "Base frontend prête pour votre application DAF & Commercial.",
+  "pageDescription": "Projet Next.js structuré selon les bonnes pratiques pour construire une application maintenable, typée et évolutive.",
+  "features": [
+    "Architecture Next.js App Router",
+    "TypeScript strict mode",
+    "Tailwind CSS prêt à l’emploi",
+    "Structure scalable par domaine"
+  ],
+  "currentLocale": "Langue actuelle : Français",
+  "switchLocale": "Voir en anglais"
+}

@@ -20,7 +20,8 @@ from app.application.companies.create_company import (
 from app.application.shared.exceptions import ConflictError
 from app.application.users.create_user import CreateUserInput, CreateUserUseCase
 from app.core.logging import configure_logging, get_logger
-from app.domain.shared.role import Role
+from app.domain.shared.company import Company
+from app.domain.shared.user import User
 from app.domain.shared.value_objects import Country, Currency
 from app.infrastructure.db.repositories.company import CompanyRepository
 from app.infrastructure.db.repositories.user import UserRepository
@@ -29,11 +30,10 @@ from app.infrastructure.db.session import close_db, init_db
 configure_logging("INFO")
 logger = get_logger(__name__)
 
-
 SEED_PASSWORD = "ChangeMe123!"  # à modifier au premier login
 
 
-async def _ensure_company(repo: CompanyRepository, data: CreateCompanyInput):
+async def _ensure_company(repo: CompanyRepository, data: CreateCompanyInput) -> Company:
     existing = await repo.get_by_name(data.name)
     if existing:
         logger.info("seed.company.skipped", name=data.name)
@@ -47,7 +47,7 @@ async def _ensure_user(
     users: UserRepository,
     companies: CompanyRepository,
     data: CreateUserInput,
-):
+) -> User | None:
     existing = await users.get_by_email(data.email)
     if existing:
         logger.info("seed.user.skipped", email=data.email)
@@ -57,7 +57,7 @@ async def _ensure_user(
     except ConflictError:
         logger.info("seed.user.exists", email=data.email)
         return None
-    logger.info("seed.user.created", email=user.email, role=user.role.value)
+    logger.info("seed.user.created", email=user.email)
     return user
 
 
@@ -90,10 +90,8 @@ async def seed() -> None:
         await _ensure_user(
             users, companies,
             CreateUserInput(
-                company_id=holding.id,
+                company_ids=[holding.id],
                 email="admin@inov.com",
-                password=SEED_PASSWORD,
-                role=Role.ADMIN_INOV,
                 first_name="Edwin",
                 last_name="Tchakounte",
             ),
@@ -101,10 +99,8 @@ async def seed() -> None:
         await _ensure_user(
             users, companies,
             CreateUserInput(
-                company_id=agence_sn.id,
+                company_ids=[agence_sn.id],
                 email="hawa@hawaparaiso.sn",
-                password=SEED_PASSWORD,
-                role=Role.DIRECTION,
                 first_name="Hawa",
                 last_name="Paraiso",
             ),
@@ -112,10 +108,8 @@ async def seed() -> None:
         await _ensure_user(
             users, companies,
             CreateUserInput(
-                company_id=agence_sn.id,
+                company_ids=[agence_sn.id],
                 email="manager.sn@hawaparaiso.sn",
-                password=SEED_PASSWORD,
-                role=Role.MANAGER_PAYS,
                 first_name="Aminata",
                 last_name="Diallo",
             ),
@@ -123,10 +117,8 @@ async def seed() -> None:
         await _ensure_user(
             users, companies,
             CreateUserInput(
-                company_id=agence_sn.id,
+                company_ids=[agence_sn.id],
                 email="commercial.sn@hawaparaiso.sn",
-                password=SEED_PASSWORD,
-                role=Role.COMMERCIAL,
                 first_name="Moussa",
                 last_name="Diop",
             ),
@@ -134,10 +126,8 @@ async def seed() -> None:
         await _ensure_user(
             users, companies,
             CreateUserInput(
-                company_id=agence_sn.id,
+                company_ids=[agence_sn.id],
                 email="finance.sn@hawaparaiso.sn",
-                password=SEED_PASSWORD,
-                role=Role.FINANCE,
                 first_name="Fatou",
                 last_name="Ndiaye",
             ),
@@ -145,7 +135,7 @@ async def seed() -> None:
 
     finally:
         await close_db()
-    logger.info("seed.done", password_default=SEED_PASSWORD)
+    logger.info("seed.done")
 
 
 if __name__ == "__main__":

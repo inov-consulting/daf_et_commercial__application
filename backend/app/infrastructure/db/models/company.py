@@ -12,9 +12,15 @@ from app.infrastructure.db.base import BaseModel
 class CompanyOrm(BaseModel):
     name: str = fields.CharField(max_length=255, unique=True)
     country: str = fields.CharField(max_length=2)
+    country_name: str = fields.CharField(max_length=100, default="")
     default_currency: str = fields.CharField(max_length=3)
+    erp_id: int | None = fields.IntField(null=True)
     parent_company_id: UUID | None = fields.UUIDField(null=True)
     is_active: bool = fields.BooleanField(default=True)
+    email: str | None = fields.CharField(max_length=255, null=True, default=None)
+    phone: str | None = fields.CharField(max_length=50, null=True, default=None)
+    website: str | None = fields.CharField(max_length=512, null=True, default=None)
+    address: str | None = fields.TextField(null=True, default=None)
 
     class Meta:
         table = "companies"
@@ -25,9 +31,15 @@ class CompanyOrm(BaseModel):
             id=self.id,
             name=self.name,
             country=Country(self.country),
+            country_name=self.country_name,
             default_currency=Currency(self.default_currency),
+            erp_id=self.erp_id,
             parent_company_id=self.parent_company_id,
             is_active=self.is_active,
+            email=self.email,
+            phone=self.phone,
+            website=self.website,
+            address=self.address,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -38,15 +50,27 @@ class CompanyOrm(BaseModel):
             id=company.id,
             name=company.name,
             country=company.country.value,
+            country_name=company.country_name,
             default_currency=company.default_currency.value,
+            erp_id=company.erp_id,
             parent_company_id=company.parent_company_id,
             is_active=company.is_active,
+            email=company.email,
+            phone=company.phone,
+            website=company.website,
+            address=company.address,
         )
 
     def apply_domain(self, company: Company) -> None:
         """Met à jour les colonnes ORM à partir d'une entité domaine (update)."""
         self.name = company.name
         self.country = company.country.value
+        self.country_name = company.country_name
         self.default_currency = company.default_currency.value
+        self.erp_id = company.erp_id
         self.parent_company_id = company.parent_company_id
         self.is_active = company.is_active
+        self.email = company.email
+        self.phone = company.phone
+        self.website = company.website
+        self.address = company.address

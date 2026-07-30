@@ -3,42 +3,71 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.domain.shared.role import Role
+from app.api.v1.schemas.companies import CompanyOut
 from app.domain.shared.user import User
 
 
 class UserCreate(BaseModel):
-    company_id: UUID
-    email: EmailStr
-    password: str = Field(..., min_length=8, max_length=128)
-    role: Role
-    first_name: str = Field("", max_length=128)
-    last_name: str = Field("", max_length=128)
+    email: str
+    company_ids: list[UUID]
+    group_ids: list[str] = Field(..., min_length=1)
+    first_name: str = ""
+    last_name: str = ""
+    password: str | None = Field(default=None, exclude=True)
+    temporary_password: bool = False
+
+    @field_validator("group_ids")
+    @classmethod
+    def group_ids_not_empty(cls, v: list[str]) -> list[str]:
+        if not v:
+            raise ValueError("Au moins un groupe est obligatoire")
+        return v
+
+
+class ChangePasswordIn(BaseModel):
+    current_password: str = Field(..., min_length=1, description="Mot de passe actuel.")
+    new_password: str = Field(..., min_length=8, description="Nouveau mot de passe (min 8 caractères).")
 
 
 class UserUpdate(BaseModel):
-    role: Role | None = None
-    first_name: str | None = Field(None, max_length=128)
-    last_name: str | None = Field(None, max_length=128)
+    company_ids: list[UUID] | None = None
+    group_ids: list[str] | None = None
+    first_name: str | None = None
+    last_name: str | None = None
     is_active: bool | None = None
-    new_password: str | None = Field(None, min_length=8, max_length=128)
 
 
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-
     id: UUID
-    company_id: UUID
-    email: EmailStr
-    role: Role
+    email: str
     first_name: str
     last_name: str
+    companies: list[CompanyOut] = []
+    group_ids: list[str] = []
     is_active: bool
+    avatar_url: str | None = None
     created_at: datetime | None
     updated_at: datetime | None
 
     @classmethod
-    def from_domain(cls, user: User) -> "UserOut":
-        return cls.model_validate(user)
+    def from_domain(
+        cls,
+        user: User,
+        companies: list[CompanyOut] | None = None,
+        group_ids: list[str] | None = None,
+    ) -> "UserOut":
+        return cls(
+            id=user.id,
+            email=user.email,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            companies=companies or [],
+            group_ids=group_ids or [],
+            is_active=user.is_active,
+            avatar_url=user.avatar_url,
+            created_at=user.created_at,
+            updated_at=user.updated_at,
+        )
