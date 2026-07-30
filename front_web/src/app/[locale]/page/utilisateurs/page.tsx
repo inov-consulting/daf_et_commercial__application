@@ -19,6 +19,7 @@ import {
   createUser,
   updateUser,
   removeUser,
+  toggleUserStatus,
 } from "@/redux/features/users/usersSlice";
 import { fetchGroups } from "@/redux/features/groups/groupsSlice";
 import { mapApiUser, type User } from "@/types/user_type";
@@ -70,6 +71,7 @@ export default function UtilisateursPage() {
     error: apiError,
   } = useAppSelector((state) => state.users);
   const { list: groups } = useAppSelector((state) => state.groups);
+  const me = useAppSelector((state) => state.me.me);
 
   // Mapping API → UI à chaque changement de la liste Redux
   const users = useMemo(() => apiUsers.map(mapApiUser), [apiUsers]);
@@ -156,9 +158,8 @@ export default function UtilisateursPage() {
     if (selectedUid === uid) setSelectedUid(null);
     setDeleteUid(null);
     setMobilePanelOpen(false);
-    // Suppression optimiste + désactivation côté backend (pas de DELETE endpoint)
     dispatch(removeUser(uid));
-    await dispatch(updateUser({ id: uid, payload: { is_active: false } }));
+    await dispatch(toggleUserStatus({ id: uid, isActive: false }));
     showToast("Utilisateur supprimé", "Le compte a été désactivé", "success");
   }
 
@@ -222,14 +223,22 @@ export default function UtilisateursPage() {
   }
 
   async function handleToggleActive(uid: string, active: boolean) {
-    await dispatch(updateUser({ id: uid, payload: { is_active: active } }));
-    showToast(
-      active ? "Compte réactivé" : "Compte désactivé",
-      active
-        ? "L'utilisateur a de nouveau accès à PortaLis"
-        : "L'accès à PortaLis a été retiré",
-      "success",
-    );
+    await dispatch(toggleUserStatus({ id: uid, isActive: active }));
+    if (active) {
+      const u = users.find(x => x.uid === uid);
+      const companies = u?.entreprises ?? [];
+      const companiesSub = companies.length > 0
+        ? `Accès rétabli sur : ${companies.join(', ')}`
+        : "L'utilisateur a de nouveau accès à PortaLis";
+      showToast("Compte réactivé", companiesSub, "success");
+    } else {
+      const u = users.find(x => x.uid === uid);
+      const companies = u?.entreprises ?? [];
+      const companiesSub = companies.length > 0
+        ? `Accès retiré sur : ${companies.join(', ')}`
+        : "L'accès à PortaLis a été retiré";
+      showToast("Compte désactivé", companiesSub, "success");
+    }
   }
 
   function handleSelectUser(uid: string) {
@@ -319,6 +328,7 @@ export default function UtilisateursPage() {
               onEdit={(uid) => setFormModal({ mode: "edit", uid })}
               onDelete={(uid) => setDeleteUid(uid)}
               onToggleActive={handleToggleActive}
+              isSelf={selectedUser?.uid === me?.id}
             />
           </div>
         </div>
@@ -379,6 +389,7 @@ export default function UtilisateursPage() {
                   setMobilePanelOpen(false);
                 }}
                 onToggleActive={handleToggleActive}
+                isSelf={selectedUser?.uid === me?.id}
               />
             </div>
           </div>

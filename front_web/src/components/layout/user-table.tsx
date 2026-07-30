@@ -3,8 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import {
   MagnifyingGlassIcon, PencilSimpleIcon, PaperPlaneTiltIcon, XIcon,
-  DotsThreeVerticalIcon, DeviceMobileIcon, DesktopIcon, DevicesIcon,
-  FunnelIcon, UserSwitchIcon, TrashIcon, ProhibitIcon,
+  DotsThreeVerticalIcon, FunnelIcon, UserSwitchIcon, TrashIcon, ProhibitIcon,
 } from '@phosphor-icons/react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -254,30 +253,15 @@ function MobileUserCard({
       </div>
 
       {/* Details row */}
-      <div className="grid grid-cols-2 gap-2 text-[11px] mb-2">
+      <div className="flex flex-col gap-2 text-[11px] mb-2">
         <div>
           <span className="text-foreground-3">Rôle</span>
           <div className="mt-0.5">
             <RoleBadge role={user.role} pending={user.status === 'pending'} />
           </div>
         </div>
-        <div>
-          <span className="text-foreground-3">Accès</span>
-          <div className="mt-0.5 flex items-center gap-1 text-foreground-2">
-            {user.status !== 'pending' ? (
-              <>
-                {user.surface === 'Mobile' && <DeviceMobileIcon size={13} />}
-                {user.surface === 'Web' && <DesktopIcon size={13} />}
-                {user.surface === 'Mobile + Web' && <DevicesIcon size={13} />}
-                <span>{user.surface}</span>
-              </>
-            ) : (
-              <span>—</span>
-            )}
-          </div>
-        </div>
         {user.entreprises.length > 0 && (
-          <div className="col-span-2">
+          <div>
             <span className="text-foreground-3">Entreprise</span>
             <div className="mt-0.5 flex gap-1 flex-wrap">
               {user.entreprises.slice(0, 2).map(e => (
@@ -295,7 +279,7 @@ function MobileUserCard({
           </div>
         )}
         {user.groupes.length > 0 && (
-          <div className="col-span-2">
+          <div>
             <span className="text-foreground-3">Groupes</span>
             <div className="mt-0.5 flex gap-1 flex-wrap">
               {user.groupes.slice(0, 2).map(g => (
@@ -532,7 +516,7 @@ export function UserTable({
         <table className="w-full border-collapse">
           <thead className="sticky top-0 z-10">
             <tr className="h-10 bg-surface-sink border-b border-border">
-              {['Utilisateur', 'Rôle', 'Groupes', 'Entreprise', 'Statut', 'Accès', 'Actions'].map((h, i) => (
+              {['Utilisateur', 'Rôle', 'Groupes', 'Entreprise', 'Statut', 'Actions'].map((h, i) => (
                 <th
                   key={h}
                   className={cn(
@@ -642,19 +626,6 @@ export function UserTable({
                   )}
                   {user.status === 'inactive' && (
                     <Badge color="neutral" variant="subtle" dot>Inactif</Badge>
-                  )}
-                </td>
-                {/* Accès */}
-                <td className="px-4 truncate">
-                  {user.status !== 'pending' ? (
-                    <span className="flex items-center gap-1.5 text-[11px] text-foreground-3">
-                      {user.surface === 'Mobile' && <DeviceMobileIcon size={13} />}
-                      {user.surface === 'Web' && <DesktopIcon size={13} />}
-                      {user.surface === 'Mobile + Web' && <DevicesIcon size={13} />}
-                      {user.surface}
-                    </span>
-                  ) : (
-                    <span className="text-[11px] text-foreground-3">—</span>
                   )}
                 </td>
                 {/* Actions */}

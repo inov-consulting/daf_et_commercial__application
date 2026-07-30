@@ -535,7 +535,7 @@ export function OfferDetailView({
               )}
             </div>
             <div className="text-[11px] sm:text-xs text-[#7691A8] mt-1 font-mono truncate">
-              {offer.name} · émise le {fmtOfferDate(offer.date_emission)}
+              {offer.name} · émise le {fmtOfferDate(offer.date_emission ?? offer.date)}
             </div>
           </div>
 

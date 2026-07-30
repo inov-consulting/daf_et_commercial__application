@@ -13,11 +13,14 @@ export const ApiRoutes = {
     `${process.env.NEXT_PUBLIC_KEYCLOAK_REALM}/protocol/openid-connect/userinfo`,
 
   // ── Users ────────────────────────────────────────────────────────────
-  USERS_ME:     `${BASE}/api/v1/auth/me`,
-  USERS_LIST:   `${BASE}/api/v1/users`,
-  USERS_DETAIL: (id: string) => `${BASE}/api/v1/users/${id}`,
-  USERS_ADD:    `${BASE}/api/v1/users`,
-  USERS_UPDATE: (id: string) => `${BASE}/api/v1/users/${id}`,
+  USERS_ME:          `${BASE}/api/v1/auth/me`,
+  USERS_LIST:        `${BASE}/api/v1/users`,
+  USERS_DETAIL:      (id: string) => `${BASE}/api/v1/users/${id}`,
+  USERS_ADD:         `${BASE}/api/v1/users`,
+  USERS_UPDATE:      (id: string) => `${BASE}/api/v1/users/${id}`,
+  USERS_STATUS:      (id: string) => `${BASE}/api/v1/users/${id}/status`,
+  USERS_AVATAR:      (id: string) => `${BASE}/api/v1/users/${id}/avatar`,
+  USERS_ME_PASSWORD: `${BASE}/api/v1/users/me/password`,
 
   // ── Company ────────────────────────────────────────────────────────
   COMPANY_LIST:    `${BASE}/api/v1/companies`,
@@ -32,6 +35,9 @@ export const ApiRoutes = {
 
   // ── Permissions (realm roles) ────────────────────────────────────
   PERMISSIONS_LIST:   `${BASE}/api/v1/permissions`,
+
+  // ── Search ──────────────────────────────────────────────────────────
+  SEARCH: `${BASE}/api/v1/search`,
 
   // ── Chat & Vocal ─────────────────────────────────────────────────
   CHAT_MESSAGE:     `${BASE}/api/v1/chat`,

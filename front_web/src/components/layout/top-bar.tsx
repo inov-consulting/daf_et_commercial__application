@@ -8,15 +8,12 @@ import { logoutKeycloak } from '@/lib/keycloak';
 import type { ApiUser, User } from '@/types/user_type';
 import { getRoleAbbreviation } from '@/lib/roleAbbreviation';
 import Image from 'next/image';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { useAppSelector } from '@/redux/store';
 import { NotificationsDrawer } from '@/components/layout/notifications-drawer';
 import { LogoutConfirmModal } from '@/components/layout/logout-confirm-modal';
-
-const MENU_ITEMS = [
-  { Icon: UserIcon, label: 'Mon profil', danger: false },
-  { Icon: GearIcon, label: 'Paramètres', danger: false },
-  { Icon: SignOutIcon, label: 'Déconnexion', danger: true },
-] as const;
+import { GlobalSearchBar } from '@/components/layout/global-search-bar';
 
 interface DropdownPos { top: number; right: number }
 
@@ -27,6 +24,8 @@ interface TopBarProps {
 }
 
 export default function TopBar({ onToggleSidebar, user, rawUser }: TopBarProps) {
+  const params = useParams();
+  const locale = typeof params?.locale === 'string' ? params.locale : 'fr';
   const [showNotifDrawer, setShowNotifDrawer]   = useState(false);
   const [showUserMenu, setShowUserMenu]         = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
@@ -99,19 +98,29 @@ export default function TopBar({ onToggleSidebar, user, rawUser }: TopBarProps) 
               <p className="text-xs text-[var(--tx-3)] mt-0.5">{user.role}</p>
             )}
           </div>
-          {MENU_ITEMS.map(({ Icon, label, danger }) => (
-            <button
-              key={label}
-              onClick={label === 'Déconnexion' ? () => { closeAll(); setShowLogoutModal(true); } : undefined}
-              className={cn(
-                'w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm transition-colors hover:bg-[var(--bg-sink)]',
-                danger ? 'text-error' : 'text-[var(--tx-1)]',
-              )}
-            >
-              <Icon size={15} />
-              {label}
-            </button>
-          ))}
+          <Link
+            href={`/${locale}/page/profil`}
+            onClick={closeAll}
+            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm transition-colors hover:bg-[var(--bg-sink)] text-[var(--tx-1)]"
+          >
+            <UserIcon size={15} />
+            Mon profil
+          </Link>
+          <Link
+            href={`/${locale}/page/parametres`}
+            onClick={closeAll}
+            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm transition-colors hover:bg-[var(--bg-sink)] text-[var(--tx-1)]"
+          >
+            <GearIcon size={15} />
+            Paramètres
+          </Link>
+          <button
+            onClick={() => { closeAll(); setShowLogoutModal(true); }}
+            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm transition-colors hover:bg-[var(--bg-sink)] text-error"
+          >
+            <SignOutIcon size={15} />
+            Déconnexion
+          </button>
         </div>,
         document.body,
       )}
@@ -167,20 +176,7 @@ export default function TopBar({ onToggleSidebar, user, rawUser }: TopBarProps) 
 
           {/* Centre : barre de recherche (desktop) */}
           <div className="flex-1 max-w-[320px] lg:max-w-[480px] mx-4 hidden md:block">
-            <div className="relative">
-              <MagnifyingGlassIcon
-                size={15}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--tx-3)] pointer-events-none"
-              />
-              <input
-                type="text"
-                placeholder="Rechercher prospects, missions, documents..."
-                className="w-full h-9 pl-9 pr-11 bg-[var(--bg-sink)] rounded-full text-sm text-[var(--tx-1)] placeholder:text-[var(--tx-3)] border border-transparent focus:border-[var(--bd-focus)] focus:bg-white focus:outline-none transition-all"
-              />
-              <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-[var(--tx-3)] bg-white border border-[var(--bd-def)] rounded px-1.5 py-0.5 font-mono hidden lg:block">
-                ⌘K
-              </kbd>
-            </div>
+            <GlobalSearchBar />
           </div>
 
           {/* Droite : actions */}
@@ -240,16 +236,10 @@ export default function TopBar({ onToggleSidebar, user, rawUser }: TopBarProps) 
         {/* Barre de recherche mobile dépliable */}
         {showMobileSearch && (
           <div className="md:hidden px-3 pb-3 bg-white border-t border-[var(--bd-def)]">
-            <div className="relative mt-2">
-              <MagnifyingGlassIcon
-                size={15}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--tx-3)] pointer-events-none"
-              />
-              <input
-                autoFocus
-                type="text"
-                placeholder="Rechercher..."
-                className="w-full h-9 pl-9 pr-4 bg-[var(--bg-sink)] rounded-full text-sm text-[var(--tx-1)] placeholder:text-[var(--tx-3)] border border-transparent focus:border-[var(--bd-focus)] focus:bg-white focus:outline-none transition-all"
+            <div className="mt-2">
+              <GlobalSearchBar
+                mobile
+                onClose={() => setShowMobileSearch(false)}
               />
             </div>
           </div>

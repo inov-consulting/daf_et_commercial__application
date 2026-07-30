@@ -2,14 +2,14 @@
 
 import { useEffect, useRef, useState, useCallback, useId } from 'react';
 import {
-  XIcon, CheckIcon, CaretDownIcon, DeviceMobileIcon, DesktopIcon, DevicesIcon,
+  XIcon, CheckIcon, CaretDownIcon,
   UserPlusIcon, PencilSimpleIcon, PaperPlaneTiltIcon, MagnifyingGlassIcon, SpinnerIcon,
   CameraIcon,
 } from '@phosphor-icons/react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { GROUPES_LIST, ROLES, SURFACES, type User, type UserRole, type AccessSurface, type ApiUser } from '../../types/user_type';
+import { GROUPES_LIST, ROLES, type User, type UserRole, type ApiUser } from '../../types/user_type';
 import { useInfiniteCompanies } from '@/hooks/useInfiniteCompanies';
 import { ApiCompany } from '@/types/company_type';
 import type { ApiGroup } from '@/redux/features/groups/groupsSlice';
@@ -32,8 +32,7 @@ export function UserFormModal({ mode, user, rawUser, groups, onClose, onSubmit }
   const [email, setEmail] = useState(user?.email ?? '');
   const [role, setRole] = useState<UserRole | ''>(user?.role ?? '');
   const [selectedCompanies, setSelectedCompanies] = useState<ApiCompany[]>(rawUser?.companies ?? []);
-  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
-  const [surface, setSurface] = useState<AccessSurface>(user?.surface ?? 'Mobile');
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(rawUser?.group_ids ?? []);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(rawUser?.avatar_url ?? null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const avatarInputId = useId();
@@ -128,7 +127,6 @@ export function UserFormModal({ mode, user, rawUser, groups, onClose, onSubmit }
       nom, prenom, email,
       role: role as UserRole,
       entreprises: selectedCompanies.map(c => c.name ?? c.id),
-      surface,
       company_ids: selectedCompanies.map(c => c.id),
       group_ids: selectedGroupIds,
       avatar_url: avatarPreview ?? undefined,
@@ -426,31 +424,6 @@ export function UserFormModal({ mode, user, rawUser, groups, onClose, onSubmit }
             </div>
           </div>
 
-          {/* Surface d'accès */}
-          <div className="flex flex-col gap-[6px]">
-            <label className="text-sm font-medium text-foreground">Surface d&apos;accès</label>
-            <div role="group" aria-labelledby="surface-access-label" id="surface-access-label" className="flex border-[1.5px] border-border-strong rounded-lg overflow-hidden">
-              {SURFACES.map((s, i) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setSurface(s)}
-                  className={cn(
-                    'flex-1 h-10 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors',
-                    i < SURFACES.length - 1 && 'border-r border-border',
-                    surface === s
-                      ? 'bg-primary-50 text-primary-600 font-semibold'
-                      : 'bg-surface text-foreground-2 hover:bg-surface-sink',
-                  )}
-                >
-                  {s === 'Mobile' && <DeviceMobileIcon size={13} />}
-                  {s === 'Web' && <DesktopIcon size={13} />}
-                  {s === 'Mobile + Web' && <DevicesIcon size={13} />}
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* Footer */}

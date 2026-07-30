@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
-  CameraIcon, LockSimpleIcon, InfoIcon, WarningIcon,
-  CheckIcon, CircleNotchIcon, XIcon,
+  CameraIcon, LockSimpleIcon, InfoIcon,
+  CheckIcon, CircleNotchIcon, EyeIcon, EyeSlashIcon,
 } from '@phosphor-icons/react';
 import { useAppDispatch, useAppSelector } from '@/redux/store';
-import { fetchMe } from '@/redux/features/me/meSlice';
-import { updateUser } from '@/redux/features/users/usersSlice';
+import { fetchMe, changePassword, clearChangePasswordError } from '@/redux/features/me/meSlice';
+import { updateUser, uploadAvatar } from '@/redux/features/users/usersSlice';
 import { fetchCompanies } from '@/redux/features/companies/companiesSlice';
 import { cn } from '@/lib/utils';
 import { ImageCropModal } from '@/components/ui/image-crop-modal';
@@ -25,22 +25,22 @@ function fmtDate(iso?: string | null): string {
   }
 }
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-interface ConfirmConfig {
-  variant: 'warn' | 'danger';
-  title: string;
-  desc: string;
-  label: string;
-  onConfirm: () => void;
+function dataUrlToFile(dataUrl: string, filename: string): File {
+  const [header, data] = dataUrl.split(',');
+  const mimeMatch = header.match(/:(.*?);/);
+  const mime = mimeMatch?.[1] ?? 'image/png';
+  const bytes = atob(data);
+  const buffer = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) buffer[i] = bytes.charCodeAt(i);
+  return new File([buffer], filename, { type: mime });
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ProfilPage() {
   const dispatch = useAppDispatch();
-  const { me, loading: meLoading } = useAppSelector(s => s.me);
-  const { updating } = useAppSelector(s => s.users);
+  const { me, loading: meLoading, changingPassword, changePasswordError } = useAppSelector(s => s.me);
+  const { updating, uploadingAvatar } = useAppSelector(s => s.users);
   const { items: companies, loading: companiesLoading } = useAppSelector(s => s.companies);
 
   const [prenom, setPrenom] = useState('');
@@ -48,8 +48,16 @@ export default function ProfilPage() {
   const [selectedCompanyIds, setSelectedCompanyIds] = useState<string[]>([]);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [cropSrc,    setCropSrc]    = useState<string | null>(null);
-  const [toast, setToast]     = useState<string | null>(null);
-  const [confirm, setConfirm] = useState<ConfirmConfig | null>(null);
+  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+
+  // ── Password modal state ──
+  const [showPwdModal, setShowPwdModal]       = useState(false);
+  const [currentPwd, setCurrentPwd]           = useState('');
+  const [newPwd, setNewPwd]                   = useState('');
+  const [confirmPwd, setConfirmPwd]           = useState('');
+  const [showCurrentPwd, setShowCurrentPwd]   = useState(false);
+  const [showNewPwd, setShowNewPwd]           = useState(false);
+  const [showConfirmPwd, setShowConfirmPwd]   = useState(false);
 
   const fileRef    = useRef<HTMLInputElement>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -64,12 +72,18 @@ export default function ProfilPage() {
     if (me) {
       setPrenom(me.first_name ?? '');
       setNom(me.last_name ?? '');
-      // L'API retourne `companies` (objets complets), pas `company_ids`
       setSelectedCompanyIds(
         me.companies?.map(c => c.id) ?? me.company_ids ?? [],
       );
     }
   }, [me]);
+
+  // Ferme le modal mot de passe quand l'erreur API change
+  useEffect(() => {
+    if (changePasswordError) {
+      showToast(changePasswordError, false);
+    }
+  }, [changePasswordError]);
 
   const meCompanyIds = me?.companies?.map(c => c.id) ?? me?.company_ids ?? [];
   const companiesChanged = me !== null && (
@@ -85,29 +99,49 @@ export default function ProfilPage() {
     );
   const isValid = (prenom.trim() + nom.trim()).length >= 1;
 
-  function showToast(msg: string) {
-    setToast(msg);
+  function showToast(msg: string, ok = true) {
+    setToast({ msg, ok });
     if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 3000);
+    toastTimer.current = setTimeout(() => setToast(null), 3500);
   }
 
   async function handleSave() {
-    if (!me || !isDirty || !isValid || updating) return;
-    const result = await dispatch(updateUser({
-      id: me.id,
-      payload: {
-        ...(prenom !== (me.first_name ?? '') ? { first_name: prenom } : {}),
-        ...(nom    !== (me.last_name  ?? '') ? { last_name:  nom    } : {}),
-        ...(companiesChanged ? { company_ids: selectedCompanyIds } : {}),
-      },
-    }));
-    if (updateUser.fulfilled.match(result)) {
-      setAvatarPreview(null);
-      dispatch(fetchMe());
-      showToast('Modifications enregistrées');
-    } else {
-      showToast("Erreur lors de l'enregistrement");
+    if (!me || !isDirty || !isValid || updating || uploadingAvatar) return;
+
+    // 1. Upload avatar si changé
+    if (avatarPreview) {
+      const file = dataUrlToFile(avatarPreview, 'avatar.png');
+      const avatarResult = await dispatch(uploadAvatar({ id: me.id, file }));
+      if (uploadAvatar.rejected.match(avatarResult)) {
+        showToast("Erreur lors de l'upload de la photo", false);
+        return;
+      }
     }
+
+    // 2. Mise à jour des champs texte si changés
+    const hasFieldChanges =
+      prenom !== (me.first_name ?? '') ||
+      nom    !== (me.last_name  ?? '') ||
+      companiesChanged;
+
+    if (hasFieldChanges) {
+      const result = await dispatch(updateUser({
+        id: me.id,
+        payload: {
+          ...(prenom !== (me.first_name ?? '') ? { first_name: prenom } : {}),
+          ...(nom    !== (me.last_name  ?? '') ? { last_name:  nom    } : {}),
+          ...(companiesChanged ? { company_ids: selectedCompanyIds } : {}),
+        },
+      }));
+      if (updateUser.rejected.match(result)) {
+        showToast("Erreur lors de l'enregistrement", false);
+        return;
+      }
+    }
+
+    setAvatarPreview(null);
+    dispatch(fetchMe());
+    showToast('Modifications enregistrées');
   }
 
   function handleCancel() {
@@ -127,7 +161,26 @@ export default function ProfilPage() {
     e.target.value = '';
   }
 
+  function openPwdModal() {
+    setCurrentPwd('');
+    setNewPwd('');
+    setConfirmPwd('');
+    dispatch(clearChangePasswordError());
+    setShowPwdModal(true);
+  }
+
+  async function handleChangePassword() {
+    if (!newPwd || newPwd !== confirmPwd) return;
+    const result = await dispatch(changePassword({ current_password: currentPwd, new_password: newPwd }));
+    if (changePassword.fulfilled.match(result)) {
+      setShowPwdModal(false);
+      showToast('Mot de passe modifié avec succès');
+    }
+  }
+
+  const pwdValid = currentPwd.length >= 1 && newPwd.length >= 8 && newPwd === confirmPwd;
   const avatarText = ((prenom?.[0] ?? '') + (nom?.[0] ?? '')).toUpperCase() || '?';
+  const isSaving = updating || uploadingAvatar;
 
   if (meLoading || !me) {
     return (
@@ -174,12 +227,14 @@ export default function ProfilPage() {
               style={{ background: 'var(--p500)' }}
               aria-label="Changer la photo de profil"
             >
-              <CameraIcon size={14} weight="fill" className="text-white" />
+              {uploadingAvatar
+                ? <CircleNotchIcon size={14} className="text-white animate-spin" />
+                : <CameraIcon size={14} weight="fill" className="text-white" />}
             </button>
             <input
               ref={fileRef}
               type="file"
-              accept="image/png,image/jpeg"
+              accept="image/png,image/jpeg,image/webp"
               className="sr-only"
               onChange={handlePhotoChange}
               aria-label="Sélectionner une photo de profil"
@@ -339,7 +394,6 @@ export default function ProfilPage() {
             {/* Autres infos (lecture seule) */}
             {([
               { k: 'Rôle',           v: 'Commercial' },
-              { k: 'Surface',        v: 'Mobile + Web' },
               { k: 'Compte créé le', v: fmtDate(me.created_at) },
             ] as { k: string; v: string }[]).map(({ k, v }) => (
               <div key={k} className="flex items-center justify-between py-0.5">
@@ -350,78 +404,18 @@ export default function ProfilPage() {
           </div>
         </div>
 
-        {/* ── Sécurité & accès ─────────────────────────────────────────── */}
-        <div className="bg-white border border-[var(--bd-def)] rounded-xl p-2 flex flex-col gap-2 shadow-xs">
-
-          {/* Mot de passe */}
-          <div className="flex items-center justify-between gap-4 px-3 py-3.5 border-b border-[var(--bd-def)]">
+        {/* ── Sécurité ─────────────────────────────────────────────────── */}
+        <div className="bg-white border border-[var(--bd-def)] rounded-xl p-2 shadow-xs">
+          <div className="flex items-center justify-between gap-4 px-3 py-3.5">
             <div>
               <p className="text-[13px] font-semibold text-[var(--tx-1)]">Mot de passe</p>
-              <p className="text-[11px] text-[var(--tx-3)]">Envoie un lien de réinitialisation à votre adresse email</p>
+              <p className="text-[11px] text-[var(--tx-3)]">Modifiez votre mot de passe de connexion</p>
             </div>
             <button
-              onClick={() => showToast('Lien de réinitialisation envoyé à ' + me.email)}
+              onClick={openPwdModal}
               className="flex-shrink-0 h-10 px-4 rounded-lg border border-[var(--bd-def)] text-[13px] font-semibold text-[var(--tx-2)] hover:bg-[var(--bg-sink)] transition-colors"
             >
-              Réinitialiser
-            </button>
-          </div>
-
-          {/* Désactiver (amber) */}
-          <div className="flex items-center gap-3 px-3 py-3.5 rounded-lg" style={{ background: '#FBF1DF' }}>
-            <div
-              className="w-[34px] h-[34px] rounded-[9px] flex items-center justify-center flex-shrink-0"
-              style={{ background: 'rgba(156,107,20,0.14)' }}
-            >
-              <WarningIcon size={17} style={{ color: '#9C6B14' }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-semibold" style={{ color: '#7C5610' }}>Désactiver mon compte</p>
-              <p className="text-[11px] leading-relaxed" style={{ color: '#9C6B14' }}>
-                Suspend immédiatement votre accès — réversible par un administrateur
-              </p>
-            </div>
-            <button
-              onClick={() => setConfirm({
-                variant: 'warn',
-                title: 'Désactiver votre compte ?',
-                desc: "Vous perdrez immédiatement l'accès à PortaLis. Un administrateur pourra réactiver votre compte à tout moment.",
-                label: 'Désactiver mon compte',
-                onConfirm: () => showToast('Compte désactivé'),
-              })}
-              className="flex-shrink-0 h-10 px-4 rounded-lg text-[13px] font-bold text-white transition-opacity hover:opacity-90"
-              style={{ background: '#9C6B14' }}
-            >
-              Désactiver
-            </button>
-          </div>
-
-          {/* Supprimer (danger) */}
-          <div className="flex items-center gap-3 px-3 py-3.5 rounded-lg" style={{ background: '#FBEAE9' }}>
-            <div
-              className="w-[34px] h-[34px] rounded-[9px] flex items-center justify-center flex-shrink-0"
-              style={{ background: 'rgba(179,48,43,0.12)' }}
-            >
-              <WarningIcon size={17} style={{ color: '#B3302B' }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-semibold" style={{ color: '#8A241E' }}>Supprimer mon compte</p>
-              <p className="text-[11px] leading-relaxed" style={{ color: '#B3302B' }}>
-                Efface définitivement et irréversiblement votre profil et vos accès
-              </p>
-            </div>
-            <button
-              onClick={() => setConfirm({
-                variant: 'danger',
-                title: 'Supprimer définitivement votre compte ?',
-                desc: "Cette action est irréversible. Votre profil, vos accès et votre historique d'activité seront définitivement effacés.",
-                label: 'Supprimer mon compte',
-                onConfirm: () => showToast('Compte supprimé'),
-              })}
-              className="flex-shrink-0 h-10 px-4 rounded-lg text-[13px] font-bold text-white transition-opacity hover:opacity-90"
-              style={{ background: '#B3302B' }}
-            >
-              Supprimer
+              Modifier
             </button>
           </div>
         </div>
@@ -447,22 +441,18 @@ export default function ProfilPage() {
           )}
 
           <button
-            disabled={!isDirty || !isValid || updating}
+            disabled={!isDirty || !isValid || isSaving}
             onClick={handleSave}
             className={cn(
               'h-10 px-5 rounded-lg text-[13px] font-bold text-white flex items-center gap-2 transition-colors',
-              isDirty && isValid && !updating
-                ? 'hover:opacity-90'
-                : 'cursor-not-allowed',
+              isDirty && isValid && !isSaving ? 'hover:opacity-90' : 'cursor-not-allowed',
             )}
             style={{
-              background: isDirty && isValid && !updating
-                ? 'var(--p500)'
-                : 'var(--bd-def)',
-              color: isDirty && isValid && !updating ? '#fff' : 'var(--tx-3)',
+              background: isDirty && isValid && !isSaving ? 'var(--p500)' : 'var(--bd-def)',
+              color: isDirty && isValid && !isSaving ? '#fff' : 'var(--tx-3)',
             }}
           >
-            {updating
+            {isSaving
               ? <CircleNotchIcon size={14} className="animate-spin" />
               : <CheckIcon size={14} weight="bold" />
             }
@@ -481,72 +471,134 @@ export default function ProfilPage() {
         />
       )}
 
+      {/* ── Password modal ────────────────────────────────────────────────── */}
+      {showPwdModal && (
+        <div
+          className="fixed inset-0 z-[50] flex items-center justify-center p-4"
+          style={{ background: 'rgba(15,33,28,0.45)' }}
+          onClick={() => setShowPwdModal(false)}
+        >
+          <div
+            className="w-full max-w-[420px] bg-white rounded-2xl shadow-2xl overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="h-[3px] w-full" style={{ background: 'var(--p500)' }} />
+            <div className="p-6 flex flex-col gap-4">
+              <h3 className="text-[15px] font-bold text-[var(--tx-1)]">Changer le mot de passe</h3>
+
+              {/* Mot de passe actuel */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[13px] font-semibold text-[var(--tx-1)]">Mot de passe actuel</label>
+                <div className="relative">
+                  <input
+                    type={showCurrentPwd ? 'text' : 'password'}
+                    value={currentPwd}
+                    onChange={e => setCurrentPwd(e.target.value)}
+                    autoComplete="current-password"
+                    className="w-full px-3 py-2.5 pr-10 border border-[var(--bd-def)] rounded-lg text-[13px] text-[var(--tx-1)] outline-none focus:border-[var(--p500)] focus:shadow-[0_0_0_3px_rgba(28,122,84,0.12)] bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPwd(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--tx-3)] hover:text-[var(--tx-2)]"
+                  >
+                    {showCurrentPwd ? <EyeSlashIcon size={15} /> : <EyeIcon size={15} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Nouveau mot de passe */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[13px] font-semibold text-[var(--tx-1)]">Nouveau mot de passe</label>
+                <div className="relative">
+                  <input
+                    type={showNewPwd ? 'text' : 'password'}
+                    value={newPwd}
+                    onChange={e => setNewPwd(e.target.value)}
+                    autoComplete="new-password"
+                    className="w-full px-3 py-2.5 pr-10 border border-[var(--bd-def)] rounded-lg text-[13px] text-[var(--tx-1)] outline-none focus:border-[var(--p500)] focus:shadow-[0_0_0_3px_rgba(28,122,84,0.12)] bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPwd(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--tx-3)] hover:text-[var(--tx-2)]"
+                  >
+                    {showNewPwd ? <EyeSlashIcon size={15} /> : <EyeIcon size={15} />}
+                  </button>
+                </div>
+                <p className="text-[11px] text-[var(--tx-3)]">8 caractères minimum</p>
+              </div>
+
+              {/* Confirmer */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[13px] font-semibold text-[var(--tx-1)]">Confirmer le nouveau mot de passe</label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPwd ? 'text' : 'password'}
+                    value={confirmPwd}
+                    onChange={e => setConfirmPwd(e.target.value)}
+                    autoComplete="new-password"
+                    className={cn(
+                      'w-full px-3 py-2.5 pr-10 border rounded-lg text-[13px] text-[var(--tx-1)] outline-none focus:shadow-[0_0_0_3px_rgba(28,122,84,0.12)] bg-white',
+                      confirmPwd && newPwd !== confirmPwd
+                        ? 'border-red-400 focus:border-red-400'
+                        : 'border-[var(--bd-def)] focus:border-[var(--p500)]',
+                    )}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPwd(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--tx-3)] hover:text-[var(--tx-2)]"
+                  >
+                    {showConfirmPwd ? <EyeSlashIcon size={15} /> : <EyeIcon size={15} />}
+                  </button>
+                </div>
+                {confirmPwd && newPwd !== confirmPwd && (
+                  <p className="text-[11px] text-red-500">Les mots de passe ne correspondent pas</p>
+                )}
+              </div>
+
+              {/* Erreur API */}
+              {changePasswordError && (
+                <p className="text-[12px] text-red-500 bg-red-50 px-3 py-2 rounded-lg">{changePasswordError}</p>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2.5 px-6 py-4 border-t border-[var(--bd-def)]">
+              <button
+                onClick={() => setShowPwdModal(false)}
+                className="h-10 px-4 rounded-lg border border-[var(--bd-def)] text-[13px] font-semibold text-[var(--tx-2)] hover:bg-[var(--bg-sink)] transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                disabled={!pwdValid || changingPassword}
+                onClick={handleChangePassword}
+                className={cn(
+                  'h-10 px-5 rounded-lg text-[13px] font-bold text-white flex items-center gap-2 transition-opacity',
+                  pwdValid && !changingPassword ? 'hover:opacity-90' : 'opacity-50 cursor-not-allowed',
+                )}
+                style={{ background: 'var(--p500)' }}
+              >
+                {changingPassword && <CircleNotchIcon size={14} className="animate-spin" />}
+                Confirmer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Toast ─────────────────────────────────────────────────────────── */}
       {toast && (
         <div
           className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2.5 px-4 py-3 rounded-xl text-white text-[13px] font-semibold shadow-2xl z-[60] whitespace-nowrap"
           style={{ background: 'var(--tx-1)' }}
         >
-          <CheckIcon size={15} weight="bold" style={{ color: 'var(--p500)' }} />
-          {toast}
+          <CheckIcon size={15} weight="bold" style={{ color: toast.ok ? 'var(--p500)' : '#F87171' }} />
+          {toast.msg}
         </div>
       )}
 
-      {/* ── Confirm modal ─────────────────────────────────────────────────── */}
-      {confirm && (
-        <div
-          className="fixed inset-0 z-[40] flex items-center justify-center p-4"
-          style={{ background: 'rgba(15,33,28,0.45)' }}
-          onClick={() => setConfirm(null)}
-        >
-          <div
-            role="alertdialog"
-            aria-modal="true"
-            className="w-full max-w-[420px] bg-white rounded-2xl shadow-2xl overflow-hidden relative z-[41]"
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Accent top bar */}
-            <div
-              className="h-[3px] w-full"
-              style={{ background: confirm.variant === 'warn' ? '#9C6B14' : '#B3302B' }}
-            />
-            <div className="p-6">
-              <div
-                className="w-11 h-11 rounded-xl flex items-center justify-center mb-4"
-                style={{ background: confirm.variant === 'warn' ? '#FBF1DF' : '#FBEAE9' }}
-              >
-                <WarningIcon
-                  size={22}
-                  style={{ color: confirm.variant === 'warn' ? '#9C6B14' : '#B3302B' }}
-                />
-              </div>
-              <h3 className="text-[15px] font-bold text-[var(--tx-1)] mb-2">{confirm.title}</h3>
-              <p className="text-[13px] text-[var(--tx-2)] leading-relaxed">{confirm.desc}</p>
-            </div>
-            <div className="flex justify-end gap-2.5 px-6 py-4 border-t border-[var(--bd-def)]">
-              <button
-                onClick={() => setConfirm(null)}
-                className="h-10 px-4 rounded-lg border border-[var(--bd-def)] text-[13px] font-semibold text-[var(--tx-2)] hover:bg-[var(--bg-sink)] transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={() => { setConfirm(null); confirm.onConfirm(); }}
-                className="h-10 px-4 rounded-lg text-[13px] font-bold text-white transition-opacity hover:opacity-90"
-                style={{ background: confirm.variant === 'warn' ? '#9C6B14' : '#B3302B' }}
-              >
-                {confirm.label}
-              </button>
-            </div>
-            <button
-              onClick={() => setConfirm(null)}
-              className="absolute top-4 right-4 w-7 h-7 rounded-lg flex items-center justify-center text-[var(--tx-3)] hover:bg-[var(--bg-sink)] transition-colors"
-            >
-              <XIcon size={14} />
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

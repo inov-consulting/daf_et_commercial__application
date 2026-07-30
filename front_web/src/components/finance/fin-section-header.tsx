@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { useAppSelector } from '@/redux/store';
-import { setCompanyContext } from '@/lib/ApiService';
 import Image from 'next/image';
+import { useAppSelector, useAppDispatch } from '@/redux/store';
+import { setCompanyContext } from '@/lib/ApiService';
+import { setActiveCompany } from '@/redux/features/activeCompany/activeCompanySlice';
 
 interface FinSectionHeaderProps {
   title:            string;
@@ -26,20 +27,15 @@ export function FinSectionHeader({
   secondaryAction,
   onCompanyChange,
 }: FinSectionHeaderProps) {
+  const dispatch = useAppDispatch();
   const me = useAppSelector(s => s.me.me);
+  const selectedId = useAppSelector(s => s.activeCompany.selectedId);
   const companies = useMemo(() => me?.companies ?? [], [me]);
-  const [selectedId, setSelectedId] = useState('');
-
-  useEffect(() => {
-    if (companies.length > 0 && !selectedId) {
-      setSelectedId(companies[0].id);
-    }
-  }, [companies, selectedId]);
 
   function handleSelect(id: string) {
     if (id === selectedId) return;
     setCompanyContext(id);
-    setSelectedId(id);
+    dispatch(setActiveCompany(id));
     onCompanyChange?.(id);
   }
 

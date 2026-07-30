@@ -26,8 +26,8 @@ export interface CRContext {
 
 const CR_TYPES: { type: CRContextType; icon: string; label: string; desc: string }[] = [
   { type: 'prospection', icon: '🤝', label: 'Prospection',      desc: 'CR lié à une visite ou un suivi prospect' },
-  { type: 'transport',   icon: '🚚', label: 'Transport',        desc: 'CR lié à une opération de transport' },
-  { type: 'autre',       icon: '📋', label: 'Autre',            desc: 'CR libre, sans dossier lié' },
+  // { type: 'transport',   icon: '🚚', label: 'Transport',        desc: 'CR lié à une opération de transport' },
+  // { type: 'autre',       icon: '📋', label: 'Autre',            desc: 'CR libre, sans dossier lié' },
 ];
 
 /* ── Props ──────────────────────────────────────────────────────────────── */
@@ -138,12 +138,12 @@ export function ProspectPicker({ initialType, onSelect, onSkip }: ProspectPicker
               </button>
             ))}
           </div>
-          <button
+          {/* <button
             onClick={onSkip}
             className="w-full text-center text-[12px] text-[var(--tx-3)] hover:text-[var(--tx-2)] py-2 transition-colors"
           >
             Continuer sans contexte →
-          </button>
+          </button> */}
         </div>
       )}
 
