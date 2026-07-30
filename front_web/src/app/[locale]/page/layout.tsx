@@ -1,10 +1,10 @@
 "use client";
 
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect } from "react";
 import DashboardShell from "@/components/layout/dashboard-shell";
 import { useAppDispatch } from "@/redux/store";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { fetchMe, clearMe } from "@/redux/features/me/meSlice";
+import { fetchMe } from "@/redux/features/me/meSlice";
 import { AuthContext } from "@/app/clientLayout";
 import { useFcmNotifications } from "@/hooks/useFcmNotifications";
 import Image from "next/image";
@@ -27,11 +27,12 @@ export default function PageLayout({ children, params }: PageLayoutProps) {
   // et que le token est disponible dans kc.token (lu par ApiService).
   useEffect(() => {
     if (!authenticated) return;
-    dispatch(clearMe());
     dispatch(fetchMe());
   }, [dispatch, authenticated]);
 
-  if (loading) {
+  // Only show the full-screen overlay on initial load (no user yet).
+  // Background re-fetches (token refresh) keep DashboardShell mounted.
+  if (loading && !user) {
     return (
       <div
         className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden"

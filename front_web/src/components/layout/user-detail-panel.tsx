@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   PencilSimpleIcon, ToggleLeftIcon, ToggleRightIcon, LockKeyIcon, TrashIcon,
   PaperPlaneTiltIcon, XCircleIcon, CheckIcon, EnvelopeSimpleIcon, CursorClickIcon,
-  DeviceMobileIcon, DesktopIcon, DevicesIcon,
 } from '@phosphor-icons/react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,6 +19,7 @@ interface UserDetailPanelProps {
   onDelete: (uid: string) => void;
   onToggleActive?: (uid: string, active: boolean) => void;
   naked?: boolean;
+  isSelf?: boolean;
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -130,15 +130,22 @@ function PendingDetail({ user }: { user: User }) {
 }
 
 function ActiveDetail({
-  user, onEdit, onDelete, onToggleActive,
+  user, onEdit, onDelete, onToggleActive, isSelf,
 }: {
   user: User;
   onEdit: () => void;
   onDelete: () => void;
   onToggleActive?: (active: boolean) => void;
+  isSelf?: boolean;
 }) {
-  const [mode, setMode] = useState<PanelMode>('info');
+  const [mode, setMode] = useState<PanelMode>(() => user.status === 'inactive' ? 'disabled' : 'info');
   const [resetSent, setResetSent] = useState(false);
+
+  // Sync panel mode when switching to a different user or when status changes via API
+  useEffect(() => {
+    setMode(user.status === 'inactive' ? 'disabled' : 'info');
+    setResetSent(false);
+  }, [user.uid, user.status]);
 
   const isDisabled = mode === 'disabled';
 
@@ -209,15 +216,6 @@ function ActiveDetail({
           <hr className="border-border" />
           <div>
             <SectionTitle>Accès &amp; Activité</SectionTitle>
-            <div className="flex items-start justify-between gap-2 text-xs mb-1.5">
-              <span className="text-foreground-3 font-medium flex-shrink-0">Surface</span>
-              <span className="flex items-center gap-1.5 font-semibold text-foreground">
-                {user.surface === 'Mobile' && <DeviceMobileIcon size={12} />}
-                {user.surface === 'Web' && <DesktopIcon size={12} />}
-                {user.surface === 'Mobile + Web' && <DevicesIcon size={12} />}
-                {user.surface}
-              </span>
-            </div>
             {user.lastLogin && <InfoRow label="Dernière connexion" value={user.lastLogin} mono />}
             {user.created && <InfoRow label="Compte créé le" value={user.created} mono />}
           </div>
@@ -298,7 +296,7 @@ function ActiveDetail({
           Modifier les informations
         </Button>
 
-        {mode !== 'disabled' && (
+        {!isSelf && mode !== 'disabled' && (
           <button
             onClick={() => setMode('disable')}
             className="w-full h-[34px] rounded-lg border border-warning bg-surface text-[12px] font-display font-semibold text-warning-600 flex items-center justify-center gap-1.5 hover:bg-warning-50 transition-colors"
@@ -316,19 +314,21 @@ function ActiveDetail({
           Réinitialiser le mot de passe
         </button>
 
-        <button
-          onClick={onDelete}
-          className="w-full h-[34px] rounded-lg border border-error bg-surface text-[12px] font-display font-semibold text-error flex items-center justify-center gap-1.5 hover:bg-error-50 transition-colors"
-        >
-          <TrashIcon size={14} />
-          Supprimer l&apos;utilisateur
-        </button>
+        {!isSelf && (
+          <button
+            onClick={onDelete}
+            className="w-full h-[34px] rounded-lg border border-error bg-surface text-[12px] font-display font-semibold text-error flex items-center justify-center gap-1.5 hover:bg-error-50 transition-colors"
+          >
+            <TrashIcon size={14} />
+            Supprimer l&apos;utilisateur
+          </button>
+        )}
       </div>
     </>
   );
 }
 
-export function UserDetailPanel({ user, onEdit, onDelete, onToggleActive, naked }: UserDetailPanelProps) {
+export function UserDetailPanel({ user, onEdit, onDelete, onToggleActive, naked, isSelf }: UserDetailPanelProps) {
   return (
     <div className={cn(
       'flex flex-col overflow-hidden',
@@ -352,6 +352,7 @@ export function UserDetailPanel({ user, onEdit, onDelete, onToggleActive, naked 
           onEdit={() => onEdit(user.uid)}
           onDelete={() => onDelete(user.uid)}
           onToggleActive={(active) => onToggleActive?.(user.uid, active)}
+          isSelf={isSelf}
         />
       )}
     </div>

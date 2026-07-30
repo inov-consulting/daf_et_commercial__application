@@ -36,22 +36,22 @@ function buildNav(locale: string, prospectCount?: number, alerteCount?: number, 
       title: 'PRINCIPAL',
       items: [
         { href: `/${locale}/page/dashboard`, label: 'Tableau de bord', Icon: SquaresFourIcon },
-        {
-          href: `/${locale}/page/ia`, label: 'Centre IA', Icon: BrainIcon, badge: 3,
-          customIcon: (
-            <span className="flex-shrink-0 w-[18px] h-[18px] rounded-[4px] flex items-center justify-center text-white text-[9px] font-bold leading-none" style={{ background: 'var(--grad)' }}>
-              IA
-            </span>
-          ),
-          // customBadge: (
-          //   <span
-          //     className="min-w-5 h-7 px-1 rounded-full text-[10px] font-bold flex items-center justify-center"
-          //     style={{ background: 'var(--grad)' }}
-          //   >
-          //     3
-          //   </span>
-          // ),
-        },
+        // {
+        //   href: `/${locale}/page/ia`, label: 'Centre IA', Icon: BrainIcon, badge: 3,
+        //   customIcon: (
+        //     <span className="flex-shrink-0 w-[18px] h-[18px] rounded-[4px] flex items-center justify-center text-white text-[9px] font-bold leading-none" style={{ background: 'var(--grad)' }}>
+        //       IA
+        //     </span>
+        //   ),
+        //   customBadge: (
+        //     <span
+        //       className="min-w-5 h-7 px-1 rounded-full text-[10px] font-bold flex items-center justify-center"
+        //       style={{ background: 'var(--grad)' }}
+        //     >
+        //       3
+        //     </span>
+        //   ),
+        // },
         { href: `/${locale}/page/prospects`, label: 'Prospections', Icon: UserIcon, badge: prospectCount },
       ],
     },
@@ -156,16 +156,14 @@ const isFirstRender = useRef(true);
     : rawUser?.email?.split('@')[0] ?? 'Utilisateur';
   const role = user?.role ?? '';
 
-  // Workspace info derived from the connected user's companies
-  const wsCompanies = rawUser?.companies ?? [];
-  const wsName      = wsCompanies[0]?.name ?? 'Organisation';
-  const wsInitials  = wsName.split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('') || '?';
-  const wsCountries = wsCompanies.reduce<{ name: string; code: string }[]>((acc, c) => {
-    if (c.country && c.country_code && !acc.some(x => x.code === c.country_code)) {
-      acc.push({ name: c.country, code: c.country_code.toLowerCase() });
-    }
-    return acc;
-  }, []);
+  // Workspace info — follows the globally selected company
+  const wsCompanies  = rawUser?.companies ?? [];
+  const selectedId   = useAppSelector(s => s.activeCompany.selectedId);
+  const activeCompany = wsCompanies.find(c => c.id === selectedId) ?? wsCompanies[0] ?? null;
+  const wsName       = activeCompany?.name ?? 'Organisation';
+  const wsInitials   = wsName.split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('') || '?';
+  const wsCountryCode = activeCompany?.country_code?.toLowerCase() ?? '';
+  const wsCountry     = activeCompany?.country ?? '';
 
   return (
     <>
@@ -214,16 +212,11 @@ const isFirstRender = useRef(true);
             <div className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg transition-colors text-left">
               <div className="min-w-0">
                 <p className="text-[var(--tx-1)] text-[13px] font-semibold truncate">{wsName}</p>
-                {wsCountries.length > 0 && (
-                  <div className="flex items-center gap-1.5 text-[var(--tx-3)] text-[11px] min-w-0 flex-wrap">
-                    {wsCountries.map((c, i) => (
-                      <span key={c.code} className="flex items-center gap-1">
-                        {i > 0 && <span>·</span>}
-                        <span>{c.name}</span>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={`https://flagcdn.com/16x12/${c.code}.png`} width={16} height={12} alt={c.name} className="rounded-[2px] flex-shrink-0" />
-                      </span>
-                    ))}
+                {wsCountryCode && (
+                  <div className="flex items-center gap-1.5 text-[var(--tx-3)] text-[11px] mt-0.5">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`https://flagcdn.com/16x12/${wsCountryCode}.png`} width={16} height={12} alt={wsCountry} className="rounded-[2px] flex-shrink-0" />
+                    <span>{wsCountry}</span>
                   </div>
                 )}
               </div>
@@ -313,6 +306,9 @@ const isFirstRender = useRef(true);
                   <p className="text-[var(--tx-1)] text-[13px] font-medium truncate">{fullName}</p>
                   {role && (
                     <span className="text-[var(--tx-3)] text-[11px] truncate block">{role}</span>
+                  )}
+                  {activeCompany?.name && (
+                    <span className="text-[var(--p500)] text-[10px] font-medium truncate block">{activeCompany.name}</span>
                   )}
                 </div>
               </Link>
