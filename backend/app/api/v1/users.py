@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 from app.api.deps import CompanyRepoDep, CurrentUser, UserRepoDep, require_permission
 from app.api.v1.schemas.companies import CompanyOut
 from app.api.v1.schemas.pagination import Page, PageParams
-from app.api.v1.schemas.users import ChangePasswordIn, UserCreate, UserOut, UserUpdate
+from app.api.v1.schemas.users import ChangePasswordIn, GroupOut, UserCreate, UserOut, UserUpdate
 from app.application.users.create_user import CreateUserInput, CreateUserUseCase
 from app.application.users.get_user import GetUserUseCase
 from app.application.users.list_users import ListUsersUseCase
@@ -83,7 +83,7 @@ async def create_user(
 
     # Récupère les groupes de l'utilisateur depuis Keycloak
     kc_groups = await kc.get_user_groups(keycloak_id_str)
-    user_group_ids = [g["id"] for g in kc_groups]
+    user_groups = [GroupOut(id=g["id"], name=g.get("name", "")) for g in kc_groups]
 
     # Enrichit avec l'identité connue au moment de la création
     user.email = payload.email
@@ -94,7 +94,7 @@ async def create_user(
         c = await company_repo.get_by_id(cid)
         if c:
             companies.append(CompanyOut.from_domain(c))
-    return UserOut.from_domain(user, companies=companies, group_ids=user_group_ids)
+    return UserOut.from_domain(user, companies=companies, groups=user_groups)
 
 
 @router.get(
@@ -124,8 +124,8 @@ async def list_users(
             if c:
                 companies.append(CompanyOut.from_domain(c))
         kc_groups = await kc.get_user_groups(str(u.id))
-        user_group_ids = [g["id"] for g in kc_groups]
-        items.append(UserOut.from_domain(u, companies=companies, group_ids=user_group_ids))
+        user_groups = [GroupOut(id=g["id"], name=g.get("name", "")) for g in kc_groups]
+        items.append(UserOut.from_domain(u, companies=companies, groups=user_groups))
     return Page(items=items, limit=params.limit, offset=params.offset, count=len(items))
 
 
@@ -149,8 +149,8 @@ async def get_user(
         if c:
             companies.append(CompanyOut.from_domain(c))
     kc_groups = await kc.get_user_groups(str(user_id))
-    user_group_ids = [g["id"] for g in kc_groups]
-    return UserOut.from_domain(user, companies=companies, group_ids=user_group_ids)
+    user_groups = [GroupOut(id=g["id"], name=g.get("name", "")) for g in kc_groups]
+    return UserOut.from_domain(user, companies=companies, groups=user_groups)
 
 
 @router.patch(
@@ -194,7 +194,7 @@ async def set_user_status(
             companies.append(CompanyOut.from_domain(c))
 
     kc_groups = await kc.get_user_groups(str(user_id))
-    return UserOut.from_domain(user, companies=companies, group_ids=[g["id"] for g in kc_groups])
+    return UserOut.from_domain(user, companies=companies, groups=[GroupOut(id=g["id"], name=g.get("name", "")) for g in kc_groups])
 
 
 @router.post(
@@ -262,7 +262,7 @@ async def upload_user_avatar(
             companies.append(CompanyOut.from_domain(c))
 
     kc_groups = await kc.get_user_groups(str(user_id))
-    return UserOut.from_domain(user, companies=companies, group_ids=[g["id"] for g in kc_groups])
+    return UserOut.from_domain(user, companies=companies, groups=[GroupOut(id=g["id"], name=g.get("name", "")) for g in kc_groups])
 
 
 @router.patch(
@@ -336,9 +336,9 @@ async def update_user(
             companies.append(CompanyOut.from_domain(c))
 
     kc_groups = await kc.get_user_groups(user_id_str)
-    user_group_ids = [g["id"] for g in kc_groups]
+    user_groups = [GroupOut(id=g["id"], name=g.get("name", "")) for g in kc_groups]
 
-    return UserOut.from_domain(user, companies=companies, group_ids=user_group_ids)
+    return UserOut.from_domain(user, companies=companies, groups=user_groups)
 
 
 @router.patch("/me/password", status_code=status.HTTP_204_NO_CONTENT)

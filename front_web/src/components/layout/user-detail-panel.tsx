@@ -205,10 +205,10 @@ function ActiveDetail({
             <div className="flex flex-wrap gap-1.5">
               {user.groupes.map(g => (
                 <span
-                  key={g}
+                  key={g.id}
                   className="px-2 py-[3px] rounded-full text-[11px] font-medium bg-surface-sink border border-border text-foreground-2"
                 >
-                  {g}
+                  {g.name}
                 </span>
               ))}
             </div>

@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 from app.api.deps import CompanyRepoDep, CurrentUser
 from app.api.v1.schemas.companies import CompanyOut
-from app.api.v1.schemas.users import UserOut
+from app.api.v1.schemas.users import GroupOut, UserOut
 from app.infrastructure.auth.keycloak import KeycloakAdminClient
 from app.core.config import settings
 
@@ -115,10 +115,10 @@ async def me(request: Request, user: CurrentUser, company_repo: CompanyRepoDep) 
 
     # Récupère les groupes
     kc_groups = await kc.get_user_groups(str(user.id))
-    user_group_ids = [g["id"] for g in kc_groups]
+    groups = [GroupOut(id=g["id"], name=g.get("name", "")) for g in kc_groups]
 
     # Permissions extraites du JWT par get_current_user (realm_access.roles)
     roles: set[str] = getattr(request.state, "keycloak_roles", set())
     permissions = sorted(roles)
 
-    return UserOut.from_domain(user, companies=companies, group_ids=user_group_ids, permissions=permissions)
+    return UserOut.from_domain(user, companies=companies, groups=groups, permissions=permissions)
