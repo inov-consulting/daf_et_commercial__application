@@ -26,6 +26,8 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 _auth = [Depends(require_permission("notification:read"))]
 _auth_create = [Depends(require_permission("notification:create"))]
+_auth_delete = [Depends(require_permission("notification:delete"))]
+_auth_delete = [Depends(require_permission("notification:delete"))]
 
 # ── Schémas ───────────────────────────────────────────────────────────────────
 
@@ -264,3 +266,4 @@ async def list_my_devices(request: Request) -> list[DeviceOut]:
         )
         for d in devices
     ]
+    
