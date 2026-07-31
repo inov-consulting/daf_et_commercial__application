@@ -13,7 +13,7 @@ import { Blocknote } from '@/components/ui/blocknote';
 import { PostData } from '@/lib/ApiService';
 import { ApiRoutes } from '@/lib/ApiRoutes';
 import { cn } from '@/lib/utils';
-import { NoteContent } from '@/components/ui/note-content';
+import { renderMarkdown } from '@/lib/renderMarkdown';
 
 interface ProspectNotesSectionProps {
   prospectId: string;
@@ -270,7 +270,7 @@ export function ProspectNotesSection({ prospectId }: ProspectNotesSectionProps) 
                     {note.author_id.slice(0, 2).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <NoteContent content={note.content} />
+                    <div>{renderMarkdown(note.content)}</div>
                     <p className="text-[11px] text-[var(--tx-3)] mt-1">{timeAgo(note.created_at)}</p>
                   </div>
                   <button

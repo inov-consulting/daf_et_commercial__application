@@ -43,8 +43,10 @@ interface ProspectPickerProps {
 /* ── Component ──────────────────────────────────────────────────────────── */
 
 export function ProspectPicker({ initialType, onSelect, onSkip }: ProspectPickerProps) {
+  const singleType = CR_TYPES.length === 1;
+
   const [step, setStep] = useState<'type' | 'prospect'>(
-    initialType === 'prospection' ? 'prospect' : 'type',
+    initialType === 'prospection' || singleType ? 'prospect' : 'type',
   );
 
   /* Filters */
@@ -100,7 +102,7 @@ export function ProspectPicker({ initialType, onSelect, onSkip }: ProspectPicker
     <div>
       {/* Header */}
       <div className="flex items-center gap-2 mb-5">
-        {step === 'prospect' && (
+        {step === 'prospect' && !singleType && (
           <button
             onClick={() => setStep('type')}
             className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--tx-3)] hover:bg-[var(--bg-sink)] transition-colors flex-shrink-0"
