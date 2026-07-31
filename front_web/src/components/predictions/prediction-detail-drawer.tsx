@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import {
   XIcon, CrosshairIcon, CheckCircleIcon, XCircleIcon,
-  BuildingsIcon, CalendarIcon, WarningCircleIcon, LinkSimpleIcon,
+  BuildingsIcon, CalendarIcon, WarningCircleIcon, LinkSimpleIcon, ArrowSquareOutIcon,
 } from '@phosphor-icons/react';
 import { renderMarkdown } from '@/lib/renderMarkdown';
 import type { ApiPrediction } from '@/redux/features/predictions/predictionsSlice';
@@ -98,6 +100,9 @@ export function PredictionDetailDrawer({
   onReject,
   onClearError,
 }: Props) {
+  const params = useParams();
+  const locale = (params?.locale as string) || 'fr';
+
   const [confirming, setConfirming] = useState<'approve' | 'reject' | null>(null);
   const [approveRevenue, setApproveRevenue] = useState('');
   const [approveNotes, setApproveNotes]     = useState('');
@@ -357,13 +362,26 @@ export function PredictionDetailDrawer({
               </h3>
               <div className="space-y-2 text-[12px]">
                 {isValidated && prediction.prospect_id && (
-                  <div className="flex items-center gap-2" style={{ color: 'var(--tx-2)' }}>
+                  <Link
+                    href={`/${locale}/page/prospects/${prediction.prospect_id}`}
+                    onClick={onClose}
+                    className="flex items-center gap-2 group w-fit rounded-lg px-2.5 py-1.5 transition-colors hover:bg-[var(--bg-sink)]"
+                    style={{ color: 'var(--tx-2)' }}
+                  >
                     <LinkSimpleIcon size={13} style={{ color: 'var(--p500)' }} />
-                    Prospect créé - ID&nbsp;
-                    <span className="font-mono text-[11px] px-1.5 py-0.5 rounded" style={{ background: 'var(--bg-sink)' }}>
-                      {prediction.prospect_id}
+                    <span className="text-[12px]">Prospect créé</span>
+                    <span
+                      className="font-mono text-[11px] px-1.5 py-0.5 rounded"
+                      style={{ background: 'var(--bg-sink)' }}
+                    >
+                      {prediction.prospect_id.slice(0, 8).toUpperCase()}
                     </span>
-                  </div>
+                    <ArrowSquareOutIcon
+                      size={12}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      style={{ color: 'var(--p500)' }}
+                    />
+                  </Link>
                 )}
                 {isValidated && prediction.odoo_lead_id != null && (
                   <div className="flex items-center gap-2" style={{ color: 'var(--tx-2)' }}>

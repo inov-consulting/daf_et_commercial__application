@@ -8,7 +8,7 @@ import { type ProspectNote, type ProspectCR, type GenerateCRBody, type CRPending
 import { ApiRoutes } from '@/lib/ApiRoutes';
 import {
   MicrophoneIcon, SquareIcon, ArrowLeftIcon, CheckIcon, XIcon,
-  ArrowClockwiseIcon, WarningIcon, DownloadSimpleIcon, FolderSimpleIcon,
+  ArrowClockwiseIcon, WarningIcon, FolderSimpleIcon,
   CaretRightIcon, CaretDownIcon, SparkleIcon, CheckCircleIcon,
   FileTextIcon, PencilSimpleIcon, CircleNotchIcon, InfoIcon,
 } from '@phosphor-icons/react';
@@ -194,7 +194,6 @@ export default function NouveauCRPage() {
   /* CR generation */
   const [generatedCR, setGeneratedCR]     = useState<ProspectCR | null>(null);
   const [preparing, setPreparing]         = useState(false);
-  const [generating, setGenerating]       = useState(false);
   const [genError, setGenError]           = useState<string | null>(null);
 
   /* UI */
@@ -218,26 +217,6 @@ export default function NouveauCRPage() {
     setToast(msg);
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 3000);
-  }
-
-  async function downloadGeneratedCR() {
-    if (!generatedCR || !crContext?.id) return;
-    setGenerating(true);
-    if (generatedCR.download_url) {
-      window.open(generatedCR.download_url, '_blank');
-      setGenerating(false);
-      return;
-    }
-    const res = await GetData<{ url?: string }>({
-      url: ApiRoutes.PROSPECT_CR_DOWNLOAD(crContext.id, generatedCR.id),
-      protected: true,
-    });
-    if (res.ok && res.data?.url) {
-      window.open(res.data.url, '_blank');
-    } else {
-      setGenError(res.error ?? 'Erreur lors du téléchargement du CR');
-    }
-    setGenerating(false);
   }
 
   function clearProcTimeouts() {
@@ -397,19 +376,29 @@ export default function NouveauCRPage() {
       const { generation_status, generation_error } = statusRes.data;
 
       if (generation_status === 'pending') {
-        setProcSteps(['active', 'pending', 'pending']);
-        setProcPct(20);
-        setProcEta('En attente de démarrage…');
+        // Tâche en file d'attente — ne pas bloquer l'utilisateur : animation rapide puis validated
+        stopPolling();
+        setProcSteps(['done', 'active', 'pending']); setProcPct(55); setProcEta('En file d\'attente…');
+        const tp1 = setTimeout(() => { setProcSteps(['done', 'done', 'active']); setProcPct(85); setProcEta('Rédaction lancée…'); }, 500);
+        const tp2 = setTimeout(() => { setProcSteps(['done', 'done', 'done']); setProcPct(100); setProcEta('Lancé en arrière-plan'); }, 1000);
+        const tp3 = setTimeout(() => setState('validated'), 1400);
+        procTimeouts.current.push(tp1, tp2, tp3);
       } else if (generation_status === 'running') {
         runningPolls++;
         if (runningPolls <= 2) {
           setProcSteps(['done', 'active', 'pending']);
           setProcPct(50);
           setProcEta('Analyse & structuration en cours…');
-        } else {
+        } else if (runningPolls === 3) {
           setProcSteps(['done', 'done', 'active']);
           setProcPct(80);
           setProcEta('Rédaction du CR en cours…');
+        } else {
+          // Après 3 polls running (~9s), passer en arrière-plan
+          stopPolling();
+          const tr1 = setTimeout(() => { setProcSteps(['done', 'done', 'done']); setProcPct(100); setProcEta('Lancé en arrière-plan'); }, 500);
+          const tr2 = setTimeout(() => setState('validated'), 900);
+          procTimeouts.current.push(tr1, tr2);
         }
       } else if (generation_status === 'done') {
         stopPolling();
@@ -1008,95 +997,123 @@ export default function NouveauCRPage() {
               </div>
             )}
 
-            {/* ── VALIDATED ────────────────────────────────── */}
+            {/* ── VALIDATED (CR en cours de génération) ───── */}
             {state === 'validated' && (
               <div className="bg-white border border-[var(--bd-def)] rounded-2xl overflow-hidden shadow-sm">
-                <div className="h-[3px]" style={{ background: '#10B981' }} />
-                <div className="p-7 text-center">
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-                    style={{ background: 'rgba(16,185,129,0.1)', border: '3px solid #10B981' }}>
-                    <CheckIcon size={30} style={{ color: '#10B981' }} weight="bold" />
-                  </div>
-                  <h2 className="text-[18px] font-bold text-[var(--tx-1)] font-display mb-2">CR généré avec succès</h2>
-                  <p className="text-[13px] text-[var(--tx-3)] leading-relaxed mb-3">
-                    {crContext?.label ?? 'Sans contexte'}{crContext?.sublabel ? ` · ${crContext.sublabel}` : ''}<br />
-                    CR généré par IA{crContext?.id ? ` · lié au prospect #${crContext.id.slice(0, 8)}` : ' · archivé dans PortaLis'}
-                  </p>
-                  <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] font-semibold mb-3"
-                    style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10B981', color: '#065F46' }}>
-                    <CheckCircleIcon size={13} />
-                    Généré · en arrière-plan
-                  </div>
-                  {crContext?.id && (
-                    <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] font-semibold mb-6 ml-2"
-                      style={{ background: 'rgba(14,134,232,0.08)', border: '1px solid rgba(14,134,232,0.25)', color: '#0E86E8' }}>
-                      <InfoIcon size={13} />
-                      Email envoyé automatiquement
-                    </div>
-                  )}
+                <div className="h-[3px]" style={{ background: 'var(--grad)' }} />
+                <div className="p-7">
 
-                  {/* Paradigm box */}
-                  <div className="bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-xl p-4 text-left mb-6">
-                    <div className="text-[12px] font-bold text-[var(--tx-1)] mb-2">Résumé de l&apos;action - Paradigme 70 / 30</div>
-                    <div className="text-[12px] text-[var(--tx-3)] leading-relaxed">
-                      IA (70 %) : transcription + structuration + rédaction des 6 champs<br />
-                      Vous (30 %) : relecture · correction champ « Points discutés » · envoi
-                    </div>
-                  </div>
-
-                  {/* Export */}
-                  <div className="border-t border-[var(--bd-def)] pt-5 mb-5 text-left">
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-3)] font-mono mb-3">Exporter le CR</div>
-                    {genError && (
-                      <p className="text-[11px] text-red-500 mb-2">{genError}</p>
-                    )}
-                    {generatedCR && (
-                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-2 text-[11px]"
-                        style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)', color: '#059669' }}>
-                        <CheckCircleIcon size={12} />
-                        CR v{generatedCR.version + 1} généré ·{' '}
-                        {generatedCR.file_size ? `${(generatedCR.file_size / 1024).toFixed(1)} Ko` : '–'}
+                  {/* Animated icon */}
+                  <div className="flex justify-center mb-5">
+                    <div className="relative w-[72px] h-[72px]">
+                      <div
+                        className="absolute inset-0 rounded-full animate-ping opacity-20"
+                        style={{ background: 'var(--grad)' }}
+                      />
+                      <div
+                        className="w-[72px] h-[72px] rounded-full flex items-center justify-center relative"
+                        style={{
+                          background: 'linear-gradient(135deg,rgba(107,53,201,0.1),rgba(14,134,232,0.1))',
+                          border: '2px solid rgba(107,53,201,0.2)',
+                        }}
+                      >
+                        <SparkleIcon size={30} weight="fill" style={{ color: '#6B35C9' }} />
                       </div>
-                    )}
-                    <Button
-                      variant="ghost"
-                      disabled={generating || !generatedCR}
-                      onClick={() => downloadGeneratedCR()}
-                      className="w-full gap-2 mb-2 hover:!border-primary-500 hover:!bg-[rgba(14,134,232,0.04)]"
-                    >
-                      {generating
-                        ? <CircleNotchIcon size={14} className="animate-spin text-primary-500" />
-                        : <DownloadSimpleIcon size={14} className="text-primary-500" />
-                      }
-                      {generating ? 'Téléchargement…' : 'Télécharger le CR'}
-                    </Button>
-                    {!generatedCR && (
-                      <p className="text-[11px] text-[var(--tx-3)] text-center mb-2">
-                        {crContext?.id
-                          ? 'Le CR est en cours de génération…'
-                          : 'Associez un prospect pour activer le téléchargement'}
-                      </p>
-                    )}
-                    {/* <Button
-                      variant="dashed"
-                      size="md"
-                      onClick={() => setFolderModal(true)}
-                      className="w-full"
-                    >
-                      <FolderSimpleIcon size={14} />
-                      Enregistrer dans un dossier PortaLis
-                    </Button> */}
+                    </div>
                   </div>
 
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="md"
-                      onClick={() => router.back()}
-                      className="flex-1"
+                  <h2 className="text-[18px] font-bold text-[var(--tx-1)] font-display mb-2 text-center">
+                    CR en cours de génération
+                  </h2>
+                  <p className="text-[13px] text-[var(--tx-3)] leading-relaxed mb-5 text-center max-w-sm mx-auto">
+                    L&apos;agent IA rédige votre compte-rendu en arrière-plan. Vous pouvez
+                    quitter cette page - le CR sera disponible dans quelques minutes dans la
+                    fiche prospect.
+                  </p>
+
+                  {/* Status chips */}
+                  <div className="flex flex-wrap justify-center gap-2 mb-6">
+                    <span
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold"
+                      style={{ background: 'rgba(107,53,201,0.08)', border: '1px solid rgba(107,53,201,0.2)', color: '#6B35C9' }}
                     >
+                      <CircleNotchIcon size={11} className="animate-spin" />
+                      Génération IA en arrière-plan
+                    </span>
+                    {crContext?.id && (
+                      <span
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold"
+                        style={{ background: 'rgba(14,134,232,0.08)', border: '1px solid rgba(14,134,232,0.2)', color: '#0E86E8' }}
+                      >
+                        <InfoIcon size={11} />
+                        Email de notification prévu
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Steps */}
+                  <div
+                    className="rounded-xl p-4 mb-5"
+                    style={{ background: 'var(--bg-sink)', border: '1px solid var(--bd-def)' }}
+                  >
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-3)] font-mono mb-3">
+                      Ce qui se passe maintenant
+                    </div>
+                    <div className="space-y-3">
+                      {[
+                        { n: '1', text: "L'agent IA analyse et structure votre transcription" },
+                        { n: '2', text: 'Il rédige les 6 champs du CR (société, contact, objet…)' },
+                        { n: '3', text: crContext?.id
+                            ? 'Le CR est attaché à la fiche prospect et un email vous est envoyé'
+                            : 'Le CR est archivé dans vos comptes-rendus PortaLis' },
+                      ].map(item => (
+                        <div key={item.n} className="flex items-start gap-3">
+                          <span
+                            className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold mt-0.5"
+                            style={{ background: 'rgba(107,53,201,0.1)', border: '1px solid rgba(107,53,201,0.2)', color: '#6B35C9' }}
+                          >
+                            {item.n}
+                          </span>
+                          <span className="text-[12px] leading-relaxed" style={{ color: 'var(--tx-2)' }}>
+                            {item.text}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Context confirmation */}
+                  <div
+                    className="rounded-xl p-3.5 mb-6 flex items-center gap-3"
+                    style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)' }}
+                  >
+                    <CheckCircleIcon size={16} weight="fill" style={{ color: '#10B981', flexShrink: 0 }} />
+                    <div>
+                      <div className="text-[12px] font-semibold" style={{ color: '#065F46' }}>
+                        {crContext?.label ?? 'Sans contexte'}
+                        {crContext?.sublabel ? ` · ${crContext.sublabel}` : ''}
+                      </div>
+                      <div className="text-[11px]" style={{ color: '#10B981' }}>
+                        Transcription validée · CR en cours de rédaction par IA
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Navigation */}
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="md" onClick={() => router.back()} className="flex-1">
                       <ArrowLeftIcon size={14} /> Retour
                     </Button>
+                    {crContext?.id && (
+                      <Button
+                        variant="ghost"
+                        size="md"
+                        onClick={() => router.push(`/${locale}/page/prospects/${crContext.id}`)}
+                        className="flex-1"
+                      >
+                        <FolderSimpleIcon size={14} /> Voir le prospect
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="md"
