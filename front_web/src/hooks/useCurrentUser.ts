@@ -13,6 +13,7 @@ export function useCurrentUser() {
   return {
     user: me ? mapApiUser(me) : null,
     rawUser: me,
+    permissions: me?.permissions ?? [],
     loading,
     error,
     isLoaded: me !== null,

@@ -9,11 +9,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { GROUPES_LIST, ROLES, type User, type UserRole, type ApiUser } from '../../types/user_type';
+import { GROUPES_LIST, ROLES, type User, type UserRole, type ApiUser, Groupe } from '../../types/user_type';
 import { useInfiniteCompanies } from '@/hooks/useInfiniteCompanies';
 import { ApiCompany } from '@/types/company_type';
 import type { ApiGroup } from '@/redux/features/groups/groupsSlice';
 import Image from 'next/image';
+import { Group } from 'next/dist/shared/lib/router/utils/route-regex';
 
 export type UserFormSubmitData = Partial<User> & { company_ids: string[]; group_ids: string[]; avatar_url?: string };
 
@@ -32,7 +33,7 @@ export function UserFormModal({ mode, user, rawUser, groups, onClose, onSubmit }
   const [email, setEmail] = useState(user?.email ?? '');
   const [role, setRole] = useState<UserRole | ''>(user?.role ?? '');
   const [selectedCompanies, setSelectedCompanies] = useState<ApiCompany[]>(rawUser?.companies ?? []);
-  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(rawUser?.group_ids ?? []);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(rawUser?.groups?.map((k) => k.id) ?? []);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(rawUser?.avatar_url ?? null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const avatarInputId = useId();

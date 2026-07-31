@@ -24,8 +24,10 @@ from app.api.deps import require_permission
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
-_auth = [Depends(require_permission("app:read"))]
-
+_auth = [Depends(require_permission("notification:read"))]
+_auth_create = [Depends(require_permission("notification:create"))]
+_auth_delete = [Depends(require_permission("notification:delete"))]
+_auth_delete = [Depends(require_permission("notification:delete"))]
 
 # ── Schémas ───────────────────────────────────────────────────────────────────
 
@@ -209,7 +211,7 @@ async def notifications_stream(websocket: WebSocket, token: str | None = Query(N
 
 # ── Appareils FCM ─────────────────────────────────────────────────────────────
 
-@router.put("/devices/register", dependencies=_auth, status_code=status.HTTP_200_OK)
+@router.put("/devices/register", dependencies=_auth_create, status_code=status.HTTP_200_OK)
 async def register_device(body: RegisterDeviceIn, request: Request) -> dict:
     """Enregistre ou met à jour le token FCM de l'appareil courant."""
     from app.infrastructure.db.models.user_device import UserDeviceOrm
@@ -237,7 +239,7 @@ async def register_device(body: RegisterDeviceIn, request: Request) -> dict:
     return {"registered": True, "device_id": str(device.id)}
 
 
-@router.delete("/devices/unregister", dependencies=_auth, status_code=status.HTTP_200_OK)
+@router.delete("/devices/unregister", dependencies=_auth_delete, status_code=status.HTTP_200_OK)
 async def unregister_device(fcm_token: str = Query(...)) -> dict:
     """Supprime un token FCM (déconnexion ou changement d'appareil)."""
     from app.infrastructure.db.models.user_device import UserDeviceOrm
@@ -264,3 +266,4 @@ async def list_my_devices(request: Request) -> list[DeviceOut]:
         )
         for d in devices
     ]
+    

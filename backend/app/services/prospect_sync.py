@@ -76,15 +76,12 @@ class ProspectSyncService:
 
         # Query Odoo pour les leads correspondants
         try:
-            oc = self._get_odoo_client()
-            # Récupération via XML-RPC (synchrone, wrap dans asyncio.to_thread si besoin)
             import asyncio
-            def _fetch_all():
-                uid = oc._authenticate()
-                pwd = oc._api_key or oc._password
-                return oc._object_proxy().execute_kw(
-                    oc._db, uid, pwd, "crm.lead", "search_read",
-                [[("id", "in", odoo_ids)]],
+            oc = self._get_odoo_client()
+            odoo_leads = await asyncio.to_thread(
+                oc.execute,
+                "crm.lead", "search_read",
+                [[("id", "in", odoo_ids), ("active", "in", [True, False])]],
                 {"fields": ODOO_LEAD_FIELDS, "limit": len(odoo_ids)},
             )
 
@@ -264,17 +261,11 @@ class ProspectSyncService:
         try:
             import asyncio
             oc = self._get_odoo_client()
-            
+
             logger.info(f"[Sync] Création {lead_type} dans Odoo avec values: {values}")
-            
-            def _create_lead():
-                uid = oc._authenticate()
-                pwd = oc._api_key or oc._password
-                return oc._object_proxy().execute_kw(
-                    oc._db, uid, pwd, "crm.lead", "create", [values],
-                )
-            lead_id = await asyncio.to_thread(_create_lead)
-            
+
+            lead_id = await asyncio.to_thread(oc.execute, "crm.lead", "create", [values])
+
             type_label = "Opportunité" if lead_type == "opportunity" else "Lead"
             logger.info(f"[Sync] {type_label} Odoo créé(e) avec ID: {lead_id}")
             return lead_id

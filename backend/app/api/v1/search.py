@@ -19,7 +19,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
-from app.api.deps import CurrentCompany, get_current_user
+from app.api.deps import CurrentCompany, get_current_user, require_permission
 from app.api.v1.schemas.search import (
     CompteRenduExtra,
     OffreExtra,
@@ -60,7 +60,7 @@ _OFFER_STATUS = {
 
 # ── Endpoint ───────────────────────────────────────────────────────────────────
 
-@router.get("")
+@router.get("", dependencies=[Depends(require_permission("app:read"))])
 async def global_search(
     company: CurrentCompany,
     _user=Depends(get_current_user),

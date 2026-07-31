@@ -1,3 +1,4 @@
+import { Group } from "next/dist/shared/lib/router/utils/route-regex";
 import { ApiCompany } from "./company_type";
 
 export interface ApiUser {
@@ -7,12 +8,13 @@ export interface ApiUser {
   last_name: string;
   company_ids?: string[];
   companies: ApiCompany[];
-  group_ids?: string[];
+  groups?: Groupe[];
   is_active: boolean;
   avatar_url?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
   last_login_at?: string | null;
+  permissions?: string[];
 }
 
 // ── Palette déterministe basée sur l'id ───────────────────────────────────
@@ -38,6 +40,11 @@ export type UserStatus = "active" | "pending" | "inactive";
 export type UserRole = "DG" | "Commercial" | "DAF" | "Opérations";
 export type AccessSurface = "Mobile" | "Web" | "Mobile + Web";
 
+export type Groupe = {
+  id: string;
+  name: string;
+};
+
 export interface User {
   uid: string;
   initials: string;
@@ -45,7 +52,7 @@ export interface User {
   prenom: string;
   email: string;
   role: UserRole;
-  groupes: string[];
+  groupes: Groupe[];
   entreprises: string[];
   surface: AccessSurface;
   status: UserStatus;
@@ -135,7 +142,7 @@ export const MOCK_USERS: User[] = [
     prenom: "Hawa",
     email: "hawa@portalis.ci",
     role: "DG",
-    groupes: ["Direction", "Administration"],
+    groupes: [{id:"", name:"Direction"}, {id:"", name:"Administration"}],
     entreprises: ["Groupe Holding"],
     surface: "Mobile + Web",
     status: "active",
@@ -150,7 +157,7 @@ export const MOCK_USERS: User[] = [
     prenom: "Amadou",
     email: "amadou@portalis.sn",
     role: "Commercial",
-    groupes: ["Terrain"],
+    groupes: [{id:"", name:"Direction"}, {id:"", name:"Administration"}],
     entreprises: ["INOV Sénégal"],
     surface: "Mobile",
     status: "active",
@@ -165,7 +172,7 @@ export const MOCK_USERS: User[] = [
     prenom: "Fatou",
     email: "fatou@portalis.sn",
     role: "DAF",
-    groupes: ["Finance", "Administration"],
+    groupes: [{id:"", name:"Finance"}, {id:"", name:"Administration"}],
     entreprises: ["Groupe Holding", "INOV Sénégal"],
     surface: "Web",
     status: "active",

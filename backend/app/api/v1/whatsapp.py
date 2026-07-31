@@ -18,15 +18,15 @@ from uuid import UUID, uuid4
 
 import json
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect, status
 from pydantic import BaseModel
 
-from app.api.deps import require_permission
+from app.api.deps import CurrentUser, require_permission
 
 router = APIRouter(prefix="/whatsapp", tags=["whatsapp"])
 
-_read_deps = [Depends(require_permission("transport:read"))]
-_write_deps = [Depends(require_permission("transport:write"))]
+_read_deps   = [Depends(require_permission("messaging:read"))]
+_create_deps = [Depends(require_permission("messaging:create"))]
 
 
 # ── Schémas ───────────────────────────────────────────────────────────────────
@@ -199,7 +199,7 @@ async def get_messages(
     ]
 
 
-@router.post("/conversations/{conversation_id}/read", dependencies=_write_deps)
+@router.post("/conversations/{conversation_id}/read", dependencies=_create_deps)
 async def mark_as_read(conversation_id: UUID) -> dict:
     """Marque comme lus tous les messages entrants sans statut de livraison.
 
@@ -230,7 +230,7 @@ async def mark_as_read(conversation_id: UUID) -> dict:
     return {"updated": updated_count, "unread_count": 0}
 
 
-@router.post("/conversations/start", dependencies=_write_deps, status_code=status.HTTP_201_CREATED)
+@router.post("/conversations/start", dependencies=_create_deps, status_code=status.HTTP_201_CREATED)
 async def start_conversation(
     phone: str = Form(..., description="Numéro international sans '+', ex: 22890123456"),
     text: str | None = Form(None),
@@ -318,7 +318,7 @@ async def start_conversation(
     }
 
 
-@router.post("/conversations/{conversation_id}/reply", dependencies=_write_deps, status_code=status.HTTP_201_CREATED)
+@router.post("/conversations/{conversation_id}/reply", dependencies=_create_deps, status_code=status.HTTP_201_CREATED)
 async def reply_to_conversation(
     conversation_id: UUID,
     text: str | None = Form(None),
@@ -443,24 +443,79 @@ async def ws_stream_conversation(websocket: WebSocket, conversation_id: UUID):
 # ── SSE — Temps réel ──────────────────────────────────────────────────────────
 
 class GenerateCRIn(BaseModel):
-    extra_note_ids: list[UUID] = []   # notes existantes à combiner avec les messages
+    extra_note_ids: list[UUID] = []
 
 
-@router.post("/conversations/{conversation_id}/generate-cr", dependencies=_write_deps, status_code=status.HTTP_201_CREATED)
+async def _run_whatsapp_cr_task(
+    cr_id: UUID,
+    conversation_id: UUID,
+    content: str,
+    extra_note_ids: list[UUID] | None,
+    author_id: UUID,
+    contact_name: str | None,
+) -> None:
+    """Tâche de fond : génère le CR WhatsApp puis notifie l'auteur par email."""
+    from app.infrastructure.db.models.note import CompteRenduOrm
+    from app.infrastructure.storage.minio import StorageService
+    from app.services.compte_rendu import CompteRenduService
+    from app.services.notification_email import notify_author_cr_failed, notify_author_cr_ready
+    import logging
+    logger = logging.getLogger(__name__)
+
+    cr = await CompteRenduOrm.get_or_none(id=cr_id)
+    if not cr:
+        logger.error("whatsapp_cr_task.cr_not_found cr_id=%s", cr_id)
+        return
+
+    service = CompteRenduService()
+    await service.generate_raw_content_into(
+        cr=cr,
+        content=content,
+        extra_note_ids=extra_note_ids,
+        contact_name=contact_name,
+    )
+
+    await cr.refresh_from_db()
+
+    if cr.generation_status == "done":
+        storage = StorageService()
+        download_url = storage.get_url(cr.minio_path, expires_in=86400)
+        await notify_author_cr_ready(
+            author_id=author_id,
+            cr_id=cr_id,
+            prospect_name=contact_name,
+            download_url=download_url,
+            cr_version=cr.version,
+        )
+    else:
+        await notify_author_cr_failed(
+            author_id=author_id,
+            cr_id=cr_id,
+            prospect_name=contact_name,
+            error=cr.generation_error or "Erreur inconnue",
+        )
+
+
+@router.post(
+    "/conversations/{conversation_id}/generate-cr",
+    dependencies=_create_deps,
+    status_code=status.HTTP_202_ACCEPTED,
+)
 async def generate_cr_from_conversation(
     conversation_id: UUID,
+    current_user: CurrentUser,
+    background_tasks: BackgroundTasks,
     body: GenerateCRIn = GenerateCRIn(),
 ) -> dict:
-    """Génère un compte rendu PDF depuis les messages WhatsApp de la conversation.
+    """Lance la génération d'un compte-rendu PDF depuis les messages WhatsApp en tâche de fond.
 
-    Les messages sont traités comme des notes et passés au même outil de génération
-    que les CR de prospection. Le CR est créé sans prospection (parent_type='whatsapp')
-    et peut être associé à une prospection plus tard via PATCH /compte-rendus/{id}/link-prospect.
-
-    On peut aussi passer des note_ids de notes existantes pour les combiner avec les messages.
+    Retourne immédiatement un 202 avec l'ID du CR.
+    Pollinez GET /compte-rendus/{cr_id}/status pour suivre la progression.
+    Un email est envoyé à l'auteur quand la génération est terminée.
     """
+    from app.infrastructure.db.models.note import CompteRenduOrm
     from app.infrastructure.db.models.whatsapp import WhatsAppConversationOrm, WhatsAppMessageOrm
-    from app.services.compte_rendu import CompteRenduService
+    from app.core.config import settings as _settings
 
     conv = await WhatsAppConversationOrm.get_or_none(id=conversation_id)
     if not conv:
@@ -471,10 +526,20 @@ async def generate_cr_from_conversation(
     ).order_by("meta_timestamp")
 
     if not messages:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Aucun message dans cette conversation")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Aucun message dans cette conversation",
+        )
 
-    # Formater les messages comme des notes (même format que _format_notes_for_prompt)
-    lines = [f"Conversation WhatsApp avec {conv.contact_name or conv.wa_id}\n"]
+    contact_name = conv.contact_name or conv.wa_id
+    msg_count = len(messages)
+
+    lines = [
+        f"Titre : Compte rendu — {contact_name}",
+        f"Nombre de messages : {msg_count}",
+        f"Conversation WhatsApp avec {contact_name}",
+        "",
+    ]
     for m in messages:
         who = "Client" if m.direction == "inbound" else "Nous"
         ts = m.meta_timestamp.strftime("%d/%m/%Y %H:%M") if m.meta_timestamp else ""
@@ -485,19 +550,41 @@ async def generate_cr_from_conversation(
 
     content = "\n".join(lines)
 
-    service = CompteRenduService()
-    cr = await service.generate_from_raw_content(
-        content=content,
+    existing_count = await CompteRenduOrm.filter(
+        parent_type="whatsapp", parent_id=conversation_id
+    ).count()
+    version = existing_count + 1
+
+    cr = await CompteRenduOrm.create(
         parent_type="whatsapp",
         parent_id=conversation_id,
+        version=version,
+        status="draft",
+        generation_status="pending",
+        minio_bucket=_settings.minio_bucket,
+        minio_path=f"cr/whatsapp/{conversation_id}/pending-v{version}",
+        generated_by="ai",
+        created_by_id=current_user.id,
+    )
+
+    background_tasks.add_task(
+        _run_whatsapp_cr_task,
+        cr_id=cr.id,
+        conversation_id=conversation_id,
+        content=content,
         extra_note_ids=body.extra_note_ids or None,
+        author_id=current_user.id,
+        contact_name=contact_name,
     )
 
     return {
         "id": cr.id,
+        "parent_type": cr.parent_type,
+        "parent_id": cr.parent_id,
         "version": cr.version,
         "generation_status": cr.generation_status,
-        "minio_path": cr.minio_path,
-        "file_size": cr.file_size,
+        "contact_name": contact_name,
+        "message_count": msg_count,
         "created_at": cr.created_at,
+        "message": "Génération lancée en arrière-plan. Consultez le statut via GET /compte-rendus/{id}/status.",
     }

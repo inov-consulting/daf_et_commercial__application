@@ -16,6 +16,7 @@ import {
 import { cn } from '@/lib/utils';
 import type { ApiUser, User as UserType } from '@/types/user_type';
 import { getRoleAbbreviation } from '@/lib/roleAbbreviation';
+import { hasPermission } from '@/lib/permissions';
 import { LogoutConfirmModal } from '@/components/layout/logout-confirm-modal';
 
 type NavItem = {
@@ -26,6 +27,8 @@ type NavItem = {
   badge?: number;
   badgeDanger?: boolean;
   customBadge?: React.ReactNode;
+  /** Permission requise pour afficher ce lien (absente = toujours visible). */
+  permission?: string | string[];
 };
 
 type NavSection = { title: string; items: NavItem[] };
@@ -52,54 +55,55 @@ function buildNav(locale: string, prospectCount?: number, alerteCount?: number, 
         //     </span>
         //   ),
         // },
-        { href: `/${locale}/page/prospects`, label: 'Prospections', Icon: UserIcon, badge: prospectCount },
+        { href: `/${locale}/page/prospects`, label: 'Prospections', Icon: UserIcon, badge: prospectCount, permission: 'prospects:read' },
       ],
     },
     {
       title: 'OPÉRATIONS',
       items: [
-        { href: `/${locale}/page/messagerie`, label: 'Messagerie', Icon: ChatCircleDotsIcon, badge: unreadMessages || undefined },
+        { href: `/${locale}/page/messagerie`, label: 'Messagerie', Icon: ChatCircleDotsIcon, badge: unreadMessages || undefined, permission: 'messaging:read' },
         // { href: `/${locale}/page/documents`, label: 'Documents', Icon: FilesIcon },
-        { href: `/${locale}/page/comptes-rendus`, label: 'Comptes-rendus', Icon: FileTextIcon },
+        { href: `/${locale}/page/comptes-rendus`, label: 'Comptes-rendus', Icon: FileTextIcon, permission: 'cr:read' },
       ],
-    }, 
+    },
     {
       title: 'TRANSPORT',
       items: [
-        { href: `/${locale}/page/transport`, label: 'Envois & voyages', Icon: FolderOpenIcon },
-        { href: `/${locale}/page/offres`, label: 'Offres', Icon: DiamondIcon },
+        { href: `/${locale}/page/transport`, label: 'Envois & voyages', Icon: FolderOpenIcon, permission: 'transport:read' },
+        { href: `/${locale}/page/offres`, label: 'Offres', Icon: DiamondIcon, permission: 'transport:read' },
         {
           href: `/${locale}/page/predictions`,
           label: 'Prédictions',
           Icon: CrosshairIcon,
+          permission: 'commercial:read',
         },
       ],
     },
     {
       title: 'FINANCES',
       items: [
-        { href: `/${locale}/page/finances/dashboard-daf`, label: 'Dashboard DAF',    Icon: CurrencyCircleDollarIcon },
-        { href: `/${locale}/page/finances/tresorerie`,    label: 'Trésorerie',       Icon: BankIcon                 },
-        { href: `/${locale}/page/finances/dso-creances`,  label: 'DSO & Créances',   Icon: ReceiptIcon              },
-        { href: `/${locale}/page/finances/dettes-fournisseurs`, label: 'Dettes fournisseurs', Icon: WalletIcon              },
-        { href: `/${locale}/page/finances/alertes`, label: 'Alertes', Icon: BellIcon, badge: alerteCount, badgeDanger: true },
-        { href: `/${locale}/page/finances/reporting`,         label: 'Reporting',           Icon: ChartBarIcon            },
+        { href: `/${locale}/page/finances/dashboard-daf`, label: 'Dashboard DAF',    Icon: CurrencyCircleDollarIcon, permission: 'daf:read' },
+        { href: `/${locale}/page/finances/tresorerie`,    label: 'Trésorerie',       Icon: BankIcon,                 permission: 'daf:read' },
+        { href: `/${locale}/page/finances/dso-creances`,  label: 'DSO & Créances',   Icon: ReceiptIcon,              permission: 'daf:read' },
+        { href: `/${locale}/page/finances/dettes-fournisseurs`, label: 'Dettes fournisseurs', Icon: WalletIcon,     permission: 'daf:read' },
+        { href: `/${locale}/page/finances/alertes`, label: 'Alertes', Icon: BellIcon, badge: alerteCount, badgeDanger: true, permission: 'daf:read' },
+        { href: `/${locale}/page/finances/reporting`,         label: 'Reporting',           Icon: ChartBarIcon,     permission: 'daf:read' },
       ],
     },
     {
       title: 'RAPPORTS',
       items: [
-        { href: `/${locale}/page/analytics`, label: 'Analytics', Icon: ChartLineIcon },
+        { href: `/${locale}/page/analytics`, label: 'Analytics', Icon: ChartLineIcon, permission: 'app:read' },
         // { href: `/${locale}/page/exports`, label: 'Exports', Icon: DownloadSimpleIcon },
       ],
     },
     {
       title: 'ADMIN',
       items: [
-        { href: `/${locale}/page/utilisateurs`, label: 'Utilisateurs', Icon: UsersIcon },
-        { href: `/${locale}/page/historique`, label: 'Historique des activités', Icon: ClockCounterClockwiseIcon },
-        { href: `/${locale}/page/monitoring`, label: 'Monitoring', Icon: ActivityIcon },
-        { href: `/${locale}/page/parametres`, label: 'Paramètres', Icon: GearIcon },
+        { href: `/${locale}/page/utilisateurs`, label: 'Utilisateurs', Icon: UsersIcon, permission: 'user:read' },
+        { href: `/${locale}/page/historique`, label: 'Historique des activités', Icon: ClockCounterClockwiseIcon, permission: 'admin' },
+        { href: `/${locale}/page/monitoring`, label: 'Monitoring', Icon: ActivityIcon, permission: 'app:read' },
+        { href: `/${locale}/page/parametres`, label: 'Paramètres', Icon: GearIcon, permission: 'system:configure' },
       ],
     },
   ];
@@ -119,7 +123,12 @@ export default function Sidebar({ locale, open, onClose, user, rawUser }: Sideba
   const proposedActions  = useAppSelector(s => s.daf.proposedActions);
   const pendingCount     = proposedActions.filter(a => a.status === 'pending').length;
   const unreadMessages   = useAppSelector(s => s.whatsapp.conversations.reduce((acc, c) => acc + (c.unread_count ?? 0), 0));
-  const sections = buildNav(locale, prospectTotal || undefined, pendingCount || undefined, unreadMessages || undefined);
+  const perms = rawUser?.permissions ?? [];
+  // eslint-disable-next-line no-console
+  console.log('[sidebar debug] rawUser?.permissions =', rawUser?.permissions);
+  const sections = buildNav(locale, prospectTotal || undefined, pendingCount || undefined, unreadMessages || undefined)
+    .map(section => ({ ...section, items: section.items.filter(item => hasPermission(perms, item.permission)) }))
+    .filter(section => section.items.length > 0);
   const sidebarRef = useRef<HTMLElement>(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 const isFirstRender = useRef(true);

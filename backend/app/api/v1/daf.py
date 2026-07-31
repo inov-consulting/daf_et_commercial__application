@@ -38,8 +38,8 @@ logger = get_logger(__name__)
 
 router = APIRouter(prefix="/daf", tags=["daf-agent"])
 
-_read_deps = [Depends(require_permission("financial_ai:read"))]
-_write_deps = [Depends(require_permission("financial_ai:write"))]
+_read_deps   = [Depends(require_permission("daf:read"))]
+_create_deps = [Depends(require_permission("daf:create"))]
 
 
 # ── Helper ORM → schema ───────────────────────────────────────────────────────
@@ -123,7 +123,7 @@ async def get_agent_status(company: CurrentCompany) -> DafAgentStatusOut:
     )
 
 
-@router.post("/agent/trigger", dependencies=_write_deps, status_code=status.HTTP_202_ACCEPTED)
+@router.post("/agent/trigger", dependencies=_create_deps, status_code=status.HTTP_202_ACCEPTED)
 async def trigger_agent_cycle() -> DafTriggerOut:
     """Lance un cycle d'analyse DAF immédiatement (en arrière-plan)."""
     from app.infrastructure.scheduler.daf_scheduler import daf_scheduler
@@ -251,7 +251,7 @@ async def get_proposed_action(action_id: UUID) -> DafProposedActionOut:
     return _action_to_out(action)
 
 
-@router.post("/proposed-actions/{action_id}/approve", dependencies=_write_deps)
+@router.post("/proposed-actions/{action_id}/approve", dependencies=_create_deps)
 async def approve_action(
     action_id: UUID,
     body: DafProposedActionDecisionIn,
@@ -281,7 +281,7 @@ async def approve_action(
     return _action_to_out(action)
 
 
-@router.post("/proposed-actions/{action_id}/reject", dependencies=_write_deps)
+@router.post("/proposed-actions/{action_id}/reject", dependencies=_create_deps)
 async def reject_action(
     action_id: UUID,
     body: DafProposedActionDecisionIn,

@@ -26,8 +26,8 @@ logger = get_logger(__name__)
 
 router = APIRouter(prefix="/commercial/predictions", tags=["commercial-predictions"])
 
-_read_deps = [Depends(require_permission("prospects:read"))]
-_write_deps = [Depends(require_permission("prospects:write"))]
+_read_deps   = [Depends(require_permission("commercial:read"))]
+_create_deps = [Depends(require_permission("commercial:create"))]
 
 
 def _to_out(orm) -> PredictionOut:
@@ -76,7 +76,7 @@ async def get_prediction(prediction_id: UUID) -> PredictionOut:
     return _to_out(orm)
 
 
-@router.post("/{prediction_id}/validate", dependencies=_write_deps)
+@router.post("/{prediction_id}/validate", dependencies=_create_deps)
 async def validate_prediction(
     prediction_id: UUID,
     body: ValidateIn,
@@ -175,7 +175,7 @@ async def validate_prediction(
     )
 
 
-@router.post("/{prediction_id}/reject", dependencies=_write_deps)
+@router.post("/{prediction_id}/reject", dependencies=_create_deps)
 async def reject_prediction(
     prediction_id: UUID,
     body: RejectIn,

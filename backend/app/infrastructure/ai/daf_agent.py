@@ -9,7 +9,7 @@ Cycle d'un run :
   3. L'agent appelle ses outils : créances, dettes, DSO, trésorerie, balance âgée
   4. L'agent propose des actions via l'outil `propose_action` → DafProposedActionOrm
   5. L'agent finalise via `complete_analysis` → sauvegarde snapshot + summary
-  6. Notification des utilisateurs financial_ai:write
+  6. Notification des utilisateurs daf:create
   7. Clore le run (status=completed|failed)
 """
 
@@ -379,7 +379,7 @@ async def _persist_run_results(run_id: UUID, ctx: _RunContext) -> None:
         )
 
 
-# ── Notification des utilisateurs financial_ai:write ─────────────────────────
+# ── Notification des utilisateurs daf:create ─────────────────────────────────
 
 async def _notify_daf_users(
     run_id: UUID,
@@ -387,13 +387,13 @@ async def _notify_daf_users(
     proposed_count: int,
     trigger: str,
 ) -> None:
-    """Notifie par email tous les utilisateurs avec la permission financial_ai:write."""
+    """Notifie par email tous les utilisateurs avec la permission daf:create."""
     try:
         from app.infrastructure.auth.keycloak import KeycloakAdminClient
         from app.services.notification_email import _get_smtp_config, _send_smtp, _base_template
 
         kc = KeycloakAdminClient()
-        users = await kc.get_users_by_role("financial_ai:write")
+        users = await kc.get_users_by_role("daf:create")
         if not users:
             logger.info("daf.notify.no_financial_ai_users")
             return
@@ -458,7 +458,7 @@ async def _notify_daf_status(event: str, trigger: str | None = None) -> None:
         from app.services.notification_email import _get_smtp_config, _send_smtp, _base_template
 
         kc = KeycloakAdminClient()
-        users = await kc.get_users_by_role("financial_ai:write")
+        users = await kc.get_users_by_role("daf:create")
         if not users:
             return
 

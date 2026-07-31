@@ -419,6 +419,8 @@ class CompteRenduListItemOut(BaseModel):
     parent_id: UUID
     version: int
     status: str
+    generation_status: str = "done"
+    generation_error: str | None = None
     file_size: int | None
     download_url: str | None = None
     generated_by: str

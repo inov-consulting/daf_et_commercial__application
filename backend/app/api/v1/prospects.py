@@ -49,8 +49,9 @@ logger = get_logger(__name__)
 
 router = APIRouter(prefix="/commercial/prospects", tags=["prospects"])
 
-_prospect_deps = [Depends(require_permission("prospects:read"))]
-_prospect_write_deps = [Depends(require_permission("prospects:write"))]
+_prospect_deps        = [Depends(require_permission("prospects:read"))]
+_prospect_create_deps = [Depends(require_permission("prospects:create"))]
+_prospect_update_deps = [Depends(require_permission("prospects:update"))]
 _prospect_delete_deps = [Depends(require_permission("prospects:delete"))]
 
 
@@ -323,7 +324,7 @@ async def list_prospects(
     )
 
 
-@router.post("", dependencies=_prospect_write_deps, status_code=status.HTTP_201_CREATED)
+@router.post("", dependencies=_prospect_create_deps, status_code=status.HTTP_201_CREATED)
 async def create_prospect(
     user: CurrentUser,
     company: CurrentCompany,
@@ -450,7 +451,7 @@ async def get_prospect(
     return ProspectDetailOut(**enriched)
 
 
-@router.patch("/{prospect_id}", dependencies=_prospect_write_deps)
+@router.patch("/{prospect_id}", dependencies=_prospect_update_deps)
 async def update_prospect(
     user: CurrentUser,
     prospect_id: UUID,
@@ -560,7 +561,7 @@ async def delete_prospect(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-@router.post("/{prospect_id}/actions", dependencies=_prospect_write_deps)
+@router.post("/{prospect_id}/actions", dependencies=_prospect_create_deps)
 async def execute_action(
     user: CurrentUser,
     prospect_id: UUID,
@@ -717,7 +718,7 @@ async def trigger_sync(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-@router.post("/{prospect_id}/notes", dependencies=_prospect_write_deps)
+@router.post("/{prospect_id}/notes", dependencies=_prospect_create_deps)
 async def create_note(
     prospect_id: UUID,
     data: NoteCreate,
@@ -775,7 +776,7 @@ async def list_notes(
     return NoteListOut(items=items, total=total)
 
 
-@router.delete("/{prospect_id}/notes/{note_id}", dependencies=_prospect_write_deps)
+@router.delete("/{prospect_id}/notes/{note_id}", dependencies=_prospect_delete_deps)
 async def delete_note(
     prospect_id: UUID,
     note_id: UUID,
@@ -848,7 +849,7 @@ async def _run_cr_generation_task(
 
 @router.post(
     "/{prospect_id}/compte-rendus",
-    dependencies=_prospect_write_deps,
+    dependencies=_prospect_create_deps,
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def generate_compte_rendu(
@@ -1045,7 +1046,7 @@ async def get_compte_rendu_public_url(
     }
 
 
-@router.put("/{prospect_id}/compte-rendus/{cr_id}", dependencies=_prospect_write_deps)
+@router.put("/{prospect_id}/compte-rendus/{cr_id}", dependencies=_prospect_update_deps)
 async def update_compte_rendu(
     prospect_id: UUID,
     cr_id: UUID,

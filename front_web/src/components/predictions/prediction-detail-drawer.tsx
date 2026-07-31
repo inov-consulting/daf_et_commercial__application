@@ -410,7 +410,7 @@ export function PredictionDetailDrawer({
             <div className="space-y-1.5 text-[12px]">
               <div className="flex items-center gap-2" style={{ color: 'var(--tx-2)' }}>
                 <BuildingsIcon size={13} style={{ color: 'var(--tx-3)' }} />
-                Partenaire ID : {prediction.partner_id}
+                Partenaire : {prediction.partner_name}
               </div>
               <div className="flex items-center gap-2" style={{ color: 'var(--tx-2)' }}>
                 <CalendarIcon size={13} style={{ color: 'var(--tx-3)' }} />

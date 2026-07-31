@@ -36,8 +36,8 @@ logger = get_logger(__name__)
 
 router = APIRouter(prefix="/transport", tags=["transport"])
 
-_read_deps = [Depends(require_permission("transport:read"))]
-_write_deps = [Depends(require_permission("transport:write"))]
+_read_deps   = [Depends(require_permission("transport:read"))]
+_create_deps = [Depends(require_permission("transport:create"))]
 
 # ── Champs à lire depuis Odoo ─────────────────────────────────────────────────
 
@@ -251,7 +251,7 @@ async def get_shipment(shipment_id: int, company: CurrentCompany) -> ShipmentDet
     return detail
 
 
-@router.post("/shipments/{shipment_id}/next-step", dependencies=_write_deps)
+@router.post("/shipments/{shipment_id}/next-step", dependencies=_create_deps)
 async def shipment_next_step(
     shipment_id: int,
     body: NextStepIn,
