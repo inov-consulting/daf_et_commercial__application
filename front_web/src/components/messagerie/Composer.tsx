@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  SmileyIcon,
   PaperclipIcon,
   PaperPlaneTiltIcon,
   SpinnerGapIcon,
@@ -348,52 +347,49 @@ export function Composer({ convFirstName, sending, sendError, onSend, onTranscri
         ) : (
           /* Normal mode */
           <>
-            <button
-              className="w-7 h-7 rounded-[7px] flex items-center justify-center hover:bg-[var(--bd-def)] transition-colors"
-              title="Emoji (bientôt)"
-            >
-              <SmileyIcon size={15} className="text-[var(--tx-3)]" />
-            </button>
-            <button
-              onClick={() => fileRef.current?.click()}
-              className="w-7 h-7 rounded-[7px] flex items-center justify-center hover:bg-[var(--bd-def)] transition-colors"
-              title="Joindre un fichier"
-            >
-              <PaperclipIcon size={15} className={file ? 'text-[var(--p500)]' : 'text-[var(--tx-3)]'} />
-            </button>
-            <button
-              onClick={startRecording}
-              disabled={!!file}
-              className={cn(
-                'w-7 h-7 rounded-[7px] flex items-center justify-center transition-colors',
-                file ? 'cursor-default opacity-40' : 'hover:bg-[var(--bd-def)]',
-              )}
-              title="Enregistrer une note vocale"
-            >
-              <MicrophoneIcon size={15} className="text-[var(--tx-3)]" />
-            </button>
             <input ref={fileRef} type="file" className="hidden" onChange={handleFileChange} />
 
             {!file && (
-              <span className="ml-auto text-[10px] text-[var(--tx-3)] tabular-nums mr-2">
+              <span className="text-[10px] text-[var(--tx-3)] tabular-nums">
                 {draft.length} / 1 000
               </span>
             )}
-            {file && <span className="flex-1" />}
 
-            <button
-              onClick={handleSend}
-              disabled={!canSend}
-              className={cn(
-                'w-[30px] h-[30px] rounded-[8px] flex items-center justify-center transition-all',
-                canSend ? 'bg-[var(--p500)] hover:opacity-90 active:scale-95' : 'bg-[var(--bd-def)] cursor-default',
-              )}
-            >
-              {sending
-                ? <SpinnerGapIcon size={14} className="text-white animate-spin" />
-                : <PaperPlaneTiltIcon size={14} className={canSend ? 'text-white' : 'text-[var(--tx-3)]'} />
-              }
-            </button>
+            <span className="flex-1" />
+
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="w-7 h-7 rounded-[7px] flex items-center justify-center hover:bg-[var(--bd-def)] transition-colors"
+                title="Joindre un fichier"
+              >
+                <PaperclipIcon size={15} className={file ? 'text-[var(--p500)]' : 'text-[var(--tx-3)]'} />
+              </button>
+              <button
+                onClick={startRecording}
+                disabled={!!file}
+                className={cn(
+                  'w-7 h-7 rounded-[7px] flex items-center justify-center transition-colors',
+                  file ? 'cursor-default opacity-40' : 'hover:bg-[var(--bd-def)]',
+                )}
+                title="Enregistrer une note vocale"
+              >
+                <MicrophoneIcon size={15} className="text-[var(--tx-3)]" />
+              </button>
+              <button
+                onClick={handleSend}
+                disabled={!canSend}
+                className={cn(
+                  'w-[30px] h-[30px] rounded-[8px] flex items-center justify-center transition-all',
+                  canSend ? 'bg-[var(--p500)] hover:opacity-90 active:scale-95' : 'bg-[var(--bd-def)] cursor-default',
+                )}
+              >
+                {sending
+                  ? <SpinnerGapIcon size={14} className="text-white animate-spin" />
+                  : <PaperPlaneTiltIcon size={14} className={canSend ? 'text-white' : 'text-[var(--tx-3)]'} />
+                }
+              </button>
+            </div>
           </>
         )}
       </div>
