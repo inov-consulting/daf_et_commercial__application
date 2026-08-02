@@ -1,230 +1,203 @@
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import type { Components } from 'react-markdown';
 
-/* ── Inline renderer ──────────────────────────────────────────────────── */
+/* ── Pre-processing: fix LLM markdown formatting quirks ──────────────────── *
+ *
+ * We do NOT attempt a full markdown parser here — react-markdown handles that.
+ * These small passes only fix the specific issues caused by the LLM dropping
+ * newlines or using non-standard table formatting.
+ *
+ * ─────────────────────────────────────────────────────────────────────────── */
 
-function inlineMarkdown(text: string): React.ReactNode[] {
-  // Split on **bold**, *italic*, `code`, preserving order
-  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
-  return parts.map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**'))
-      return <strong key={i} className="font-semibold text-[var(--tx-1)]">{part.slice(2, -2)}</strong>;
-    if (part.startsWith('*') && part.endsWith('*'))
-      return <em key={i} className="italic text-[var(--tx-2)]">{part.slice(1, -1)}</em>;
-    if (part.startsWith('`') && part.endsWith('`'))
-      return <code key={i} className="font-mono text-[11px] bg-[var(--bg-sink)] px-1 py-0.5 rounded text-[var(--tx-1)]">{part.slice(1, -1)}</code>;
-    return part || null;
-  }).filter(Boolean);
+/**
+ * Expand a table section (starting with |) that may contain || row separators.
+ * "| A | B ||---|---|| C | D |"  →  ["| A | B |", "|---|---|", "| C | D |"]
+ * Parts that look like block elements (headings) are returned as-is.
+ */
+function expandTableSection(section: string): string[] {
+  return section
+    .split(/\|{2,}/)
+    .map(p => p.trim())
+    .filter(p => p !== '')
+    .map(p => {
+      if (/^#{1,6} /.test(p)) return p; // heading — leave unwrapped
+      let row = p;
+      if (!row.startsWith('|')) row = '| ' + row;
+      if (!row.endsWith('|'))   row = row + ' |';
+      return row;
+    });
 }
 
-/* ── Table renderer ───────────────────────────────────────────────────── */
-
-function parseTableRows(lines: string[]): { headers: string[]; rows: string[][] } {
-  const parsed = lines.map(l =>
-    l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim())
-  );
-  const isSeparator = (r: string[]) => r.every(c => /^[-:]+$/.test(c));
-
-  if (parsed.length >= 2 && isSeparator(parsed[1])) {
-    return { headers: parsed[0], rows: parsed.slice(2) };
-  }
-  return { headers: [], rows: parsed };
-}
-
-function renderTable(tableLines: string[], key: number): React.ReactNode {
-  const { headers, rows } = parseTableRows(tableLines);
+function preprocessMarkdown(text: string): string {
   return (
-    <div key={key} className="overflow-x-auto my-2 rounded-xl border border-[var(--bd-def)]">
-      <table className="w-full text-[11px] border-collapse">
-        {headers.length > 0 && (
-          <thead>
-            <tr className="bg-[var(--bg-sink)] border-b border-[var(--bd-def)]">
-              {headers.map((h, i) => (
-                <th key={i} className="px-3 py-2 text-left font-semibold text-[var(--tx-2)] whitespace-nowrap">
-                  {inlineMarkdown(h)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-        )}
-        <tbody className="divide-y divide-[var(--bd-def)] bg-white">
-          {rows.map((row, ri) => (
-            <tr key={ri} className="hover:bg-[var(--bg-sink)] transition-colors">
-              {row.map((cell, ci) => (
-                <td key={ci} className="px-3 py-2 text-[var(--tx-2)] align-top">
-                  {inlineMarkdown(cell)}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    text
+      // 1. Split heading embedded right after table pipe: "| data |### Section" → "| data |\n### Section"
+      .replace(/\|(\s*#{1,6} )/g, '|\n$1')
+      // 2. "---### Title" → "---\n### Title"
+      .replace(/([-]{3,})(#{1,6} )/g, '$1\n$2')
+      // 3. Mid-line heading (exclude | so table cells are not split): "text## Title" → "text\n## Title"
+      .replace(/([^#|\n])(#{2,3} )/g, '$1\n$2')
+      // 4. Inline list items: ":- item" or ")- item" → ":\n- item"
+      .replace(/([:\)])(-\s)/g, '$1\n$2')
+      // 5. Per-line: split "text :| table" and expand || row separators
+      .split('\n')
+      .flatMap(line => {
+        const trim = line.trim();
+
+        // Expand || separators within a |starting line
+        if (trim.startsWith('|') && /\|{2,}/.test(trim)) {
+          return expandTableSection(trim);
+        }
+
+        // Split "significant text :| table" → paragraph + table rows
+        if (!trim.startsWith('|') && trim.includes('|')) {
+          const firstPipe = trim.indexOf('|');
+          if (firstPipe >= 3) {
+            const before       = trim.slice(0, firstPipe).trimEnd();
+            const tableSection = trim.slice(firstPipe);
+            const rows         = expandTableSection(tableSection);
+            return before ? [before, ...rows] : rows;
+          }
+        }
+
+        return [line];
+      })
+      // 6. Cell continuation: join non-| lines to the preceding open table row.
+      //    Fixes phone numbers like "+225\n21\n25\n35\n45" streaming as separate lines.
+      .reduce((acc: string[], line) => {
+        const trim = line.trim();
+        if (!trim) { acc.push(line); return acc; }
+
+        const isBlockStart = /^(#{1,6} |\d+[.)]\s|[*\-] |```)/.test(trim);
+        const prev = acc[acc.length - 1]?.trim() ?? '';
+
+        if (
+          prev.startsWith('|') &&  // previous line is a table row
+          !prev.endsWith('|') &&   // it has no closing | (open cell)
+          !isBlockStart &&
+          !trim.startsWith('|')
+        ) {
+          acc[acc.length - 1] = acc[acc.length - 1].trimEnd() + ' ' + trim;
+          return acc;
+        }
+
+        acc.push(line);
+        return acc;
+      }, [])
+      .join('\n')
   );
 }
 
-/* ── Block types ──────────────────────────────────────────────────────── */
+/* ── Tailwind component map ───────────────────────────────────────────────── */
 
-type Block =
-  | { type: 'h1';      text: string }
-  | { type: 'h2';      text: string }
-  | { type: 'h3';      text: string }
-  | { type: 'hr' }
-  | { type: 'bullet';  items: string[] }
-  | { type: 'ordered'; items: string[] }
-  | { type: 'table';   lines: string[] }
-  | { type: 'para';    text: string }
-  | { type: 'space' };
+const mdComponents: Components = {
+  // Headings
+  h1: ({ children }) => (
+    <p className="text-[14px] font-bold text-[var(--tx-1)] mt-3 mb-1.5 leading-snug">{children}</p>
+  ),
+  h2: ({ children }) => (
+    <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--tx-3)] mt-4 mb-1.5 pb-1 border-b border-[var(--bd-def)]">{children}</p>
+  ),
+  h3: ({ children }) => (
+    <p className="text-[12px] font-semibold text-[var(--tx-1)] mt-2 mb-1">{children}</p>
+  ),
+  h4: ({ children }) => (
+    <p className="text-[11px] font-semibold text-[var(--tx-2)] mt-1.5 mb-0.5">{children}</p>
+  ),
 
-/* ── Main parser ──────────────────────────────────────────────────────── */
+  // Paragraph
+  p: ({ children }) => (
+    <p className="text-[12px] leading-relaxed text-[var(--tx-2)] mb-1">{children}</p>
+  ),
 
-function parse(text: string): Block[] {
-  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
-  const blocks: Block[] = [];
-  let i = 0;
+  // Inline
+  strong: ({ children }) => (
+    <strong className="font-semibold text-[var(--tx-1)]">{children}</strong>
+  ),
+  em: ({ children }) => (
+    <em className="italic text-[var(--tx-2)]">{children}</em>
+  ),
+  a: ({ href, children }) => (
+    <a href={href ?? '#'} target="_blank" rel="noopener noreferrer"
+       className="text-[var(--p500)] underline underline-offset-2 hover:opacity-80 transition-opacity">
+      {children}
+    </a>
+  ),
 
-  while (i < lines.length) {
-    const raw   = lines[i].trimEnd();
-    const trim  = raw.trim();
-
-    // Blank line
-    if (!trim) { blocks.push({ type: 'space' }); i++; continue; }
-
-    // Horizontal rule
-    if (/^(-{3,}|\*{3,}|_{3,})$/.test(trim)) {
-      blocks.push({ type: 'hr' }); i++; continue;
+  // Code (inline vs block detected by className presence)
+  code: ({ children, className }) => {
+    if (className) {
+      // Fenced code block content (wrapped in <pre> by react-markdown)
+      return (
+        <code className="font-mono text-[11px] text-[var(--tx-1)] whitespace-pre">{children}</code>
+      );
     }
+    // Inline code
+    return (
+      <code className="font-mono text-[11px] bg-[var(--bg-sink)] px-1 py-0.5 rounded text-[var(--tx-1)]">
+        {children}
+      </code>
+    );
+  },
+  pre: ({ children }) => (
+    <div className="my-2 rounded-lg overflow-hidden border border-[var(--bd-def)]">
+      <pre className="p-3 overflow-x-auto bg-[var(--bg-sink)]">{children}</pre>
+    </div>
+  ),
 
-    // H1
-    if (trim.startsWith('# ') && !trim.startsWith('## ')) {
-      blocks.push({ type: 'h1', text: trim.slice(2) }); i++; continue;
-    }
+  // Blockquote
+  blockquote: ({ children }) => (
+    <blockquote className="border-l-2 border-[var(--p500)] pl-3 my-1.5 text-[12px] italic text-[var(--tx-3)]">
+      {children}
+    </blockquote>
+  ),
 
-    // H2
-    if (trim.startsWith('## ') && !trim.startsWith('### ')) {
-      blocks.push({ type: 'h2', text: trim.slice(3) }); i++; continue;
-    }
+  // HR
+  hr: () => <hr className="my-3 border-[var(--bd-def)]" />,
 
-    // H3
-    if (trim.startsWith('### ')) {
-      blocks.push({ type: 'h3', text: trim.slice(4) }); i++; continue;
-    }
+  // Lists
+  ul: ({ children }) => (
+    <ul className="mb-2 ml-4 space-y-0.5 list-disc list-outside">{children}</ul>
+  ),
+  ol: ({ children }) => (
+    <ol className="mb-2 ml-4 space-y-0.5 list-decimal list-outside">{children}</ol>
+  ),
+  li: ({ children }) => (
+    <li className="text-[12px] leading-relaxed text-[var(--tx-2)] pl-0.5">{children}</li>
+  ),
 
-    // Table — collect all consecutive table lines
-    if (trim.startsWith('|')) {
-      const tableLines: string[] = [];
-      while (i < lines.length && lines[i].trim().startsWith('|')) {
-        tableLines.push(lines[i]); i++;
-      }
-      blocks.push({ type: 'table', lines: tableLines }); continue;
-    }
+  // Table (GFM)
+  table: ({ children }) => (
+    <div className="overflow-x-auto my-2 rounded-xl border border-[var(--bd-def)]">
+      <table className="w-full text-[11px] border-collapse">{children}</table>
+    </div>
+  ),
+  thead: ({ children }) => (
+    <thead className="bg-[var(--bg-sink)] border-b border-[var(--bd-def)]">{children}</thead>
+  ),
+  tbody: ({ children }) => (
+    <tbody className="divide-y divide-[var(--bd-def)]">{children}</tbody>
+  ),
+  tr: ({ children }) => (
+    <tr className="hover:bg-[var(--bg-sink)] transition-colors">{children}</tr>
+  ),
+  th: ({ children }) => (
+    <th className="px-3 py-2 text-left font-semibold text-[var(--tx-2)] whitespace-nowrap">{children}</th>
+  ),
+  td: ({ children }) => (
+    <td className="px-3 py-2 text-[var(--tx-2)] align-top">{children}</td>
+  ),
+};
 
-    // Bullet list — collect consecutive bullet items
-    if (/^[*-] /.test(raw)) {
-      const items: string[] = [];
-      while (i < lines.length && /^[*-] /.test(lines[i].trimEnd())) {
-        items.push(lines[i].trim().replace(/^[*-] /, '')); i++;
-      }
-      blocks.push({ type: 'bullet', items }); continue;
-    }
+/* ── Public API ───────────────────────────────────────────────────────────── */
 
-    // Ordered list — collect consecutive numbered items
-    if (/^\d+\.\s/.test(trim)) {
-      const items: string[] = [];
-      while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
-        items.push(lines[i].trim().replace(/^\d+\.\s+/, '')); i++;
-      }
-      blocks.push({ type: 'ordered', items }); continue;
-    }
-
-    // Paragraph
-    blocks.push({ type: 'para', text: raw }); i++;
-  }
-
-  return blocks;
-}
-
-/* ── Renderer ─────────────────────────────────────────────────────────── */
-
-export function renderMarkdown(text: string): React.ReactNode[] {
-  const blocks = parse(text);
-  const nodes: React.ReactNode[] = [];
-  let key = 0;
-
-  for (const block of blocks) {
-    switch (block.type) {
-      case 'h1':
-        nodes.push(
-          <p key={key++} className="text-[14px] font-bold text-[var(--tx-1)] mt-3 mb-1.5 leading-snug">
-            {inlineMarkdown(block.text)}
-          </p>
-        );
-        break;
-
-      case 'h2':
-        nodes.push(
-          <p key={key++} className="text-[11px] font-bold uppercase tracking-widest text-[var(--tx-3)] mt-4 mb-1.5 pb-1 border-b border-[var(--bd-def)]">
-            {inlineMarkdown(block.text)}
-          </p>
-        );
-        break;
-
-      case 'h3':
-        nodes.push(
-          <p key={key++} className="text-[12px] font-semibold text-[var(--tx-1)] mt-2 mb-1">
-            {inlineMarkdown(block.text)}
-          </p>
-        );
-        break;
-
-      case 'hr':
-        nodes.push(<hr key={key++} className="my-3 border-[var(--bd-def)]" />);
-        break;
-
-      case 'bullet':
-        nodes.push(
-          <ul key={key++} className="mb-2 ml-1 space-y-0.5">
-            {block.items.map((item, i) => (
-              <li key={i} className="flex items-start gap-1.5 text-[12px] leading-relaxed text-[var(--tx-2)]">
-                <span className="mt-[6px] w-1 h-1 rounded-full bg-[var(--tx-3)] flex-shrink-0" />
-                <span>{inlineMarkdown(item)}</span>
-              </li>
-            ))}
-          </ul>
-        );
-        break;
-
-      case 'ordered':
-        nodes.push(
-          <ol key={key++} className="mb-2 ml-1 space-y-0.5 list-none">
-            {block.items.map((item, i) => (
-              <li key={i} className="flex items-start gap-2 text-[12px] leading-relaxed text-[var(--tx-2)]">
-                <span className="mt-0.5 w-4 h-4 flex-shrink-0 rounded-full bg-[var(--bg-sink)] border border-[var(--bd-def)] flex items-center justify-center text-[9px] font-bold text-[var(--tx-3)]">
-                  {i + 1}
-                </span>
-                <span>{inlineMarkdown(item)}</span>
-              </li>
-            ))}
-          </ol>
-        );
-        break;
-
-      case 'table':
-        nodes.push(renderTable(block.lines, key++));
-        break;
-
-      case 'space':
-        nodes.push(<div key={key++} className="h-1.5" />);
-        break;
-
-      case 'para':
-        nodes.push(
-          <p key={key++} className="text-[12px] leading-relaxed text-[var(--tx-2)] mb-1">
-            {inlineMarkdown(block.text)}
-          </p>
-        );
-        break;
-    }
-  }
-
-  return nodes;
+export function renderMarkdown(text: string): React.ReactNode {
+  const processed = preprocessMarkdown(text);
+  return (
+    <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+      {processed}
+    </ReactMarkdown>
+  );
 }
