@@ -157,10 +157,14 @@ function ActiveDetail({
         style={{ background: 'linear-gradient(180deg,rgba(27,107,69,.04) 0%,transparent 100%)' }}
       >
         <div
-          className="w-14 h-14 rounded-full flex items-center justify-center font-display font-bold text-white text-xl mb-2.5 shadow-[0_2px_12px_rgba(27,107,69,.28)]"
-          style={{ background: user.bg }}
+          className="w-14 h-14 rounded-full flex items-center justify-center font-display font-bold text-white text-xl mb-2.5 shadow-[0_2px_12px_rgba(27,107,69,.28)] overflow-hidden"
+          style={{ background: user.avatar ? undefined : user.bg }}
         >
-          {user.initials}
+          {user.avatar
+            // eslint-disable-next-line @next/next/no-img-element
+            ? <img src={user.avatar} alt={user.initials} className="w-full h-full object-cover" />
+            : user.initials
+          }
         </div>
         <p className="font-display font-bold text-base text-foreground mb-0.5">
           {user.prenom} {user.nom}
@@ -305,14 +309,6 @@ function ActiveDetail({
             Désactiver le compte
           </button>
         )}
-
-        <button
-          onClick={() => { setMode('reset'); setResetSent(false); }}
-          className="w-full h-[34px] rounded-lg border border-border bg-surface text-[12px] font-display font-semibold text-foreground-2 flex items-center justify-center gap-1.5 hover:bg-surface-sink transition-colors"
-        >
-          <LockKeyIcon size={14} />
-          Réinitialiser le mot de passe
-        </button>
 
         {!isSelf && (
           <button

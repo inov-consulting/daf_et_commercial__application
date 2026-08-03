@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useAppSelector } from "@/redux/store";
 import Sidebar from "./sidebar";
 import TopBar from "./top-bar";
 import FloatingChat from "./floating-chat";
@@ -22,6 +23,7 @@ export default function DashboardShell({
   children,
 }: DashboardShellProps) {
   const pathname = usePathname();
+  const selectedCompanyId = useAppSelector(s => s.activeCompany.selectedId);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const hideFloatingChat =
     pathname === `/${locale}/page/parametres` ||
@@ -71,7 +73,7 @@ export default function DashboardShell({
           <div className="sticky top-0 z-10 bg-[var(--bg-surf)] flex-shrink-0">
             <BreadcrumbBar />
           </div>
-          <div className="flex-1 min-h-0 flex flex-col">{children}</div>
+          <div key={selectedCompanyId} className="flex-1 min-h-0 flex flex-col">{children}</div>
         </main>
       </div>
       {!hideFloatingChat && <FloatingChat user={user} rawUser={rawUser} />}

@@ -48,14 +48,13 @@ const TYPE_META: Record<SearchResultType, { label: string; color: string; bg: st
 };
 
 function navToHref(item: SearchResultItem, locale: string): string {
-  const { route, params } = item.nav;
-  const id = params.id;
-  switch (route) {
-    case 'prospects.detail':         return `/${locale}/page/prospects/${id}`;
-    case 'transport.mission.detail': return `/${locale}/page/transport/${id}`;
-    case 'offre.detail':             return `/${locale}/page/offres/${id}`;
-    case 'compte_rendu.detail':      return `/${locale}/page/comptes-rendus`;
-    default:                         return '#';
+  const id = String(item.id ?? item.nav.params?.id ?? '');
+  switch (item.type) {
+    case 'prospect':     return `/${locale}/page/prospects/${id}`;
+    case 'transport':    return `/${locale}/page/transport/${id}`;
+    case 'offre':        return `/${locale}/page/offres/${id}`;
+    case 'compte_rendu': return `/${locale}/page/comptes-rendus?cr=${id}`;
+    default:             return '#';
   }
 }
 
@@ -219,13 +218,6 @@ export function GlobalSearchBar({ mobile = false, onClose }: GlobalSearchBarProp
           >
             <XIcon size={11} weight="bold" />
           </button>
-        )}
-
-        {/* ⌘K badge — desktop only, hidden when typing */}
-        {!mobile && !query && (
-          <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-[var(--tx-3)] bg-white border border-[var(--bd-def)] rounded px-1.5 py-0.5 font-mono hidden lg:block pointer-events-none">
-            ⌘K
-          </kbd>
         )}
       </div>
 

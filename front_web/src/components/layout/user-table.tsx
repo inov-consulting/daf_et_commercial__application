@@ -227,10 +227,14 @@ function MobileUserCard({
           </div>
         ) : (
           <div
-            className="w-9 h-9 rounded-full flex items-center justify-center font-display font-bold text-white text-[13px] flex-shrink-0"
-            style={{ background: user.bg }}
+            className="w-9 h-9 rounded-full flex items-center justify-center font-display font-bold text-white text-[13px] flex-shrink-0 overflow-hidden"
+            style={{ background: user.avatar ? undefined : user.bg }}
           >
-            {user.initials}
+            {user.avatar
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img src={user.avatar} alt={user.initials} className="w-full h-full object-cover" />
+              : user.initials
+            }
           </div>
         )}
         <div className="flex-1 min-w-0">
@@ -263,17 +267,22 @@ function MobileUserCard({
         {user.entreprises.length > 0 && (
           <div>
             <span className="text-foreground-3">Entreprise</span>
-            <div className="mt-0.5 flex gap-1 flex-wrap">
-              {user.entreprises.slice(0, 2).map(e => (
+            <div className="mt-0.5 flex items-center gap-1 flex-nowrap">
+              <span
+                title={user.entreprises[0]}
+                className="font-mono inline-flex items-center pl-1.5 pr-2 py-[3px] rounded-md text-[10px] max-w-[120px]"
+                style={{ background: 'rgba(14,134,232,.06)', color: '#085499' }}
+              >
+                <span className="truncate">{user.entreprises[0]}</span>
+              </span>
+              {user.entreprises.length > 1 && (
                 <span
-                  key={e}
-                  className="font-mono text-[10px] text-foreground-2 bg-surface-sink border border-border px-2 py-[2px] rounded-md"
+                  title={user.entreprises.slice(1).join(', ')}
+                  className="inline-flex items-center justify-center h-4 min-w-[18px] px-1 rounded-full text-[9px] font-bold flex-shrink-0"
+                  style={{ background: 'rgba(14,134,232,.06)', color: '#085499', border: '1px solid rgba(14,134,232,.15)' }}
                 >
-                  {e}
+                  +{user.entreprises.length - 1}
                 </span>
-              ))}
-              {user.entreprises.length > 2 && (
-                <span className="font-mono text-[10px] text-foreground-3">+{user.entreprises.length - 2}</span>
               )}
             </div>
           </div>
@@ -281,17 +290,23 @@ function MobileUserCard({
         {user.groupes.length > 0 && (
           <div>
             <span className="text-foreground-3">Groupes</span>
-            <div className="mt-0.5 flex gap-1 flex-wrap">
-              {user.groupes.slice(0, 2).map(g => (
+            <div className="mt-0.5 flex items-center gap-1 flex-nowrap">
+              <span
+                title={user.groupes[0].name}
+                className="inline-flex items-center gap-1 pl-1.5 pr-2 py-[3px] rounded-md text-[10px] font-medium max-w-[120px]"
+                style={{ background: 'rgba(71,85,105,.07)', color: '#475569' }}
+              >
+                <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: '#94A3B8' }} />
+                <span className="truncate">{user.groupes[0].name}</span>
+              </span>
+              {user.groupes.length > 1 && (
                 <span
-                  key={g.id}
-                  className="text-[10px] font-medium text-foreground-2 bg-surface-sink border border-border px-2 py-[2px] rounded-full"
+                  title={user.groupes.slice(1).map(g => g.name).join(', ')}
+                  className="inline-flex items-center justify-center h-4 min-w-[18px] px-1 rounded-full text-[9px] font-bold flex-shrink-0"
+                  style={{ background: 'rgba(71,85,105,.07)', color: '#6B7280', border: '1px solid rgba(71,85,105,.15)' }}
                 >
-                  {g.name}
+                  +{user.groupes.length - 1}
                 </span>
-              ))}
-              {user.groupes.length > 2 && (
-                <span className="text-[10px] text-foreground-3">+{user.groupes.length - 2}</span>
               )}
             </div>
           </div>
@@ -582,41 +597,55 @@ export function UserTable({
                   <RoleBadge role={user.role} pending={user.status === 'pending'} />
                 </td>
                 {/* Groupes */}
-               
                 <td className="px-4">
-                  
                   {user.groupes.length > 0 ? (
-                    <div className="flex gap-1 flex-wrap">
-                      {user.groupes.map(g => (
+                    <div className="flex items-center gap-1 flex-nowrap">
+                      <span
+                        title={user.groupes[0].name}
+                        className="inline-flex items-center gap-1 pl-1.5 pr-2 py-[3px] rounded-md text-[11px] font-medium max-w-[120px]"
+                        style={{ background: 'rgba(71,85,105,.07)', color: '#475569' }}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#94A3B8' }} />
+                        <span className="truncate">{user.groupes[0].name}</span>
+                      </span>
+                      {user.groupes.length > 1 && (
                         <span
-                          key={g.id}
-                          className="px-2 py-[2px] rounded-full text-[11px] font-medium text-foreground-2 bg-surface-sink border border-border"
+                          title={user.groupes.slice(1).map(g => g.name).join(', ')}
+                          className="inline-flex items-center justify-center h-5 min-w-[20px] px-1 rounded-full text-[9px] font-bold flex-shrink-0"
+                          style={{ background: 'rgba(71,85,105,.07)', color: '#6B7280', border: '1px solid rgba(71,85,105,.15)' }}
                         >
-                          {g.name}
-                        </span>
-                      ))}
-                      {user.groupes.length > 2 && (
-                        <span className="px-2 py-[2px] rounded-full text-[11px] font-medium text-foreground-3 bg-surface-sink border border-border">
-                          +{user.groupes.length - 2}
+                          +{user.groupes.length - 1}
                         </span>
                       )}
                     </div>
                   ) : (
-                    <span className="text-[11px] text-foreground-3">—</span>
+                    <span className="text-[12px] text-foreground-3">—</span>
                   )}
                 </td>
                 {/* Entreprise */}
                 <td className="px-4">
-                  <div className="flex flex-col gap-[3px]">
-                    {user.entreprises.slice(0, 2).map(e => (
+                  {user.entreprises.length > 0 ? (
+                    <div className="flex items-center gap-1 flex-nowrap">
                       <span
-                        key={e}
-                        className="font-mono text-[11px] text-foreground-2 bg-surface-sink border border-border px-2 py-[2px] rounded-md whitespace-nowrap inline-block"
+                        title={user.entreprises[0]}
+                        className="font-mono inline-flex items-center pl-1.5 pr-2 py-[3px] rounded-md text-[11px] max-w-[120px]"
+                        style={{ background: 'rgba(14,134,232,.06)', color: '#085499' }}
                       >
-                        {e}
+                        <span className="truncate">{user.entreprises[0]}</span>
                       </span>
-                    ))}
-                  </div>
+                      {user.entreprises.length > 1 && (
+                        <span
+                          title={user.entreprises.slice(1).join(', ')}
+                          className="inline-flex items-center justify-center h-5 min-w-[20px] px-1 rounded-full text-[9px] font-bold flex-shrink-0"
+                          style={{ background: 'rgba(14,134,232,.06)', color: '#085499', border: '1px solid rgba(14,134,232,.15)' }}
+                        >
+                          +{user.entreprises.length - 1}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-[12px] text-foreground-3">—</span>
+                  )}
                 </td>
                 {/* Statut */}
                 <td className="px-4">

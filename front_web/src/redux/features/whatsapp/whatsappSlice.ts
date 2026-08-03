@@ -269,6 +269,7 @@ const whatsappSlice = createSlice({
   name: 'whatsapp',
   initialState,
   reducers: {
+    reset: () => initialState,
     setActiveConvId(state, action: PayloadAction<string | null>) {
       state.activeConvId = action.payload;
     },
@@ -495,5 +496,5 @@ const whatsappSlice = createSlice({
   },
 });
 
-export const { setActiveConvId, toggleConversationClosed, clearWhatsAppErrors, clearCrState, wsMessageReceived } = whatsappSlice.actions;
+export const { setActiveConvId, toggleConversationClosed, clearWhatsAppErrors, clearCrState, wsMessageReceived, reset: resetWhatsapp } = whatsappSlice.actions;
 export default whatsappSlice.reducer;

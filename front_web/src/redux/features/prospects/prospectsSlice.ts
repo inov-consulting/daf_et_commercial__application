@@ -173,6 +173,7 @@ const prospectsSlice = createSlice({
   name: 'prospects',
   initialState,
   reducers: {
+    reset: () => initialState,
     clearProspectErrors(state) {
       state.error = null;
       state.createError = null;
@@ -290,5 +291,5 @@ const prospectsSlice = createSlice({
   },
 });
 
-export const { clearProspectErrors } = prospectsSlice.actions;
+export const { clearProspectErrors, reset: resetProspects } = prospectsSlice.actions;
 export default prospectsSlice.reducer;

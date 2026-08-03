@@ -154,6 +154,42 @@ export interface CreateProspectBody {
   expected_revenue?: number;
 }
 
+export interface ProspectCompanyPayload {
+  id?: number | string;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  mobile?: string | null;
+  street?: string | null;
+  street2?: string | null;
+  city?: string | null;
+  zip?: string | null;
+  country?: string | null;
+  address?: string | null;
+  is_company?: boolean | null;
+}
+
+export interface ProspectDraftFromCompany {
+  companyName: string;
+  email: string;
+  phone: string;
+  notes: string;
+}
+
+export function buildProspectDraftFromCompany(company: ProspectCompanyPayload): ProspectDraftFromCompany {
+  const companyName = company.name?.trim() ?? '';
+  const addressParts = [company.street, company.street2, company.city, company.zip, company.country]
+    .filter((value): value is string => Boolean(value && value.trim()));
+  const address = company.address?.trim() || addressParts.join(', ');
+
+  return {
+    companyName,
+    email: company.email?.trim() ?? '',
+    phone: company.phone?.trim() || company.mobile?.trim() || '',
+    notes: address ? `Adresse: ${address}` : '',
+  };
+}
+
 export interface UpdateProspectBody extends CreateProspectBody {
   portalis_notes?: string;
 }

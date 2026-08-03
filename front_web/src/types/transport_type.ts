@@ -178,11 +178,20 @@ export interface ShipmentWorkflowHistory {
   note?: string | null;
 }
 
+export interface ShipmentWorkflowStep {
+  name: string;
+  code: string;
+  sequence: number;
+  is_current: boolean;
+}
+
 export interface ShipmentWorkflow {
   instance_id?: number;
   template?: string;
   current_step?: string;
+  current_step_id?: number;
   state?: string;
+  steps?: ShipmentWorkflowStep[];
   history?: ShipmentWorkflowHistory[];
 }
 
