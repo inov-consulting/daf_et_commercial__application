@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useMemo } from 'react';
 import {
   ArrowsClockwiseIcon, CrosshairIcon, CheckCircleIcon, XCircleIcon,
   EyeIcon, BuildingsIcon, CalendarIcon, CaretDownIcon, CaretRightIcon,
@@ -88,6 +88,11 @@ function fmtConfidence(score: number): number {
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' });
+}
+
+function textExcerpt(text: string, max = 140): string {
+  const plain = text.replace(/[*_`#>~[\]]/g, '').replace(/\s+/g, ' ').trim();
+  return plain.length <= max ? plain : plain.slice(0, max).trimEnd() + '…';
 }
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
@@ -192,8 +197,8 @@ function ActionCard({
         </div>
 
         {/* Summary */}
-        <div className="text-[12px] leading-relaxed mb-3 prose-sm">
-          {renderMarkdown(prediction.prediction_summary)}
+        <div className="text-[12px] leading-relaxed mb-3" style={{ color: 'var(--tx-2)' }}>
+          {textExcerpt(prediction.prediction_summary)}
         </div>
 
         {/* Suggested action - expandable */}
@@ -271,6 +276,14 @@ function ActionCard({
                 )}
               </span>
             )}
+            <button
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-[var(--bg-sink)]"
+              style={{ border: '1px solid var(--bd-def)', color: 'var(--tx-2)' }}
+              onClick={() => onOpenDetail(prediction)}
+            >
+              <EyeIcon size={13} />
+              Détails
+            </button>
           </div>
         ) : confirming === 'approve' ? (
           <div
@@ -414,6 +427,12 @@ export default function PredictionsPage() {
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPrediction, setSelectedPrediction] = useState<ApiPrediction | null>(null);
+
+  // Keep drawer in sync with Redux items so status updates immediately after approve/reject
+  const drawerPrediction = useMemo(
+    () => selectedPrediction ? (items.find(p => p.id === selectedPrediction.id) ?? selectedPrediction) : null,
+    [selectedPrediction, items],
+  );
 
   const load = useCallback(
     (status: StatusFilter) => {
@@ -729,9 +748,9 @@ export default function PredictionsPage() {
 
     {/* Drawer détail */}
     <PredictionDetailDrawer
-      prediction={selectedPrediction}
-      actionLoading={selectedPrediction ? !!actionLoading[selectedPrediction.id] : false}
-      actionError={selectedPrediction ? (actionError[selectedPrediction.id] ?? null) : null}
+      prediction={drawerPrediction}
+      actionLoading={drawerPrediction ? !!actionLoading[drawerPrediction.id] : false}
+      actionError={drawerPrediction ? (actionError[drawerPrediction.id] ?? null) : null}
       onClose={() => setSelectedPrediction(null)}
       onValidate={handleValidate}
       onReject={handleReject}

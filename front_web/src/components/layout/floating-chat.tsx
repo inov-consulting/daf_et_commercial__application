@@ -5,7 +5,7 @@ import {
   XIcon, PaperPlaneTiltIcon, SparkleIcon, MicrophoneIcon, StopCircleIcon,
   TrashIcon, WarningIcon,
 } from '@phosphor-icons/react';
-import { PostData } from '@/lib/ApiService';
+import { PostData, streamPost } from '@/lib/ApiService';
 import { ApiRoutes } from '@/lib/ApiRoutes';
 import { renderMarkdown } from '@/lib/renderMarkdown';
 import type { ApiUser, User } from '@/types/user_type';
@@ -17,6 +17,7 @@ interface Message {
   role: 'ai' | 'user';
   text: string;
   time: string;
+  streaming?: boolean;
 }
 
 interface FloatingChatProps {
@@ -52,9 +53,9 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
     Array.from({ length: WAVE_BARS }, () => 4),
   );
   const [apiError, setApiError]     = useState<string | null>(null);
-  const [aiThinking, setAiThinking] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const abortRef         = useRef<AbortController | null>(null);
   const audioChunksRef   = useRef<Blob[]>([]);
   const timerRef         = useRef<ReturnType<typeof setInterval> | null>(null);
   const waveTimerRef     = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -66,7 +67,7 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
     if (open && started) {
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
     }
-  }, [open, started, messages, aiThinking, inputState]);
+  }, [open, started, messages, inputState]);
 
   useEffect(() => {
     return () => {
@@ -183,32 +184,71 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
 
     setInputText('');
     setApiError(null);
+
+    const now     = Date.now();
+    const aiMsgId = now + 1;
+
     setMessages(prev => [
       ...prev,
-      { id: Date.now(), role: 'user', text, time: formatTime() },
+      { id: now,     role: 'user', text, time: formatTime() },
+      { id: aiMsgId, role: 'ai',   text: '', time: formatTime(), streaming: true },
     ]);
     setInputState('sending');
-    setAiThinking(true);
 
-    const res = await PostData<{ session_id: string; response: string; tool_used: string; turn: number }>({
-      url: ApiRoutes.CHAT_MESSAGE,
-      data: sessionId ? { session_id: sessionId, message: text } : { message: text },
-      protected: true,
-    });
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
-    setAiThinking(false);
-    setInputState('idle');
+    /* Token queue — évite le batching React 18 qui rendrait tout d'un coup */
+    const tokenQueue: string[] = [];
+    let rafId: number | null = null;
 
-    if (!res.ok || !res.data) {
-      setApiError(res.error ?? "Erreur lors de l'envoi du message.");
-      return;
+    function drain() {
+      if (tokenQueue.length === 0) { rafId = null; return; }
+      const chunk = tokenQueue.splice(0, 4).join('');
+      setMessages(prev =>
+        prev.map(m => {
+          if (m.id !== aiMsgId) return m;
+          const prev_ = m.text;
+          // Prevent "| Row A || Row B |" when two table rows arrive without \n between them
+          const sep = prev_[prev_.length - 1] === '|' && chunk.trimStart()[0] === '|' ? '\n' : '';
+          return { ...m, text: prev_ + sep + chunk };
+        }),
+      );
+      rafId = requestAnimationFrame(drain);
     }
 
-    setSessionId(res.data.session_id);
-    setMessages(prev => [
-      ...prev,
-      { id: Date.now() + 1, role: 'ai', text: res.data!.response, time: formatTime() },
-    ]);
+    await streamPost(
+      ApiRoutes.CHAT_STREAM,
+      sessionId
+        ? { session_id: sessionId, message: text, reasoning: false }
+        : { message: text, reasoning: false },
+      controller.signal,
+      (token) => {
+        const sessionMatch = token.match(/^\[SESSION:(.+)\]$/);
+        if (sessionMatch) { setSessionId(sessionMatch[1]); return; }
+        tokenQueue.push(token);
+        if (!rafId) rafId = requestAnimationFrame(drain);
+      },
+      () => {
+        if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+        const remaining = tokenQueue.splice(0).join('');
+        setMessages(prev =>
+          prev.map(m => m.id === aiMsgId
+            ? { ...m, text: m.text + remaining, streaming: false }
+            : m,
+          ),
+        );
+        setInputState('idle');
+      },
+      (err) => {
+        if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+        tokenQueue.length = 0;
+        setApiError(err);
+        setMessages(prev => prev.filter(m => m.id !== aiMsgId));
+        setInputState('idle');
+      },
+    );
   }, [inputText, inputState, sessionId]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -354,7 +394,12 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
                       }}
                     >
                       <div className="text-xs sm:text-sm text-[var(--tx-1)] leading-relaxed break-words">
-                        {renderMarkdown(msg.text)}
+                        {msg.streaming ? (
+                          <>
+                            {renderMarkdown(msg.text || '​')}
+                            <span className="inline-block w-[2px] h-[14px] bg-[var(--tx-2)] ml-0.5 align-middle animate-pulse rounded-sm" />
+                          </>
+                        ) : renderMarkdown(msg.text)}
                       </div>
                     </div>
                     <p className="text-[9px] sm:text-[10px] text-[var(--tx-3)] mt-1 ml-1">{msg.time}</p>
@@ -379,26 +424,6 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
                   </div>
                 </div>
               ))}
-
-              {/* Thinking dots */}
-              {aiThinking && (
-                <div className="flex items-start gap-2 sm:gap-3">
-                  <div
-                    className="w-6 h-6 sm:w-7 sm:h-7 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5"
-                    style={{ background: 'var(--grad)' }}
-                  >
-                    <span className="text-white text-[10px] sm:text-xs leading-none">✦</span>
-                  </div>
-                  <div
-                    className="rounded-2xl rounded-tl-sm px-3 sm:px-4 py-2.5 sm:py-3 flex items-center gap-1.5"
-                    style={{ background: 'rgba(255,255,255,0.75)', border: '1px solid rgba(0,0,0,0.07)' }}
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--tx-3)] animate-bounce [animation-delay:0ms]" />
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--tx-3)] animate-bounce [animation-delay:150ms]" />
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--tx-3)] animate-bounce [animation-delay:300ms]" />
-                  </div>
-                </div>
-              )}
 
               {/* Error */}
               {apiError && (

@@ -41,6 +41,7 @@ export const ApiRoutes = {
 
   // ── Chat & Vocal ─────────────────────────────────────────────────
   CHAT_MESSAGE:     `${BASE}/api/v1/chat`,
+  CHAT_STREAM:      `${BASE}/api/v1/chat/stream`,
   VOCAL_TRANSCRIBE: `${BASE}/api/v1/chat/transcribe`,
 
   // ── Prospects ────────────────────────────────────────────────────

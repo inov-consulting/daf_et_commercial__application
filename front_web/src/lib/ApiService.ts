@@ -209,3 +209,62 @@ export function DeleteData<TData = unknown>(
 ): Promise<ApiResponse<TData>> {
   return request<TData>("DELETE", opts);
 }
+
+/* ── SSE streaming POST ──────────────────────────────────────────────── */
+
+export async function streamPost(
+  url: string,
+  body: Record<string, unknown>,
+  signal: AbortSignal | undefined,
+  onChunk: (token: string) => void,
+  onDone: () => void,
+  onError: (err: string) => void,
+): Promise<void> {
+  const token = await ensureFreshToken(30);
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (_companyId) headers['X-Company-Id'] = _companyId;
+
+  try {
+    const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal });
+    if (!res.ok || !res.body) { onError(`Erreur ${res.status}`); return; }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+      for (const line of lines) {
+        const trimmed = line.trimEnd(); // strip \r on Windows-style line endings
+
+        if (!trimmed) continue; // blank = SSE event delimiter
+
+        if (trimmed.startsWith('data: ') || trimmed === 'data:') {
+          const data = trimmed.startsWith('data: ') ? trimmed.slice(6) : '';
+          if (data === '[DONE]') { onDone(); return; }
+          // empty data line = newline token sent by the server
+          onChunk(data === '' ? '\n' : data);
+        } else if (
+          !trimmed.startsWith('event:') &&
+          !trimmed.startsWith('id:') &&
+          !trimmed.startsWith('retry:') &&
+          !trimmed.startsWith(':')
+        ) {
+          // Continuation line: the previous token contained a literal \n,
+          // which split the SSE line into multiple parts — only the first
+          // carried the "data:" prefix. Treat the rest as "\n + content".
+          onChunk('\n' + trimmed);
+        }
+      }
+    }
+    onDone();
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') return;
+    onError('Erreur de connexion au serveur.');
+  }
+}

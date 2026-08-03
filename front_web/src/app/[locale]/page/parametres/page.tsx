@@ -46,21 +46,21 @@ const tabs: {
     label: "Paramètres systèmes",
     icon: <QuestionIcon size={16} weight="bold" />,
   },
-  {
-    id: "notifs",
-    label: "Notifications",
-    icon: <BellIcon size={16} weight="bold" />,
-  },
-  {
-    id: "integ",
-    label: "Intégrations",
-    icon: <PlugIcon size={16} weight="bold" />,
-  },
-  {
-    id: "billing",
-    label: "Facturation",
-    icon: <CreditCardIcon size={16} weight="bold" />,
-  },
+  // {
+  //   id: "notifs",
+  //   label: "Notifications",
+  //   icon: <BellIcon size={16} weight="bold" />,
+  // },
+  // {
+  //   id: "integ",
+  //   label: "Intégrations",
+  //   icon: <PlugIcon size={16} weight="bold" />,
+  // },
+  // {
+  //   id: "billing",
+  //   label: "Facturation",
+  //   icon: <CreditCardIcon size={16} weight="bold" />,
+  // },
 ];
 
 // Configuration des toasts selon le type

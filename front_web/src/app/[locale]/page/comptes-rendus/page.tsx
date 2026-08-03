@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
   MicrophoneIcon, MagnifyingGlassIcon, DownloadSimpleIcon,
   ClockIcon, FileTextIcon, WarningIcon,
   CircleNotchIcon, ShareNetworkIcon, CheckIcon,
   WhatsappLogoIcon, LinkIcon,
-  XIcon,
+  XIcon, HourglassIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { GetData } from '@/lib/ApiService';
@@ -18,7 +18,7 @@ import {
   setParentType,
   setOffset,
 } from '@/redux/features/compte-rendus/compteRendusSlice';
-import { type GlobalCR, type GlobalCRDetail } from '@/types/prospect_note_type';
+import { type GlobalCR, type GlobalCRDetail, type CRStatusResponse } from '@/types/prospect_note_type';
 import CRDetailDrawer from '@/components/layout/cr-detail-drawer';
 
 /* ── Status config ──────────────────────────────────────────────── */
@@ -90,6 +90,58 @@ export default function ComptesRendusPage() {
   const [downloading, setDownloading] = useState<string | null>(null);
   const [shareOpenId, setShareOpenId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  /* ── Processing override local (l'API renvoie draft même si génération en cours) ── */
+  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
+  const pollingRefs = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
+
+  const startCRPolling = useCallback((crId: string) => {
+    if (pollingRefs.current.has(crId)) return;
+    const interval = setInterval(async () => {
+      const res = await GetData<CRStatusResponse>({
+        url: ApiRoutes.COMPTE_RENDU_STATUS(crId),
+        protected: true,
+      });
+      if (!res.ok || !res.data) return;
+      const { generation_status } = res.data;
+      if (generation_status === 'done' || generation_status === 'failed') {
+        clearInterval(pollingRefs.current.get(crId));
+        pollingRefs.current.delete(crId);
+        setProcessingIds(prev => { const next = new Set(prev); next.delete(crId); return next; });
+        if (generation_status === 'done') {
+          dispatch(fetchCompteRendus({ parentType, limit, offset }));
+        }
+      }
+    }, 3000);
+    pollingRefs.current.set(crId, interval);
+  }, [dispatch, parentType, limit, offset]);
+
+  /* Vérifie les CRs draft au chargement pour détecter ceux en cours de génération */
+  useEffect(() => {
+    if (loading) return;
+    items.filter(cr => cr.status === 'draft').forEach(async cr => {
+      const res = await GetData<CRStatusResponse>({
+        url: ApiRoutes.COMPTE_RENDU_STATUS(cr.id),
+        protected: true,
+      });
+      if (!res.ok || !res.data) return;
+      const { generation_status } = res.data;
+      if (generation_status === 'pending' || generation_status === 'running') {
+        setProcessingIds(prev => new Set([...Array.from(prev), cr.id]));
+        startCRPolling(cr.id);
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, loading]);
+
+  /* Cleanup polling on unmount */
+  useEffect(() => {
+    const refs = pollingRefs.current;
+    return () => {
+      refs.forEach(interval => clearInterval(interval));
+      refs.clear();
+    };
+  }, []);
 
   /* Ferme le popover de partage au clic extérieur */
   useEffect(() => {
@@ -200,6 +252,10 @@ export default function ComptesRendusPage() {
 
   return (
     <div className="p-4 sm:p-7 pb-16">
+      <style>{`
+        @keyframes cr-hourglass { 0%{transform:rotate(0deg)} 50%{transform:rotate(180deg)} 100%{transform:rotate(360deg)} }
+        .cr-hourglass { animation: cr-hourglass 2s ease-in-out infinite; display:inline-block; }
+      `}</style>
 
       {/* ── Header ──────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
@@ -264,7 +320,7 @@ export default function ComptesRendusPage() {
           >
             <option value="">Tous les parents</option>
             <option value="prospect">Prospects</option>
-            <option value="service">Services</option>
+            <option value="whatsapp">Whatsapp</option>
           </select>
 
           {/* Search */}
@@ -330,7 +386,8 @@ export default function ComptesRendusPage() {
           </div>
         ) : (
           filtered.map((cr, idx) => {
-            const s = STATUS_CFG[cr.status] ?? FALLBACK_STATUS;
+            const effectiveStatus = processingIds.has(cr.id) ? 'processing' : cr.status;
+            const s = STATUS_CFG[effectiveStatus] ?? FALLBACK_STATUS;
             const name = displayName(cr);
             return (
               <div
@@ -357,8 +414,12 @@ export default function ComptesRendusPage() {
                       <span className="text-[11px] text-[var(--tx-3)] capitalize">{cr.parent_type}</span>
                       <span className="text-[var(--tx-3)] opacity-40 text-[10px]">·</span>
                       <span className="text-[11px] font-mono text-[var(--tx-3)]">v{cr.version + 1}</span>
-                      <span className="text-[var(--tx-3)] opacity-40 text-[10px]">·</span>
-                      <span className="text-[11px] text-[var(--tx-3)]">{cr.note_ids === null ? 0 : cr.note_ids.length} note{cr.note_ids !== null && cr.note_ids.length > 1 ? 's' : ''}</span>
+                      {cr.parent_type !== 'whatsapp' && (
+                        <>
+                          <span className="text-[var(--tx-3)] opacity-40 text-[10px]">·</span>
+                          <span className="text-[11px] text-[var(--tx-3)]">{cr.note_ids === null ? 0 : cr.note_ids.length} note{cr.note_ids !== null && cr.note_ids.length > 1 ? 's' : ''}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -388,13 +449,17 @@ export default function ComptesRendusPage() {
                     className="inline-flex items-center gap-1.5 px-2 py-[3px] rounded-full text-[10px] font-bold w-fit"
                     style={{ background: s.bg, color: s.text, border: `1px solid ${s.border}` }}
                   >
-                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: s.dot }} />
+                    {effectiveStatus === 'processing'
+                      ? <HourglassIcon size={10} className="cr-hourglass flex-shrink-0" />
+                      : <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: s.dot }} />
+                    }
                     {s.label}
                   </span>
                 </div>
 
                 {/* Actions */}
                 <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                  {effectiveStatus !== 'processing' && (
                   <button
                     type="button"
                     title="Télécharger le PDF"
@@ -407,8 +472,9 @@ export default function ComptesRendusPage() {
                       : <DownloadSimpleIcon size={13} />
                     }
                   </button>
+                  )}
                   {/* Bouton partage + popover */}
-                  <div className="relative" data-share-popover>
+                  {effectiveStatus !== 'processing' && <div className="relative" data-share-popover>
                     <button
                       type="button"
                       onClick={() => setShareOpenId(shareOpenId === cr.id ? null : cr.id)}
@@ -452,7 +518,7 @@ export default function ComptesRendusPage() {
                         </button>
                       </div>
                     )}
-                  </div>
+                  </div>}
                 </div>
               </div>
             );
