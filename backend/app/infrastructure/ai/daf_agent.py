@@ -156,6 +156,7 @@ def _build_tools_for_run(ctx: _RunContext, erp_id: int | None = None) -> list:
         """Calcule le DSO (Days Sales Outstanding) sur 90 jours."""
         data = await _calculate_dso(period_days=90, erp_id=erp_id)
         ctx.snapshot_data["dso_days"] = data["dso_days"]
+        ctx.snapshot_data["ca_period"] = data["ca_period"]
         ctx.log_event("analysis", f"DSO : {data['dso_days']} jours (CA 90j : {data['ca_period']:,.0f} XOF)", data)
         return str(data)
 

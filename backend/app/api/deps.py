@@ -86,6 +86,7 @@ async def get_current_user(
 
     # Auto-provisioning : cherche en DB, crée si absent (premier accès)
     company_ids: list[UUID] = []
+    avatar_url: str | None = None
     try:
         local_user = await user_repo.get_by_id(user_id)
         if local_user is None:
@@ -94,6 +95,7 @@ async def get_current_user(
             )
             logger.info("Utilisateur auto-provisionné en DB : sub=%s", keycloak_sub)
         company_ids = local_user.company_ids
+        avatar_url = local_user.avatar_url
     except Exception:
         logger.warning("DB indisponible, auto-provisioning ignoré pour sub=%s", keycloak_sub)
 
@@ -103,6 +105,7 @@ async def get_current_user(
         email=email,
         first_name=first_name,
         last_name=last_name,
+        avatar_url=avatar_url,
     )
 
 

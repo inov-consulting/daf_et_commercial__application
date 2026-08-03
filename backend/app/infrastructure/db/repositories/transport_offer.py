@@ -12,6 +12,7 @@ def _to_domain(orm: TransportOfferOrm) -> TransportOffer:
         id=orm.id,
         session_id=orm.session_id,
         user_id=orm.user_id,
+        company_id=orm.company_id,
         status=orm.status,  # type: ignore[arg-type]
         collected_data=orm.collected_data or {},
         document_markdown=orm.document_markdown,
