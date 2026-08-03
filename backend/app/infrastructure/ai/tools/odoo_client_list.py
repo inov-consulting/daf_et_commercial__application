@@ -44,7 +44,7 @@ async def list_odoo_clients(
 
     fields = [
         "id", "name", "is_company",
-        "email", "phone", "mobile",
+        "email", "phone",
         "street", "street2", "city", "zip", "country_id",
     ]
 
@@ -77,7 +77,6 @@ async def list_odoo_clients(
             "is_company": bool(p.get("is_company")),
             "email": p.get("email") or None,
             "phone": p.get("phone") or None,
-            "mobile": p.get("mobile") or None,
             "street": street or None,
             "street2": street2 or None,
             "city": city or None,
