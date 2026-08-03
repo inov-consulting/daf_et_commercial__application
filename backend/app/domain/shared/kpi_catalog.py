@@ -118,6 +118,14 @@ _CATALOG: list[KpiDefinition] = [
         description="Liste détaillée des factures clients en retard de paiement : client, montant, date facture, échéance et jours de retard.",
         unit="XOF",
     ),
+    KpiDefinition(
+        key="daf_ca_evolution",
+        label="Évolution du chiffre d'affaires (DAF)",
+        category="Finance DAF",
+        source="portalis",
+        description="CA facturé (account.move) calculé par l'agent DAF pour cette entreprise. Filtré par entreprise Odoo.",
+        unit="XOF",
+    ),
     # ── Finance & Transport ──────────────────────────────────────────────────
     KpiDefinition(
         key="ca_mois",

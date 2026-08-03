@@ -37,6 +37,7 @@ async def chat(payload: ChatRequest) -> ChatResponse:
         result = await run_chat_session(
             message=payload.message,
             session_id=payload.session_id,
+            erp_id=payload.erp_company_id,
         )
         return ChatResponse(
             session_id=result.session_id,
@@ -83,6 +84,7 @@ async def chat_stream(payload: ChatRequest) -> StreamingResponse:
             message=payload.message,
             session_id=payload.session_id,
             reasoning=payload.reasoning,
+            erp_id=payload.erp_company_id,
         ):
             yield f"data: {token}\n\n".encode()
         yield b"data: [DONE]\n\n"

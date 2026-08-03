@@ -13,7 +13,8 @@ class TransportOffer:
     id: UUID
     session_id: UUID
     user_id: UUID | None
-    status: OfferStatus
+    company_id: UUID | None = None
+    status: OfferStatus = "draft"
     collected_data: dict = field(default_factory=dict)
     document_markdown: str | None = None
     document_generated_at: datetime | None = None

@@ -99,6 +99,23 @@ FORMATAGE:
 - Montants: 15 000 €
 - Concis mais informatif"""
 
+_COMPANY_FILTER_BLOCK = """
+⚠️ CONTEXTE MULTI-SOCIÉTÉ — RÈGLE ABSOLUE:
+- Tu travailles EXCLUSIVEMENT dans le contexte de l'entreprise Odoo company_id = {erp_id}
+- CHAQUE appel Odoo (odoo__search_records, odoo__aggregate_records, odoo__get_record, etc.) DOIT inclure le filtre ["company_id", "=", {erp_id}]
+- Ne retourne JAMAIS de données appartenant à d'autres entreprises
+- Exemples corrects :
+    odoo__search_records("account.move", [["company_id","=",{erp_id}],["move_type","=","out_invoice"]], ...)
+    odoo__search_records("sale.order", [["company_id","=",{erp_id}],["state","=","sale"]], ...)
+    odoo__search_records("crm.lead", [["company_id","=",{erp_id}]], ...)"""
+
+
+def _build_prompt(erp_id: int | None = None) -> str:
+    """Construit le system prompt avec le filtre company si erp_id fourni."""
+    if erp_id is None:
+        return SYSTEM_PROMPT
+    return SYSTEM_PROMPT + _COMPANY_FILTER_BLOCK.format(erp_id=erp_id)
+
 
 @dataclass
 class ChatResult:
@@ -229,6 +246,7 @@ def _extract_metadata(messages: list) -> tuple[str | None, int]:
 async def run_chat_session(
     message: str,
     session_id: UUID | None = None,
+    erp_id: int | None = None,
 ) -> ChatResult:
     """Exécute un message dans une session et retourne le résultat structuré."""
     if session_id is None:
@@ -242,7 +260,7 @@ async def run_chat_session(
     agent = create_react_agent(
         model=llm,
         tools=tools,
-        prompt=SYSTEM_PROMPT,
+        prompt=_build_prompt(erp_id),
         checkpointer=_checkpointer,
         pre_model_hook=_trim_hook,
     )
@@ -260,6 +278,7 @@ async def stream_chat_session(
     message: str,
     session_id: UUID | None = None,
     reasoning: bool = False,
+    erp_id: int | None = None,
 ) -> AsyncIterator[str]:
     """Stream les tokens d'une session. Le dernier token est [SESSION:{uuid}].
     
@@ -278,9 +297,10 @@ async def stream_chat_session(
     tools = await _get_all_tools()
     
     # Prompt modifié pour le raisonnement si demandé
-    prompt = SYSTEM_PROMPT
+    base_prompt = _build_prompt(erp_id)
+    prompt = base_prompt
     if reasoning:
-        prompt = f"{SYSTEM_PROMPT}\n\nRAISONNEMENT: Pense étape par étape. Montre ton raisonnement avant de répondre."
+        prompt = f"{base_prompt}\n\nRAISONNEMENT: Pense étape par étape. Montre ton raisonnement avant de répondre."
 
     agent = create_react_agent(
         model=llm,
