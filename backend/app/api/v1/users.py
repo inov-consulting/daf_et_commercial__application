@@ -197,6 +197,39 @@ async def set_user_status(
     return UserOut.from_domain(user, companies=companies, groups=[GroupOut(id=g["id"], name=g.get("name", "")) for g in kc_groups])
 
 
+@router.delete(
+    "/{user_id}/avatar",
+    dependencies=[Depends(require_permission("user:update"))],
+)
+async def delete_user_avatar(
+    user_id: UUID,
+    user_repo: UserRepoDep,
+) -> UserOut:
+    user = await user_repo.get_by_id(user_id)
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Utilisateur introuvable")
+
+
+    user.avatar_url = ""
+    user = await user_repo.update(user)
+    kc = KeycloakAdminClient()
+    kc_user = await kc.get_user_by_id(str(user_id))
+    if kc_user:
+        user.email = kc_user.get("email", "")
+        user.first_name = kc_user.get("firstName", "")
+        user.last_name = kc_user.get("lastName", "")
+
+    companies: list[CompanyOut] = []
+    for cid in user.company_ids:
+        c = await company_repo.get_by_id(cid)
+        if c:
+            companies.append(CompanyOut.from_domain(c))
+
+    kc_groups = await kc.get_user_groups(str(user_id))
+    
+    return UserOut.from_domain(user, companies=companies, groups=[GroupOut(id=g["id"], name=g.get("name", "")) for g in kc_groups])
+
+
 @router.post(
     "/{user_id}/avatar",
     dependencies=[Depends(require_permission("user:update"))],
@@ -368,3 +401,4 @@ async def change_my_password(
         password=payload.new_password,
         temporary=False,
     )
+
