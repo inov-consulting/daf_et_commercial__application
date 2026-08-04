@@ -46,21 +46,21 @@ export function ProfilTab({ showToast }: ProfilTabProps) {
         </div>
 
         {/* Séparateur */}
-        <div className="flex items-center gap-3">
+        {/* <div className="flex items-center gap-3">
           <div className="h-px flex-1 bg-[#EEF2F7]" />
           <span className="text-[9px] font-bold uppercase tracking-[.1em] text-[#9EB0C4]">
             Informations entreprise
           </span>
           <div className="h-px flex-1 bg-[#EEF2F7]" />
-        </div>
+        </div> */}
 
         {/* Sections informations entreprise */}
-        <IdentiteVisuelle showToast={showToast} />
+        {/* <IdentiteVisuelle showToast={showToast} />
         <InformationsGenerales />
         <InformationsLegales />
         <Adresse />
         <Coordonnees />
-        <Responsables />
+        <Responsables /> */}
       </div>
       
       {/* Sidebar - Préférences régionales */}

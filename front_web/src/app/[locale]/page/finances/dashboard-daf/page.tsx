@@ -79,9 +79,9 @@ function swapCritiqueBasse(kpi: KpiItem): KpiItem {
 
 const KPI_MOCK: FinKpi[] = [
   {
-    label: "Chiffre d'affaires · Juin",
-    value: "127,4M FCFA",
-    sub: "vs 113,9M en mai",
+    label: `Chiffre d'affaires · ${FR_MONTHS_ABBR[new Date().getMonth()]}`,
+    value: "—",
+    sub: `Données en cours de chargement…`,
     trend: "up",
     trendVal: "+18%",
     accent: "success",
@@ -134,9 +134,9 @@ function snapshotToKpis(snap: DafSnapshot): FinKpi[] {
   const dsoOver = snap.dso_days - 45;
   return [
     {
-      label: "Chiffre d'affaires · Juin",
-      value: "127,4M FCFA",
-      sub: "vs 113,9M en mai — estimation",
+      label: `Chiffre d'affaires · ${FR_MONTHS_ABBR[new Date().getMonth()]}`,
+      value: "—",
+      sub: `en ${FR_MONTHS_ABBR[(new Date().getMonth() + 11) % 12]} — estimation`,
       trend: "up",
       trendVal: "+18%",
       accent: "success",

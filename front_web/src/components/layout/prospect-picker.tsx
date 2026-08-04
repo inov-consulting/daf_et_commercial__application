@@ -112,7 +112,7 @@ export function ProspectPicker({ initialType, onSelect, onSkip }: ProspectPicker
         )}
         <div>
           <h2 className="font-display text-[16px] font-bold text-[var(--tx-1)]">
-            {step === 'type' ? 'Type de compte-rendu' : 'Choisissez le prospect'}
+            {step === 'type' ? 'Type de compte-rendu' : 'Choisissez la prospection'}
           </h2>
           <p className="text-[11px] text-[var(--tx-3)] mt-0.5">
             {step === 'type'

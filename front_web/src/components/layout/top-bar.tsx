@@ -74,6 +74,7 @@ export default function TopBar({ onToggleSidebar, user, rawUser }: TopBarProps) 
   const initials = user?.initials ||
     `${rawUser?.first_name?.[0] ?? ''}${rawUser?.last_name?.[0] ?? ''}`.toUpperCase() ||
     '?';
+  const avatarSrc = user?.avatar ?? rawUser?.avatar_url ?? null;
   const fullName = (user?.prenom || user?.nom)
     ? `${user.prenom} ${user.nom}`.trim()
     : rawUser?.email?.split('@')[0] ?? 'Utilisateur';
@@ -218,10 +219,13 @@ export default function TopBar({ onToggleSidebar, user, rawUser }: TopBarProps) 
               className="flex items-center gap-1.5 sm:gap-2 h-9 pl-1 pr-2 sm:pr-2.5 rounded-lg hover:bg-[var(--bg-sink)] transition-colors"
             >
               <div
-                className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ background: 'var(--grad)' }}
+                className="relative w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden"
+                style={{ background: avatarSrc ? undefined : 'var(--grad)' }}
               >
-                <span className="text-white text-[10px] sm:text-xs font-bold">{initials}</span>
+                {avatarSrc
+                  ? <Image src={avatarSrc} alt={initials} fill className="object-cover" unoptimized />
+                  : <span className="text-white text-[10px] sm:text-xs font-bold">{initials}</span>
+                }
               </div>
               <span className="text-sm font-medium text-[var(--tx-1)] hidden sm:block max-w-[80px] md:max-w-[120px] truncate">
                 {fullName}

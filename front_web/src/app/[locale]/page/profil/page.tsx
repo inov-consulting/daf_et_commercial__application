@@ -2,13 +2,15 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
-  CameraIcon, LockSimpleIcon, InfoIcon,
+  CameraIcon, TrashIcon, LockSimpleIcon, InfoIcon,
   CheckIcon, CircleNotchIcon, EyeIcon, EyeSlashIcon,
 } from '@phosphor-icons/react';
 import { useAppDispatch, useAppSelector } from '@/redux/store';
 import { fetchMe, changePassword, clearChangePasswordError } from '@/redux/features/me/meSlice';
 import { updateUser, uploadAvatar } from '@/redux/features/users/usersSlice';
 import { fetchCompanies } from '@/redux/features/companies/companiesSlice';
+import { DeleteData } from '@/lib/ApiService';
+import { ApiRoutes } from '@/lib/ApiRoutes';
 import { cn } from '@/lib/utils';
 import { ImageCropModal } from '@/components/ui/image-crop-modal';
 
@@ -47,6 +49,7 @@ export default function ProfilPage() {
   const [nom, setNom]       = useState('');
   const [selectedCompanyIds, setSelectedCompanyIds] = useState<string[]>([]);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarDeleted, setAvatarDeleted] = useState(false);
   const [cropSrc,    setCropSrc]    = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
@@ -95,6 +98,7 @@ export default function ProfilPage() {
       prenom !== (me.first_name ?? '') ||
       nom    !== (me.last_name  ?? '') ||
       avatarPreview !== null ||
+      avatarDeleted ||
       companiesChanged
     );
   const isValid = (prenom.trim() + nom.trim()).length >= 1;
@@ -108,7 +112,13 @@ export default function ProfilPage() {
   async function handleSave() {
     if (!me || !isDirty || !isValid || updating || uploadingAvatar) return;
 
-    // 1. Upload avatar si changé
+    // 1. Supprimer l'avatar si marqué pour suppression
+    if (avatarDeleted) {
+      await DeleteData({ url: ApiRoutes.USERS_AVATAR(me.id), protected: true });
+      setAvatarDeleted(false);
+    }
+
+    // 2. Upload avatar si changé
     if (avatarPreview) {
       const file = dataUrlToFile(avatarPreview, 'avatar.png');
       const avatarResult = await dispatch(uploadAvatar({ id: me.id, file }));
@@ -150,11 +160,23 @@ export default function ProfilPage() {
     setNom(me.last_name ?? '');
     setSelectedCompanyIds(me.companies?.map(c => c.id) ?? me.company_ids ?? []);
     setAvatarPreview(null);
+    setAvatarDeleted(false);
+  }
+
+  function handleDeleteAvatar() {
+    if (avatarPreview) {
+      // Annuler la nouvelle photo choisie, sans toucher à l'avatar serveur
+      setAvatarPreview(null);
+    } else if (me?.avatar_url) {
+      // Marquer l'avatar existant pour suppression à l'enregistrement
+      setAvatarDeleted(true);
+    }
   }
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setAvatarDeleted(false); // Sélectionner une nouvelle photo annule la suppression en attente
     const reader = new FileReader();
     reader.onload = () => setCropSrc(reader.result as string);
     reader.readAsDataURL(file);
@@ -214,13 +236,14 @@ export default function ProfilPage() {
           <div className="relative w-[88px] h-[88px] mb-4">
             <div
               className="w-full h-full rounded-full flex items-center justify-center overflow-hidden text-white font-bold text-[30px] select-none"
-              style={{ background: avatarSrc ? 'transparent' : 'var(--grad)' }}
+              style={{ background: (avatarSrc && !avatarDeleted) ? 'transparent' : 'var(--grad)' }}
             >
-              {avatarSrc ? (
+              {(avatarSrc && !avatarDeleted) ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={avatarSrc} alt="Photo de profil" className="w-full h-full object-cover rounded-full" />
               ) : avatarText}
             </div>
+            {/* Bouton changer — toujours visible */}
             <button
               onClick={() => fileRef.current?.click()}
               className="absolute bottom-[-2px] right-[-2px] w-8 h-8 rounded-full flex items-center justify-center border-[3px] border-white hover:opacity-90 transition-opacity"
@@ -231,6 +254,16 @@ export default function ProfilPage() {
                 ? <CircleNotchIcon size={14} className="text-white animate-spin" />
                 : <CameraIcon size={14} weight="fill" className="text-white" />}
             </button>
+            {/* Bouton supprimer — visible seulement quand un avatar est présent */}
+            {(avatarSrc && !avatarDeleted) && (
+              <button
+                onClick={handleDeleteAvatar}
+                className="absolute bottom-[-2px] left-[-2px] w-8 h-8 rounded-full flex items-center justify-center border-[3px] border-white bg-red-500 hover:bg-red-600 transition-colors"
+                aria-label="Supprimer la photo de profil"
+              >
+                <TrashIcon size={14} weight="bold" className="text-white" />
+              </button>
+            )}
             <input
               ref={fileRef}
               type="file"

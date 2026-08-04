@@ -1,32 +1,25 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import {
   XIcon, CircleNotchIcon, MagnifyingGlassIcon, ArrowRightIcon,
-  WarningIcon, FolderOpenIcon, CheckIcon, ArrowsClockwiseIcon, ArrowArcRightIcon,
+  WarningIcon, FolderOpenIcon, CheckIcon, ArrowsClockwiseIcon,
 } from '@phosphor-icons/react';
 import { GetData } from '@/lib/ApiService';
 import { ApiRoutes } from '@/lib/ApiRoutes';
 import {
-  type Shipment, type ShipmentListResponse, type ShipmentDetail,
+  type Shipment, type ShipmentListResponse,
   type TransportDashboard, SHIPMENT_STATE_CONFIG, SHIPMENT_MODE_CONFIG,
 } from '@/types/transport_type';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import { KpiCard } from '@/components/ui/kpi-card';
-import ApercuSection from './apercu-section';
-import VoyagesSection from './voyages-section';
-import ChargesSection from './charges-section';
-import ImmobilisationsSection from './immobilisation-section';
-import WorkflowSection from './workfow-section';
-import { NextStepModal } from './next-step-modal';
-import type { NextStepResponse } from '@/types/transport_type';
 
 /* ── Types locaux ─────────────────────────────────────────────────────────── */
 
 type StateFilter = 'all' | 'draft' | 'confirmed' | 'in_transit' | 'in_progress' | 'done' | 'cancelled';
-type DrawerTab = 'apercu' | 'voyages' | 'charges' | 'immobilisations' | 'workflow';
 
 const STATE_PILLS: { key: StateFilter; label: string }[] = [
   { key: 'all',         label: 'Tous' },
@@ -38,39 +31,18 @@ const STATE_PILLS: { key: StateFilter; label: string }[] = [
   { key: 'cancelled',   label: 'Annulés' },
 ];
 
-const DRAWER_TABS: { key: DrawerTab; label: string }[] = [
-  { key: 'apercu', label: 'Résumé' },
-  { key: 'voyages', label: 'Voyages' },
-  { key: 'charges', label: 'Charges' },
-  { key: 'immobilisations', label: 'Immobilisations' },
-  { key: 'workflow', label: 'Workflow' },
-];
-
 function fmtDate(iso?: string) {
   if (!iso) return '–';
   return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function fmtAmount(amount: number, currency?: string) {
-  return `${amount.toLocaleString('fr-FR')} ${currency ?? 'XOF'}`;
-}
-
-/* ── Info field helper ────────────────────────────────────────────────────── */
-
-function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-[10px] font-semibold uppercase tracking-[.05em] text-[var(--tx-3)]">{label}</span>
-      <div className="px-3 py-2 bg-[var(--bg-sink)] border border-[var(--bd-def)] rounded-lg text-[12px] text-[var(--tx-1)] font-medium min-h-[34px] flex items-center">
-        {value}
-      </div>
-    </div>
-  );
-}
-
 /* ── Main component ────────────────────────────────────────────────────────── */
 
 export function TransportShipmentsSection() {
+  const router = useRouter();
+  const params = useParams();
+  const locale = typeof params?.locale === 'string' ? params.locale : 'fr';
+
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -78,12 +50,6 @@ export function TransportShipmentsSection() {
 
   const [search, setSearch] = useState('');
   const [stateFilter, setStateFilter] = useState<StateFilter>('all');
-
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [detail, setDetail] = useState<ShipmentDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [drawerTab, setDrawerTab] = useState<DrawerTab>('apercu');
-  const [showNextStep, setShowNextStep] = useState(false);
 
   /* ── Fetch shipments + dashboard ── */
   const fetchTransportData = async (signal: { cancelled: boolean }) => {
@@ -127,24 +93,6 @@ export function TransportShipmentsSection() {
     };
   }, []);
 
-  /* ── Fetch detail when shipment selected ── */
-  useEffect(() => {
-    if (!selectedId) { setDetail(null); return; }
-    let cancelled = false;
-    setDrawerTab('apercu');
-    (async () => {
-      setDetailLoading(true);
-      const res = await GetData<ShipmentDetail>({
-        url: ApiRoutes.TRANSPORT_SHIPMENT(String(selectedId)),
-        protected: true,
-      });
-      if (cancelled) return;
-      setDetailLoading(false);
-      if (res.ok && res.data) setDetail(res.data);
-    })();
-    return () => { cancelled = true; };
-  }, [selectedId]);
-
   /* ── Filtered list ── */
   const filtered = useMemo(() => {
     let list = shipments;
@@ -171,26 +119,6 @@ export function TransportShipmentsSection() {
     currency: (shipments[0]?.currency ?? 'XOF'),
     byMode: dashboard?.by_mode ?? [],
   }), [dashboard, shipments]);
-
-  /* ── Next-step success: refresh detail + update list state ── */
-  function handleNextStepSuccess(result: NextStepResponse) {
-    // Re-fetch detail to get updated workflow
-    if (selectedId) {
-      (async () => {
-        const res = await GetData<ShipmentDetail>({
-          url: ApiRoutes.TRANSPORT_SHIPMENT(String(selectedId)),
-          protected: true,
-        });
-        if (res.ok && res.data) setDetail(res.data);
-      })();
-    }
-    // Update state in the list too
-    setShipments(prev => prev.map(s =>
-      s.id === result.shipment_id
-        ? { ...s, state: result.workflow_state as typeof s.state }
-        : s,
-    ));
-  }
 
   /* ── Render ── */
   return (
@@ -380,7 +308,7 @@ export function TransportShipmentsSection() {
                   return (
                     <tr
                       key={s.id}
-                      onClick={() => setSelectedId(s.id)}
+                      onClick={() => router.push(`/${locale}/page/transport/${s.id}`)}
                       className="border-b border-[#F0F4F8] hover:bg-[#F7FBFF] cursor-pointer transition-colors last:border-b-0"
                     >
                       {/* Référence */}
@@ -477,7 +405,7 @@ export function TransportShipmentsSection() {
                       {/* Action */}
                       <td className="pr-4 py-3.5 align-middle text-right">
                         <button
-                          onClick={e => { e.stopPropagation(); setSelectedId(s.id); }}
+                          onClick={e => { e.stopPropagation(); router.push(`/${locale}/page/transport/${s.id}`); }}
                           className="w-[28px] h-[28px] rounded-[6px] border border-[var(--bd-def)] bg-white flex items-center justify-center ml-auto text-[var(--tx-3)] hover:text-[var(--tx-1)] hover:bg-[var(--bg-sink)] transition-colors"
                           title="Voir le détail"
                         >
@@ -493,163 +421,6 @@ export function TransportShipmentsSection() {
         )}
       </div>
 
-      {/* ── Shipment detail drawer ── */}
-      {selectedId && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <div
-            className="absolute inset-0 bg-black/30"
-            onClick={() => setSelectedId(null)}
-          />
-          <div
-            className="relative w-full max-w-[640px] h-full bg-white shadow-2xl flex flex-col overflow-hidden"
-            onClick={e => e.stopPropagation()}
-          >
-            {detailLoading || !detail ? (
-              <div className="flex-1 flex flex-col items-center justify-center gap-3 text-[var(--tx-3)]">
-                <button
-                  onClick={() => setSelectedId(null)}
-                  className="absolute top-4 right-4 w-7 h-7 rounded-lg flex items-center justify-center hover:bg-[var(--bg-sink)] transition-colors"
-                >
-                  <XIcon size={15} />
-                </button>
-                {detailLoading
-                  ? <><CircleNotchIcon size={24} className="animate-spin" /><span className="text-[13px]">Chargement…</span></>
-                  : <span className="text-[13px]">Erreur de chargement</span>
-                }
-              </div>
-            ) : (
-              <>
-                {/* Header */}
-                <div className="h-[3px] w-full" style={{ background: 'var(--grad)' }} />
-                <div className="px-5 py-4 border-b border-[var(--bd-def)] bg-white">
-                  <div className="flex items-start justify-between mb-2">
-                    <span className="font-mono text-[12px] font-semibold text-[#085499] bg-[#EBF5FD] px-2.5 py-1 rounded-[6px]">
-                      {detail.name}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      {detail.state !== 'cancelled' && detail.state !== 'done' && (
-                        <button
-                          onClick={() => detail.workflow && setShowNextStep(true)}
-                          disabled={!detail.workflow}
-                          className={cn(
-                            'h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-[11px] font-semibold transition-all',
-                            detail.workflow
-                              ? 'text-white hover:opacity-90'
-                              : 'text-[var(--tx-3)] bg-[var(--bg-sink)] border border-[var(--bd-def)] cursor-not-allowed',
-                          )}
-                          style={detail.workflow ? { background: 'linear-gradient(135deg,#1B6B45,#8B6914)' } : {}}
-                          title={detail.workflow ? 'Avancer le workflow' : 'Aucun workflow actif sur ce dossier'}
-                        >
-                          <ArrowArcRightIcon size={12} weight="bold" />
-                          Étape suivante
-                        </button>
-                      )}
-                      <button
-                        onClick={() => setSelectedId(null)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--tx-3)] hover:text-[var(--tx-1)] hover:bg-[var(--bg-sink)] transition-colors"
-                      >
-                        <XIcon size={15} />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 flex-wrap mt-2">
-                    {detail.state && SHIPMENT_STATE_CONFIG[detail.state] && (() => {
-                      const cfg = SHIPMENT_STATE_CONFIG[detail.state];
-                      return (
-                        <span
-                          className="inline-flex items-center gap-1.5 px-2.5 py-[3px] rounded-full text-[11px] font-semibold"
-                          style={{ background: cfg.bg, color: cfg.color }}
-                        >
-                          <span className="w-[5px] h-[5px] rounded-full" style={{ background: cfg.dot }} />
-                          {cfg.label}
-                        </span>
-                      );
-                    })()}
-                    {detail.transport_mode && SHIPMENT_MODE_CONFIG[detail.transport_mode] && (() => {
-                      const cfg = SHIPMENT_MODE_CONFIG[detail.transport_mode];
-                      return (
-                        <span
-                          className="inline-flex items-center px-2 py-[3px] rounded-[6px] text-[11px] font-semibold"
-                          style={{ background: cfg.bg, color: cfg.color }}
-                        >
-                          {cfg.label}
-                        </span>
-                      );
-                    })()}
-                    {detail.partner && (
-                      <span className="text-[12px] font-semibold text-[var(--tx-2)]">{detail.partner}</span>
-                    )}
-                    {(detail.origin_location || detail.destination_location) && (
-                      <span className="text-[12px] text-[var(--tx-3)] flex items-center gap-1">
-                        <span className="max-w-[120px] truncate">{detail.origin_location}</span>
-                        <ArrowRightIcon size={10} className="flex-shrink-0" />
-                        <span className="max-w-[120px] truncate">{detail.destination_location}</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Tabs */}
-                <div className="flex border-b border-[var(--bd-def)] bg-[var(--bg-sink)] overflow-x-auto flex-shrink-0">
-                  {DRAWER_TABS.map(t => (
-                    <button
-                      key={t.key}
-                      onClick={() => setDrawerTab(t.key)}
-                      className={cn(
-                        'px-4 py-2.5 text-[12px] font-medium border-b-2 -mb-px whitespace-nowrap transition-colors flex-shrink-0',
-                        drawerTab === t.key
-                          ? 'border-[#0E86E8] text-[#085499] font-semibold bg-white'
-                          : 'border-transparent text-[var(--tx-3)] hover:text-[var(--tx-1)] hover:bg-white/50',
-                      )}
-                    >
-                      {t.label}
-                      {t.key === 'voyages' && detail.voyages?.length ? (
-                        <span className="ml-1.5 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-[#EBF5FD] text-[#085499] text-[9px] font-bold">
-                          {detail.voyages.length}
-                        </span>
-                      ) : null}
-                      {t.key === 'charges' && detail.charges?.length ? (
-                        <span className="ml-1.5 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-[#EBF5FD] text-[#085499] text-[9px] font-bold">
-                          {detail.charges.length}
-                        </span>
-                      ) : null}
-                      {t.key === 'immobilisations' && detail.immobilizations?.length ? (
-                        <span className="ml-1.5 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-[#FFFBEB] text-[#D97706] text-[9px] font-bold">
-                          {detail.immobilizations.length}
-                        </span>
-                      ) : null}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Tab content */}
-                <div className="flex-1 overflow-y-auto p-5">
-                  {drawerTab === 'apercu' && <ApercuSection detail={detail} />}
-                  {drawerTab === 'voyages' && <VoyagesSection detail={detail} />}
-                  {drawerTab === 'charges' && <ChargesSection detail={detail} />}
-                  {drawerTab === 'immobilisations' && <ImmobilisationsSection detail={detail} />}
-                  {drawerTab === 'workflow' && <WorkflowSection workflow={detail.workflow} />}
-                </div>
-
-                {/* Next-step modal */}
-                {showNextStep && (
-                  <NextStepModal
-                    shipmentId={detail.id}
-                    shipmentName={detail.name}
-                    currentStep={detail.workflow?.current_step}
-                    onClose={() => setShowNextStep(false)}
-                    onSuccess={result => {
-                      handleNextStepSuccess(result);
-                      setShowNextStep(false);
-                    }}
-                  />
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      )}
     </>
   );
 }

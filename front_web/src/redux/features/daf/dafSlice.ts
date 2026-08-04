@@ -183,6 +183,7 @@ const dafSlice = createSlice({
   name: 'daf',
   initialState,
   reducers: {
+    reset: () => initialState,
     clearDecideError(state) { state.decideError = null; },
     clearTriggerError(state) { state.triggerError = null; },
   },
@@ -251,5 +252,5 @@ const dafSlice = createSlice({
   },
 });
 
-export const { clearDecideError, clearTriggerError } = dafSlice.actions;
+export const { clearDecideError, clearTriggerError, reset: resetDaf } = dafSlice.actions;
 export default dafSlice.reducer;

@@ -231,7 +231,7 @@ export default function ProspectsPage() {
           <Button
             variant="gradient" size="sm"
             className="flex-1 sm:flex-none gap-1 sm:gap-1.5 h-8 text-[11px] sm:text-[12px]"
-            onClick={() => setModal({ open: true, mode: 'create', prospect: undefined })}
+            onClick={() => setModal({ open: true, mode: 'create' })}
           >
             <PlusIcon size={14} weight="bold" />
             <span className="hidden xs:inline">Nouvelle prospection</span>

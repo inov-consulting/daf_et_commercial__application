@@ -1,7 +1,9 @@
 ﻿'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useAppSelector } from '@/redux/store';
+import { useAppDispatch, useAppSelector } from '@/redux/store';
+import { setActiveCompany } from '@/redux/features/activeCompany/activeCompanySlice';
+import { setCompanyContext } from '@/lib/ApiService';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logoutKeycloak } from '@/lib/keycloak';
@@ -11,7 +13,7 @@ import {
   UsersIcon, GearIcon, SignOutIcon, XIcon, ClockCounterClockwiseIcon,
   FolderOpenIcon, BankIcon, CurrencyCircleDollarIcon, ReceiptIcon,
   BellIcon, ChartBarIcon, WalletIcon, ChatCircleDotsIcon, ActivityIcon,
-  CrosshairIcon,
+  CrosshairIcon, CaretDownIcon, CheckIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { ApiUser, User as UserType } from '@/types/user_type';
@@ -129,9 +131,31 @@ export default function Sidebar({ locale, open, onClose, user, rawUser }: Sideba
   const sections = buildNav(locale, prospectTotal || undefined, pendingCount || undefined, unreadMessages || undefined)
     .map(section => ({ ...section, items: section.items.filter(item => hasPermission(perms, item.permission)) }))
     .filter(section => section.items.length > 0);
+  const dispatch = useAppDispatch();
   const sidebarRef = useRef<HTMLElement>(null);
+  const wsDropdownRef = useRef<HTMLDivElement>(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-const isFirstRender = useRef(true);
+  const [wsDropdownOpen, setWsDropdownOpen] = useState(false);
+  const isFirstRender = useRef(true);
+
+  // Ferme le dropdown workspace quand on clique à l'extérieur
+  useEffect(() => {
+    if (!wsDropdownOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (wsDropdownRef.current && !wsDropdownRef.current.contains(e.target as Node)) {
+        setWsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [wsDropdownOpen]);
+
+  function handleCompanySelect(id: string) {
+    if (id === selectedId) { setWsDropdownOpen(false); return; }
+    setCompanyContext(id);
+    dispatch(setActiveCompany(id));
+    setWsDropdownOpen(false);
+  }
 
   // Ferme la sidebar mobile à chaque changement de route
   // APRÈS — ignorer le premier render, réagir seulement aux navigations suivantes
@@ -160,6 +184,7 @@ const isFirstRender = useRef(true);
   const initials = user?.initials ||
     `${rawUser?.first_name?.[0] ?? ''}${rawUser?.last_name?.[0] ?? ''}`.toUpperCase() ||
     '?';
+  const avatarSrc = user?.avatar ?? rawUser?.avatar_url ?? null;
   const fullName = (user?.prenom || user?.nom)
     ? `${user.prenom} ${user.nom}`.trim()
     : rawUser?.email?.split('@')[0] ?? 'Utilisateur';
@@ -216,27 +241,101 @@ const isFirstRender = useRef(true);
         </button>
 
         {/* En-tête workspace */}
-        <div className="border-b border-[var(--bd-def)] px-3 py-2">
+        <div className="border-b border-[var(--bd-def)] px-3 py-2 relative" ref={wsDropdownRef}>
           {open ? (
-            <div className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg transition-colors text-left">
-              <div className="min-w-0">
-                <p className="text-[var(--tx-1)] text-[13px] font-semibold truncate">{wsName}</p>
-                {wsCountryCode && (
-                  <div className="flex items-center gap-1.5 text-[var(--tx-3)] text-[11px] mt-0.5">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={`https://flagcdn.com/16x12/${wsCountryCode}.png`} width={16} height={12} alt={wsCountry} className="rounded-[2px] flex-shrink-0" />
-                    <span>{wsCountry}</span>
-                  </div>
+            <>
+              <button
+                onClick={() => wsCompanies.length > 1 && setWsDropdownOpen(v => !v)}
+                className={cn(
+                  'w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg transition-colors text-left',
+                  wsCompanies.length > 1 ? 'hover:bg-[var(--bg-sink)] cursor-pointer' : 'cursor-default',
                 )}
-              </div>
-            </div>
+              >
+                <div
+                  className="w-7 h-7 rounded-md flex-shrink-0 flex items-center justify-center"
+                  style={{ background: 'var(--grad-subtle)' }}
+                >
+                  <span className="text-[10px] font-bold text-[var(--p500)]">{wsInitials}</span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[var(--tx-1)] text-[13px] font-semibold truncate">{wsName}</p>
+                  {wsCountryCode && (
+                    <div className="flex items-center gap-1.5 text-[var(--tx-3)] text-[11px] mt-0.5">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={`https://flagcdn.com/16x12/${wsCountryCode}.png`} width={16} height={12} alt={wsCountry} className="rounded-[2px] flex-shrink-0" />
+                      <span>{wsCountry}</span>
+                    </div>
+                  )}
+                </div>
+                {wsCompanies.length > 1 && (
+                  <CaretDownIcon
+                    size={13}
+                    className={cn(
+                      'text-[var(--tx-3)] flex-shrink-0 transition-transform duration-200',
+                      wsDropdownOpen && 'rotate-180',
+                    )}
+                  />
+                )}
+              </button>
+
+              {/* Dropdown liste entreprises */}
+              {wsDropdownOpen && wsCompanies.length > 1 && (
+                <div
+                  className="absolute left-3 right-3 top-full mt-1 z-50 rounded-xl border border-[var(--bd-def)] overflow-hidden"
+                  style={{ background: 'var(--bg-surf)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}
+                >
+                  {wsCompanies.map(company => {
+                    const isActive = company.id === selectedId;
+                    const compInitials = (company.name ?? '?').split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('') || '?';
+                    const compCode = company.country_code?.toLowerCase() ?? '';
+                    return (
+                      <button
+                        key={company.id}
+                        onClick={() => handleCompanySelect(company.id)}
+                        className={cn(
+                          'w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors',
+                          isActive ? 'bg-[rgba(27,107,69,0.07)]' : 'hover:bg-[var(--bg-sink)]',
+                        )}
+                      >
+                        <div
+                          className="w-6 h-6 rounded-md flex-shrink-0 flex items-center justify-center"
+                          style={{ background: isActive ? 'var(--grad)' : 'var(--grad-subtle)' }}
+                        >
+                          <span className={cn('text-[9px] font-bold', isActive ? 'text-white' : 'text-[var(--p500)]')}>
+                            {compInitials}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={cn('text-[12px] font-medium truncate', isActive ? 'text-[var(--p500)]' : 'text-[var(--tx-1)]')}>
+                            {company.name ?? 'Entreprise'}
+                          </p>
+                          {compCode && (
+                            <div className="flex items-center gap-1 text-[10px] text-[var(--tx-3)] mt-0.5">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={`https://flagcdn.com/16x12/${compCode}.png`} width={12} height={9} alt="" className="rounded-[2px] flex-shrink-0" />
+                              <span>{company.country}</span>
+                            </div>
+                          )}
+                        </div>
+                        {isActive && <CheckIcon size={13} weight="bold" className="text-[var(--p500)] flex-shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           ) : (
             <div className="flex justify-center py-1.5">
-              <div
-                className="w-7 h-7 rounded-md flex items-center justify-center"
-                style={{ background: 'var(--grad-subtle)' }}
-              >
-                <span className="text-[10px] font-bold text-[var(--p500)]">{wsInitials}</span>
+              <div className="relative">
+                <div
+                  className="w-7 h-7 rounded-md flex items-center justify-center"
+                  style={{ background: 'var(--grad-subtle)' }}
+                >
+                  <span className="text-[10px] font-bold text-[var(--p500)]">{wsInitials}</span>
+                </div>
+                {wsCompanies.length > 1 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[var(--p500)] border-2 border-[var(--bg-surf)]" />
+                )}
               </div>
             </div>
           )}
@@ -306,10 +405,13 @@ const isFirstRender = useRef(true);
                 className="flex items-center gap-2.5 flex-1 min-w-0 rounded-lg hover:bg-[var(--bg-sink)] px-1.5 py-1 -mx-1.5 -my-1 transition-colors"
               >
                 <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'var(--grad)' }}
+                  className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden"
+                  style={{ background: avatarSrc ? undefined : 'var(--grad)' }}
                 >
-                  <span className="text-white text-xs font-bold">{initials}</span>
+                  {avatarSrc
+                    ? <img src={avatarSrc} alt={initials} className="w-full h-full object-cover" />
+                    : <span className="text-white text-xs font-bold">{initials}</span>
+                  }
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[var(--tx-1)] text-[13px] font-medium truncate">{fullName}</p>
@@ -334,10 +436,13 @@ const isFirstRender = useRef(true);
               <Link
                 href={`/${locale}/page/profil`}
                 title="Mon profil"
-                className="w-8 h-8 rounded-full flex items-center justify-center hover:opacity-80 transition-opacity"
-                style={{ background: 'var(--grad)' }}
+                className="w-8 h-8 rounded-full flex items-center justify-center hover:opacity-80 transition-opacity overflow-hidden"
+                style={{ background: avatarSrc ? undefined : 'var(--grad)' }}
               >
-                <span className="text-white text-xs font-bold">{initials}</span>
+                {avatarSrc
+                  ? <img src={avatarSrc} alt={initials} className="w-full h-full object-cover" />
+                  : <span className="text-white text-xs font-bold">{initials}</span>
+                }
               </Link>
               {role && (
                 <div className="w-6 h-6 rounded-full bg-[var(--bg-sink)] border border-[var(--bd-def)] flex items-center justify-center">
