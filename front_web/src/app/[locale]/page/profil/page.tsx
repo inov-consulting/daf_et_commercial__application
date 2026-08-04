@@ -13,6 +13,7 @@ import { DeleteData } from '@/lib/ApiService';
 import { ApiRoutes } from '@/lib/ApiRoutes';
 import { cn } from '@/lib/utils';
 import { ImageCropModal } from '@/components/ui/image-crop-modal';
+import Image from 'next/image';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -239,8 +240,7 @@ export default function ProfilPage() {
               style={{ background: (avatarSrc && !avatarDeleted) ? 'transparent' : 'var(--grad)' }}
             >
               {(avatarSrc && !avatarDeleted) ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarSrc} alt="Photo de profil" className="w-full h-full object-cover rounded-full" />
+                <Image src={avatarSrc} alt="Photo de profil" className="w-full h-full object-cover rounded-full" width={88} height={88} />
               ) : avatarText}
             </div>
             {/* Bouton changer — toujours visible */}

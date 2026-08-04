@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import {
   PaperclipIcon,
   PaperPlaneTiltIcon,
@@ -231,10 +232,11 @@ export function Composer({ convFirstName, sending, sendError, onSend, onTranscri
           {/* Image preview */}
           {kind === 'image' && previewUrl && (
             <div className="relative self-start">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={previewUrl}
                 alt={file.name}
+                width={280}
+                height={160}
                 className="max-h-[160px] max-w-[280px] rounded-[10px] object-cover"
               />
               <button

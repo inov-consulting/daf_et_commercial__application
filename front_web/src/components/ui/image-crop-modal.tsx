@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import Image from 'next/image';
 import { XIcon, CheckIcon, CircleNotchIcon, MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon } from '@phosphor-icons/react';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -46,8 +47,7 @@ export function ImageCropModal({ src, onConfirm, onCancel }: Props) {
 
   // ── Image load ────────────────────────────────────────────────────────────
 
-  function onImgLoad(e: React.SyntheticEvent<HTMLImageElement>) {
-    const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
+  function onImgLoad(w: number, h: number) {
     // "Cover" scale: shorter side fills VIEWPORT exactly
     const fitScale = Math.max(VIEWPORT / w, VIEWPORT / h);
     natural.current = { w, h, fitScale };
@@ -169,12 +169,15 @@ export function ImageCropModal({ src, onConfirm, onCancel }: Props) {
             onPointerCancel={onPointerUp}
           >
             {/* Image */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={src}
               alt=""
-              onLoad={onImgLoad}
+              onLoad={(e) => {
+                const img = e.currentTarget as HTMLImageElement;
+                onImgLoad(img.naturalWidth, img.naturalHeight);
+              }}
               draggable={false}
+              fill
               style={{
                 position:      'absolute',
                 width:         dW || '100%',

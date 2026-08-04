@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { XIcon, DownloadSimpleIcon, ArrowSquareOutIcon } from '@phosphor-icons/react';
 
 export interface MediaViewerItem {
@@ -65,10 +66,11 @@ export function MediaViewer({ item, onClose }: MediaViewerProps) {
       <div onClick={e => e.stopPropagation()} className="flex items-center justify-center max-h-[90vh] max-w-[92vw]">
 
         {item.type === 'image' && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={item.url}
             alt={name}
+            width={1920}
+            height={1080}
             className="max-h-[90vh] max-w-[92vw] object-contain rounded-[6px] shadow-2xl"
             draggable={false}
           />

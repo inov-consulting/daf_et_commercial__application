@@ -1,6 +1,7 @@
 """Router /users : CRUD utilisateurs."""
 
 import logging
+import time
 from typing import Annotated
 from uuid import UUID
 
@@ -277,6 +278,8 @@ async def upload_user_avatar(
         folder="avatars",
         unique=False,
     )
+    # Cache-buster : même clé MinIO, mais le paramètre ?v= force le navigateur à recharger
+    url = f"{url}?v={int(time.time())}"
 
     user.avatar_url = url
     user = await user_repo.update(user)
