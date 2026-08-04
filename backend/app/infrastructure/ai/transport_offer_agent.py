@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 _offer_checkpointer = MemorySaver()
 
 # Nombre maximum de messages conservés dans le contexte pour l'agent d'offre
-OFFER_MAX_CONTEXT_MESSAGES = 30
+OFFER_MAX_CONTEXT_MESSAGES = 50
 
 
 def _offer_trim_hook(state: dict) -> dict:

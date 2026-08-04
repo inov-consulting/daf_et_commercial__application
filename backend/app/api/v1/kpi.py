@@ -177,6 +177,8 @@ async def _compute_kpi(key: str, date_from: date | None, date_to: date | None, e
             from app.services.kpi.daf_factures_impayees_fournisseurs import compute
         elif key == "daf_factures_impayees_clients":
             from app.services.kpi.daf_factures_impayees_clients import compute
+        elif key == "daf_ca_evolution":
+            from app.services.kpi.daf_ca_evolution import compute
         else:
             raise HTTPException(status_code=404, detail=f"Calcul non implémenté pour '{key}'.")
 
