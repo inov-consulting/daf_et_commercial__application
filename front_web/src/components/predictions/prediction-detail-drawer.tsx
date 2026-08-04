@@ -556,20 +556,28 @@ export function PredictionDetailDrawer({
             {!confirming && (
               <div className="flex items-center gap-2">
                 <button
+                  disabled={actionLoading}
                   onClick={handleOpenReject}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[13px] font-semibold transition-colors"
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[13px] font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                   style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}
                 >
-                  <XCircleIcon size={15} weight="fill" />
-                  Rejeter
+                  {actionLoading
+                    ? <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                    : <XCircleIcon size={15} weight="fill" />
+                  }
+                  {actionLoading ? 'En cours…' : 'Rejeter'}
                 </button>
                 <button
+                  disabled={actionLoading}
                   onClick={handleOpenApprove}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[13px] font-semibold text-white transition-colors"
-                  style={{ background: 'var(--grad)' }}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[13px] font-semibold text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={{ background: actionLoading ? '#9CA3AF' : 'var(--grad)' }}
                 >
-                  <CheckCircleIcon size={15} weight="fill" />
-                  Approuver
+                  {actionLoading
+                    ? <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                    : <CheckCircleIcon size={15} weight="fill" />
+                  }
+                  {actionLoading ? 'En cours…' : 'Approuver'}
                 </button>
               </div>
             )}

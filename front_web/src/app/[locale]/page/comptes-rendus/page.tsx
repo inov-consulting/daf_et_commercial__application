@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import {
   MicrophoneIcon, MagnifyingGlassIcon, DownloadSimpleIcon,
   ClockIcon, FileTextIcon, WarningIcon,
@@ -80,6 +80,7 @@ export default function ComptesRendusPage() {
   const router = useRouter();
   const params = useParams();
   const locale = (params?.locale as string) || 'fr';
+  const searchParams = useSearchParams();
 
   const dispatch = useAppDispatch();
   const { items, total, loading, error, parentType, limit, offset } = useAppSelector(s => s.compteRendus);
@@ -87,6 +88,13 @@ export default function ComptesRendusPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('tous');
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  /* Ouvre automatiquement le drawer si ?cr=<id> est présent (depuis la recherche globale) */
+  useEffect(() => {
+    const crId = searchParams.get('cr');
+    if (crId) setSelectedId(crId);
+  }, [searchParams]);
+
   const [downloading, setDownloading] = useState<string | null>(null);
   const [shareOpenId, setShareOpenId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);

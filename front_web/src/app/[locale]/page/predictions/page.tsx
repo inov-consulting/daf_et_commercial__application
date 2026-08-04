@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback, useState, useMemo } from 'react';
+import { useEffect, useCallback, useState, useMemo, useRef } from 'react';
 import {
   ArrowsClockwiseIcon, CrosshairIcon, CheckCircleIcon, XCircleIcon,
   EyeIcon, BuildingsIcon, CalendarIcon, CaretDownIcon, CaretRightIcon,
@@ -17,6 +17,7 @@ import {
   type ApiPrediction,
 } from '@/redux/features/predictions/predictionsSlice';
 import { PredictionDetailDrawer } from '@/components/predictions/prediction-detail-drawer';
+import { FloatingToast } from '@/components/ui/toast';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -396,20 +397,28 @@ function ActionCard({
               Détails
             </button>
             <button
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-colors"
+              disabled={actionLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ background: '#F0FDF4', color: '#15803D', border: '1px solid #BBF7D0' }}
               onClick={() => { setConfirming('approve'); setFormError(''); onClearError(prediction.id); }}
             >
-              <CheckCircleIcon size={13} weight="fill" />
-              Approuver
+              {actionLoading
+                ? <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                : <CheckCircleIcon size={13} weight="fill" />
+              }
+              {actionLoading ? 'En cours…' : 'Approuver'}
             </button>
             <button
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-colors"
+              disabled={actionLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}
               onClick={() => { setConfirming('reject'); setFormError(''); onClearError(prediction.id); }}
             >
-              <XCircleIcon size={13} weight="fill" />
-              Rejeter
+              {actionLoading
+                ? <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                : <XCircleIcon size={13} weight="fill" />
+              }
+              {actionLoading ? 'En cours…' : 'Rejeter'}
             </button>
           </div>
         )}
@@ -427,6 +436,14 @@ export default function PredictionsPage() {
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPrediction, setSelectedPrediction] = useState<ApiPrediction | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function showToast(message: string, type: 'success' | 'error' = 'success') {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ message, type });
+    toastTimer.current = setTimeout(() => setToast(null), 3500);
+  }
 
   // Keep drawer in sync with Redux items so status updates immediately after approve/reject
   const drawerPrediction = useMemo(
@@ -449,12 +466,22 @@ export default function PredictionsPage() {
     setRefreshing(false);
   }
 
-  function handleValidate(id: string, expected_revenue: number, notes: string) {
-    dispatch(validatePrediction({ id, expected_revenue, notes }));
+  async function handleValidate(id: string, expected_revenue: number, notes: string) {
+    const result = await dispatch(validatePrediction({ id, expected_revenue, notes }));
+    if (validatePrediction.fulfilled.match(result)) {
+      showToast('Prédiction validée avec succès');
+    } else {
+      showToast('Erreur lors de la validation', 'error');
+    }
   }
 
-  function handleReject(id: string, reason: string) {
-    dispatch(rejectPrediction({ id, reason }));
+  async function handleReject(id: string, reason: string) {
+    const result = await dispatch(rejectPrediction({ id, reason }));
+    if (rejectPrediction.fulfilled.match(result)) {
+      showToast('Prédiction rejetée');
+    } else {
+      showToast('Erreur lors du rejet', 'error');
+    }
   }
 
   function handleClearError(id: string) {
@@ -756,6 +783,8 @@ export default function PredictionsPage() {
       onReject={handleReject}
       onClearError={handleClearError}
     />
+
+    <FloatingToast message={toast?.message ?? null} type={toast?.type ?? 'success'} />
     </>
   );
 }

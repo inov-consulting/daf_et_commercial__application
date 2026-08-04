@@ -160,7 +160,7 @@ export function AgentsTab({ showToast }: AgentsTabProps) {
       </div>
 
       {/* Section Agents */}
-      <div>
+      {/* <div>
         <div className="flex items-center gap-2 mb-3">
           <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#7691A8]">
             Agents configurés
@@ -205,7 +205,7 @@ export function AgentsTab({ showToast }: AgentsTabProps) {
             />
           ))}
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }

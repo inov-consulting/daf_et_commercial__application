@@ -2,7 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { XIcon, MagnifyingGlassIcon, BuildingsIcon, WarningCircleIcon } from '@phosphor-icons/react';
-import { SECTOR_STYLES, type ApiProspect, type UpdateProspectBody } from '@/types/prospect_type';
+import {
+  SECTOR_STYLES,
+  type ApiProspect,
+  type UpdateProspectBody,
+} from '@/types/prospect_type';
 import { GetData } from '@/lib/ApiService';
 import { ApiRoutes } from '@/lib/ApiRoutes';
 import { cn } from '@/lib/utils';
@@ -106,12 +110,14 @@ export function ProspectFormModal({
   useEffect(() => {
     if (!open) return;
     setSelectedCompany(null);
+
     setCompanyQuery(initial?.company_name ?? '');
     setShowDropdown(false);
     setShowCodePicker(false);
     setLocalError(null);
     setEmailError(null);
     setPhoneError(null);
+
     const split = splitPhone(initial?.phone ?? '');
     setCountryCode(split.code);
     setForm({
@@ -123,7 +129,7 @@ export function ProspectFormModal({
       expected_revenue: initial?.expected_revenue || undefined,
       portalis_notes: initial?.portalis_notes ?? '',
     });
-  }, [open, initial]);
+  }, [open, initial, mode]);
 
   /* ── Close dropdowns on outside click ── */
   useEffect(() => {
@@ -161,6 +167,16 @@ export function ProspectFormModal({
     setCompanyQuery(c.name);
     setShowDropdown(false);
     setLocalError(null);
+    if (c.email) {
+      setField('email', c.email);
+      setEmailError(null);
+    }
+    if (c.phone) {
+      const split = splitPhone(c.phone);
+      setCountryCode(split.code);
+      setField('phone', split.local);
+      setPhoneError(null);
+    }
   }
 
   function clearCompany() {

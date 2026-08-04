@@ -59,7 +59,7 @@ export interface User {
   lastLogin: string | null;
   created: string | null;
   bg: string;
-  avatar?: string;
+  avatar_url?: string;
   invitedAt?: string;
   inviteExpires?: string;
 }
@@ -130,7 +130,7 @@ export function mapApiUser(u: ApiUser): User {
     lastLogin: formatDate(u.last_login_at, true),
     created: formatDate(u.created_at),
     bg: hashColor(u.id),
-    avatar: u.avatar_url ?? undefined,
+    avatar_url: u.avatar_url ?? undefined,
   };
 }
 

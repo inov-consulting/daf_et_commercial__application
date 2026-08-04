@@ -26,6 +26,8 @@ import { mapApiUser, type User } from "@/types/user_type";
 import { UserTable } from "@/components/layout/user-table";
 import { UserKpiRow } from "@/components/layout/user-kpi-row";
 import type { UserFormSubmitData } from "@/components/layout/user-form-modal";
+import { PostData, DeleteData } from "@/lib/ApiService";
+import { ApiRoutes } from "@/lib/ApiRoutes";
 import {
   CheckCircleIcon,
   WarningCircleIcon,
@@ -195,9 +197,6 @@ export default function UtilisateursPage() {
             }),
             ...(data.group_ids &&
               data.group_ids.length > 0 && { group_ids: data.group_ids }),
-            ...(data.avatar_url !== undefined && {
-              avatar_url: data.avatar_url,
-            }),
           },
         }),
       );
@@ -206,6 +205,23 @@ export default function UtilisateursPage() {
         showToast("Erreur de modification", error, "error");
         return { ok: false, error };
       }
+
+      // Gestion de l'avatar après la mise à jour principale
+      if (data.avatar_file) {
+        await PostData({
+          url: ApiRoutes.USERS_AVATAR(formModal.uid),
+          data: { avatar: data.avatar_file },
+          protected: true,
+          isMultipart: true,
+        });
+      } else if (data.avatar_deleted) {
+        await DeleteData({
+          url: ApiRoutes.USERS_AVATAR(formModal.uid),
+          protected: true,
+        });
+      }
+
+      dispatch(fetchUsers());
       setFormModal(null);
       showToast(
         "Modifications enregistrées",
@@ -224,6 +240,19 @@ export default function UtilisateursPage() {
         }),
       );
       if (createUser.fulfilled.match(result)) {
+        // Upload de l'avatar si fourni, en utilisant l'ID du nouvel utilisateur
+        if (data.avatar_file) {
+          const newUserId = (result.payload as { id?: string })?.id;
+          if (newUserId) {
+            await PostData({
+              url: ApiRoutes.USERS_AVATAR(newUserId),
+              data: { avatar: data.avatar_file },
+              protected: true,
+              isMultipart: true,
+            });
+            dispatch(fetchUsers());
+          }
+        }
         setFormModal(null);
         showToast(
           "Invitation envoyée",
@@ -236,6 +265,12 @@ export default function UtilisateursPage() {
       showToast("Erreur d'invitation", error, "error");
       return { ok: false, error };
     }
+  }
+
+  async function handleDeleteAvatar(uid: string) {
+    await DeleteData({ url: ApiRoutes.USERS_AVATAR(uid), protected: true });
+    dispatch(fetchUsers());
+    showToast("Photo supprimée", "La photo de profil a été retirée", "success");
   }
 
   async function handleToggleActive(uid: string, active: boolean) {
@@ -344,6 +379,7 @@ export default function UtilisateursPage() {
               onEdit={(uid) => setFormModal({ mode: "edit", uid })}
               onDelete={(uid) => setDeleteUid(uid)}
               onToggleActive={handleToggleActive}
+              onDeleteAvatar={handleDeleteAvatar}
               isSelf={selectedUser?.uid === me?.id}
             />
           </div>
@@ -405,6 +441,7 @@ export default function UtilisateursPage() {
                   setMobilePanelOpen(false);
                 }}
                 onToggleActive={handleToggleActive}
+                onDeleteAvatar={handleDeleteAvatar}
                 isSelf={selectedUser?.uid === me?.id}
               />
             </div>

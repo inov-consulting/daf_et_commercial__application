@@ -150,6 +150,7 @@ const offersSlice = createSlice({
   name: 'offers',
   initialState,
   reducers: {
+    reset: () => initialState,
     clearOfferErrors(state) {
       state.error        = null;
       state.detailError  = null;
@@ -306,5 +307,5 @@ const offersSlice = createSlice({
   },
 });
 
-export const { clearOfferErrors, clearDetail, clearUpdateError } = offersSlice.actions;
+export const { clearOfferErrors, clearDetail, clearUpdateError, reset: resetOffers } = offersSlice.actions;
 export default offersSlice.reducer;

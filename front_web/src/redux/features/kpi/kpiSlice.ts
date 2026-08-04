@@ -91,6 +91,7 @@ const kpiSlice = createSlice({
   name: 'kpi',
   initialState,
   reducers: {
+    reset: () => initialState,
     resetFilter(state) {
       state.displayed = state.catalog;
     },
@@ -147,5 +148,5 @@ const kpiSlice = createSlice({
   },
 });
 
-export const { resetFilter, clearSelectedKpi } = kpiSlice.actions;
+export const { resetFilter, clearSelectedKpi, reset: resetKpi } = kpiSlice.actions;
 export default kpiSlice.reducer;
