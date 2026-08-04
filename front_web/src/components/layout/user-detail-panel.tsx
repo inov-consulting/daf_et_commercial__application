@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import {
   PencilSimpleIcon, ToggleLeftIcon, ToggleRightIcon, LockKeyIcon, TrashIcon,
   PaperPlaneTiltIcon, XCircleIcon, CheckIcon, EnvelopeSimpleIcon, CursorClickIcon,
@@ -18,6 +19,7 @@ interface UserDetailPanelProps {
   onEdit: (uid: string) => void;
   onDelete: (uid: string) => void;
   onToggleActive?: (uid: string, active: boolean) => void;
+  onDeleteAvatar?: (uid: string) => void;
   naked?: boolean;
   isSelf?: boolean;
 }
@@ -130,12 +132,13 @@ function PendingDetail({ user }: { user: User }) {
 }
 
 function ActiveDetail({
-  user, onEdit, onDelete, onToggleActive, isSelf,
+  user, onEdit, onDelete, onToggleActive, onDeleteAvatar, isSelf,
 }: {
   user: User;
   onEdit: () => void;
   onDelete: () => void;
   onToggleActive?: (active: boolean) => void;
+  onDeleteAvatar?: () => void;
   isSelf?: boolean;
 }) {
   const [mode, setMode] = useState<PanelMode>(() => user.status === 'inactive' ? 'disabled' : 'info');
@@ -156,15 +159,26 @@ function ActiveDetail({
         className="px-5 py-5 flex flex-col items-center text-center flex-shrink-0"
         style={{ background: 'linear-gradient(180deg,rgba(27,107,69,.04) 0%,transparent 100%)' }}
       >
-        <div
-          className="w-14 h-14 rounded-full flex items-center justify-center font-display font-bold text-white text-xl mb-2.5 shadow-[0_2px_12px_rgba(27,107,69,.28)] overflow-hidden"
-          style={{ background: user.avatar ? undefined : user.bg }}
-        >
-          {user.avatar
-            // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={user.avatar} alt={user.initials} className="w-full h-full object-cover" />
-            : user.initials
-          }
+        <div className="relative group/avatar mb-2.5">
+          <div
+            className="relative w-14 h-14 rounded-full flex items-center justify-center font-display font-bold text-white text-xl shadow-[0_2px_12px_rgba(27,107,69,.28)] overflow-hidden"
+            style={{ background: user.avatar_url ? undefined : user.bg }}
+          >
+            {user.avatar_url
+              ? <Image src={user.avatar_url} alt={user.initials} fill className="object-cover" unoptimized />
+              : user.initials
+            }
+            {user.avatar_url && onDeleteAvatar && (
+              <button
+                type="button"
+                onClick={onDeleteAvatar}
+                className="absolute inset-0 bg-black/55 opacity-0 group-hover/avatar:opacity-100 flex items-center justify-center transition-opacity cursor-pointer"
+                title="Supprimer la photo de profil"
+              >
+                <TrashIcon size={16} className="text-white" weight="bold" />
+              </button>
+            )}
+          </div>
         </div>
         <p className="font-display font-bold text-base text-foreground mb-0.5">
           {user.prenom} {user.nom}
@@ -324,7 +338,7 @@ function ActiveDetail({
   );
 }
 
-export function UserDetailPanel({ user, onEdit, onDelete, onToggleActive, naked, isSelf }: UserDetailPanelProps) {
+export function UserDetailPanel({ user, onEdit, onDelete, onToggleActive, onDeleteAvatar, naked, isSelf }: UserDetailPanelProps) {
   return (
     <div className={cn(
       'flex flex-col overflow-hidden',
@@ -348,6 +362,7 @@ export function UserDetailPanel({ user, onEdit, onDelete, onToggleActive, naked,
           onEdit={() => onEdit(user.uid)}
           onDelete={() => onDelete(user.uid)}
           onToggleActive={(active) => onToggleActive?.(user.uid, active)}
+          onDeleteAvatar={onDeleteAvatar ? () => onDeleteAvatar(user.uid) : undefined}
           isSelf={isSelf}
         />
       )}

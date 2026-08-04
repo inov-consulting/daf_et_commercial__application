@@ -16,7 +16,12 @@ import type { ApiGroup } from '@/redux/features/groups/groupsSlice';
 import Image from 'next/image';
 import { Group } from 'next/dist/shared/lib/router/utils/route-regex';
 
-export type UserFormSubmitData = Partial<User> & { company_ids: string[]; group_ids: string[]; avatar_url?: string };
+export type UserFormSubmitData = Partial<User> & {
+  company_ids: string[];
+  group_ids: string[];
+  avatar_file?: File;       // nouveau fichier à uploader via POST /users/{id}/avatar
+  avatar_deleted?: boolean; // supprimer l'avatar existant via DELETE /users/{id}/avatar
+};
 
 interface UserFormModalProps {
   mode: 'invite' | 'edit';
@@ -35,6 +40,8 @@ export function UserFormModal({ mode, user, rawUser, groups, onClose, onSubmit }
   const [selectedCompanies, setSelectedCompanies] = useState<ApiCompany[]>(rawUser?.companies ?? []);
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(rawUser?.groups?.map((k) => k.id) ?? []);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(rawUser?.avatar_url ?? null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarDeleted, setAvatarDeleted] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const avatarInputId = useId();
   const [ddOpen, setDdOpen] = useState(false);
@@ -108,9 +115,21 @@ export function UserFormModal({ mode, user, rawUser, groups, onClose, onSubmit }
       return;
     }
     setErrors(prev => { const n = { ...prev }; delete n.avatar; return n; });
+    setAvatarFile(file);
+    setAvatarDeleted(false);
     const reader = new FileReader();
     reader.onload = () => setAvatarPreview(reader.result as string);
     reader.readAsDataURL(file);
+  }
+
+  function handleAvatarDelete() {
+    // Marquer pour suppression seulement si c'était un avatar existant (pas un fichier qu'on vient de choisir)
+    if (!avatarFile && !!rawUser?.avatar_url) {
+      setAvatarDeleted(true);
+    }
+    setAvatarPreview(null);
+    setAvatarFile(null);
+    if (avatarInputRef.current) avatarInputRef.current.value = '';
   }
 
   async function handleSubmit() {
@@ -130,7 +149,8 @@ export function UserFormModal({ mode, user, rawUser, groups, onClose, onSubmit }
       entreprises: selectedCompanies.map(c => c.name ?? c.id),
       company_ids: selectedCompanies.map(c => c.id),
       group_ids: selectedGroupIds,
-      avatar_url: avatarPreview ?? undefined,
+      avatar_file: avatarFile ?? undefined,
+      avatar_deleted: avatarDeleted || undefined,
     });
     if (!result.ok) setSubmitting(false);
   }
@@ -177,7 +197,7 @@ export function UserFormModal({ mode, user, rawUser, groups, onClose, onSubmit }
                 onClick={() => avatarInputRef.current?.click()}
               >
                 {avatarPreview
-                  ? <Image src={avatarPreview} alt="avatar" width={56} height={56} className="w-full h-full object-cover" />
+                  ? <Image src={avatarPreview} alt="avatar" width={56} height={56} className="w-full h-full object-cover" unoptimized />
                   : <span>{(prenom[0] ?? '') + (nom[0] ?? '') || '?'}</span>
                 }
               </div>
@@ -202,7 +222,7 @@ export function UserFormModal({ mode, user, rawUser, groups, onClose, onSubmit }
             {avatarPreview && (
               <button
                 type="button"
-                onClick={() => setAvatarPreview(null)}
+                onClick={handleAvatarDelete}
                 className="text-[11px] text-foreground-3 hover:text-error transition-colors flex-shrink-0"
               >
                 Supprimer

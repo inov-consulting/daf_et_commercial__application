@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import {
   MagnifyingGlassIcon, PencilSimpleIcon, PaperPlaneTiltIcon, XIcon,
   DotsThreeVerticalIcon, FunnelIcon, UserSwitchIcon, TrashIcon, ProhibitIcon,
@@ -227,12 +228,11 @@ function MobileUserCard({
           </div>
         ) : (
           <div
-            className="w-9 h-9 rounded-full flex items-center justify-center font-display font-bold text-white text-[13px] flex-shrink-0 overflow-hidden"
-            style={{ background: user.avatar ? undefined : user.bg }}
+            className="relative w-9 h-9 rounded-full flex items-center justify-center font-display font-bold text-white text-[13px] flex-shrink-0 overflow-hidden"
+            style={{ background: user.avatar_url ? undefined : user.bg }}
           >
-            {user.avatar
-              // eslint-disable-next-line @next/next/no-img-element
-              ? <img src={user.avatar} alt={user.initials} className="w-full h-full object-cover" />
+            {user.avatar_url
+              ? <Image src={user.avatar_url} alt={user.initials} fill className="object-cover" unoptimized />
               : user.initials
             }
           </div>
@@ -578,10 +578,13 @@ export function UserTable({
                   ) : (
                     <div className="flex items-center gap-2.5">
                       <div
-                        className="w-9 h-9 rounded-full flex items-center justify-center font-display font-bold text-white text-[13px] flex-shrink-0"
-                        style={{ background: user.bg }}
+                        className="relative w-9 h-9 rounded-full flex items-center justify-center font-display font-bold text-white text-[13px] flex-shrink-0 overflow-hidden"
+                        style={{ background: user.avatar_url ? undefined : user.bg }}
                       >
-                        {user.initials}
+                        {user.avatar_url
+                          ? <Image src={user.avatar_url} alt={user.initials} fill className="object-cover" unoptimized />
+                          : user.initials
+                        }
                       </div>
                       <div className="min-w-0">
                         <p className="font-display font-semibold text-[13px] text-foreground truncate">
