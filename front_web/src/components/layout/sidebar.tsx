@@ -5,6 +5,7 @@ import { useAppDispatch, useAppSelector } from '@/redux/store';
 import { setActiveCompany } from '@/redux/features/activeCompany/activeCompanySlice';
 import { setCompanyContext } from '@/lib/ApiService';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { logoutKeycloak } from '@/lib/keycloak';
 import {
@@ -184,7 +185,7 @@ export default function Sidebar({ locale, open, onClose, user, rawUser }: Sideba
   const initials = user?.initials ||
     `${rawUser?.first_name?.[0] ?? ''}${rawUser?.last_name?.[0] ?? ''}`.toUpperCase() ||
     '?';
-  const avatarSrc = user?.avatar ?? rawUser?.avatar_url ?? null;
+  const avatarSrc = user?.avatar_url ?? rawUser?.avatar_url ?? null;
   const fullName = (user?.prenom || user?.nom)
     ? `${user.prenom} ${user.nom}`.trim()
     : rawUser?.email?.split('@')[0] ?? 'Utilisateur';
@@ -261,8 +262,7 @@ export default function Sidebar({ locale, open, onClose, user, rawUser }: Sideba
                   <p className="text-[var(--tx-1)] text-[13px] font-semibold truncate">{wsName}</p>
                   {wsCountryCode && (
                     <div className="flex items-center gap-1.5 text-[var(--tx-3)] text-[11px] mt-0.5">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={`https://flagcdn.com/16x12/${wsCountryCode}.png`} width={16} height={12} alt={wsCountry} className="rounded-[2px] flex-shrink-0" />
+                      <Image src={`https://flagcdn.com/16x12/${wsCountryCode}.png`} width={16} height={12} alt={wsCountry} className="rounded-[2px] flex-shrink-0" />
                       <span>{wsCountry}</span>
                     </div>
                   )}
@@ -311,8 +311,7 @@ export default function Sidebar({ locale, open, onClose, user, rawUser }: Sideba
                           </p>
                           {compCode && (
                             <div className="flex items-center gap-1 text-[10px] text-[var(--tx-3)] mt-0.5">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={`https://flagcdn.com/16x12/${compCode}.png`} width={12} height={9} alt="" className="rounded-[2px] flex-shrink-0" />
+                              <Image src={`https://flagcdn.com/16x12/${compCode}.png`} width={12} height={9} alt="" className="rounded-[2px] flex-shrink-0" />
                               <span>{company.country}</span>
                             </div>
                           )}
@@ -409,7 +408,7 @@ export default function Sidebar({ locale, open, onClose, user, rawUser }: Sideba
                   style={{ background: avatarSrc ? undefined : 'var(--grad)' }}
                 >
                   {avatarSrc
-                    ? <img src={avatarSrc} alt={initials} className="w-full h-full object-cover" />
+                    ? <Image src={avatarSrc} alt={initials} width={32} height={32} className="w-full h-full object-cover" />
                     : <span className="text-white text-xs font-bold">{initials}</span>
                   }
                 </div>
@@ -440,7 +439,7 @@ export default function Sidebar({ locale, open, onClose, user, rawUser }: Sideba
                 style={{ background: avatarSrc ? undefined : 'var(--grad)' }}
               >
                 {avatarSrc
-                  ? <img src={avatarSrc} alt={initials} className="w-full h-full object-cover" />
+                  ? <Image src={avatarSrc} alt={initials} width={32} height={32} className="w-full h-full object-cover" />
                   : <span className="text-white text-xs font-bold">{initials}</span>
                 }
               </Link>

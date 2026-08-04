@@ -1,6 +1,7 @@
 'use client';
 
 import { DownloadSimpleIcon, PlayIcon, SpinnerGapIcon } from '@phosphor-icons/react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import type { WaMessage } from '@/redux/features/whatsapp/whatsappSlice';
 import type { MediaViewerItem } from './MediaViewer';
@@ -199,10 +200,11 @@ export function MsgBubble({ msg, contactName, contactColor, transcription, trans
                 onClick={() => onMediaClick?.({ url: msg.media_url!, type: 'image', filename: msg.media_filename ?? undefined })}
                 className="w-full block relative group"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={msg.media_url}
                   alt={msg.media_filename || 'Image'}
+                  width={400}
+                  height={200}
                   className="w-full max-h-[200px] object-cover rounded-[8px]"
                 />
                 <div className="absolute inset-0 rounded-[8px] bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
