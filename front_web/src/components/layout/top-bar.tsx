@@ -74,7 +74,7 @@ export default function TopBar({ onToggleSidebar, user, rawUser }: TopBarProps) 
   const initials = user?.initials ||
     `${rawUser?.first_name?.[0] ?? ''}${rawUser?.last_name?.[0] ?? ''}`.toUpperCase() ||
     '?';
-  const avatarSrc = user?.avatar ?? rawUser?.avatar_url ?? null;
+  const avatarSrc = user?.avatar_url ?? rawUser?.avatar_url ?? null;
   const fullName = (user?.prenom || user?.nom)
     ? `${user.prenom} ${user.nom}`.trim()
     : rawUser?.email?.split('@')[0] ?? 'Utilisateur';

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Image from "next/image";
 import {
   ArrowRightIcon,
   TruckIcon,
@@ -222,8 +223,7 @@ function PageHeader({ companies, selectedCompanyId, onCompanyChange }: PageHeade
               )}
             >
               {c.country_code && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={`https://flagcdn.com/16x12/${c.country_code.toLowerCase()}.png`}
                   width={16}
                   height={12}
