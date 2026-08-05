@@ -7,7 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
-from app.api.deps import require_permission
+from app.api.deps import CurrentCompany, require_permission
 from app.api.v1.schemas.prospects import (
     CompteRenduListItemOut,
     CompteRenduParentInfo,
@@ -55,12 +55,13 @@ def _build_whatsapp_parent(
 
 @router.get("", dependencies=_cr_deps)
 async def list_compte_rendus(
+    current_company: CurrentCompany,
     parent_type: Annotated[str | None, Query(description="Filtrer par type: prospect, service, etc.")] = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> CompteRenduWithParentListOut:
     """Lister tous les comptes-rendus avec leur parent associé."""
-    query = CompteRenduOrm.all()
+    query = CompteRenduOrm.filter(company_id=current_company.id)
     if parent_type:
         query = query.filter(parent_type=parent_type)
 
@@ -108,11 +109,11 @@ async def list_compte_rendus(
 
 
 @router.get("/{cr_id}", dependencies=_cr_deps)
-async def get_compte_rendu(cr_id: UUID) -> CompteRenduWithParentOut:
+async def get_compte_rendu(cr_id: UUID, current_company: CurrentCompany) -> CompteRenduWithParentOut:
     """Récupérer un compte-rendu par ID avec content HTML complet."""
     from fastapi import HTTPException, status
 
-    cr = await CompteRenduOrm.get_or_none(id=cr_id)
+    cr = await CompteRenduOrm.get_or_none(id=cr_id, company_id=current_company.id)
     if not cr:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
