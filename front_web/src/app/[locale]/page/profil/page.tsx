@@ -7,10 +7,8 @@ import {
 } from '@phosphor-icons/react';
 import { useAppDispatch, useAppSelector } from '@/redux/store';
 import { fetchMe, changePassword, clearChangePasswordError } from '@/redux/features/me/meSlice';
-import { updateUser, uploadAvatar } from '@/redux/features/users/usersSlice';
+import { updateUser, uploadAvatar, deleteAvatar } from '@/redux/features/users/usersSlice';
 import { fetchCompanies } from '@/redux/features/companies/companiesSlice';
-import { DeleteData } from '@/lib/ApiService';
-import { ApiRoutes } from '@/lib/ApiRoutes';
 import { cn } from '@/lib/utils';
 import { ImageCropModal } from '@/components/ui/image-crop-modal';
 import Image from 'next/image';
@@ -43,7 +41,7 @@ function dataUrlToFile(dataUrl: string, filename: string): File {
 export default function ProfilPage() {
   const dispatch = useAppDispatch();
   const { me, loading: meLoading, changingPassword, changePasswordError } = useAppSelector(s => s.me);
-  const { updating, uploadingAvatar } = useAppSelector(s => s.users);
+  const { updating, uploadingAvatar, deletingAvatar } = useAppSelector(s => s.users);
   const { items: companies, loading: companiesLoading } = useAppSelector(s => s.companies);
 
   const [prenom, setPrenom] = useState('');
@@ -115,7 +113,11 @@ export default function ProfilPage() {
 
     // 1. Supprimer l'avatar si marqué pour suppression
     if (avatarDeleted) {
-      await DeleteData({ url: ApiRoutes.USERS_AVATAR(me.id), protected: true });
+      const result = await dispatch(deleteAvatar(me.id));
+      if (deleteAvatar.rejected.match(result)) {
+        showToast("Erreur lors de la suppression de la photo", false);
+        return;
+      }
       setAvatarDeleted(false);
     }
 
@@ -203,7 +205,7 @@ export default function ProfilPage() {
 
   const pwdValid = currentPwd.length >= 1 && newPwd.length >= 8 && newPwd === confirmPwd;
   const avatarText = ((prenom?.[0] ?? '') + (nom?.[0] ?? '')).toUpperCase() || '?';
-  const isSaving = updating || uploadingAvatar;
+  const isSaving = updating || uploadingAvatar || deletingAvatar;
 
   if (meLoading || !me) {
     return (
@@ -348,7 +350,7 @@ export default function ProfilPage() {
               </div>
               <p className="text-[11px] text-[var(--tx-3)] flex items-start gap-1.5 leading-relaxed">
                 <LockSimpleIcon size={12} className="flex-shrink-0 mt-0.5" />
-                Non modifiable — cette adresse sert d&apos;identifiant pour les invitations. Contactez un administrateur pour la changer.
+                Non modifiable - cette adresse sert d&apos;identifiant pour les invitations. Contactez un administrateur pour la changer.
               </p>
             </div>
           </div>
