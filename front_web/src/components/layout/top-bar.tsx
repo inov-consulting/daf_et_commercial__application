@@ -223,7 +223,7 @@ export default function TopBar({ onToggleSidebar, user, rawUser }: TopBarProps) 
                 style={{ background: avatarSrc ? undefined : 'var(--grad)' }}
               >
                 {avatarSrc
-                  ? <Image src={avatarSrc} alt={initials} fill className="object-cover" unoptimized />
+                  ? <Image src={avatarSrc} alt={initials} fill className="object-cover" />
                   : <span className="text-white text-[10px] sm:text-xs font-bold">{initials}</span>
                 }
               </div>

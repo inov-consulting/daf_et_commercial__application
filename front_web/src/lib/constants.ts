@@ -5,6 +5,7 @@ export const STATUS_PILL: Record<OfferStatus, { label: string; bg: string; color
   genere:    { label: 'Généré',    bg: '#FBF3DE', color: '#725A0A', dot: '#92720C' },
   envoyee:   { label: 'Validée',    bg: '#FFFBEB', color: '#D97706', dot: '#F59E0B' },
   validee:   { label: 'Lié à Odoo', bg: '#ECFDF5', color: '#059669', dot: '#10B981' },
+  terminee:  { label: 'Terminée',  bg: '#EEF2FF', color: '#3730A3', dot: '#6366F1' },
   refusee:   { label: 'Refusée',   bg: '#FEF2F2', color: '#B91C1C', dot: '#EF4444' },
   expiree:   { label: 'Expirée',   bg: '#EEF2F7', color: '#435869', dot: '#7691A8' },
 };
@@ -15,6 +16,7 @@ export const STATUS_TABS: { key: OfferStatus | 'tous'; label: string }[] = [
   { key: 'genere',    label: 'Généré'    },
   { key: 'envoyee',   label: 'Validée'    },
   { key: 'validee',   label: 'Lié à Odoo' },
+  { key: 'terminee',  label: 'Terminée'  },
   { key: 'refusee',   label: 'Refusée'   },
   { key: 'expiree',   label: 'Expirée'   },
 ];

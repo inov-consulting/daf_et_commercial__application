@@ -20,14 +20,14 @@ import {
   updateUser,
   removeUser,
   toggleUserStatus,
+  uploadAvatar,
+  deleteAvatar,
 } from "@/redux/features/users/usersSlice";
 import { fetchGroups } from "@/redux/features/groups/groupsSlice";
 import { mapApiUser, type User } from "@/types/user_type";
 import { UserTable } from "@/components/layout/user-table";
 import { UserKpiRow } from "@/components/layout/user-kpi-row";
 import type { UserFormSubmitData } from "@/components/layout/user-form-modal";
-import { PostData, DeleteData } from "@/lib/ApiService";
-import { ApiRoutes } from "@/lib/ApiRoutes";
 import {
   CheckCircleIcon,
   WarningCircleIcon,
@@ -208,20 +208,10 @@ export default function UtilisateursPage() {
 
       // Gestion de l'avatar après la mise à jour principale
       if (data.avatar_file) {
-        await PostData({
-          url: ApiRoutes.USERS_AVATAR(formModal.uid),
-          data: { avatar: data.avatar_file },
-          protected: true,
-          isMultipart: true,
-        });
+        await dispatch(uploadAvatar({ id: formModal.uid, file: data.avatar_file }));
       } else if (data.avatar_deleted) {
-        await DeleteData({
-          url: ApiRoutes.USERS_AVATAR(formModal.uid),
-          protected: true,
-        });
+        await dispatch(deleteAvatar(formModal.uid));
       }
-
-      dispatch(fetchUsers());
       setFormModal(null);
       showToast(
         "Modifications enregistrées",
@@ -244,13 +234,7 @@ export default function UtilisateursPage() {
         if (data.avatar_file) {
           const newUserId = (result.payload as { id?: string })?.id;
           if (newUserId) {
-            await PostData({
-              url: ApiRoutes.USERS_AVATAR(newUserId),
-              data: { avatar: data.avatar_file },
-              protected: true,
-              isMultipart: true,
-            });
-            dispatch(fetchUsers());
+            await dispatch(uploadAvatar({ id: newUserId, file: data.avatar_file }));
           }
         }
         setFormModal(null);
@@ -268,8 +252,7 @@ export default function UtilisateursPage() {
   }
 
   async function handleDeleteAvatar(uid: string) {
-    await DeleteData({ url: ApiRoutes.USERS_AVATAR(uid), protected: true });
-    dispatch(fetchUsers());
+    await dispatch(deleteAvatar(uid));
     showToast("Photo supprimée", "La photo de profil a été retirée", "success");
   }
 

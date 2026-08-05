@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { GetData, PostData, PatchData } from '@/lib/ApiService';
+import { GetData, PostData, PatchData, DeleteData } from '@/lib/ApiService';
 import { ApiRoutes } from '@/lib/ApiRoutes';
 import type { ApiUser } from '@/types/user_type';
 
@@ -23,6 +23,9 @@ interface UsersState {
   // uploadAvatar
   uploadingAvatar: boolean;
   uploadAvatarError: string | null;
+  // deleteAvatar
+  deletingAvatar: boolean;
+  deleteAvatarError: string | null;
 }
 
 const initialState: UsersState = {
@@ -38,6 +41,8 @@ const initialState: UsersState = {
   toggleStatusError: null,
   uploadingAvatar: false,
   uploadAvatarError: null,
+  deletingAvatar: false,
+  deleteAvatarError: null,
 };
 
 // ── Payload types ──────────────────────────────────────────────────────────
@@ -137,6 +142,19 @@ export const toggleUserStatus = createAsyncThunk(
   },
 );
 
+// Supprime l'avatar — DELETE /api/v1/users/{id}/avatar
+export const deleteAvatar = createAsyncThunk(
+  'users/deleteAvatar',
+  async (id: string, { rejectWithValue }) => {
+    const res = await DeleteData<ApiUser>({
+      url: ApiRoutes.USERS_AVATAR(id),
+      protected: true,
+    });
+    if (!res.ok) return rejectWithValue(res.error ?? "Erreur lors de la suppression de l'avatar");
+    return res.data!;
+  },
+);
+
 // Envoie le fichier image en multipart — POST /api/v1/users/{id}/avatar
 export const uploadAvatar = createAsyncThunk(
   'users/uploadAvatar',
@@ -230,6 +248,17 @@ const usersSlice = createSlice({
       .addCase(uploadAvatar.rejected, (state, action) => {
         state.uploadingAvatar = false;
         state.uploadAvatarError = action.payload as string;
+      })
+      // deleteAvatar
+      .addCase(deleteAvatar.pending, state => { state.deletingAvatar = true; state.deleteAvatarError = null; })
+      .addCase(deleteAvatar.fulfilled, (state, action) => {
+        state.deletingAvatar = false;
+        const idx = state.list.findIndex(u => u.id === action.payload.id);
+        if (idx !== -1) state.list[idx] = action.payload;
+      })
+      .addCase(deleteAvatar.rejected, (state, action) => {
+        state.deletingAvatar = false;
+        state.deleteAvatarError = action.payload as string;
       });
   },
 });
