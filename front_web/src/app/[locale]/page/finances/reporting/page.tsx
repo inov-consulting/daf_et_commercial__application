@@ -30,6 +30,13 @@ function fmtDate(iso: string) {
   });
 }
 
+const RUN_STATUS_CONF: Record<string, { label: string; bg: string; text: string }> = {
+  completed: { label: 'Complété',  bg: 'rgba(16,185,129,.1)',  text: '#1B6B45' },
+  running:   { label: 'En cours',  bg: 'rgba(99,102,241,.1)',  text: '#4338CA' },
+  failed:    { label: 'Échec',     bg: 'rgba(239,68,68,.1)',   text: '#DC2626' },
+  pending:   { label: 'En attente',bg: 'rgba(245,158,11,.1)', text: '#B45309' },
+};
+
 /* ── Skeleton pour les runs ──────────────────────────────────────────── */
 
 function RunsSkeleton() {
@@ -219,18 +226,13 @@ export default function ReportingPage() {
                     className="flex items-center gap-3 px-4 sm:px-5 py-2.5 hover:bg-[var(--bg-sink)] transition-colors group"
                   >
                     <span
-                      className={cn(
-                        "text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0",
-                        r.status === "completed"
-                          ? "bg-[rgba(16,185,129,.1)] text-[#1B6B45]"
-                          : r.status === "running"
-                            ? "bg-[rgba(99,102,241,.1)] text-[#4338CA]"
-                            : r.status === "failed"
-                              ? "bg-[rgba(239,68,68,.1)] text-[#DC2626]"
-                              : "bg-[var(--bg-sink)] text-[var(--tx-3)]",
-                      )}
+                      className="text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0"
+                      style={{
+                        background: (RUN_STATUS_CONF[r.status] ?? RUN_STATUS_CONF.pending).bg,
+                        color:      (RUN_STATUS_CONF[r.status] ?? RUN_STATUS_CONF.pending).text,
+                      }}
                     >
-                      {r.status === "completed" ? "complété" : r.status}
+                      {(RUN_STATUS_CONF[r.status] ?? { label: r.status }).label}
                     </span>
                     <span className="text-[11px] text-[var(--tx-2)] font-mono truncate flex-1 group-hover:text-[var(--tx-1)] transition-colors">
                       {fmtDate(r.started_at)}

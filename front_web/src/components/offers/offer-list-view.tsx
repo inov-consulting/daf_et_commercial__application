@@ -5,8 +5,9 @@ import {
   FunnelSimpleIcon, PlusIcon, DownloadSimpleIcon, CaretRightIcon,
 } from '@phosphor-icons/react';
 import type { Offer, OfferStatus } from '@/types/offer_type';
-import { computeOfferStatus } from '@/types/offer_type';
+import { computeOfferStatus, fmtOfferDate } from '@/types/offer_type';
 import type { OfferListViewProps } from '@/types/offer_type';
+import { exportFromRows, type ExportCsvColumn } from '@/lib/exportCsv';
 import { STATUS_TABS } from '@/lib/constants';
 import { formatTodayDate } from '@/lib/utils';
 import { SearchInput } from './search-input';
@@ -98,6 +99,29 @@ export function OfferListView({
   
   const hasSearch = !!search.trim();
   const hasFilter = tabKey !== 'tous';
+
+  // Convertit les placeholders UI "–" en chaîne vide pour le CSV
+  const csv = (v: string | null | undefined) => (!v || v === '–') ? '' : v;
+
+  const OFFERS_COLUMNS: ExportCsvColumn<Offer>[] = [
+    { header: 'Référence',       value: r => r.name },
+    { header: 'Client',          value: r => csv(r.client_name) },
+    { header: 'Origine',         value: r => csv(r.origin_location) },
+    { header: 'Destination',     value: r => csv(r.destination_location) },
+    { header: 'Mode transport',  value: r => csv(r.transport_mode) },
+    { header: 'Statut',          value: r => computeOfferStatus(r) },
+    { header: 'Montant TTC',     value: r => r.amount_ttc > 0 ? r.amount_ttc : '' },
+    { header: 'Devise',          value: r => r.currency ?? 'FCFA' },
+    { header: "Date d'émission", value: r => { const d = fmtOfferDate(r.date_emission); return d === '–' ? '' : d; } },
+    { header: "Date expiration", value: r => r.validity_days > 0 ? fmtOfferDate(r.date_expiry) : '' },
+    { header: 'Créé le',         value: r => fmtOfferDate(r.created_at) },
+  ];
+
+  const handleExportCsv = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const label = tabKey !== 'tous' ? `-${tabKey}` : '';
+    exportFromRows(filtered, OFFERS_COLUMNS, `offres${label}-${today}.csv`);
+  };
   
   return (
     <div className="p-7 px-8 pb-16 min-h-full overflow-y-auto">
@@ -109,9 +133,9 @@ export function OfferListView({
         </h1>
         
         <div className="flex items-center gap-2">
-          <button className="h-9 px-3.5 border border-gray-200 rounded-lg bg-white text-gray-700 text-xs font-medium inline-flex items-center gap-1.5 hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm">
+          <button onClick={handleExportCsv} className="h-9 px-3.5 border border-gray-200 rounded-lg bg-white text-gray-700 text-xs font-medium inline-flex items-center gap-1.5 hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm">
             <DownloadSimpleIcon size={14} />
-            Exporter CSV
+            Exporter CSV{filtered.length !== offers.length ? ` (${filtered.length})` : ''}
           </button>
           
           <button 

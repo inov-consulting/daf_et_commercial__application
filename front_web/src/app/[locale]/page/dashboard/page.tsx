@@ -32,6 +32,8 @@ import {
 } from "@/components/kpi/kpi-chart-card";
 import type { KpiItem } from "@/types/kpi_type";
 import { useRouter, useParams } from "next/navigation";
+import { mapTransportStatus } from "@/types/offer_type";
+import { STATUS_PILL } from "@/lib/constants";
 
 function fmtM(v: number): string {
   if (!v) return "–";
@@ -208,34 +210,6 @@ function PageHeader({ companies, selectedCompanyId, onCompanyChange }: PageHeade
           Tableau de bord
         </h1>
       </div>
-
-      {companies.length > 0 && (
-        <div className="flex items-center gap-0.5 bg-white border border-[var(--bd-def)] rounded-lg p-0.5 shadow-[var(--sh-xs)]">
-          {companies.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => onCompanyChange(c.id)}
-              className={cn(
-                "flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors",
-                c.id === selectedCompanyId
-                  ? "bg-[var(--p500)] text-white"
-                  : "text-[var(--tx-2)] hover:bg-[var(--bg-sink)]",
-              )}
-            >
-              {c.country_code && (
-                <Image
-                  src={`https://flagcdn.com/16x12/${c.country_code.toLowerCase()}.png`}
-                  width={16}
-                  height={12}
-                  alt={c.country ?? ""}
-                  className="rounded-[2px] flex-shrink-0"
-                />
-              )}
-              <span className="hidden sm:inline">{c.name ?? c.id}</span>
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -617,20 +591,6 @@ function ChartsSection() {
   );
 }
 
-const OFFER_STATUS_MAP: Record<
-  string,
-  {
-    label: string;
-    color: "primary" | "warning" | "success" | "error" | "neutral";
-    dot: string;
-  }
-> = {
-  generated: { label: "Générée", color: "primary", dot: "bg-[var(--p500)]" },
-  validated: { label: "Validée", color: "warning", dot: "bg-[var(--warn500)]" },
-  confirmed: { label: "Confirmée", color: "success", dot: "bg-[var(--ok500)]" },
-  cancelled: { label: "Annulée", color: "error", dot: "bg-red-400" },
-  canceled: { label: "Annulée", color: "error", dot: "bg-red-400" },
-};
 
 function RecentMissions() {
   const { list, loading } = useAppSelector((s) => s.offers);
@@ -652,7 +612,7 @@ function RecentMissions() {
     <Card className="p-4 sm:p-5">
       <div className="flex items-center justify-between mb-3 sm:mb-4">
         <p className="font-semibold text-sm sm:text-base text-[var(--tx-1)]">
-          Transports récents
+          Offres de transport récentes
         </p>
         <button
           onClick={() => router.push(`/${locale}/page/offres`)}
@@ -686,21 +646,15 @@ function RecentMissions() {
       {!loading && recent.length > 0 && (
         <div className="flex flex-col">
           {recent.map((o) => {
-            const s = OFFER_STATUS_MAP[o.status] ?? {
-              label: o.status,
-              color: "neutral" as const,
-              dot: "text-[var(--tx-3)]",
-            };
+            const pill = STATUS_PILL[mapTransportStatus(o.status)];
             return (
               <div
                 key={o.id}
                 className="flex items-center gap-2 sm:gap-3 py-2 sm:py-2.5 border-b border-[var(--bd-def)] last:border-0"
               >
                 <span
-                  className={cn(
-                    "w-2 h-2 rounded-full flex-shrink-0 inline-block",
-                    s.dot,
-                  )}
+                  className="w-2 h-2 rounded-full flex-shrink-0 inline-block"
+                  style={{ backgroundColor: pill.dot }}
                 />
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] sm:text-[11px] font-semibold text-[var(--tx-3)]">
@@ -712,13 +666,12 @@ function RecentMissions() {
                     {o.title ?? o.odoo_shipment_name ?? "Offre transport"}
                   </p>
                 </div>
-                <Badge
-                  color={s.color}
-                  variant="subtle"
-                  className="text-[10px] sm:text-xs flex-shrink-0"
+                <span
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold whitespace-nowrap flex-shrink-0"
+                  style={{ backgroundColor: pill.bg, color: pill.color }}
                 >
-                  {s.label}
-                </Badge>
+                  {pill.label}
+                </span>
               </div>
             );
           })}
@@ -796,6 +749,10 @@ function CommercialPipeline() {
   const { byStatus, totalPipelineValue, loading } = useAppSelector(
     (s) => s.prospects,
   );
+  const router = useRouter();
+  const params = useParams();
+  const locale = typeof params.locale === 'string' ? params.locale : String(params.locale ?? 'fr');
+
   const counts = PIPELINE_STAGES.map((s) => ({
     ...s,
     value: byStatus?.[s.key] ?? 0,
@@ -808,7 +765,10 @@ function CommercialPipeline() {
         <p className="font-semibold text-sm sm:text-base text-[var(--tx-1)]">
           Pipeline commercial
         </p>
-        <button className="text-xs sm:text-sm font-medium text-[var(--p500)] hover:underline flex items-center gap-1">
+        <button
+          onClick={() => router.push(`/${locale}/page/prospects`)}
+          className="text-xs sm:text-sm font-medium text-[var(--p500)] hover:underline flex items-center gap-1"
+        >
           Détail <ArrowRightIcon size={13} />
         </button>
       </div>

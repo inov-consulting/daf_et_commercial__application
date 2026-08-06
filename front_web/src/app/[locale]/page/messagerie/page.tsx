@@ -55,6 +55,26 @@ export default function MessageriePage() {
 
   useEffect(() => { setMounted(true); }, []);
 
+  // Restaurer la conversation active depuis localStorage au montage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('portalis_active_conv');
+      if (saved) dispatch(setActiveConvId(saved));
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persister la conversation active à chaque changement
+  useEffect(() => {
+    try {
+      if (activeConvId) {
+        localStorage.setItem('portalis_active_conv', activeConvId);
+      } else {
+        localStorage.removeItem('portalis_active_conv');
+      }
+    } catch { /* ignore */ }
+  }, [activeConvId]);
+
   // Initial load
   useEffect(() => { dispatch(fetchConversations()); }, [dispatch]);
 

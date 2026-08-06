@@ -245,6 +245,15 @@ const prospectsSlice = createSlice({
       })
       .addCase(executeProspectAction.fulfilled, (state, action) => {
         state.actioning = false;
+        // Mettre à jour byStatus avant de vider le snapshot
+        if (state._actionSnapshot) {
+          const prevStatus = state._actionSnapshot.prevStatus as ProspectStatus;
+          const newStatus  = action.payload.status as ProspectStatus;
+          if (prevStatus && newStatus && prevStatus !== newStatus) {
+            state.byStatus[prevStatus] = Math.max(0, (state.byStatus[prevStatus] ?? 0) - 1);
+            state.byStatus[newStatus]  = (state.byStatus[newStatus] ?? 0) + 1;
+          }
+        }
         state._actionSnapshot = null;
         const idx = state.list.findIndex(p => p.id === action.payload.id);
         if (idx !== -1) state.list[idx] = action.payload;

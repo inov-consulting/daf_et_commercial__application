@@ -19,10 +19,10 @@ function fmtDuration(start: string, end: string | null) {
 }
 
 const RUN_STATUS: Record<string, { label: string; bg: string; text: string }> = {
-  completed: { label: 'OK',      bg: 'rgba(16,185,129,.1)',  text: '#1B6B45' },
-  running:   { label: 'Run',     bg: 'rgba(99,102,241,.1)',  text: '#4338CA' },
-  failed:    { label: 'Échec',   bg: 'rgba(239,68,68,.1)',   text: '#DC2626' },
-  pending:   { label: 'Attente', bg: 'rgba(245,158,11,.1)', text: '#B45309' },
+  completed: { label: 'Complété',   bg: 'rgba(16,185,129,.1)',  text: '#1B6B45' },
+  running:   { label: 'En cours',   bg: 'rgba(99,102,241,.1)',  text: '#4338CA' },
+  failed:    { label: 'Échec',      bg: 'rgba(239,68,68,.1)',   text: '#DC2626' },
+  pending:   { label: 'En attente', bg: 'rgba(245,158,11,.1)', text: '#B45309' },
 };
 
 interface Props {
