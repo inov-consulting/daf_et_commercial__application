@@ -367,6 +367,10 @@ export function OfferDetailView({
     ? OFFER_MODE_CONFIG[offer.transport_mode.toLowerCase()]
     : undefined;
 
+  const isDraft = status === 'brouillon';
+  const isCompleted = status === 'terminee';
+  const hasDocument = (detail?.sections?.length ?? 0) > 0 || (detail?.pricing?.length ?? 0) > 0;
+
   // ── Validator check ──────────────────────────────────────────────────────────
   const offerValidator = config?.validators?.offer_validator ?? null;
   const canValidate = !offerValidator || me?.id === offerValidator.id;
@@ -429,6 +433,10 @@ export function OfferDetailView({
       meta: "Dossier transport créé",
       color: "ok",
     });
+  } else if (status === "terminee") {
+    tlEvents.push({ label: "Validée par l'équipe", color: "ok" });
+    tlEvents.push({ label: "Confirmée dans Odoo", meta: "Dossier transport créé", color: "ok" });
+    tlEvents.push({ label: "Transport terminé", meta: "Prestation réalisée avec succès", color: "ok" });
   } else if (status === "refusee") {
     tlEvents.push({
       label: "Offre annulée",
@@ -541,7 +549,8 @@ export function OfferDetailView({
 
           {/* Actions */}
           <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
-            {status === 'genere' && (
+            {/* Modifier — brouillon ou généré */}
+            {(status === 'genere' || (isDraft && !isCompleted)) && (
               <button
                 onClick={() => onEdit(offer)}
                 className="h-9 px-3 sm:px-3.5 rounded-lg border border-[#DDE5EF] bg-white text-[#435869] text-[11px] sm:text-xs font-medium cursor-pointer inline-flex items-center gap-1.5 hover:bg-[#F7F9FC] transition-colors shadow-sm whitespace-nowrap"
@@ -552,20 +561,19 @@ export function OfferDetailView({
               </button>
             )}
 
-            {/* Annuler */}
+            {/* Annuler — seulement sur généré */}
             {status === "genere" && onCancel && (
-                <ActionButton
-                  onClick={doCancel}
-                  loading={cancelling}
-                  disabled={cancelling}
-                  icon={<XCircleIcon size={13} weight="fill" />}
-                  label={cancelling ? "Annulation…" : "Annuler"}
-                  variant="danger"
-                />
-              )}
+              <ActionButton
+                onClick={doCancel}
+                loading={cancelling}
+                disabled={cancelling}
+                icon={<XCircleIcon size={13} weight="fill" />}
+                label={cancelling ? "Annulation…" : "Annuler"}
+                variant="danger"
+              />
+            )}
 
-            {/* Étape 1 — Valider l'offre (generated → validated)
-                Prérequis API : statut generated. Si un validateur est configuré, seul lui peut valider. */}
+            {/* Étape 1 — Valider l'offre (generated → validated) */}
             {status === "genere" && onValidate && (
               <ActionButton
                 onClick={doValidate}
@@ -582,8 +590,7 @@ export function OfferDetailView({
               />
             )}
 
-            {/* Étape 2 — Confirmer → Odoo (validated → confirmed)
-                Prérequis API : statut validated. Crée le dossier transport dans Odoo. */}
+            {/* Étape 2 — Confirmer → Odoo (validated → confirmed) */}
             {status === "envoyee" && onConfirm && (
               <ActionButton
                 onClick={doConfirm}
@@ -595,7 +602,7 @@ export function OfferDetailView({
               />
             )}
 
-            {/* Régénérer */}
+            {/* Régénérer — offre expirée */}
             {expired && (
               <ActionButton
                 onClick={() =>
@@ -610,6 +617,27 @@ export function OfferDetailView({
         </div>
 
         {/* ── Alertes ────────────────────────────────────────────────────────── */}
+
+        {/* Brouillon vide */}
+        {isDraft && (
+          <div className="flex items-start gap-3 bg-[#F3F4F6] border border-[#D1D5DB] rounded-xl p-4 mb-4 text-[12px] sm:text-[13px] text-[#374151]">
+            <FileTextIcon size={18} className="text-[#9CA3AF] flex-shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <strong>Brouillon</strong> — Cette offre n&apos;a pas encore de contenu généré.
+              {" "}Cliquez sur <strong>&ldquo;Modifier&rdquo;</strong> pour renseigner les informations et lancer la génération.
+            </div>
+          </div>
+        )}
+
+        {/* Offre terminée (completed) */}
+        {isCompleted && (
+          <div className="flex items-start gap-3 bg-[#ECFDF5] border border-[#6EE7B7] rounded-xl p-4 mb-4 text-[12px] sm:text-[13px] text-[#064E3B]">
+            <CheckSquareIcon size={18} weight="fill" className="text-[#059669] flex-shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <strong>Offre terminée</strong> — Le transport a été réalisé avec succès. Cette offre est en lecture seule.
+            </div>
+          </div>
+        )}
 
         {/* genere → valider d'abord (generated → validated), confirm ensuite */}
         {status === "genere" && (
@@ -678,8 +706,9 @@ export function OfferDetailView({
 
         {!expired &&
           daysLeft !== null &&
+          daysLeft > 0 &&
           daysLeft <= 7 &&
-          !(["validee", "refusee", "envoyee"] as OfferStatus[]).includes(
+          !(["validee", "terminee", "refusee", "envoyee"] as OfferStatus[]).includes(
             status,
           ) && (
             <div className="flex items-center gap-3 bg-[#FFFBEB] border border-[#FDE68A] rounded-xl p-3 mb-4 text-[12px] sm:text-[13px] text-[#D97706]">
@@ -720,12 +749,26 @@ export function OfferDetailView({
               icon={<FileTextIcon size={15} />}
               title="Document de l'offre"
             >
-              <div className="p-2 sm:p-4 md:p-7">
-                <OfferDocument
-                  offer={{ ...offer, route: offer.route as Route }}
-                  detail={detail}
-                />
-              </div>
+              {hasDocument ? (
+                <div className="p-2 sm:p-4 md:p-7">
+                  <OfferDocument
+                    offer={{ ...offer, route: offer.route as Route }}
+                    detail={detail}
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+                  <FileTextIcon size={32} className="text-[#C3CDD9]" />
+                  <p className="text-[13px] font-semibold text-[#5A738A]">
+                    {isDraft ? "Document non encore généré" : "Aucun document disponible"}
+                  </p>
+                  {isDraft && (
+                    <p className="text-[11px] text-[#9EB0C4] max-w-[260px]">
+                      Renseignez les informations de l&apos;offre pour générer le document.
+                    </p>
+                  )}
+                </div>
+              )}
             </CollapsibleCard>
           </div>
 

@@ -10,6 +10,18 @@ const nextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'http',
+        hostname: 'storage.manage.inov-consulting.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'storage.manage.inov-consulting.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
 };

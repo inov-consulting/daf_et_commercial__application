@@ -1,14 +1,18 @@
-import { cn } from '@/lib/utils';
-import { ShipmentWorkflow } from '@/types/transport_type';
-import { CheckIcon, FolderOpenIcon, XCircleIcon } from '@phosphor-icons/react';
-import React from 'react';
+import { cn } from "@/lib/utils";
+import { ShipmentWorkflow } from "@/types/transport_type";
+import { CheckIcon, FolderOpenIcon, XCircleIcon } from "@phosphor-icons/react";
+import React from "react";
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
 
 const fmtDatetime = (iso?: string) => {
-  if (!iso) return '–';
-  return new Date(iso).toLocaleDateString('fr-FR', {
-    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  if (!iso) return "–";
+  return new Date(iso).toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 };
 
@@ -22,32 +26,41 @@ function fmtDuration(hours: number): string {
 
 /* ── Horizontal stepper ──────────────────────────────────────────────────── */
 
-type StepState = 'done' | 'current' | 'pending' | 'cancelled-past';
+type StepState = "done" | "current" | "pending" | "cancelled-past";
 
 function WorkflowStepper({
-  steps, isCancelled,
+  steps,
+  isCancelled,
 }: {
-  steps: Array<{ name: string; code: string; sequence: number; is_current: boolean }>;
+  steps: Array<{
+    name: string;
+    code: string;
+    sequence: number;
+    is_current: boolean;
+  }>;
   isCancelled: boolean;
 }) {
-  const mainSteps = steps.filter(s => s.code !== 'CANCELLED' && s.sequence < 999);
-  const currentIdx = mainSteps.findIndex(s => s.is_current);
+  const mainSteps = steps.filter(
+    (s) => s.code !== "CANCELLED" && s.sequence < 999,
+  );
+  const currentIdx = mainSteps.findIndex((s) => s.is_current);
 
   function getState(i: number): StepState {
-    if (isCancelled) return i <= currentIdx ? 'cancelled-past' : 'pending';
-    if (i < currentIdx) return 'done';
-    if (i === currentIdx) return 'current';
-    return 'pending';
+    if (isCancelled) return i <= currentIdx ? "cancelled-past" : "pending";
+    if (i < currentIdx) return "done";
+    if (i === currentIdx) return "current";
+    return "pending";
   }
 
-  const STEP_W = 56;
-
   return (
-    <div className="overflow-x-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: 'var(--bd-def) transparent' }}>
-      <div
-        className="flex items-start pb-1"
-        style={{ minWidth: `${mainSteps.length * STEP_W + (mainSteps.length - 1) * 20}px` }}
-      >
+    <div
+      className="w-full overflow-x-auto pb-1"
+      style={{
+        scrollbarWidth: "thin",
+        scrollbarColor: "var(--bd-def) transparent",
+      }}
+    >
+      <div className="flex items-start w-full min-w-max md:min-w-0">
         {mainSteps.map((step, i) => {
           const state = getState(i);
           const isLast = i === mainSteps.length - 1;
@@ -56,57 +69,64 @@ function WorkflowStepper({
 
           return (
             <React.Fragment key={step.code}>
-              {/* Step node */}
-              <div className="flex flex-col items-center flex-shrink-0" style={{ width: STEP_W }}>
-
-                {/* Circle */}
+              <div className="flex flex-col items-center flex-shrink-0">
                 <div
                   className={cn(
-                    'w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-all',
-                    state === 'done'          && 'bg-[#10B981] border-[#10B981]',
-                    state === 'current'       && 'bg-[#0E86E8] border-[#0E86E8]',
-                    state === 'pending'       && 'bg-white border-[#D1D5DB]',
-                    state === 'cancelled-past' && 'bg-[#9CA3AF] border-[#9CA3AF]',
+                    "w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-all",
+                    state === "done" && "bg-[#10B981] border-[#10B981]",
+                    state === "current" && "bg-[#0E86E8] border-[#0E86E8]",
+                    state === "pending" && "bg-white border-[#D1D5DB]",
+                    state === "cancelled-past" &&
+                      "bg-[#9CA3AF] border-[#9CA3AF]",
                   )}
-                  style={state === 'current' ? { boxShadow: '0 0 0 4px rgba(14,134,232,.14)' } : undefined}
+                  style={
+                    state === "current"
+                      ? { boxShadow: "0 0 0 3px rgba(14,134,232,.14)" }
+                      : undefined
+                  }
                 >
-                  {state === 'done' && (
-                    <CheckIcon size={12} weight="bold" className="text-white" />
+                  {state === "done" && (
+                    <CheckIcon size={9} weight="bold" className="text-white" />
                   )}
-                  {state === 'current' && (
-                    <span className="w-2 h-2 rounded-full bg-white" />
+                  {state === "current" && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-white" />
                   )}
-                  {state === 'pending' && (
-                    <span className="text-[10px] font-bold text-[#C3CDD9]">{i + 1}</span>
+                  {state === "pending" && (
+                    <span className="text-[8px] font-bold text-[#C3CDD9]">
+                      {i + 1}
+                    </span>
                   )}
-                  {state === 'cancelled-past' && (
-                    <CheckIcon size={12} weight="bold" className="text-white" />
+                  {state === "cancelled-past" && (
+                    <CheckIcon size={9} weight="bold" className="text-white" />
                   )}
                 </div>
-
-                {/* Label */}
-                <div className={cn(
-                  'text-[9px] text-center mt-1.5 leading-tight px-0.5',
-                  state === 'done'           && 'text-[#059669] font-medium',
-                  state === 'current'        && 'text-[#085499] font-bold',
-                  state === 'pending'        && 'text-[#9CA3AF]',
-                  state === 'cancelled-past' && 'text-[#9CA3AF] line-through',
-                )}>
-                  {step.name}
+                <div
+                  className={cn(
+                    "text-[7px] sm:text-[8px] md:text-[9px] text-center mt-1 leading-tight px-0.5 max-w-[48px] sm:max-w-[64px]",
+                    state === "done" && "text-[#059669] font-medium",
+                    state === "current" && "text-[#085499] font-bold",
+                    state === "pending" && "text-[#9CA3AF]",
+                    state === "cancelled-past" && "text-[#9CA3AF] line-through",
+                  )}
+                >
+                  <span className="line-clamp-2">{step.name}</span>
                 </div>
               </div>
-
-              {/* Connector line */}
               {!isLast && (
-                <div
-                  className="flex-shrink-0 mt-[13px]"
-                  style={{
-                    width: 20,
-                    height: 2,
-                    background: lineGreen ? '#10B981' : lineGrey ? '#C3CDD9' : '#E5E7EB',
-                    transition: 'background 0.3s',
-                  }}
-                />
+                <div className="flex-1 flex items-start mt-[9px] sm:mt-[11px] md:mt-[13px] px-0.5">
+                  <div
+                    className="w-full transition-all duration-300"
+                    style={{
+                      height: 2,
+                      minWidth: 6,
+                      background: lineGreen
+                        ? "#10B981"
+                        : lineGrey
+                          ? "#C3CDD9"
+                          : "#E5E7EB",
+                    }}
+                  />
+                </div>
               )}
             </React.Fragment>
           );
@@ -128,18 +148,22 @@ const WorkflowSection = ({ workflow }: { workflow?: ShipmentWorkflow }) => {
     );
   }
 
-  const history   = workflow.history ?? [];
-  const steps     = workflow.steps   ?? [];
-  const cancelled = steps.find(s => s.code === 'CANCELLED')?.is_current ?? false;
+  const history = workflow.history ?? [];
+  const steps = workflow.steps ?? [];
+  const cancelled =
+    steps.find((s) => s.code === "CANCELLED")?.is_current ?? false;
 
   return (
     <div className="space-y-4">
-
       {/* Cancelled banner */}
       {cancelled && (
         <div
           className="flex items-center gap-2.5 rounded-xl px-3.5 py-3 text-[12px] font-semibold"
-          style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}
+          style={{
+            background: "#FEF2F2",
+            color: "#DC2626",
+            border: "1px solid #FECACA",
+          }}
         >
           <XCircleIcon size={16} weight="fill" />
           Voyage annulé — workflow interrompu
@@ -150,12 +174,18 @@ const WorkflowSection = ({ workflow }: { workflow?: ShipmentWorkflow }) => {
       {steps.length > 0 && (
         <div
           className="rounded-xl overflow-hidden"
-          style={{ border: '1px solid var(--bd-def)', background: 'var(--bg-surf)' }}
+          style={{
+            border: "1px solid var(--bd-def)",
+            background: "var(--bg-surf)",
+          }}
         >
           {/* Card header */}
           <div
             className="flex items-center justify-between gap-3 px-4 py-2.5"
-            style={{ borderBottom: '1px solid var(--bd-def)', background: 'var(--bg-sink)' }}
+            style={{
+              borderBottom: "1px solid var(--bd-def)",
+              background: "var(--bg-sink)",
+            }}
           >
             <span className="text-[10px] font-semibold uppercase tracking-[.06em] text-[var(--tx-3)]">
               Schéma du voyage
@@ -164,12 +194,17 @@ const WorkflowSection = ({ workflow }: { workflow?: ShipmentWorkflow }) => {
               {workflow.state && (
                 <span
                   className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                  style={cancelled
-                    ? { background: '#FEE2E2', color: '#DC2626' }
-                    : { background: '#DBEAFE', color: '#1D4ED8' }
+                  style={
+                    cancelled
+                      ? { background: "#FEE2E2", color: "#DC2626" }
+                      : { background: "#DBEAFE", color: "#1D4ED8" }
                   }
                 >
-                  {cancelled ? 'Annulé' : workflow.state === 'running' ? '● En cours' : workflow.state}
+                  {cancelled
+                    ? "Annulé"
+                    : workflow.state === "running"
+                      ? "● En cours"
+                      : workflow.state}
                 </span>
               )}
               {workflow.current_step && !cancelled && (
@@ -191,21 +226,33 @@ const WorkflowSection = ({ workflow }: { workflow?: ShipmentWorkflow }) => {
       {workflow.template && (
         <div
           className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl"
-          style={{ border: '1px solid var(--bd-def)', background: 'var(--bg-sink)' }}
+          style={{
+            border: "1px solid var(--bd-def)",
+            background: "var(--bg-sink)",
+          }}
         >
           <div>
-            <div className="text-[10px] text-[var(--tx-3)] mb-0.5">Modèle de workflow</div>
-            <div className="text-[12px] font-semibold text-[var(--tx-1)]">{workflow.template}</div>
+            <div className="text-[10px] text-[var(--tx-3)] mb-0.5">
+              Modèle de workflow
+            </div>
+            <div className="text-[12px] font-semibold text-[var(--tx-1)]">
+              {workflow.template}
+            </div>
           </div>
           {workflow.state && (
             <span
               className="text-[10px] font-semibold px-2.5 py-1 rounded-full flex-shrink-0"
-              style={cancelled
-                ? { background: '#FEE2E2', color: '#DC2626' }
-                : { background: '#DBEAFE', color: '#1D4ED8' }
+              style={
+                cancelled
+                  ? { background: "#FEE2E2", color: "#DC2626" }
+                  : { background: "#DBEAFE", color: "#1D4ED8" }
               }
             >
-              {cancelled ? 'Annulé' : workflow.state === 'running' ? 'En cours' : workflow.state}
+              {cancelled
+                ? "Annulé"
+                : workflow.state === "running"
+                  ? "En cours"
+                  : workflow.state}
             </span>
           )}
         </div>
@@ -215,14 +262,20 @@ const WorkflowSection = ({ workflow }: { workflow?: ShipmentWorkflow }) => {
       {history.length > 0 && (
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[.06em] text-[var(--tx-3)] mb-3">
-            Historique · {history.length} étape{history.length > 1 ? 's' : ''} parcourue{history.length > 1 ? 's' : ''}
+            Historique · {history.length} étape{history.length > 1 ? "s" : ""}{" "}
+            parcourue{history.length > 1 ? "s" : ""}
           </p>
 
           <div className="relative" style={{ paddingLeft: 14 }}>
             {/* Vertical connecting line */}
             <div
               className="absolute top-3 bottom-3"
-              style={{ left: 12, width: 2, background: 'var(--bd-def)', borderRadius: 2 }}
+              style={{
+                left: 12,
+                width: 2,
+                background: "var(--bd-def)",
+                borderRadius: 2,
+              }}
             />
 
             <div className="space-y-2.5">
@@ -230,46 +283,60 @@ const WorkflowSection = ({ workflow }: { workflow?: ShipmentWorkflow }) => {
                 const isCurrent = !entry.date_exited;
                 return (
                   <div key={entry.id ?? i} className="flex items-start gap-3">
-
                     {/* Dot on the timeline */}
                     <div
                       className={cn(
-                        'w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 z-10 border-2',
+                        "w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 z-10 border-2",
                         isCurrent
-                          ? 'bg-[#0E86E8] border-[#0E86E8]'
-                          : 'bg-white border-[#10B981]',
+                          ? "bg-[#0E86E8] border-[#0E86E8]"
+                          : "bg-white border-[#10B981]",
                       )}
                       style={{ marginLeft: -12 }}
                     >
-                      {isCurrent
-                        ? <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                        : <CheckIcon size={10} weight="bold" className="text-[#10B981]" />
-                      }
+                      {isCurrent ? (
+                        <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                      ) : (
+                        <CheckIcon
+                          size={10}
+                          weight="bold"
+                          className="text-[#10B981]"
+                        />
+                      )}
                     </div>
 
                     {/* Entry card */}
                     <div
                       className="flex-1 min-w-0 rounded-xl p-3 border"
-                      style={isCurrent
-                        ? { background: '#EBF5FD', border: '1px solid rgba(14,134,232,.2)' }
-                        : { background: 'var(--bg-sink)', border: '1px solid var(--bd-def)' }
+                      style={
+                        isCurrent
+                          ? {
+                              background: "#EBF5FD",
+                              border: "1px solid rgba(14,134,232,.2)",
+                            }
+                          : {
+                              background: "var(--bg-sink)",
+                              border: "1px solid var(--bd-def)",
+                            }
                       }
                     >
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <div className={cn(
-                          'text-[12px] font-semibold leading-tight',
-                          isCurrent ? 'text-[#085499]' : 'text-[var(--tx-1)]',
-                        )}>
+                        <div
+                          className={cn(
+                            "text-[12px] font-semibold leading-tight",
+                            isCurrent ? "text-[#085499]" : "text-[var(--tx-1)]",
+                          )}
+                        >
                           {entry.step}
                         </div>
                         <span
                           className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
-                          style={isCurrent
-                            ? { background: '#DBEAFE', color: '#1D4ED8' }
-                            : { background: '#DCFCE7', color: '#059669' }
+                          style={
+                            isCurrent
+                              ? { background: "#DBEAFE", color: "#1D4ED8" }
+                              : { background: "#DCFCE7", color: "#059669" }
                           }
                         >
-                          {isCurrent ? 'En cours' : 'Terminé'}
+                          {isCurrent ? "En cours" : "Terminé"}
                         </span>
                       </div>
 
@@ -281,17 +348,18 @@ const WorkflowSection = ({ workflow }: { workflow?: ShipmentWorkflow }) => {
                         {entry.date_exited && (
                           <span>sortie {fmtDatetime(entry.date_exited)}</span>
                         )}
-                        {entry.duration_hours != null && entry.duration_hours > 0 && (
-                          <span className="font-medium text-[var(--tx-2)]">
-                            {fmtDuration(entry.duration_hours)}
-                          </span>
-                        )}
+                        {entry.duration_hours != null &&
+                          entry.duration_hours > 0 && (
+                            <span className="font-medium text-[var(--tx-2)]">
+                              {fmtDuration(entry.duration_hours)}
+                            </span>
+                          )}
                       </div>
 
                       {entry.note && (
                         <div
                           className="mt-1.5 pt-1.5 text-[11px] text-[var(--tx-2)] italic"
-                          style={{ borderTop: '1px solid var(--bd-def)' }}
+                          style={{ borderTop: "1px solid var(--bd-def)" }}
                         >
                           {entry.note}
                         </div>

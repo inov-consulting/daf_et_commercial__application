@@ -232,7 +232,7 @@ function MobileUserCard({
             style={{ background: user.avatar_url ? undefined : user.bg }}
           >
             {user.avatar_url
-              ? <Image src={user.avatar_url} alt={user.initials} fill className="object-cover" unoptimized />
+              ? <Image src={user.avatar_url} alt={user.initials} fill className="object-cover" />
               : user.initials
             }
           </div>
@@ -582,7 +582,7 @@ export function UserTable({
                         style={{ background: user.avatar_url ? undefined : user.bg }}
                       >
                         {user.avatar_url
-                          ? <Image src={user.avatar_url} alt={user.initials} fill className="object-cover" unoptimized />
+                          ? <Image src={user.avatar_url} alt={user.initials} fill className="object-cover" />
                           : user.initials
                         }
                       </div>

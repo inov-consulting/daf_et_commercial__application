@@ -39,15 +39,15 @@ export interface Route {
 export interface TransportOfferDetail {
   offer_id: string;
   status: string;
-  title: string;
-  reference: string;
-  date: string;
-  validity_days: number;
+  title: string | null;
+  reference: string | null;
+  date: string | null;
+  validity_days: number | null;
   sections: OfferSection[];
   pricing: OfferPricingRow[];
-  route: Route;
-  client: { name: string; odoo_partner_id: number | null };
-  footer: string;
+  route: Route | null;
+  client: { name: string; odoo_partner_id: number | null } | null;
+  footer: string | null;
   document_generated_at: string | null;
   parse_error: boolean;
   warnings?: string[];
@@ -112,6 +112,7 @@ export function mapTransportStatus(status: string): OfferStatus {
   if (s === 'generated')  return 'genere';
   if (s === 'validated')  return 'envoyee';
   if (s === 'confirmed')  return 'validee';
+  if (s === 'completed')  return 'terminee';
   if (s === 'cancelled' || s === 'canceled') return 'refusee';
   return 'brouillon';
 }
@@ -240,7 +241,7 @@ export function transportDetailToOffer(detail: TransportOfferDetail): Offer {
 
 // ── Offres commerciales ────────────────────────────────────────────────────────
 
-export type OfferStatus = 'brouillon' | 'genere' | 'envoyee' | 'validee' | 'refusee' | 'expiree';
+export type OfferStatus = 'brouillon' | 'genere' | 'envoyee' | 'validee' | 'terminee' | 'refusee' | 'expiree';
 export type OfferMode   = 'terrestre' | 'maritime' | 'aerien' | 'routier' | 'multimodal';
 
 export interface Offer {
@@ -348,12 +349,13 @@ export interface PaginationProps {
 export const OFFER_STATUS_CONFIG: Record<OfferStatus, {
   label: string; bg: string; color: string; dot: string;
 }> = {
-  brouillon: { label: 'Brouillon', bg: '#F3F4F6', color: '#374151', dot: '#9CA3AF' },
-  genere:    { label: 'Généré',    bg: '#FBF3DE', color: '#725A0A', dot: '#92720C' },
+  brouillon: { label: 'Brouillon',  bg: '#F3F4F6', color: '#374151', dot: '#9CA3AF' },
+  genere:    { label: 'Généré',     bg: '#FBF3DE', color: '#725A0A', dot: '#92720C' },
   envoyee:   { label: 'Validée',    bg: '#FFFBEB', color: '#D97706', dot: '#F59E0B' },
   validee:   { label: 'Lié à Odoo', bg: '#ECFDF5', color: '#059669', dot: '#10B981' },
-  refusee:   { label: 'Refusée',   bg: '#FEF2F2', color: '#DC2626', dot: '#EF4444' },
-  expiree:   { label: 'Expirée',   bg: '#F3F4F6', color: '#6B7280', dot: '#9CA3AF' },
+  terminee:  { label: 'Terminée',   bg: '#EEF2FF', color: '#3730A3', dot: '#6366F1' },
+  refusee:   { label: 'Refusée',    bg: '#FEF2F2', color: '#DC2626', dot: '#EF4444' },
+  expiree:   { label: 'Expirée',    bg: '#F3F4F6', color: '#6B7280', dot: '#9CA3AF' },
 };
 
 export const OFFER_MODE_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
@@ -368,8 +370,9 @@ export const OFFER_STATUS_TABS: { key: OfferStatus | 'tous'; label: string }[] =
   { key: 'tous',      label: 'Tous' },
   { key: 'brouillon', label: 'Brouillon' },
   { key: 'genere',    label: 'Généré' },
-  { key: 'envoyee',   label: 'Validée'    },
+  { key: 'envoyee',   label: 'Validée' },
   { key: 'validee',   label: 'Lié à Odoo' },
+  { key: 'terminee',  label: 'Terminée' },
   { key: 'refusee',   label: 'Refusée' },
   { key: 'expiree',   label: 'Expirée' },
 ];
@@ -396,8 +399,11 @@ export const OFFER_VALIDITY_OPTIONS: { value: number; label: string }[] = [
 // ── Fonctions utilitaires ──────────────────────────────────────────────────────
 
 export function isOfferExpired(offer: Pick<Offer, 'state' | 'date_expiry'>): boolean {
-  if (offer.state === 'validee' || offer.state === 'refusee') return false;
-  return new Date(offer.date_expiry) < new Date();
+  if (offer.state === 'validee' || offer.state === 'terminee' || offer.state === 'refusee') return false;
+  const expiry = new Date(offer.date_expiry);
+  // epoch sentinel (1970) = pas de date d'expiration définie → pas expiré
+  if (isNaN(expiry.getTime()) || expiry.getFullYear() < 2000) return false;
+  return expiry < new Date();
 }
 
 export function offerDaysLeft(offer: Pick<Offer, 'date_expiry'>): number {
@@ -405,7 +411,7 @@ export function offerDaysLeft(offer: Pick<Offer, 'date_expiry'>): number {
 }
 
 export function computeOfferStatus(offer: Pick<Offer, 'state' | 'date_expiry'>): OfferStatus {
-  if (offer.state === 'validee' || offer.state === 'refusee') return offer.state;
+  if (offer.state === 'validee' || offer.state === 'terminee' || offer.state === 'refusee') return offer.state;
   if (isOfferExpired(offer)) return 'expiree';
   return offer.state;
 }
@@ -427,5 +433,7 @@ export function fmtOfferAmount(n: number, currency = 'FCFA'): string {
 
 export function fmtOfferDate(iso?: string | null): string {
   if (!iso) return '–';
-  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '–';
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 }
