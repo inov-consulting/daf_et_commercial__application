@@ -207,6 +207,7 @@ RAPPEL: Générer un document HTML COMPLET avec ce Design System. Respecter les 
         cr = await CompteRenduOrm.create(
             parent_type="prospect",
             parent_id=prospect_id,
+            company_id=prospect.company_id if prospect else None,
             version=version,
             status="final",
             minio_bucket=settings.minio_bucket,
