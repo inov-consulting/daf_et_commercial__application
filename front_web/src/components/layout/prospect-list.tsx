@@ -196,6 +196,19 @@ export function ProspectList({
       <div className="bg-white border border-[var(--bd-def)] rounded-xl overflow-hidden shadow-xs">
         <div style={{ overflowX: 'auto', overflowY: 'clip' }}>
           <table className="w-full text-left border-collapse" style={{ minWidth: 920 }}>
+            <colgroup>
+              <col style={{ width: 40 }} />          {/* checkbox */}
+              <col style={{ width: 200 }} />         {/* entreprise */}
+              <col style={{ width: 160 }} />         {/* contact */}
+              <col style={{ width: 180 }} />         {/* secteur */}
+              <col style={{ width: 130 }} />         {/* statut */}
+              <col style={{ width: 110 }} />         {/* équipe */}
+              <col style={{ width: 80 }} />          {/* dossiers */}
+              <col style={{ width: 130 }} />         {/* pipeline */}
+              <col style={{ width: 110 }} />         {/* âge */}
+              <col style={{ width: 90 }} />          {/* activité */}
+              <col style={{ width: 56 }} />          {/* actions */}
+            </colgroup>
             <thead className="sticky top-0 z-10 bg-[var(--bg-sink)]">
               <tr className="border-b border-[var(--bd-def)] bg-[var(--bg-sink)]">
                 <th className="w-10 pl-4 py-3">
@@ -285,7 +298,7 @@ export function ProspectList({
 
                     {/* Reste du code inchangé... */}
                     {/* Entreprise */}
-                    <td className="py-3.5 pl-1 pr-4">
+                    <td className="py-3.5 pl-1 pr-4 max-w-0">
                       <div className="flex items-center gap-2.5">
                         <div
                           className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-white text-[10px] font-bold"
@@ -293,8 +306,8 @@ export function ProspectList({
                         >
                           {toInitials(p.company_name)}
                         </div>
-                        <div className="min-w-0 max-w-[160px]">
-                          <span className="text-[var(--tx-1)] text-[13px] font-semibold font-display truncate block">
+                        <div className="min-w-0 flex-1">
+                          <span className="text-[var(--tx-1)] text-[13px] font-semibold font-display truncate block" title={p.company_name || p.lead_name}>
                             {p.company_name || p.lead_name}
                           </span>
                           {p.lead_name && p.lead_name !== p.company_name && (
@@ -305,23 +318,24 @@ export function ProspectList({
                     </td>
 
                     {/* Contact */}
-                    <td className="py-3.5 pr-4">
-                      <div className="max-w-[150px]">
-                        <p className="text-[var(--tx-1)] text-[13px] font-medium truncate">
+                    <td className="py-3.5 pr-4 max-w-0">
+                      <div className="min-w-0">
+                        <p className="text-[var(--tx-1)] text-[13px] font-medium truncate" title={p.contact_name || undefined}>
                           {p.contact_name || '–'}
                         </p>
-                        <p className="text-[var(--tx-3)] text-xs truncate">{p.email || ''}</p>
+                        <p className="text-[var(--tx-3)] text-xs truncate" title={p.email || undefined}>{p.email || ''}</p>
                       </div>
                     </td>
 
                     {/* Secteur */}
-                    <td className="py-3.5 pr-4">
+                    <td className="py-3.5 pr-4 max-w-0">
                       {p.portalis_sector ? (
                         <span
-                          className="inline-flex items-center px-2.5 py-[3px] rounded-full text-[11px] font-semibold border whitespace-nowrap"
+                          className="inline-flex items-center px-2.5 py-[3px] rounded-full text-[11px] font-semibold border max-w-full"
                           style={{ background: sectorStyle.bg, color: sectorStyle.text, borderColor: sectorStyle.border }}
+                          title={p.portalis_sector}
                         >
-                          {p.portalis_sector}
+                          <span className="truncate">{p.portalis_sector}</span>
                         </span>
                       ) : (
                         <span className="text-[var(--tx-3)] text-sm">–</span>
@@ -354,15 +368,15 @@ export function ProspectList({
                     </td>
 
                     {/* Équipe */}
-                    <td className="py-3.5 pr-4">
-                      <div className="max-w-[110px] truncate text-[var(--tx-2)] text-[13px]">
+                    <td className="py-3.5 pr-4 max-w-0">
+                      <div className="truncate text-[var(--tx-2)] text-[13px]" title={p.team_name ?? undefined}>
                         {p.team_name ?? '–'}
                       </div>
                     </td>
 
                     {/* Dossiers */}
                     <td className="py-3.5 pr-4">
-                      <span className="text-[var(--tx-3)] text-sm">—</span>
+                      <span className="text-[var(--tx-3)] text-sm">-</span>
                     </td>
 
                     {/* Pipeline FCFA */}
@@ -378,7 +392,7 @@ export function ProspectList({
                           {age.label}
                         </span>
                       ) : (
-                        <span className="text-[var(--tx-3)] text-sm">—</span>
+                        <span className="text-[var(--tx-3)] text-sm">-</span>
                       )}
                     </td>
 
