@@ -15,6 +15,8 @@ import {
   apiProspectToUi,
   type ProspectStatus, type ApiProspect, type UpdateProspectBody,
 } from '@/types/prospect_type';
+import { exportListToCsv, type ExportCsvColumn } from '@/lib/exportCsv';
+import { ApiRoutes } from '@/lib/ApiRoutes';
 import { cn } from '@/lib/utils';
 import { useAppDispatch, useAppSelector } from '@/redux/store';
 import {
@@ -65,6 +67,41 @@ export default function ProspectsPage() {
   const [modal, setModal] = useState<{
     open: boolean; mode: 'create' | 'edit'; prospect?: ApiProspect;
   }>({ open: false, mode: 'create' });
+  const [exporting, setExporting] = useState(false);
+
+  const PROSPECTS_COLUMNS: ExportCsvColumn<ApiProspect>[] = [
+    { header: 'Entreprise',       value: r => r.company_name },
+    { header: 'Contact',          value: r => r.contact_name },
+    { header: 'Email',            value: r => r.email },
+    { header: 'Téléphone',        value: r => r.phone },
+    { header: 'Statut',           value: r => r.status_label },
+    { header: 'Secteur',          value: r => r.portalis_sector },
+    { header: 'Responsable',      value: r => r.assigned_to_name ?? '' },
+    { header: 'Équipe',           value: r => r.team_name ?? '' },
+    { header: 'CA prévisionnel',  value: r => r.expected_revenue },
+    { header: 'Probabilité (%)',  value: r => r.probability ?? '' },
+    { header: 'Âge pipeline (j)', value: r => r.pipeline_age_days },
+    { header: 'Créé le',          value: r => r.created_at },
+  ];
+
+  const handleExportCsv = async () => {
+    setExporting(true);
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      await exportListToCsv<ApiProspect>({
+        url: ApiRoutes.PROSPECTS_LIST,
+        filters: {
+          ...(activeTab !== 'tous' ? { status: activeTab } : {}),
+          ...(debouncedSearch ? { search: debouncedSearch } : {}),
+          ...(sortBy ? { sort_by: SORT_FIELD[sortBy], sort_order: sortOrder } : {}),
+        },
+        columns: PROSPECTS_COLUMNS,
+        filename: `prospects-${today}.csv`,
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // ── Debounce search → reset page ──
   useEffect(() => {
@@ -223,9 +260,9 @@ export default function ProspectsPage() {
             <span className="hidden sm:inline">{syncing ? 'Sync…' : 'Sync Odoo'}</span>
             <span className="sm:hidden">Sync</span>
           </button>
-          <Button variant="ghost" size="sm" className="flex-1 sm:flex-none gap-1 sm:gap-1.5 h-8 text-[11px] sm:text-[12px]">
-            <DownloadSimpleIcon size={13} />
-            <span className="hidden xs:inline">Exporter CSV</span>
+          <Button variant="ghost" size="sm" className="flex-1 sm:flex-none gap-1 sm:gap-1.5 h-8 text-[11px] sm:text-[12px]" onClick={handleExportCsv} disabled={exporting || loading}>
+            <DownloadSimpleIcon size={13} className={exporting ? 'animate-pulse' : ''} />
+            <span className="hidden xs:inline">{exporting ? 'Export…' : 'Exporter CSV'}</span>
             <span className="xs:hidden">CSV</span>
           </Button>
           <Button
@@ -242,30 +279,32 @@ export default function ProspectsPage() {
 
       {/* ── Tab bar + search + view toggle ──────────────────── */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-4 sm:mb-5">
-        {/* Tabs - scrollable horizontal sur mobile */}
-        <div className="flex items-center gap-0.5 bg-[var(--bg-sink)] rounded-lg p-1 overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-hide">
-          {tabs.map((t) => {
-            const active = activeTab === t.key;
-            return (
-              <button
-                key={t.key}
-                onClick={() => handleTabChange(t.key)}
-                className={cn(
-                  'flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-[5px] rounded-md text-[11px] sm:text-[12px] font-medium transition-all duration-150 whitespace-nowrap flex-shrink-0',
-                  active ? 'bg-white text-[var(--tx-1)] shadow-xs font-semibold' : 'text-[var(--tx-3)] hover:text-[var(--tx-2)]',
-                )}
-              >
-                {t.label}
-                <span className={cn(
-                  'text-[10px] font-bold min-w-[16px] text-center px-0.5',
-                  active ? 'text-primary-500' : 'text-[var(--tx-3)]'
-                )}>
-                  {t.count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        {/* Tabs — masqués en vue kanban (les colonnes représentent déjà chaque statut) */}
+        {view === 'list' && (
+          <div className="flex items-center gap-0.5 bg-[var(--bg-sink)] rounded-lg p-1 overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-hide">
+            {tabs.map((t) => {
+              const active = activeTab === t.key;
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => handleTabChange(t.key)}
+                  className={cn(
+                    'flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-[5px] rounded-md text-[11px] sm:text-[12px] font-medium transition-all duration-150 whitespace-nowrap flex-shrink-0',
+                    active ? 'bg-white text-[var(--tx-1)] shadow-xs font-semibold' : 'text-[var(--tx-3)] hover:text-[var(--tx-2)]',
+                  )}
+                >
+                  {t.label}
+                  <span className={cn(
+                    'text-[10px] font-bold min-w-[16px] text-center px-0.5',
+                    active ? 'text-primary-500' : 'text-[var(--tx-3)]'
+                  )}>
+                    {t.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Actions group - wrap on mobile */}
         <div className="flex items-center gap-1.5 sm:gap-2 sm:ml-auto flex-wrap sm:flex-nowrap">
