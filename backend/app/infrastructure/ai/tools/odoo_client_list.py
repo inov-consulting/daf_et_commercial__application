@@ -8,6 +8,7 @@ async def list_odoo_clients(
     limit: int | None = None,
     companies_only: bool = False,
     suppliers: bool = False,
+    erp_id: int | None = None,
 ) -> list[dict[str, Any]]:
     """Liste les partenaires (res.partner) actifs depuis Odoo ERP.
 
@@ -41,6 +42,8 @@ async def list_odoo_clients(
         domain.append(("is_company", "=", True))
     if search:
         domain.append(("name", "ilike", search))
+    if erp_id:
+        domain.append(("company_id", "=", erp_id))
 
     fields = [
         "id", "name", "is_company",

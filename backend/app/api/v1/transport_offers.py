@@ -95,7 +95,7 @@ async def offer_chat(
             status=offer.status,
         )
 
-    response, _ = await run_offer_chat(body.message, session_id=session_id)
+    response, _ = await run_offer_chat(body.message, session_id=session_id, erp_id=company.erp_id)
 
     # Rafraîchir pour détecter un changement de statut (ex: mark_offer_completed appelé par l'agent)
     refreshed = await repo.get(offer.id)
