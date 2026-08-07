@@ -43,7 +43,9 @@ async def list_odoo_clients(
     if search:
         domain.append(("name", "ilike", search))
     if erp_id:
-        domain.append(("company_id", "=", erp_id))
+        # En Odoo multi-société, les partenaires ont company_id=False (partagés) ou = erp_id (privés).
+        # Le filtre strict (= erp_id) exclut tous les partenaires partagés → liste vide.
+        domain.append(("company_id", "in", [False, erp_id]))
 
     fields = [
         "id", "name", "is_company",
