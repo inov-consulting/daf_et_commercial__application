@@ -188,10 +188,14 @@ JSON attendu (laisse null si l'information n'est pas mentionnée) :
 async def run_offer_chat(
     message: str,
     session_id: UUID | None = None,
+    erp_id: int | None = None,
 ) -> tuple[str, UUID]:
     """Exécute un tour de conversation pour la collecte d'informations de l'offre.
 
     L'agent peut utiliser les outils list_odoo_clients et mark_offer_completed.
+
+    Args:
+        erp_id: ID de la société Odoo — utilisé pour filtrer les clients par société.
 
     Returns:
         (réponse_agent, session_id)
@@ -204,8 +208,11 @@ async def run_offer_chat(
     llm = await _get_llm(model_domain.provider, model_domain.name, context="offer")
 
     # Import des outils
-    from app.infrastructure.ai.tools.odoo_client_list_tool import list_odoo_clients_tool
+    from app.infrastructure.ai.tools.odoo_client_list_tool import make_list_odoo_clients_tool
     from app.infrastructure.ai.tools.mark_offer_completed_tool import mark_offer_completed_tool
+
+    # Outil clients filtré par société Odoo (erp_id injecté dans le domaine Odoo)
+    list_odoo_clients_tool = make_list_odoo_clients_tool(erp_id=erp_id)
 
     # Créer un wrapper qui injecte le session_id dans mark_offer_completed
     from langchain_core.tools import StructuredTool
@@ -318,7 +325,7 @@ async def generate_offer_document(collected_data: dict) -> dict:
         return {"raw": content, "parse_error": True}
 
 
-async def _resolve_partner_id(client_name: str, known_id: int | None) -> int:
+async def _resolve_partner_id(client_name: str, known_id: int | None, erp_id: int | None = None) -> int:
     """Résout le partner_id Odoo depuis le nom du client via XML-RPC.
 
     Raises:
@@ -331,25 +338,26 @@ async def _resolve_partner_id(client_name: str, known_id: int | None) -> int:
         return known_id
 
     odoo = OdooClient()
+    company_filter = [("company_id", "=", erp_id)] if erp_id else []
+
     records = await asyncio.to_thread(
         odoo.execute,
         "res.partner",
         "search_read",
-        [[("name", "ilike", client_name), ("is_company", "=", True)]],
+        [[("name", "ilike", client_name), ("is_company", "=", True)] + company_filter],
         {"fields": ["id", "name"], "limit": 5},
     )
     if not records:
-        # Essayer sans le filtre is_company
         records = await asyncio.to_thread(
             odoo.execute,
             "res.partner",
             "search_read",
-            [[("name", "ilike", client_name)]],
+            [[("name", "ilike", client_name)] + company_filter],
             {"fields": ["id", "name"], "limit": 5},
         )
     if not records:
         raise RuntimeError(
-            f"Client '{client_name}' introuvable dans Odoo. "
+            f"Client '{client_name}' introuvable dans Odoo pour cette société. "
             "Créez d'abord le partenaire dans l'ERP."
         )
     partner = records[0]  # type: ignore[index]
@@ -390,7 +398,7 @@ async def _resolve_vehicle_subtype(vehicle_type: str) -> int:
     raise RuntimeError("Aucun type de véhicule trouvé dans Odoo.")
 
 
-async def create_odoo_shipment_from_offer(offer_data: dict) -> tuple[int, str]:
+async def create_odoo_shipment_from_offer(offer_data: dict, erp_id: int | None = None) -> tuple[int, str]:
     """Crée le dossier transport.shipment dans Odoo via MCP.
 
     Le partner_id est résolu en Python (XML-RPC) avant l'appel agent
@@ -411,7 +419,7 @@ async def create_odoo_shipment_from_offer(offer_data: dict) -> tuple[int, str]:
     if not client_name:
         raise RuntimeError("Nom du client manquant dans les données de l'offre.")
 
-    partner_id = await _resolve_partner_id(client_name, client.get("odoo_partner_id"))
+    partner_id = await _resolve_partner_id(client_name, client.get("odoo_partner_id"), erp_id=erp_id)
 
     # Normaliser transport_mode vers les valeurs exactes acceptées par l'ERP
     _MODE_MAP = {
@@ -508,6 +516,8 @@ async def create_odoo_shipment_from_offer(offer_data: dict) -> tuple[int, str]:
         "transport_mode": transport_mode,
         "date_order": date_order,
     }
+    if erp_id:
+        values["company_id"] = erp_id
     if price:
         values["sale_price_unit"] = price
     if qty:
