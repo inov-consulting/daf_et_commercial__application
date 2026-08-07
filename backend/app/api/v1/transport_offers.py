@@ -202,18 +202,14 @@ async def update_offer_form(
 
 @router.get("/customers", dependencies=_read_deps)
 async def list_odoo_clients(
+    company: CurrentCompany,
     search: str = "",
     companies_only: bool = Query(False, description="true = entreprises uniquement, false = tous (entreprises + particuliers)"),
 ) -> list[OdooClientOut]:
-    """Retourne les clients Odoo (customer_rank > 0) pour la liste déroulante du formulaire.
-
-    Chaque entrée contient : nom, type (entreprise/particulier), email, téléphone,
-    mobile, adresse complète (rue, ville, code postal, pays).
-    Retourne 502 si Odoo est inaccessible ou retourne une erreur.
-    """
+    """Retourne les clients Odoo (customer_rank > 0) filtrés par société active."""
     from app.infrastructure.ai.tools.odoo_client_list import list_odoo_clients as _odoo_partners
     try:
-        records = await _odoo_partners(search=search, companies_only=companies_only, suppliers=False)
+        records = await _odoo_partners(search=search, companies_only=companies_only, suppliers=False, erp_id=company.erp_id)
     except Exception as exc:
         logger.error("transport.customers.odoo_failed search=%s error=%s", search, exc)
         raise HTTPException(
@@ -225,17 +221,14 @@ async def list_odoo_clients(
 
 @router.get("/suppliers", dependencies=_read_deps)
 async def list_odoo_suppliers(
+    company: CurrentCompany,
     search: str = "",
     companies_only: bool = Query(False, description="true = entreprises uniquement, false = tous (entreprises + particuliers)"),
 ) -> list[OdooClientOut]:
-    """Retourne les fournisseurs Odoo (supplier_rank > 0).
-
-    Même structure que /customers : nom, type, email, téléphone, mobile, adresse.
-    Retourne 502 si Odoo est inaccessible ou retourne une erreur.
-    """
+    """Retourne les fournisseurs Odoo (supplier_rank > 0) filtrés par société active."""
     from app.infrastructure.ai.tools.odoo_client_list import list_odoo_clients as _odoo_partners
     try:
-        records = await _odoo_partners(search=search, companies_only=companies_only, suppliers=True)
+        records = await _odoo_partners(search=search, companies_only=companies_only, suppliers=True, erp_id=company.erp_id)
     except Exception as exc:
         logger.error("transport.suppliers.odoo_failed search=%s error=%s", search, exc)
         raise HTTPException(
@@ -355,7 +348,7 @@ async def validate_offer(
 # ── Envoi vers Odoo (action explicite) ───────────────────────────────────────
 
 @router.post("/{offer_id}/confirm", dependencies=_confirm_deps)
-async def send_offer_to_odoo(offer_id: UUID) -> OfferConfirmOut:
+async def send_offer_to_odoo(offer_id: UUID, company: CurrentCompany) -> OfferConfirmOut:
     """Crée le dossier transport dans Odoo via MCP et lie l'offre.
 
     Prérequis : l'offre doit être au statut `validated`.
@@ -381,7 +374,7 @@ async def send_offer_to_odoo(offer_id: UUID) -> OfferConfirmOut:
         doc["collected_data"] = offer.collected_data
 
     try:
-        odoo_id, odoo_name = await create_odoo_shipment_from_offer(doc)
+        odoo_id, odoo_name = await create_odoo_shipment_from_offer(doc, erp_id=company.erp_id)
     except Exception as exc:
         logger.error("offer.send_to_odoo.failed", offer_id=str(offer_id), error=str(exc))
         raise HTTPException(
