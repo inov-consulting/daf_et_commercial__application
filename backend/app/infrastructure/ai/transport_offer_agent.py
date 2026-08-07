@@ -325,7 +325,7 @@ async def generate_offer_document(collected_data: dict) -> dict:
         return {"raw": content, "parse_error": True}
 
 
-async def _resolve_partner_id(client_name: str, known_id: int | None) -> int:
+async def _resolve_partner_id(client_name: str, known_id: int | None, erp_id: int | None = None) -> int:
     """Résout le partner_id Odoo depuis le nom du client via XML-RPC.
 
     Raises:
@@ -338,25 +338,26 @@ async def _resolve_partner_id(client_name: str, known_id: int | None) -> int:
         return known_id
 
     odoo = OdooClient()
+    company_filter = [("company_id", "=", erp_id)] if erp_id else []
+
     records = await asyncio.to_thread(
         odoo.execute,
         "res.partner",
         "search_read",
-        [[("name", "ilike", client_name), ("is_company", "=", True)]],
+        [[("name", "ilike", client_name), ("is_company", "=", True)] + company_filter],
         {"fields": ["id", "name"], "limit": 5},
     )
     if not records:
-        # Essayer sans le filtre is_company
         records = await asyncio.to_thread(
             odoo.execute,
             "res.partner",
             "search_read",
-            [[("name", "ilike", client_name)]],
+            [[("name", "ilike", client_name)] + company_filter],
             {"fields": ["id", "name"], "limit": 5},
         )
     if not records:
         raise RuntimeError(
-            f"Client '{client_name}' introuvable dans Odoo. "
+            f"Client '{client_name}' introuvable dans Odoo pour cette société. "
             "Créez d'abord le partenaire dans l'ERP."
         )
     partner = records[0]  # type: ignore[index]
@@ -397,7 +398,7 @@ async def _resolve_vehicle_subtype(vehicle_type: str) -> int:
     raise RuntimeError("Aucun type de véhicule trouvé dans Odoo.")
 
 
-async def create_odoo_shipment_from_offer(offer_data: dict) -> tuple[int, str]:
+async def create_odoo_shipment_from_offer(offer_data: dict, erp_id: int | None = None) -> tuple[int, str]:
     """Crée le dossier transport.shipment dans Odoo via MCP.
 
     Le partner_id est résolu en Python (XML-RPC) avant l'appel agent
@@ -418,7 +419,7 @@ async def create_odoo_shipment_from_offer(offer_data: dict) -> tuple[int, str]:
     if not client_name:
         raise RuntimeError("Nom du client manquant dans les données de l'offre.")
 
-    partner_id = await _resolve_partner_id(client_name, client.get("odoo_partner_id"))
+    partner_id = await _resolve_partner_id(client_name, client.get("odoo_partner_id"), erp_id=erp_id)
 
     # Normaliser transport_mode vers les valeurs exactes acceptées par l'ERP
     _MODE_MAP = {
@@ -515,6 +516,8 @@ async def create_odoo_shipment_from_offer(offer_data: dict) -> tuple[int, str]:
         "transport_mode": transport_mode,
         "date_order": date_order,
     }
+    if erp_id:
+        values["company_id"] = erp_id
     if price:
         values["sale_price_unit"] = price
     if qty:
