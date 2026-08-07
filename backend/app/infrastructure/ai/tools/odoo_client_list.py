@@ -2,6 +2,8 @@
 
 from typing import Any
 
+_SEARCH_LIMIT = 20
+
 
 async def list_odoo_clients(
     search: str = "",
@@ -10,28 +12,27 @@ async def list_odoo_clients(
     suppliers: bool = False,
     erp_id: int | None = None,
 ) -> list[dict[str, Any]]:
-    """Liste les partenaires (res.partner) actifs depuis Odoo ERP.
+    """Recherche des partenaires (res.partner) actifs depuis Odoo ERP par mot-clé.
 
     Args:
-        search: Terme de recherche pour filtrer par nom (ilike). Vide = tous.
-        limit: Nombre maximum de résultats. Si None, retourne TOUS (fetch_all).
+        search: Terme de recherche (ilike). Obligatoire pour limiter les résultats.
+        limit: Nombre maximum de résultats. Défaut : _SEARCH_LIMIT (20).
         companies_only: Si True, filtre uniquement les entreprises (is_company=True).
         suppliers: Si True, retourne les fournisseurs (supplier_rank > 0).
                    Si False (défaut), retourne les clients (customer_rank > 0).
+        erp_id: Non utilisé pour le filtrage partenaire (les partenaires Odoo sont
+                globaux par conception — le company_id sur res.partner ne reflète pas
+                la relation client). Le filtrage par société s'applique au niveau
+                des dossiers transport (transport.shipment).
 
     Returns:
-        Liste de dicts enrichis (id, name, is_company, email, phone, mobile,
-        street, street2, city, zip, country, address).
-        Retourne [] en cas d'erreur.
+        Liste de dicts enrichis (id, name, is_company, email, phone, address).
     """
     import asyncio
-    import logging
-
     from app.infrastructure.odoo.client import OdooClient
 
-    logger = logging.getLogger(__name__)
-
     client = OdooClient()
+    effective_limit = limit if limit is not None else _SEARCH_LIMIT
 
     domain: list = [("active", "=", True)]
     if suppliers:
@@ -42,10 +43,6 @@ async def list_odoo_clients(
         domain.append(("is_company", "=", True))
     if search:
         domain.append(("name", "ilike", search))
-    if erp_id:
-        # En Odoo multi-société, les partenaires ont company_id=False (partagés) ou = erp_id (privés).
-        # Le filtre strict (= erp_id) exclut tous les partenaires partagés → liste vide.
-        domain.append(("company_id", "in", [False, erp_id]))
 
     fields = [
         "id", "name", "is_company",
@@ -53,19 +50,16 @@ async def list_odoo_clients(
         "street", "street2", "city", "zip", "country_id",
     ]
 
-    if limit is None:
-        partners = await asyncio.to_thread(client.fetch_all, "res.partner", domain, fields)
-    else:
-        partners = await asyncio.to_thread(
-            client.execute,
-            "res.partner",
-            "search_read",
-            [domain],
-            {"fields": fields, "limit": limit, "order": "name asc"},
-        )
+    partners: list[dict] = await asyncio.to_thread(
+        client.execute,
+        "res.partner",
+        "search_read",
+        [domain],
+        {"fields": fields, "limit": effective_limit, "order": "name asc"},
+    )
 
     result = []
-    for p in sorted(partners, key=lambda x: x.get("name", "").lower()):
+    for p in partners:
         street = p.get("street") or ""
         street2 = p.get("street2") or ""
         city = p.get("city") or ""

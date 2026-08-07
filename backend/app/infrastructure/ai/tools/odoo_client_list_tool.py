@@ -17,26 +17,35 @@ def make_list_odoo_clients_tool(erp_id: int | None = None) -> StructuredTool:
     """Crée l'outil list_odoo_clients avec l'erp_id injecté par closure."""
 
     async def _impl(search: str = "") -> str:
-        from app.infrastructure.ai.tools.odoo_client_list import list_odoo_clients
+        from app.infrastructure.ai.tools.odoo_client_list import list_odoo_clients, _SEARCH_LIMIT
 
-        clients = await list_odoo_clients(search=search, erp_id=erp_id)
+        if not search or not search.strip():
+            return (
+                "Merci de fournir un mot-clé de recherche (au moins 2 caractères) "
+                "pour trouver le client. Par exemple : 'Total', 'Sen', 'Dakar'."
+            )
+
+        clients = await list_odoo_clients(search=search.strip(), erp_id=erp_id)
 
         if not clients:
-            return "Aucun client trouvé dans Odoo."
+            return f"Aucun client trouvé pour « {search} ». Essayez un autre mot-clé ou vérifiez l'orthographe."
 
         if clients and "error" in clients[0]:
             return clients[0]["error"]
 
-        result = "Voici les clients trouvés dans Odoo :\n\n"
-        for client in clients:
-            result += f"- **{client['name']}** (ID: {client['id']})"
-            if client.get("email"):
-                result += f" - {client['email']}"
-            if client.get("phone"):
-                result += f" - {client['phone']}"
-            if client.get("address"):
-                result += f"\n  Adresse: {client['address']}"
+        result = f"Clients trouvés pour « {search} » ({len(clients)} résultat(s)) :\n\n"
+        for c in clients:
+            result += f"- **{c['name']}** (ID: {c['id']})"
+            if c.get("email"):
+                result += f" — {c['email']}"
+            if c.get("phone"):
+                result += f" — {c['phone']}"
+            if c.get("address"):
+                result += f"\n  {c['address']}"
             result += "\n"
+
+        if len(clients) == _SEARCH_LIMIT:
+            result += f"\n_(Résultats limités à {_SEARCH_LIMIT}. Affinez la recherche si le client n'apparaît pas.)_"
 
         return result
 
@@ -44,9 +53,11 @@ def make_list_odoo_clients_tool(erp_id: int | None = None) -> StructuredTool:
         coroutine=_impl,
         name="list_odoo_clients",
         description=(
-            "Liste les clients (partenaires) depuis Odoo ERP, filtrés par la société active. "
-            "Utilise cet outil quand l'utilisateur demande la liste des clients ou ne connaît pas le nom exact. "
-            "Tu peux filtrer par nom avec le paramètre 'search'."
+            "Recherche des clients (partenaires) dans Odoo ERP par mot-clé. "
+            "Le paramètre 'search' est OBLIGATOIRE — il doit contenir au moins 2 caractères. "
+            "Retourne au maximum 20 résultats. "
+            "Si l'utilisateur ne connaît pas le nom exact, demande-lui quelques lettres du nom du client "
+            "avant d'appeler cet outil."
         ),
         args_schema=ListOdooClientsInput,
     )
