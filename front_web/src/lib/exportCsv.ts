@@ -69,8 +69,6 @@ export async function exportListToCsv<T>({
     rows.push(...page);
     offset += pageSize;
     onProgress?.(rows.length, total);
-
-    // Garde-fou : une page vide avant d'avoir atteint `total` stoppe la boucle
     // plutôt que de tourner indéfiniment (backend incohérent, filtre cassé, etc.).
     if (page.length === 0) break;
   }

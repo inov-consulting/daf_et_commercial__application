@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { usePersistedState } from "@/lib/usePersistedState";
 
 import {
   ExportIcon,
@@ -24,7 +25,8 @@ import {
   deleteAvatar,
 } from "@/redux/features/users/usersSlice";
 import { fetchGroups } from "@/redux/features/groups/groupsSlice";
-import { mapApiUser, type User } from "@/types/user_type";
+import { mapApiUser, type User, type ApiUser } from "@/types/user_type";
+import { exportFromRows, type ExportCsvColumn } from "@/lib/exportCsv";
 import { UserTable } from "@/components/layout/user-table";
 import { UserKpiRow } from "@/components/layout/user-kpi-row";
 import type { UserFormSubmitData } from "@/components/layout/user-form-modal";
@@ -94,7 +96,30 @@ export default function UtilisateursPage() {
     [apiUsers, groupNameById],
   );
 
-  const [selectedUid, setSelectedUid] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+
+  const USERS_COLUMNS: ExportCsvColumn<ApiUser>[] = [
+    { header: 'Prénom',             value: r => r.first_name },
+    { header: 'Nom',                value: r => r.last_name },
+    { header: 'Email',              value: r => r.email },
+    { header: 'Statut',             value: r => r.is_active ? 'Actif' : 'Inactif' },
+    { header: 'Entreprises',        value: r => r.companies.map(c => c.name).join(', ') },
+    { header: 'Groupes',            value: r => (r.groups ?? []).map(g => g.name).join(', ') },
+    { header: 'Dernière connexion', value: r => r.last_login_at ?? '' },
+    { header: 'Créé le',            value: r => r.created_at ?? '' },
+  ];
+
+  const handleExportCsv = () => {
+    setExporting(true);
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      exportFromRows(apiUsers, USERS_COLUMNS, `utilisateurs-${today}.csv`);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const [selectedUid, setSelectedUid] = usePersistedState<string | null>('portalis_selected_user', null);
   const [formModal, setFormModal] = useState<{
     mode: "invite" | "edit";
     uid?: string;
@@ -300,9 +325,9 @@ export default function UtilisateursPage() {
           )}
         </div>
         <div className="flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
-          <Button variant="ghost" size="sm" className="flex-1 sm:flex-none">
+          <Button variant="ghost" size="sm" className="flex-1 sm:flex-none" onClick={handleExportCsv} disabled={exporting || loading}>
             <ExportIcon size={13} />
-            <span className="hidden xs:inline ml-1.5">Exporter CSV</span>
+            <span className="hidden xs:inline ml-1.5">{exporting ? 'Export…' : 'Exporter CSV'}</span>
             <span className="xs:hidden ml-1.5">CSV</span>
           </Button>
           <Button

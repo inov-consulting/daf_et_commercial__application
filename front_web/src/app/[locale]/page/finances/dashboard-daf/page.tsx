@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import {
   fetchAgentStatus,
@@ -238,6 +238,7 @@ function AgentSkeleton() {
 export default function DashboardDafPage() {
   const dispatch = useAppDispatch();
   const params   = useParams();
+  const router   = useRouter();
   const locale   = typeof params?.locale === 'string' ? params.locale : 'fr';
 
   const {
@@ -441,10 +442,12 @@ export default function DashboardDafPage() {
         <div className="flex flex-col gap-3 sm:gap-4">
           <AlertesFin
             alertes={alertes.length > 0 ? alertes : ALERTES_FALLBACK}
+            onDetail={() => router.push(`/${locale}/page/finances/alertes`)}
           />
           <CreancesTop
             runs={runs}
             locale={locale}
+            onVoirTout={() => router.push(`/${locale}/page/finances/cycles`)}
             onViewRun={(r) => setDetailRun(r)}
           />
         </div>

@@ -339,7 +339,7 @@ export default function DsoCreancesPage() {
     latestSnapshotLoading || snapshotsLoading || proposedActionsLoading;
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 mx-auto space-y-4 sm:space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-5">
       <FinSectionHeader
         title="DSO & Créances clients"
         onAction={() => {}}
@@ -774,7 +774,7 @@ export default function DsoCreancesPage() {
                             </p>
                           </td>
                           <td className="px-3 sm:px-4 py-3 hidden md:table-cell">
-                            <p className="text-[var(--tx-2)] line-clamp-2 max-w-[200px]">
+                            <p className="text-[var(--tx-2)] line-clamp-2 text-ellipsis">
                               {action.description}
                             </p>
                           </td>
