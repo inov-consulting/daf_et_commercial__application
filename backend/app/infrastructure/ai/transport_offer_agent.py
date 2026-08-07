@@ -338,7 +338,7 @@ async def _resolve_partner_id(client_name: str, known_id: int | None, erp_id: in
         return known_id
 
     odoo = OdooClient()
-    company_filter = [("company_id", "=", erp_id)] if erp_id else []
+    company_filter = [("company_id", "in", [False, erp_id])] if erp_id else []
 
     records = await asyncio.to_thread(
         odoo.execute,
