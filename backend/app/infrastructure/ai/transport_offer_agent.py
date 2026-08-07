@@ -188,10 +188,14 @@ JSON attendu (laisse null si l'information n'est pas mentionnée) :
 async def run_offer_chat(
     message: str,
     session_id: UUID | None = None,
+    erp_id: int | None = None,
 ) -> tuple[str, UUID]:
     """Exécute un tour de conversation pour la collecte d'informations de l'offre.
 
     L'agent peut utiliser les outils list_odoo_clients et mark_offer_completed.
+
+    Args:
+        erp_id: ID de la société Odoo — utilisé pour filtrer les clients par société.
 
     Returns:
         (réponse_agent, session_id)
@@ -204,8 +208,11 @@ async def run_offer_chat(
     llm = await _get_llm(model_domain.provider, model_domain.name, context="offer")
 
     # Import des outils
-    from app.infrastructure.ai.tools.odoo_client_list_tool import list_odoo_clients_tool
+    from app.infrastructure.ai.tools.odoo_client_list_tool import make_list_odoo_clients_tool
     from app.infrastructure.ai.tools.mark_offer_completed_tool import mark_offer_completed_tool
+
+    # Outil clients filtré par société Odoo (erp_id injecté dans le domaine Odoo)
+    list_odoo_clients_tool = make_list_odoo_clients_tool(erp_id=erp_id)
 
     # Créer un wrapper qui injecte le session_id dans mark_offer_completed
     from langchain_core.tools import StructuredTool
