@@ -78,18 +78,6 @@ export async function exportListToCsv<T>({
   downloadCsv(rows, columns, filename);
 }
 
-/**
- * Génère et télécharge un CSV directement depuis un tableau de données déjà en mémoire
- * (pas d'appel API). Utile quand les données sont déjà chargées dans le state.
- */
-export function exportFromRows<T>(
-  rows: T[],
-  columns: ExportCsvColumn<T>[],
-  filename = 'export.csv',
-): void {
-  downloadCsv(rows, columns, filename);
-}
-
 /** Échappe une valeur pour le format CSV (point-virgule comme séparateur). */
 function escapeCsvValue(v: unknown): string {
   const s = v === null || v === undefined ? '' : String(v);

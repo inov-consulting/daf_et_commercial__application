@@ -21,7 +21,7 @@ import json
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect, status
 from pydantic import BaseModel
 
-from app.api.deps import CurrentUser, require_permission
+from app.api.deps import CurrentCompany, CurrentUser, require_permission
 
 router = APIRouter(prefix="/whatsapp", tags=["whatsapp"])
 
@@ -504,6 +504,7 @@ async def _run_whatsapp_cr_task(
 async def generate_cr_from_conversation(
     conversation_id: UUID,
     current_user: CurrentUser,
+    current_company: CurrentCompany,
     background_tasks: BackgroundTasks,
     body: GenerateCRIn = GenerateCRIn(),
 ) -> dict:
@@ -558,6 +559,7 @@ async def generate_cr_from_conversation(
     cr = await CompteRenduOrm.create(
         parent_type="whatsapp",
         parent_id=conversation_id,
+        company_id=current_company.id,
         version=version,
         status="draft",
         generation_status="pending",
