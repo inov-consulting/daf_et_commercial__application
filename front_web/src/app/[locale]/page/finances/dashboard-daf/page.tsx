@@ -79,16 +79,16 @@ function swapCritiqueBasse(kpi: KpiItem): KpiItem {
 
 const KPI_MOCK: FinKpi[] = [
   {
-    label: `Chiffre d'affaires · ${FR_MONTHS_ABBR[new Date().getMonth()]}`,
-    value: "—",
-    sub: `Données en cours de chargement…`,
-    trend: "up",
-    trendVal: "+18%",
+    label: "Créances totales",
+    value: "-",
+    sub: "Chargement…",
+    trend: "neutral",
+    trendVal: "…",
     accent: "success",
   },
   {
     label: "Trésorerie nette",
-    value: "—",
+    value: "-",
     sub: "Chargement…",
     trend: "neutral",
     trendVal: "…",
@@ -96,7 +96,7 @@ const KPI_MOCK: FinKpi[] = [
   },
   {
     label: "DSO moyen",
-    value: "—",
+    value: "-",
     sub: "Objectif 45j",
     trend: "neutral",
     trendVal: "…",
@@ -104,7 +104,7 @@ const KPI_MOCK: FinKpi[] = [
   },
   {
     label: "Créances en retard",
-    value: "—",
+    value: "-",
     sub: "Chargement…",
     trend: "neutral",
     trendVal: "…",
@@ -118,7 +118,7 @@ const ALERTES_FALLBACK: AlerteFinance[] = [
     level: "info",
     title: "Données en cours de chargement",
     sub: "Les alertes seront disponibles une fois les données API reçues.",
-    date: "—",
+    date: "-",
   },
 ];
 
@@ -131,15 +131,22 @@ function fmtM(v: number) {
 /* ── Fonctions de mapping API → props composants ────────────────────── */
 
 function snapshotToKpis(snap: DafSnapshot): FinKpi[] {
-  const dsoOver = snap.dso_days - 45;
+  const dsoOver   = snap.dso_days - 45;
+  const overdueRatio = snap.total_receivables > 0
+    ? snap.overdue_receivables / snap.total_receivables
+    : 0;
+  const overdueCount  = snap.overdue_receivables_count ?? 0;
+  const payablesCount = snap.overdue_payables_count    ?? 0;
+  const dso           = snap.dso_days ?? 0;
+
   return [
     {
-      label: `Chiffre d'affaires · ${FR_MONTHS_ABBR[new Date().getMonth()]}`,
-      value: "—",
-      sub: `en ${FR_MONTHS_ABBR[(new Date().getMonth() + 11) % 12]} — estimation`,
-      trend: "up",
-      trendVal: "+18%",
-      accent: "success",
+      label: "Créances totales",
+      value: fmtM(snap.total_receivables),
+      sub: `dont ${fmtM(snap.overdue_receivables)} en retard · ${snap.period_label}`,
+      trend: overdueRatio > 0.3 ? "down" : overdueRatio > 0.15 ? "warning" : "up",
+      trendVal: `${Math.round(overdueRatio * 100)}% en retard`,
+      accent: overdueRatio > 0.3 ? "error" : overdueRatio > 0.15 ? "warning" : "success",
     },
     {
       label: "Trésorerie nette",
@@ -151,21 +158,20 @@ function snapshotToKpis(snap: DafSnapshot): FinKpi[] {
     },
     {
       label: "DSO moyen",
-      value: `${snap.dso_days === null ? 0 : snap.dso_days} jour${snap.dso_days > 1 ? 's' : ''}`,
-      sub:
-        snap.dso_days > 45
-          ? `Objectif 45j — dépassé de ${dsoOver}j`
-          : "Objectif 45j — respecté",
-      trend: snap.dso_days > 45 ? "warning" : "up",
-      trendVal: snap.dso_days > 45 ? `+${dsoOver}j` : `-${45 - snap.dso_days}j`,
-      accent: snap.dso_days > 45 ? "warning" : "success",
+      value: `${dso} jour${dso > 1 ? 's' : ''}`,
+      sub: dso > 45
+        ? `Objectif 45j · dépassé de ${dsoOver}j`
+        : `Objectif 45j · respecté`,
+      trend: dso > 45 ? "warning" : "up",
+      trendVal: dso > 45 ? `+${dsoOver}j` : `-${45 - dso}j`,
+      accent: dso > 45 ? "warning" : "success",
     },
     {
       label: "Créances en retard",
       value: fmtM(snap.overdue_receivables),
-      sub: `${snap.overdue_receivables_count === null ? 0 : snap.overdue_receivables_count} client${snap.overdue_receivables_count > 1 ? 's' : ''} · Relances prioritaires`,
+      sub: `${overdueCount} client${overdueCount > 1 ? 's' : ''} · ${fmtM(snap.total_payables)} dettes fournisseurs`,
       trend: "down",
-      trendVal: `${snap.overdue_receivables_count} client${snap.overdue_receivables_count > 1 ? 's' : ''}`,
+      trendVal: `${overdueCount} client${overdueCount > 1 ? 's' : ''}`,
       accent: "error",
     },
   ];
@@ -183,7 +189,7 @@ function buildAlertes(
       level: snap.dso_days > 60 ? "critique" : "urgent",
       tag: "DSO",
       title: `DSO ${snap.dso_days}j · Seuil dépassé`,
-      sub: `Objectif 45j — ${snap.overdue_receivables_count} client${snap.overdue_receivables_count > 1 ? 's' : ''} > 60j — ${fmtM(snap.overdue_receivables)} exposés`,
+      sub: `Objectif 45j - ${snap.overdue_receivables_count} client${snap.overdue_receivables_count > 1 ? 's' : ''} > 60j - ${fmtM(snap.overdue_receivables)} exposés`,
       date: snap.period_label,
     });
   }
@@ -398,13 +404,13 @@ export default function DashboardDafPage() {
         <FinKpiRow kpis={kpis} />
       )}
 
-      {/* Agent Synthèse — monté seulement quand les runs sont disponibles */}
+      {/* Agent Synthèse - monté seulement quand les runs sont disponibles */}
       {runsLoading && runs.length === 0 ? (
         <AgentSkeleton />
       ) : (
         <AgentSyntheseDaf
           label="Agent Synthèse DAF"
-          rule="L&apos;IA a généré ces éléments — validation requise avant action (R-DAF)"
+          rule="L&apos;IA a généré ces éléments - validation requise avant action (R-DAF)"
           proposedActions={[...proposedActions].sort((a, b) => new Date(b.proposed_at).getTime() - new Date(a.proposed_at).getTime()).slice(0, 3)}
           agentStatus={agentStatus}
           decidingId={decidingId}
