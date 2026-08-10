@@ -72,12 +72,17 @@ export function ProspectFormModal({
   const [companies, setCompanies] = useState<CustomerItem[]>([]);
   const [loadingCompanies, setLoadingCompanies] = useState(false);
 
-  /* ── Combobox state ── */
+  /* ── Combobox state — entreprise ── */
   const [companyQuery, setCompanyQuery] = useState('');
   const [selectedCompany, setSelectedCompany] = useState<CustomerItem | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const comboRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  /* ── Combobox state — secteur ── */
+  const [sectorQuery, setSectorQuery] = useState('');
+  const [showSectorDropdown, setShowSectorDropdown] = useState(false);
+  const sectorRef = useRef<HTMLDivElement>(null);
 
   /* ── Other form fields ── */
   const [form, setForm] = useState<FormFields>({
@@ -112,7 +117,9 @@ export function ProspectFormModal({
     setSelectedCompany(null);
 
     setCompanyQuery(initial?.company_name ?? '');
+    setSectorQuery(initial?.portalis_sector ?? '');
     setShowDropdown(false);
+    setShowSectorDropdown(false);
     setShowCodePicker(false);
     setLocalError(null);
     setEmailError(null);
@@ -153,6 +160,19 @@ export function ProspectFormModal({
     document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
   }, [showCodePicker]);
+
+  useEffect(() => {
+    if (!showSectorDropdown) return;
+    function handle(e: MouseEvent) {
+      if (sectorRef.current && !sectorRef.current.contains(e.target as Node)) {
+        setShowSectorDropdown(false);
+        // Commit la valeur saisie librement
+        setField('portalis_sector', sectorQuery.trim());
+      }
+    }
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [showSectorDropdown, sectorQuery]);
 
   /* ── After hooks ── */
   if (!open) return null;
@@ -559,16 +579,65 @@ export function ProspectFormModal({
             </div>
             <div>
               <label className={lbl}>Secteur</label>
-              <select
-                value={form.portalis_sector}
-                onChange={e => setField('portalis_sector', e.target.value)}
-                className={inp}
-              >
-                <option value="">— Sélectionner —</option>
-                {Object.keys(SECTOR_STYLES).map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+              <div ref={sectorRef} className="relative">
+                <input
+                  type="text"
+                  value={sectorQuery}
+                  onChange={e => {
+                    setSectorQuery(e.target.value);
+                    setField('portalis_sector', e.target.value.trim());
+                    setShowSectorDropdown(true);
+                  }}
+                  onFocus={() => setShowSectorDropdown(true)}
+                  placeholder="Sélectionner ou saisir un secteur…"
+                  autoComplete="off"
+                  className={inp}
+                />
+                {showSectorDropdown && (
+                  <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-[var(--bd-def)] rounded-xl shadow-lg overflow-hidden max-h-52 overflow-y-auto">
+                    {Object.keys(SECTOR_STYLES)
+                      .filter(s => !sectorQuery || s.toLowerCase().includes(sectorQuery.toLowerCase()))
+                      .map(s => (
+                        <button
+                          key={s}
+                          type="button"
+                          onMouseDown={e => e.preventDefault()}
+                          onClick={() => {
+                            setSectorQuery(s);
+                            setField('portalis_sector', s);
+                            setShowSectorDropdown(false);
+                          }}
+                          className={cn(
+                            'w-full text-left px-3 py-2 text-[13px] hover:bg-[var(--bg-sink)] transition-colors',
+                            form.portalis_sector === s && 'bg-[var(--p50)] text-[var(--p600)] font-medium',
+                          )}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    {sectorQuery.trim() && !Object.keys(SECTOR_STYLES).some(
+                      s => s.toLowerCase() === sectorQuery.trim().toLowerCase()
+                    ) && (
+                      <button
+                        type="button"
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => {
+                          setField('portalis_sector', sectorQuery.trim());
+                          setShowSectorDropdown(false);
+                        }}
+                        className="w-full text-left px-3 py-2 text-[13px] text-[var(--p600)] hover:bg-[var(--bg-sink)] transition-colors border-t border-[var(--bd-def)]"
+                      >
+                        Utiliser &laquo;&nbsp;{sectorQuery.trim()}&nbsp;&raquo;
+                      </button>
+                    )}
+                    {Object.keys(SECTOR_STYLES).filter(s =>
+                      !sectorQuery || s.toLowerCase().includes(sectorQuery.toLowerCase())
+                    ).length === 0 && !sectorQuery.trim() && (
+                      <p className="px-3 py-2 text-[12px] text-[var(--tx-3)] italic">Aucun secteur trouvé</p>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
