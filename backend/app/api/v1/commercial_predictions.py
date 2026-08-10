@@ -12,7 +12,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.deps import CurrentUser, require_permission
+from app.api.deps import CurrentCompany, CurrentUser, require_permission
 from app.api.v1.schemas.commercial_prediction import (
     PredictionOut,
     RejectIn,
@@ -56,22 +56,23 @@ def _to_out(orm) -> PredictionOut:
 
 @router.get("", dependencies=_read_deps)
 async def list_predictions(
+    current_company: CurrentCompany,
     prediction_status: str | None = Query(None, alias="status"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ) -> list[PredictionOut]:
     """Liste les prédictions commerciales, filtrées par statut optionnel."""
     repo = CommercialPredictionRepository()
-    rows = await repo.list_all(status=prediction_status, limit=limit, offset=offset)
+    rows = await repo.list_all(status=prediction_status, limit=limit, offset=offset, company_id=current_company.id)
     return [_to_out(r) for r in rows]
 
 
 @router.get("/{prediction_id}", dependencies=_read_deps)
-async def get_prediction(prediction_id: UUID) -> PredictionOut:
+async def get_prediction(prediction_id: UUID, current_company: CurrentCompany) -> PredictionOut:
     """Détail d'une prédiction."""
     repo = CommercialPredictionRepository()
     orm = await repo.get(prediction_id)
-    if orm is None:
+    if orm is None or orm.company_id != current_company.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Prédiction introuvable")
     return _to_out(orm)
 
@@ -147,6 +148,7 @@ async def validate_prediction(
 
     prospect = await ProspectOrm.create(
         id=uuid4(),
+        company_id=pred.company_id,
         portalis_notes=notes_text,
         status="nouveau",
         odoo_lead_id=odoo_lead_id,
