@@ -86,6 +86,15 @@ async def offer_chat(
             )
         session_id = offer.session_id
 
+    # Si l'offre est déjà complète, ne pas rappeler l'IA — elle bouclerait inutilement.
+    if offer.status == "completed":
+        return OfferChatOut(
+            offer_id=offer.id,
+            session_id=session_id,
+            response="✅ Les informations de l'offre sont déjà enregistrées. Vous pouvez maintenant générer le document officiel.",
+            status=offer.status,
+        )
+
     response, _ = await run_offer_chat(body.message, session_id=session_id)
 
     # Rafraîchir pour détecter un changement de statut (ex: mark_offer_completed appelé par l'agent)

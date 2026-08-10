@@ -856,6 +856,7 @@ async def generate_compte_rendu(
     prospect_id: UUID,
     data: CompteRenduGenerate,
     current_user: CurrentUser,
+    current_company: CurrentCompany,
     background_tasks: BackgroundTasks,
 ) -> CompteRenduPendingOut:
     """Lance la génération d'un compte-rendu PDF en tâche de fond.
@@ -877,6 +878,7 @@ async def generate_compte_rendu(
     cr = await CompteRenduOrm.create(
         parent_type="prospect",
         parent_id=prospect_id,
+        company_id=current_company.id,
         version=version,
         status="draft",
         generation_status="pending",
