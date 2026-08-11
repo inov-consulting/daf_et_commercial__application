@@ -14,12 +14,14 @@ export const AuthContext = createContext<{
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const [authenticated, setAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [, setToken] = useState<string | undefined>(undefined);
   const initialized = useRef(false);
 
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
 
+    let mounted = true;
     const kc = getKeycloakInstance();
     const redirectUri = `${window.location.origin}${window.location.pathname}`;
 
@@ -33,13 +35,27 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       .then(auth => {
         setAuthenticated(auth);
         if (auth) {
-          kc.onTokenExpired = () => {
-            kc.updateToken(60).catch(() => kc.login({ redirectUri }));
+          kc.onTokenExpired = async () => {
+            console.log('Access token expiré, tentative de refresh...');
+            try {
+              const refreshed = await kc.updateToken(30);
+              if (!mounted) return;
+              setToken(kc.token);
+              console.log(refreshed ? 'Token renouvelé' : 'Token encore valide');
+            } catch (error) {
+              console.error('Impossible de renouveler le token', error);
+              if (mounted) {
+                setAuthenticated(false);
+              }
+              await kc.login();
+            }
           };
         }
       })
       .catch(err => console.error('Keycloak init failed', err))
       .finally(() => setIsLoading(false));
+
+    return () => { mounted = false; };
   }, []);
 
   if (isLoading) {
