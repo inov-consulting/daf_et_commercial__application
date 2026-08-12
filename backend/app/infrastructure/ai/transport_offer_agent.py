@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 _offer_checkpointer = MemorySaver()
 
 # Nombre maximum de messages conservés dans le contexte pour l'agent d'offre
-OFFER_MAX_CONTEXT_MESSAGES = 50
+OFFER_MAX_CONTEXT_MESSAGES = 100
 
 
 def _offer_trim_hook(state: dict) -> dict:
@@ -211,12 +211,55 @@ JSON attendu (laisse null si l'information n'est pas mentionnée) :
 }}"""
 
 
+_FIELD_LABELS = {
+    "client_name": "Client",
+    "product_description": "Produit",
+    "quantity": "Quantité",
+    "quantity_unit": "Unité",
+    "origin": "Origine",
+    "destination": "Destination",
+    "transport_mode": "Mode de transport",
+    "vehicle_type": "Type de véhicule",
+    "planned_date": "Date de départ",
+    "price_unit": "Prix unitaire",
+    "validity_days": "Validité (jours)",
+    "payment_conditions": "Conditions de paiement",
+    "remarks": "Remarques",
+}
+
+
+def _build_state_context(collected_data: dict) -> str:
+    """Génère un bloc 'état persisté' à injecter dans le system prompt.
+
+    Ce bloc survit au trimming de l'historique car il est dans le system message,
+    qui est toujours conservé par _offer_trim_hook.
+    """
+    if not collected_data:
+        return ""
+    lines = []
+    for key, label in _FIELD_LABELS.items():
+        val = collected_data.get(key)
+        if val is not None and str(val).strip():
+            lines.append(f"  • {label} : {val}")
+    if not lines:
+        return ""
+    return (
+        "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "ÉTAT PERSISTÉ EN BASE (SOURCE DE VÉRITÉ)\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "Ces champs ont DÉJÀ été collectés et sauvegardés. "
+        "Ne les redemande JAMAIS, même si tu ne les trouves pas dans l'historique récent :\n"
+        + "\n".join(lines)
+    )
+
+
 # ── Service ───────────────────────────────────────────────────────────────────
 
 async def run_offer_chat(
     message: str,
     session_id: UUID | None = None,
     erp_id: int | None = None,
+    collected_data: dict | None = None,
 ) -> tuple[str, UUID]:
     """Exécute un tour de conversation pour la collecte d'informations de l'offre.
 
@@ -262,11 +305,14 @@ async def run_offer_chat(
         args_schema=type("Empty", (BaseModel,), {}),
     )
 
+    # Prompt dynamique : system fixe + état persisté depuis la DB (survit au trimming)
+    dynamic_prompt = OFFER_COLLECTION_PROMPT + _build_state_context(collected_data or {})
+
     # Agent avec outils + hook de troncature
     agent = create_react_agent(
         model=llm,
         tools=[list_odoo_clients_tool, mark_tool_with_session],
-        prompt=OFFER_COLLECTION_PROMPT,
+        prompt=dynamic_prompt,
         checkpointer=_offer_checkpointer,
         pre_model_hook=_offer_trim_hook,
     )
