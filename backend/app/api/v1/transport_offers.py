@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from uuid import UUID
 
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.deps import CurrentCompany, get_current_user, require_permission
@@ -95,23 +97,34 @@ async def offer_chat(
             status=offer.status,
         )
 
-    response, _ = await run_offer_chat(body.message, session_id=session_id, erp_id=company.erp_id)
+    # Injecter l'état déjà collecté → survit au trimming du contexte LLM
+    response, _ = await run_offer_chat(
+        body.message,
+        session_id=session_id,
+        erp_id=company.erp_id,
+        collected_data=offer.collected_data or {},
+    )
 
     # Rafraîchir pour détecter un changement de statut (ex: mark_offer_completed appelé par l'agent)
     refreshed = await repo.get(offer.id)
     if refreshed:
         offer = refreshed
 
-    # Extraction des données uniquement quand l'agent a terminé la collecte —
-    # évite un appel LLM supplémentaire à chaque tour de conversation.
-    if offer.status == "completed" and not offer.collected_data:
+    # Extraction en tâche de fond après chaque tour pour maintenir collected_data à jour.
+    # La prochaine requête injectera cet état dans le system prompt, même si l'historique
+    # LLM a été tronqué.
+    async def _update_collected_data_bg() -> None:
         try:
             extracted = await extract_collected_data(session_id)
             if extracted:
-                await repo.update_collected_data(offer.id, extracted)
-                offer = await repo.get(offer.id) or offer
+                # Ne pas écraser les champs déjà en base avec des valeurs nulles
+                current = offer.collected_data or {}
+                merged = {**extracted, **{k: v for k, v in current.items() if v is not None}}
+                await repo.update_collected_data(offer.id, merged)
         except Exception as exc:
-            logger.warning("offer.chat.extract_failed", offer_id=str(offer.id), error=str(exc))
+            logger.warning("offer.chat.extract_bg_failed", offer_id=str(offer.id), error=str(exc))
+
+    asyncio.create_task(_update_collected_data_bg())
 
     return OfferChatOut(
         offer_id=offer.id,
