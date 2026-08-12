@@ -259,10 +259,7 @@ async def run_offer_chat(
     message: str,
     session_id: UUID | None = None,
     erp_id: int | None = None,
-<<<<<<< HEAD
-=======
     collected_data: dict | None = None,
->>>>>>> develop
 ) -> tuple[str, UUID]:
     """Exécute un tour de conversation pour la collecte d'informations de l'offre.
 

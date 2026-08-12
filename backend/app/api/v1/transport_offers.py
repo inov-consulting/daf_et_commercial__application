@@ -97,9 +97,6 @@ async def offer_chat(
             status=offer.status,
         )
 
-<<<<<<< HEAD
-    response, _ = await run_offer_chat(body.message, session_id=session_id, erp_id=company.erp_id)
-=======
     # Injecter l'état déjà collecté → survit au trimming du contexte LLM
     response, _ = await run_offer_chat(
         body.message,
@@ -107,7 +104,6 @@ async def offer_chat(
         erp_id=company.erp_id,
         collected_data=offer.collected_data or {},
     )
->>>>>>> develop
 
     # Rafraîchir pour détecter un changement de statut (ex: mark_offer_completed appelé par l'agent)
     refreshed = await repo.get(offer.id)
