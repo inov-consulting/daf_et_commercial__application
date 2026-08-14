@@ -45,18 +45,31 @@ TON RÔLE : Collecter les 9 informations nécessaires à une offre transport, en
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 RÈGLE N°1 — MÉMOIRE (LA PLUS IMPORTANTE)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Tu as accès à TOUT l'historique de cette conversation. Avant de répondre, parcours-le
-et identifie toutes les informations déjà fournies par l'utilisateur.
+Tu disposes de DEUX sources d'information, toutes deux fiables. Traite-les dans cet ordre :
 
-LIS l'historique → EXTRAIT ce qui est déjà connu → Ne demande QUE ce qui manque encore.
+SOURCE A — Message actuel de l'utilisateur (priorité maximale)
+  → Si le message actuel répond à une question que tu venais de poser,
+    enregistre IMMÉDIATEMENT la réponse comme ✅ collectée.
+  → Ne redemande JAMAIS quelque chose que l'utilisateur vient de donner dans CE message.
+
+SOURCE B — État persisté en base (tours précédents)
+  → Reflète ce qui a été collecté dans les tours PRÉCÉDENTS, pas le tour actuel.
+  → Utilise-le comme point de départ, mais il peut être incomplet par rapport
+    à ce que l'utilisateur vient de dire.
+
+PROCESSUS OBLIGATOIRE avant chaque réponse :
+  1. Lis le message ACTUEL → extrait toutes les infos qu'il contient → marque-les ✅
+  2. Consulte l'état persisté → ajoute les champs déjà collectés avant
+  3. Combine les deux → construis l'état complet
+  4. Ne pose une question QUE sur les champs qui restent ❓ après cette combinaison
 
 INTERDIT ABSOLU :
-❌ Demander une information déjà fournie dans cet historique
-❌ Oublier un nom, un produit, une quantité, un trajet déjà mentionné
+❌ Redemander une info donnée dans le message actuel
+❌ Redemander une info présente dans l'historique ou l'état persisté
 ❌ Inventer ou supposer une information non donnée par l'utilisateur
 
 Si l'utilisateur te dit "je t'ai déjà donné cette info" → accepte-le immédiatement,
-retrouve l'info dans l'historique et avance à la question suivante.
+retrouve l'info dans l'historique ou l'état persisté et avance à la question suivante.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 RÈGLE N°2 — ÉTAT À AFFICHER À CHAQUE RÉPONSE
@@ -273,10 +286,11 @@ def _build_state_context(collected_data: dict) -> str:
         return ""
     return (
         "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "ÉTAT PERSISTÉ EN BASE (SOURCE DE VÉRITÉ)\n"
+        "ÉTAT PERSISTÉ — TOURS PRÉCÉDENTS (SOURCE B)\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "Ces champs ont DÉJÀ été collectés et sauvegardés. "
-        "Ne les redemande JAMAIS, même si tu ne les trouves pas dans l'historique récent :\n"
+        "Ces champs ont été collectés dans les tours PRÉCÉDENTS. "
+        "Le message ACTUEL de l'utilisateur peut en ajouter d'autres — "
+        "traite-le en priorité (SOURCE A) avant de consulter cet état :\n"
         + "\n".join(lines)
     )
 
