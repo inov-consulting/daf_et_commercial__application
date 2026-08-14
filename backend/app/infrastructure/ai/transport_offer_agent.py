@@ -236,6 +236,34 @@ def _build_state_context(collected_data: dict) -> str:
     """
     if not collected_data:
         return ""
+
+    # ── Mode confirmation en attente ──────────────────────────────────────────
+    if collected_data.get("_awaiting_confirmation"):
+        field_lines = []
+        for key, label in _FIELD_LABELS.items():
+            val = collected_data.get(key)
+            if val is not None and str(val).strip():
+                field_lines.append(f"  • {label} : {val}")
+        fields_block = "\n".join(field_lines) if field_lines else "  (aucun champ persisté)"
+        return (
+            "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "⚠️  MODE CONFIRMATION — RÈGLES STRICTES\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "Tu as DÉJÀ présenté le récapitulatif. Tu es maintenant en attente de confirmation.\n\n"
+            "AUTORISÉ :\n"
+            "  ✅ Si l'utilisateur dit 'confirmer' / 'oui' / 'c'est bon' / 'valider'\n"
+            "     → appelle mark_offer_completed IMMÉDIATEMENT\n"
+            "  ✅ Si l'utilisateur donne une correction\n"
+            "     → modifie uniquement le champ concerné, puis re-présente le récapitulatif complet\n\n"
+            "INTERDIT :\n"
+            "  ❌ Poser des questions supplémentaires\n"
+            "  ❌ Demander des informations déjà collectées\n"
+            "  ❌ Appeler mark_offer_completed AVANT que l'utilisateur ait dit 'confirmer'\n\n"
+            "Données actuelles :\n"
+            + fields_block
+        )
+
+    # ── Mode collecte normal ──────────────────────────────────────────────────
     lines = []
     for key, label in _FIELD_LABELS.items():
         val = collected_data.get(key)
