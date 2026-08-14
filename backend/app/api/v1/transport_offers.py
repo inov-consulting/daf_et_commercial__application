@@ -18,8 +18,6 @@ from __future__ import annotations
 
 from uuid import UUID
 
-import asyncio
-
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.deps import CurrentCompany, get_current_user, require_permission
@@ -110,21 +108,26 @@ async def offer_chat(
     if refreshed:
         offer = refreshed
 
-    # Extraction en tâche de fond après chaque tour pour maintenir collected_data à jour.
-    # La prochaine requête injectera cet état dans le system prompt, même si l'historique
-    # LLM a été tronqué.
-    async def _update_collected_data_bg() -> None:
-        try:
-            extracted = await extract_collected_data(session_id)
-            if extracted:
-                # Ne pas écraser les champs déjà en base avec des valeurs nulles
-                current = offer.collected_data or {}
-                merged = {**extracted, **{k: v for k, v in current.items() if v is not None}}
-                await repo.update_collected_data(offer.id, merged)
-        except Exception as exc:
-            logger.warning("offer.chat.extract_bg_failed", offer_id=str(offer.id), error=str(exc))
+    # Extraction synchrone : doit être terminée AVANT de retourner la réponse.
+    # Si c'était en tâche de fond, le prochain tour pourrait arriver avant la fin
+    # de l'extraction → collected_data encore vide → agent repose les mêmes questions.
+    try:
+        extracted = await extract_collected_data(session_id)
+        if extracted:
+            current = offer.collected_data or {}
+            merged = {**extracted, **{k: v for k, v in current.items() if v is not None}}
 
-    asyncio.create_task(_update_collected_data_bg())
+            # Détection du mode "attente de confirmation" : l'agent vient de montrer
+            # le récapitulatif. Le flag force un comportement strict au prochain tour.
+            recap_shown = "📋" in response or "récapitulatif" in response.lower()
+            if recap_shown and offer.status != "completed":
+                merged["_awaiting_confirmation"] = True
+            elif offer.status == "completed":
+                merged.pop("_awaiting_confirmation", None)
+
+            await repo.update_collected_data(offer.id, merged)
+    except Exception as exc:
+        logger.warning("offer.chat.extract_failed", offer_id=str(offer.id), error=str(exc))
 
     return OfferChatOut(
         offer_id=offer.id,
@@ -195,15 +198,23 @@ async def update_offer_form(
             },
         )
 
-    offer = await repo.update_form(offer_id, body.to_collected_data())
+    offer, document_was_reset = await repo.update_form(offer_id, body.to_collected_data())
     if not offer:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offre non trouvée")
+
+    summary = _extract_doc_summary(offer.document_markdown, offer.collected_data)
+    if document_was_reset:
+        summary.setdefault("warnings", [])
+        summary["warnings"] = [
+            "Le document précédemment généré a été supprimé suite à la modification des données. "
+            "Veuillez relancer la génération du document."
+        ]
 
     return OfferSummaryOut(
         id=offer.id,
         session_id=offer.session_id,
         status=offer.status,
-        **_extract_doc_summary(offer.document_markdown, offer.collected_data),
+        **summary,
         odoo_shipment_id=offer.odoo_shipment_id,
         odoo_shipment_name=offer.odoo_shipment_name,
         created_at=offer.created_at,

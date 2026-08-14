@@ -133,27 +133,42 @@ class TransportOfferRepository:
 
     async def update_form(
         self, offer_id: UUID, collected_data_patch: dict
-    ) -> TransportOffer | None:
+    ) -> tuple[TransportOffer, bool] | tuple[None, bool]:
         """Met à jour les données collectées d'une offre existante (formulaire).
 
         - Fusionne les champs fournis avec les données existantes (PATCH partiel).
-        - Si l'offre avait déjà un document généré, le statut repasse à `completed`
-          pour signaler que le document doit être regénéré.
+        - Si l'offre avait déjà un document généré, le document est effacé et le
+          statut repasse à `completed` (à regénérer).
+        - Si l'offre était en `draft` (conversation IA), le statut passe à `completed`
+          car le formulaire fournit les données directement, sans passer par l'IA.
+        - Le flag `_awaiting_confirmation` est toujours nettoyé : un récap issu
+          de données modifiées est obsolète.
         - Les offres `confirmed` ou `cancelled` ne sont pas modifiables.
+
+        Returns:
+            (offer, document_was_reset) — document_was_reset=True si un document
+            existant a été supprimé (le frontend doit avertir l'utilisateur).
         """
         orm = await TransportOfferOrm.get_or_none(id=offer_id)
         if orm is None:
-            return None
+            return None, False
         if orm.status in ("confirmed", "cancelled"):
-            return None
+            return None, False
 
         merged = {**(orm.collected_data or {}), **collected_data_patch}
+        # Le récap précédent est obsolète après toute modification formulaire
+        merged.pop("_awaiting_confirmation", None)
         orm.collected_data = merged
 
+        document_was_reset = False
         if orm.status in ("generated", "validated"):
             orm.document_markdown = None
             orm.document_generated_at = None
             orm.status = "completed"
+            document_was_reset = True
+        elif orm.status == "draft":
+            # Édition formulaire sur une offre IA en cours → collecte terminée
+            orm.status = "completed"
 
         await orm.save()
-        return _to_domain(orm)
+        return _to_domain(orm), document_was_reset
