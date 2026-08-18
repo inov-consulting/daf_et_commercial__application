@@ -1,5 +1,5 @@
 export type ActivityModule = 'Transport' | 'DAF' | 'RH' | 'Administration' | 'Facturation';
-export type ActivityStatus = 'Succès' | 'Erreur' | 'Warning';
+export type ActivityStatus = 'Succès' | 'Erreur' | 'Avertissement';
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 export interface Activity {
@@ -40,7 +40,7 @@ export const MODULE_STYLES: Record<ActivityModule, { bg: string; color: string }
 export const STATUS_STYLES: Record<ActivityStatus, { bg: string; color: string }> = {
   'Succès':  { bg: '#ECFDF5', color: '#059669' },
   'Erreur':  { bg: '#FEF2F2', color: '#DC2626' },
-  'Warning': { bg: '#FFFBEB', color: '#D97706' },
+  'Avertissement': { bg: '#FFFBEB', color: '#D97706' },
 };
 
 export const ACTIVITY_MODULES = Object.keys(MODULE_STYLES) as ActivityModule[];
@@ -101,7 +101,7 @@ export const MOCK_ACTIVITIES: Activity[] = [
     action: 'Génération PDF facture FAC-1043',
     method: 'POST', endpoint: '/api/facturation/invoices/FAC-1043/export',
     user: 'Aminata Sow', userRole: 'Directrice Administrative',
-    status: 'Warning', ip: '192.168.1.34', duration: '3 420 ms',
+    status: 'Avertissement', ip: '192.168.1.34', duration: '3 420 ms',
     txId: 'f2a1d369-8c45', sess: 'sess_AS_06111003',
     sent: '{\n  "invoice_id": "FAC-1043",\n  "format": "PDF",\n  "template": "standard_v2"\n}',
     received: '{\n  "status": "generated_with_warnings",\n  "file_size": 0,\n  "warning": "template_fallback_used"\n}',

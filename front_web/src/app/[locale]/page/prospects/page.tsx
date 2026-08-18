@@ -257,8 +257,8 @@ export default function ProspectsPage() {
             className="h-8 px-2.5 sm:px-3 rounded-lg border border-[var(--bd-def)] bg-white text-[11px] sm:text-[12px] text-[var(--tx-2)] flex items-center gap-1 sm:gap-1.5 hover:bg-[var(--bg-sink)] transition-colors disabled:opacity-50 whitespace-nowrap"
           >
             <ArrowsClockwiseIcon size={12} className={syncing ? 'animate-spin' : ''} />
-            <span className="hidden sm:inline">{syncing ? 'Sync…' : 'Sync Odoo'}</span>
-            <span className="sm:hidden">Sync</span>
+            <span className="hidden sm:inline">{syncing ? 'Synchro…' : 'Synchro Odoo'}</span>
+            <span className="sm:hidden">Synchro</span>
           </button>
           <Button variant="ghost" size="sm" className="flex-1 sm:flex-none gap-1 sm:gap-1.5 h-8 text-[11px] sm:text-[12px]" onClick={handleExportCsv} disabled={exporting || loading}>
             <DownloadSimpleIcon size={13} className={exporting ? 'animate-pulse' : ''} />

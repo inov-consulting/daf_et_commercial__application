@@ -208,7 +208,7 @@ export default function DettesFournisseursPage() {
         {
           label: "Dettes fournisseurs totales",
           value: fmtM(snap.total_payables),
-          sub: `Snapshot · ${fmtPeriod(snap.period_label)}`,
+          sub: `Instantané · ${fmtPeriod(snap.period_label)}`,
           color: "#DC2626",
           icon: <WarningIcon size={14} className="inline mr-0.5" />,
         },
@@ -599,7 +599,7 @@ export default function DettesFournisseursPage() {
               </div>
 
               <p className="text-[10px] text-[var(--tx-3)] mt-3 pt-2 border-t border-[var(--bd-def)]">
-                Snapshot ·{" "}
+                Instantané ·{" "}
                 {new Date(snap.snapshot_at).toLocaleDateString("fr-FR", {
                   day: "2-digit",
                   month: "2-digit",

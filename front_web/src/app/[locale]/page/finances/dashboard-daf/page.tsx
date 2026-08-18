@@ -151,7 +151,7 @@ function snapshotToKpis(snap: DafSnapshot): FinKpi[] {
     {
       label: "Trésorerie nette",
       value: fmtM(snap.cash_position),
-      sub: `Snapshot · ${snap.period_label}`,
+      sub: `Instantané · ${snap.period_label}`,
       trend: snap.cash_position > 0 ? "up" : "down",
       trendVal: snap.cash_position > 0 ? "Positive" : "Négative",
       accent: snap.cash_position > 0 ? "success" : "error",

@@ -108,7 +108,7 @@ export default function TresoreriePage() {
     {
       label:  'Position de trésorerie',
       value:  snap ? fmtM(cashPos) : '—',
-      sub:    snap ? `Snapshot · ${new Date(snap.snapshot_at).toLocaleDateString('fr-FR')}` : 'Chargement…',
+      sub:    snap ? `Instantané · ${new Date(snap.snapshot_at).toLocaleDateString('fr-FR')}` : 'Chargement…',
       color:  cashPos >= 0 ? '#1B6B45' : '#DC2626',
     },
     {
