@@ -245,7 +245,7 @@ export default function ComptesRendusPage() {
     }).length;
     const pending = (counts.draft ?? 0) + (counts.processing ?? 0);
     return [
-      { label: 'Total CRs', value: loading ? '…' : String(total), sub: 'tous parents' },
+      { label: 'Total des CR', value: loading ? '…' : String(total), sub: 'tous parents' },
       { label: 'Ce mois', value: loading ? '…' : String(thisMo), sub: new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) },
       { label: 'En attente', value: loading ? '…' : String(pending), sub: 'brouillons + en cours' },
       { label: 'Finalisés', value: loading ? '…' : String(counts.final ?? 0), sub: 'prêts à envoyer' },
