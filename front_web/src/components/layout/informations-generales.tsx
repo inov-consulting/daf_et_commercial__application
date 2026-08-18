@@ -12,7 +12,7 @@ export function InformationsGenerales() {
             <div className="font-inter text-xs font-medium text-[#435869] mb-1.5">Raison sociale</div>
             <input 
               type="text" 
-              value="PortaLis Group Holding"
+              value="Altus Group Holding"
               className="w-full h-9 px-2.5 border border-[#DDE5EF] rounded-lg bg-white text-[#2E3D4C] font-inter text-[13px] focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,118,73,0.1)]"
             />
           </div>

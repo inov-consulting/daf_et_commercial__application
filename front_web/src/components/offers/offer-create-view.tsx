@@ -537,7 +537,7 @@ function printOffer(props: DocPreviewProps) {
 <body>
 
   <div class="letterhead">
-    <div class="company-name">INOV Consulting / PortaLis Group Holding</div>
+    <div class="company-name">INOV Consulting / Altus Group Holding</div>
     <div class="offer-title">Offre de Transport</div>
     <div class="offer-ref">${offerRef ? "Réf : " + escHtml(offerRef) + " · " : ""}${today}</div>
   </div>
@@ -675,7 +675,7 @@ function OfferDocPreview({
       {/* Letterhead */}
       <div className="text-center mb-5 pb-4 border-b border-gray-100">
         <div className="text-xs font-extrabold text-emerald-800 uppercase tracking-[0.12em] mb-1.5">
-          INOV Consulting / PortaLis Group Holding
+          INOV Consulting / Altus Group Holding
         </div>
         <div className="w-15 h-0.5 bg-emerald-800 mx-auto mb-3" />
         <div className="text-lg font-bold text-gray-900 tracking-tight mb-1">

@@ -48,7 +48,7 @@ export default function PageLayout({ children, params }: PageLayoutProps) {
           <div className="relative mb-8">
             <Image
               src="/assets/images/logo_portalis.png"
-              alt="PortaLis"
+              alt="Altus"
               width={150}
               height={150}
               className="relative drop-shadow-md"

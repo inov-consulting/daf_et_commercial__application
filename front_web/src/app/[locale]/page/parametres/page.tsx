@@ -157,7 +157,7 @@ export default function ParametresPage() {
               Paramètres
             </h1>
             <p className="text-[12px] sm:text-[13px] text-[var(--tx-3)] mt-0.5">
-              Configuration de la plateforme PortaLis Group Holding
+              Configuration de la plateforme Altus Group Holding
             </p>
           </div>
         </div>

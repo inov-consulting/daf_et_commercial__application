@@ -245,7 +245,7 @@ function ActiveDetail({
                 Désactiver {user.prenom} {user.nom} ?
               </p>
               <p className="text-[11px] text-foreground-3 mb-3">
-                Il/Elle perdra l&apos;accès à PortaLis immédiatement.
+                Il/Elle perdra l&apos;accès à Altus immédiatement.
               </p>
               <div className="flex gap-2">
                 <button
@@ -270,7 +270,7 @@ function ActiveDetail({
                 Compte désactivé
               </p>
               <p className="text-[11px] text-foreground-3 mb-2">
-                {user.prenom} n&apos;a plus accès à PortaLis.
+                {user.prenom} n&apos;a plus accès à Altus.
               </p>
               <button
                 onClick={() => { setMode('info'); onToggleActive?.(true); }}
