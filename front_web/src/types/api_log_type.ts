@@ -58,7 +58,7 @@ export function logStatus(log: ApiLog): { label: string; bg: string; color: stri
   if (log.is_error || log.status_code >= 500)
     return { label: 'Erreur',  bg: '#FEF2F2', color: '#DC2626' };
   if (log.status_code >= 400)
-    return { label: 'Warning', bg: '#FFFBEB', color: '#D97706' };
+    return { label: 'Avertissement', bg: '#FFFBEB', color: '#D97706' };
   return   { label: 'Succès',  bg: '#ECFDF5', color: '#059669' };
 }
 
