@@ -4,7 +4,7 @@ import { getLocaleFromParams } from '@/lib/i18n';
 import { i18n } from '@/config/i18n';
 
 export const metadata: Metadata = {
-  title: 'PortaLis — Tableau de bord',
+  title: 'Altus — Tableau de bord',
   description: 'Pilotez votre activité transport en temps réel.',
 };
 

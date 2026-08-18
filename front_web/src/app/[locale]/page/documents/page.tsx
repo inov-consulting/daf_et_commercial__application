@@ -551,7 +551,7 @@ export default function DocumentsPage() {
               Documents
             </h1>
             <p className="text-[var(--tx-3)] text-[12px] mt-0.5">
-              Stockage documents PortaLis — contrats, factures, rapports terrain
+              Stockage documents Altus — contrats, factures, rapports terrain
             </p>
           </div>
           <button

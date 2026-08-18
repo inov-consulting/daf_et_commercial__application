@@ -375,7 +375,7 @@ export default function RunDetailPage() {
           {snap && (
             <FinCard>
               <div className="flex items-center justify-between mb-3">
-                <SectionLabel>Snapshot financier · {fmtPeriodLabel(snap.period_label)}</SectionLabel>
+                <SectionLabel>Instantané financier · {fmtPeriodLabel(snap.period_label)}</SectionLabel>
                 <span className="text-[10px] text-[var(--tx-3)] font-mono">{fmtDate(snap.snapshot_at)}</span>
               </div>
               <SnapshotKpis snap={snap} />
@@ -445,7 +445,7 @@ export default function RunDetailPage() {
                 { label: 'Démarré',    value: fmtDate(run.started_at) },
                 { label: 'Terminé',    value: run.ended_at ? fmtDate(run.ended_at) : '—' },
                 { label: 'Durée',      value: fmtDuration(run.started_at, run.ended_at) },
-                { label: 'Snapshots',  value: `${run.snapshots.length}` },
+                { label: 'Instantanés',  value: `${run.snapshots.length}` },
                 { label: 'Événements', value: `${run.events.length}` },
               ].map(m => (
                 <div key={m.label} className="flex justify-between gap-2">

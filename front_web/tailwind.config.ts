@@ -11,7 +11,7 @@ const config: Config = {
     extend: {
       /* ── COLOR PALETTE ─────────────────────────────────── */
       colors: {
-        /* Vert PortaLis – couleur primaire */
+        /* Vert Altus – couleur primaire */
         primary: {
           50:  "#F5F9F6",
           100: "#DDF2E8",
@@ -26,7 +26,7 @@ const config: Config = {
           950: "#030F09",
           DEFAULT: "#1B6B45",
         },
-        /* Or PortaLis – couleur secondaire */
+        /* Or Altus – couleur secondaire */
         secondary: {
           50:  "#FDF8EE",
           100: "#FAF0D0",

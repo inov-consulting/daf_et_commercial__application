@@ -506,7 +506,7 @@ export default function DsoCreancesPage() {
               </div>
               {snap && (
                 <div className="flex justify-between text-[11px]">
-                  <span className="text-[var(--tx-3)]">Snapshot</span>
+                  <span className="text-[var(--tx-3)]">Instantané</span>
                   <span className="text-[var(--tx-2)]">
                     {fmtDate(snap.snapshot_at)}
                   </span>

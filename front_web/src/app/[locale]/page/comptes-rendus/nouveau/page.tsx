@@ -1065,7 +1065,7 @@ export default function NouveauCRPage() {
                         { n: '2', text: 'Il rédige les 6 champs du CR (société, contact, objet…)' },
                         { n: '3', text: crContext?.id
                             ? 'Le CR est attaché à la fiche prospect et un email vous est envoyé'
-                            : 'Le CR est archivé dans vos comptes-rendus PortaLis' },
+                            : 'Le CR est archivé dans vos comptes-rendus Altus' },
                       ].map(item => (
                         <div key={item.n} className="flex items-start gap-3">
                           <span
