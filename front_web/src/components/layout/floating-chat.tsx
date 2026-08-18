@@ -296,7 +296,7 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
             <span className="text-white text-base sm:text-lg leading-none">✦</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-[var(--tx-1)] text-xs sm:text-sm">Assistant IA PortaLis</p>
+            <p className="font-semibold text-[var(--tx-1)] text-xs sm:text-sm">Assistant IA Altus</p>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
               <span className="text-[10px] sm:text-[11px] text-success">En ligne · IA</span>
@@ -331,7 +331,7 @@ export default function FloatingChat({ user, rawUser }: FloatingChatProps) {
               </div>
 
               <h3 className="text-[15px] font-bold mb-2" style={{ color: 'var(--tx-1)' }}>
-                Assistant IA PortaLis
+                Assistant IA Altus
               </h3>
               <p className="text-[12px] leading-relaxed mb-8 max-w-[240px]" style={{ color: 'var(--tx-3)' }}>
                 Posez vos questions sur vos prospects, offres, transports, finances ou toute autre donnée.

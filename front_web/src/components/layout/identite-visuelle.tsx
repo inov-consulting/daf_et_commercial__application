@@ -22,7 +22,7 @@ export function IdentiteVisuelle({ showToast }: IdentiteVisuelleProps) {
             </div>
             <div className="min-w-0 flex-1">
               <div className="font-space-grotesk text-sm sm:text-base font-bold text-[#1B2633] truncate">
-                PortaLis Group Holding
+                Altus Group Holding
               </div>
               <div className="font-inter text-[11px] sm:text-xs text-[#7691A8] mt-0.5">
                 <span className="inline sm:hidden">Dakar, Sénégal</span>

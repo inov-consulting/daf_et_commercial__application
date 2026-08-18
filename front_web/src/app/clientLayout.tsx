@@ -74,7 +74,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           <div className="relative mb-8">
             <Image
               src="/assets/images/logo_portalis.png"
-              alt="PortaLis"
+              alt="Altus"
               width={150}
               height={150}
               className="relative drop-shadow-md"

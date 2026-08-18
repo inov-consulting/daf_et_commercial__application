@@ -345,8 +345,8 @@ export default function NouveauDossierPage() {
                 style={{ backgroundImage: selectArrow }}
               >
                 <option value="">Sélectionner…</option>
-                <option value="SN">🇸🇳 PortaLis Sénégal</option>
-                <option value="CI">🇨🇮 PortaLis Côte d&apos;Ivoire</option>
+                <option value="SN">🇸🇳 Altus Sénégal</option>
+                <option value="CI">🇨🇮 Altus Côte d&apos;Ivoire</option>
               </select>
               {fieldErrors.entite && <p className="text-[11px] text-red-500 mt-0.5">{fieldErrors.entite}</p>}
             </Field>

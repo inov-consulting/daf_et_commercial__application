@@ -288,14 +288,14 @@ export default function UtilisateursPage() {
       const companies = u?.entreprises ?? [];
       const companiesSub = companies.length > 0
         ? `Accès rétabli sur : ${companies.join(', ')}`
-        : "L'utilisateur a de nouveau accès à PortaLis";
+        : "L'utilisateur a de nouveau accès à Altus";
       showToast("Compte réactivé", companiesSub, "success");
     } else {
       const u = users.find(x => x.uid === uid);
       const companies = u?.entreprises ?? [];
       const companiesSub = companies.length > 0
         ? `Accès retiré sur : ${companies.join(', ')}`
-        : "L'accès à PortaLis a été retiré";
+        : "L'accès à Altus a été retiré";
       showToast("Compte désactivé", companiesSub, "success");
     }
   }
@@ -488,7 +488,7 @@ export default function UtilisateursPage() {
               </p>
               <p className="text-[11px] sm:text-xs text-neutral-400 leading-relaxed mb-4">
                 Cette action est irréversible. Le compte sera supprimé et
-                l&apos;accès à PortaLis retiré immédiatement. Les données créées
+                l&apos;accès à Altus retiré immédiatement. Les données créées
                 sont conservées.
               </p>
               <div className="flex flex-col sm:flex-row gap-2">
