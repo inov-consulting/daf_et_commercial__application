@@ -156,6 +156,7 @@ class OfferSummaryOut(BaseModel):
     odoo_shipment_name: str | None
     created_at: datetime | None
     confirmed_at: datetime | None
+    warnings: list[str] = Field(default_factory=list)
 
 
 class OdooClientOut(BaseModel):

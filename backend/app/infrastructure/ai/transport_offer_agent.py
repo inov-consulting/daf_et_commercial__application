@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 _offer_checkpointer = MemorySaver()
 
 # Nombre maximum de messages conservés dans le contexte pour l'agent d'offre
-OFFER_MAX_CONTEXT_MESSAGES = 50
+OFFER_MAX_CONTEXT_MESSAGES = 100
 
 
 def _offer_trim_hook(state: dict) -> dict:
@@ -40,65 +40,106 @@ def _offer_trim_hook(state: dict) -> dict:
 
 OFFER_COLLECTION_PROMPT = """Tu es un assistant commercial spécialisé dans la création d'offres de transport pour INOV Consulting.
 
-TON RÔLE : Collecter toutes les informations nécessaires à la création d'une offre commerciale de transport.
+TON RÔLE : Collecter les 9 informations nécessaires à une offre transport, en suivant un état précis.
 
-OUTILS DISPONIBLES :
-- list_odoo_clients : Liste les clients existants dans Odoo ERP. Utilise cet outil quand l'utilisateur demande la liste des clients ou ne connaît pas le nom exact du client.
-- mark_offer_completed : Marque l'offre comme terminée. N'appelle cet outil QUE lorsque l'utilisateur a EXPLICITEMENT CONFIRMÉ le récapitulatif (en disant "confirmer", "oui", "c'est bon", "valider", etc.). Ne l'appelle JAMAIS avant d'avoir reçu cette confirmation.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RÈGLE N°1 — MÉMOIRE (LA PLUS IMPORTANTE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tu disposes de DEUX sources d'information, toutes deux fiables. Traite-les dans cet ordre :
 
-INFORMATIONS À COLLECTER (pose les questions une par une, de façon naturelle) :
-1. **Client** : nom exact de l'entreprise cliente
-   - Si l'utilisateur ne connaît pas le nom exact, utilise l'outil list_odoo_clients pour lui présenter les options
-2. **Produit transporté** : nature et description du produit
-3. **Quantité** : volume/poids et unité (litres, tonnes, m³, etc.)
-4. **Trajet** : lieu de chargement (origine) → lieu de livraison (destination)
-5. **Mode de transport** : terrestre | maritime | aérien | multimodal
-6. **Type de véhicule** : camion citerne, container, etc. (si pertinent)
-7. **Date souhaitée** : date de départ prévue
-8. **Prix unitaire** : tarif proposé par unité de mesure
-9. **Conditions particulières** : délai de validité de l'offre, conditions de paiement, remarques
+SOURCE A — Message actuel de l'utilisateur (priorité maximale)
+  → Si le message actuel répond à une question que tu venais de poser,
+    enregistre IMMÉDIATEMENT la réponse comme ✅ collectée.
+  → Ne redemande JAMAIS quelque chose que l'utilisateur vient de donner dans CE message.
 
-COMPORTEMENT :
-- Pose les questions progressivement, ne surcharge pas l'utilisateur
-- Si l'utilisateur donne plusieurs infos en une fois, enregistre-les toutes
-- Quand l'utilisateur ne connaît pas le nom du client, utilise list_odoo_clients pour l'aider
+SOURCE B — État persisté en base (tours précédents)
+  → Reflète ce qui a été collecté dans les tours PRÉCÉDENTS, pas le tour actuel.
+  → Utilise-le comme point de départ, mais il peut être incomplet par rapport
+    à ce que l'utilisateur vient de dire.
 
-PROCESSUS DE FINALISATION EN 2 ÉTAPES OBLIGATOIRES :
+PROCESSUS OBLIGATOIRE avant chaque réponse :
+  1. Lis le message ACTUEL → extrait toutes les infos qu'il contient → marque-les ✅
+  2. Consulte l'état persisté → ajoute les champs déjà collectés avant
+  3. Combine les deux → construis l'état complet
+  4. Ne pose une question QUE sur les champs qui restent ❓ après cette combinaison
 
-ÉTAPE 1 — Quand tu as collecté TOUTES les 9 informations :
-  → Présente le récapitulatif ci-dessous
-  → Demande confirmation à l'utilisateur
-  → NE PAS appeler mark_offer_completed à cette étape — attends sa réponse
+INTERDIT ABSOLU :
+❌ Redemander une info donnée dans le message actuel
+❌ Redemander une info présente dans l'historique ou l'état persisté
+❌ Inventer ou supposer une information non donnée par l'utilisateur
 
-ÉTAPE 2 — Quand l'utilisateur répond "confirmer" / "oui" / "c'est bon" / "valider" / toute validation :
-  → Appelle immédiatement mark_offer_completed
-  → Puis réponds : "✅ Parfait ! Votre offre est enregistrée. Vous pouvez maintenant générer le document officiel."
-  → Si l'utilisateur demande des corrections, modifie les données et retourne à l'étape 1
+Si l'utilisateur te dit "je t'ai déjà donné cette info" → accepte-le immédiatement,
+retrouve l'info dans l'historique ou l'état persisté et avance à la question suivante.
 
-FORMAT DU RÉCAPITULATIF (étape 1) :
-```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RÈGLE N°2 — ÉTAT À AFFICHER À CHAQUE RÉPONSE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Commence CHAQUE réponse par un état de collecte sur une seule ligne :
+✅ = déjà collecté  |  ❓= manquant
+
+Exemple :
+> État : Client ✅ | Produit ✅ | Quantité ✅ | Trajet ✅ | Mode ❓ | Véhicule ❓ | Date ❓ | Prix ❓ | Conditions ❓
+
+Puis pose UNE SEULE question pour le premier champ ❓.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHAMPS À COLLECTER (dans l'ordre)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. **Client** — nom de l'entreprise cliente
+2. **Produit** — nature et description du produit transporté
+3. **Quantité** — volume/poids + unité (litres, tonnes, m³…)
+4. **Trajet** — origine → destination
+5. **Mode** — terrestre | maritime | aérien | multimodal
+6. **Véhicule** — type de véhicule (citerne, benne, plateau, container…)
+7. **Date départ** — date souhaitée
+8. **Prix unitaire** — tarif par unité
+9. **Conditions** — validité de l'offre, paiement, remarques
+
+Note : si l'utilisateur donne plusieurs infos en une phrase, enregistre-les TOUTES
+et coche chaque champ correspondant avant de poser la prochaine question.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+OUTIL list_odoo_clients
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Recherche des clients Odoo par mot-clé (paramètre 'search' OBLIGATOIRE, min 2 lettres).
+→ N'appelle cet outil QUE si l'utilisateur ne connaît pas le nom exact.
+→ Demande d'abord quelques lettres, puis appelle l'outil avec ce mot-clé.
+→ Si l'utilisateur donne directement le nom → utilise-le sans appeler l'outil.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PROCESSUS DE FINALISATION (2 étapes)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ÉTAPE 1 — Quand les 9 champs sont ✅ :
+  → Affiche le récapitulatif complet (format ci-dessous)
+  → Demande confirmation
+  → N'appelle PAS mark_offer_completed à cette étape
+
+ÉTAPE 2 — Quand l'utilisateur dit "confirmer" / "oui" / "c'est bon" / "valider" :
+  → Appelle mark_offer_completed
+  → Réponds : "✅ Offre enregistrée. Vous pouvez maintenant générer le document."
+
+FORMAT DU RÉCAPITULATIF :
 📋 **Récapitulatif de l'offre**
-
 - **Client** : [nom]
 - **Produit** : [description]
 - **Quantité** : [qté] [unité]
 - **Trajet** : [origine] → [destination]
-- **Mode** : [mode de transport]
+- **Mode** : [mode]
 - **Véhicule** : [type]
 - **Date départ** : [date]
 - **Prix unitaire** : [prix] FCFA/[unité]
 - **Total estimé** : [total] FCFA
 - **Validité** : [jours] jours
 
-Toutes les informations sont-elles correctes ? Répondez "confirmer" pour valider ou indiquez les corrections à apporter.
-```
+Toutes les informations sont-elles correctes ? Répondez "confirmer" pour valider.
 
-RÈGLES ABSOLUES :
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RÈGLES GÉNÉRALES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 - Réponds TOUJOURS en français
-- N'appelle mark_offer_completed QUE si l'utilisateur a dit "confirmer" ou équivalent
-- NE JAMAIS appeler mark_offer_completed au moment du récapitulatif — seulement après confirmation
-- NE CRÉE RIEN dans aucun système externe — tu n'as pas ce pouvoir dans cette étape
-- Sois professionnel et commercial dans ton ton"""
+- N'invente AUCUNE information
+- N'appelle mark_offer_completed qu'après confirmation explicite
+- Sois professionnel et concis"""
 
 
 OFFER_DOCUMENT_PROMPT = """Tu es un rédacteur d'offres commerciales de transport professionnel pour INOV Consulting.
@@ -183,15 +224,91 @@ JSON attendu (laisse null si l'information n'est pas mentionnée) :
 }}"""
 
 
+_FIELD_LABELS = {
+    "client_name": "Client",
+    "product_description": "Produit",
+    "quantity": "Quantité",
+    "quantity_unit": "Unité",
+    "origin": "Origine",
+    "destination": "Destination",
+    "transport_mode": "Mode de transport",
+    "vehicle_type": "Type de véhicule",
+    "planned_date": "Date de départ",
+    "price_unit": "Prix unitaire",
+    "validity_days": "Validité (jours)",
+    "payment_conditions": "Conditions de paiement",
+    "remarks": "Remarques",
+}
+
+
+def _build_state_context(collected_data: dict) -> str:
+    """Génère un bloc 'état persisté' à injecter dans le system prompt.
+
+    Ce bloc survit au trimming de l'historique car il est dans le system message,
+    qui est toujours conservé par _offer_trim_hook.
+    """
+    if not collected_data:
+        return ""
+
+    # ── Mode confirmation en attente ──────────────────────────────────────────
+    if collected_data.get("_awaiting_confirmation"):
+        field_lines = []
+        for key, label in _FIELD_LABELS.items():
+            val = collected_data.get(key)
+            if val is not None and str(val).strip():
+                field_lines.append(f"  • {label} : {val}")
+        fields_block = "\n".join(field_lines) if field_lines else "  (aucun champ persisté)"
+        return (
+            "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "⚠️  MODE CONFIRMATION — RÈGLES STRICTES\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "Tu as DÉJÀ présenté le récapitulatif. Tu es maintenant en attente de confirmation.\n\n"
+            "AUTORISÉ :\n"
+            "  ✅ Si l'utilisateur dit 'confirmer' / 'oui' / 'c'est bon' / 'valider'\n"
+            "     → appelle mark_offer_completed IMMÉDIATEMENT\n"
+            "  ✅ Si l'utilisateur donne une correction\n"
+            "     → modifie uniquement le champ concerné, puis re-présente le récapitulatif complet\n\n"
+            "INTERDIT :\n"
+            "  ❌ Poser des questions supplémentaires\n"
+            "  ❌ Demander des informations déjà collectées\n"
+            "  ❌ Appeler mark_offer_completed AVANT que l'utilisateur ait dit 'confirmer'\n\n"
+            "Données actuelles :\n"
+            + fields_block
+        )
+
+    # ── Mode collecte normal ──────────────────────────────────────────────────
+    lines = []
+    for key, label in _FIELD_LABELS.items():
+        val = collected_data.get(key)
+        if val is not None and str(val).strip():
+            lines.append(f"  • {label} : {val}")
+    if not lines:
+        return ""
+    return (
+        "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "ÉTAT PERSISTÉ — TOURS PRÉCÉDENTS (SOURCE B)\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "Ces champs ont été collectés dans les tours PRÉCÉDENTS. "
+        "Le message ACTUEL de l'utilisateur peut en ajouter d'autres — "
+        "traite-le en priorité (SOURCE A) avant de consulter cet état :\n"
+        + "\n".join(lines)
+    )
+
+
 # ── Service ───────────────────────────────────────────────────────────────────
 
 async def run_offer_chat(
     message: str,
     session_id: UUID | None = None,
+    erp_id: int | None = None,
+    collected_data: dict | None = None,
 ) -> tuple[str, UUID]:
     """Exécute un tour de conversation pour la collecte d'informations de l'offre.
 
     L'agent peut utiliser les outils list_odoo_clients et mark_offer_completed.
+
+    Args:
+        erp_id: ID de la société Odoo — utilisé pour filtrer les clients par société.
 
     Returns:
         (réponse_agent, session_id)
@@ -204,8 +321,11 @@ async def run_offer_chat(
     llm = await _get_llm(model_domain.provider, model_domain.name, context="offer")
 
     # Import des outils
-    from app.infrastructure.ai.tools.odoo_client_list_tool import list_odoo_clients_tool
+    from app.infrastructure.ai.tools.odoo_client_list_tool import make_list_odoo_clients_tool
     from app.infrastructure.ai.tools.mark_offer_completed_tool import mark_offer_completed_tool
+
+    # Outil clients filtré par société Odoo (erp_id injecté dans le domaine Odoo)
+    list_odoo_clients_tool = make_list_odoo_clients_tool(erp_id=erp_id)
 
     # Créer un wrapper qui injecte le session_id dans mark_offer_completed
     from langchain_core.tools import StructuredTool
@@ -227,11 +347,14 @@ async def run_offer_chat(
         args_schema=type("Empty", (BaseModel,), {}),
     )
 
+    # Prompt dynamique : system fixe + état persisté depuis la DB (survit au trimming)
+    dynamic_prompt = OFFER_COLLECTION_PROMPT + _build_state_context(collected_data or {})
+
     # Agent avec outils + hook de troncature
     agent = create_react_agent(
         model=llm,
         tools=[list_odoo_clients_tool, mark_tool_with_session],
-        prompt=OFFER_COLLECTION_PROMPT,
+        prompt=dynamic_prompt,
         checkpointer=_offer_checkpointer,
         pre_model_hook=_offer_trim_hook,
     )
@@ -318,7 +441,7 @@ async def generate_offer_document(collected_data: dict) -> dict:
         return {"raw": content, "parse_error": True}
 
 
-async def _resolve_partner_id(client_name: str, known_id: int | None) -> int:
+async def _resolve_partner_id(client_name: str, known_id: int | None, erp_id: int | None = None) -> int:
     """Résout le partner_id Odoo depuis le nom du client via XML-RPC.
 
     Raises:
@@ -331,25 +454,26 @@ async def _resolve_partner_id(client_name: str, known_id: int | None) -> int:
         return known_id
 
     odoo = OdooClient()
+    company_filter = [("company_id", "in", [False, erp_id])] if erp_id else []
+
     records = await asyncio.to_thread(
         odoo.execute,
         "res.partner",
         "search_read",
-        [[("name", "ilike", client_name), ("is_company", "=", True)]],
+        [[("name", "ilike", client_name), ("is_company", "=", True)] + company_filter],
         {"fields": ["id", "name"], "limit": 5},
     )
     if not records:
-        # Essayer sans le filtre is_company
         records = await asyncio.to_thread(
             odoo.execute,
             "res.partner",
             "search_read",
-            [[("name", "ilike", client_name)]],
+            [[("name", "ilike", client_name)] + company_filter],
             {"fields": ["id", "name"], "limit": 5},
         )
     if not records:
         raise RuntimeError(
-            f"Client '{client_name}' introuvable dans Odoo. "
+            f"Client '{client_name}' introuvable dans Odoo pour cette société. "
             "Créez d'abord le partenaire dans l'ERP."
         )
     partner = records[0]  # type: ignore[index]
@@ -390,7 +514,7 @@ async def _resolve_vehicle_subtype(vehicle_type: str) -> int:
     raise RuntimeError("Aucun type de véhicule trouvé dans Odoo.")
 
 
-async def create_odoo_shipment_from_offer(offer_data: dict) -> tuple[int, str]:
+async def create_odoo_shipment_from_offer(offer_data: dict, erp_id: int | None = None) -> tuple[int, str]:
     """Crée le dossier transport.shipment dans Odoo via MCP.
 
     Le partner_id est résolu en Python (XML-RPC) avant l'appel agent
@@ -411,7 +535,7 @@ async def create_odoo_shipment_from_offer(offer_data: dict) -> tuple[int, str]:
     if not client_name:
         raise RuntimeError("Nom du client manquant dans les données de l'offre.")
 
-    partner_id = await _resolve_partner_id(client_name, client.get("odoo_partner_id"))
+    partner_id = await _resolve_partner_id(client_name, client.get("odoo_partner_id"), erp_id=erp_id)
 
     # Normaliser transport_mode vers les valeurs exactes acceptées par l'ERP
     _MODE_MAP = {
@@ -508,6 +632,8 @@ async def create_odoo_shipment_from_offer(offer_data: dict) -> tuple[int, str]:
         "transport_mode": transport_mode,
         "date_order": date_order,
     }
+    if erp_id:
+        values["company_id"] = erp_id
     if price:
         values["sale_price_unit"] = price
     if qty:

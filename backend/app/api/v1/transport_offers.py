@@ -95,23 +95,39 @@ async def offer_chat(
             status=offer.status,
         )
 
-    response, _ = await run_offer_chat(body.message, session_id=session_id)
+    # Injecter l'état déjà collecté → survit au trimming du contexte LLM
+    response, _ = await run_offer_chat(
+        body.message,
+        session_id=session_id,
+        erp_id=company.erp_id,
+        collected_data=offer.collected_data or {},
+    )
 
     # Rafraîchir pour détecter un changement de statut (ex: mark_offer_completed appelé par l'agent)
     refreshed = await repo.get(offer.id)
     if refreshed:
         offer = refreshed
 
-    # Extraction des données uniquement quand l'agent a terminé la collecte —
-    # évite un appel LLM supplémentaire à chaque tour de conversation.
-    if offer.status == "completed" and not offer.collected_data:
-        try:
-            extracted = await extract_collected_data(session_id)
-            if extracted:
-                await repo.update_collected_data(offer.id, extracted)
-                offer = await repo.get(offer.id) or offer
-        except Exception as exc:
-            logger.warning("offer.chat.extract_failed", offer_id=str(offer.id), error=str(exc))
+    # Extraction synchrone : doit être terminée AVANT de retourner la réponse.
+    # Si c'était en tâche de fond, le prochain tour pourrait arriver avant la fin
+    # de l'extraction → collected_data encore vide → agent repose les mêmes questions.
+    try:
+        extracted = await extract_collected_data(session_id)
+        if extracted:
+            current = offer.collected_data or {}
+            merged = {**extracted, **{k: v for k, v in current.items() if v is not None}}
+
+            # Détection du mode "attente de confirmation" : l'agent vient de montrer
+            # le récapitulatif. Le flag force un comportement strict au prochain tour.
+            recap_shown = "📋" in response or "récapitulatif" in response.lower()
+            if recap_shown and offer.status != "completed":
+                merged["_awaiting_confirmation"] = True
+            elif offer.status == "completed":
+                merged.pop("_awaiting_confirmation", None)
+
+            await repo.update_collected_data(offer.id, merged)
+    except Exception as exc:
+        logger.warning("offer.chat.extract_failed", offer_id=str(offer.id), error=str(exc))
 
     return OfferChatOut(
         offer_id=offer.id,
@@ -182,15 +198,23 @@ async def update_offer_form(
             },
         )
 
-    offer = await repo.update_form(offer_id, body.to_collected_data())
+    offer, document_was_reset = await repo.update_form(offer_id, body.to_collected_data())
     if not offer:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Offre non trouvée")
+
+    summary = _extract_doc_summary(offer.document_markdown, offer.collected_data)
+    if document_was_reset:
+        summary.setdefault("warnings", [])
+        summary["warnings"] = [
+            "Le document précédemment généré a été supprimé suite à la modification des données. "
+            "Veuillez relancer la génération du document."
+        ]
 
     return OfferSummaryOut(
         id=offer.id,
         session_id=offer.session_id,
         status=offer.status,
-        **_extract_doc_summary(offer.document_markdown, offer.collected_data),
+        **summary,
         odoo_shipment_id=offer.odoo_shipment_id,
         odoo_shipment_name=offer.odoo_shipment_name,
         created_at=offer.created_at,
@@ -202,18 +226,14 @@ async def update_offer_form(
 
 @router.get("/customers", dependencies=_read_deps)
 async def list_odoo_clients(
+    company: CurrentCompany,
     search: str = "",
     companies_only: bool = Query(False, description="true = entreprises uniquement, false = tous (entreprises + particuliers)"),
 ) -> list[OdooClientOut]:
-    """Retourne les clients Odoo (customer_rank > 0) pour la liste déroulante du formulaire.
-
-    Chaque entrée contient : nom, type (entreprise/particulier), email, téléphone,
-    mobile, adresse complète (rue, ville, code postal, pays).
-    Retourne 502 si Odoo est inaccessible ou retourne une erreur.
-    """
+    """Retourne les clients Odoo (customer_rank > 0) filtrés par société active."""
     from app.infrastructure.ai.tools.odoo_client_list import list_odoo_clients as _odoo_partners
     try:
-        records = await _odoo_partners(search=search, companies_only=companies_only, suppliers=False)
+        records = await _odoo_partners(search=search, companies_only=companies_only, suppliers=False, erp_id=company.erp_id)
     except Exception as exc:
         logger.error("transport.customers.odoo_failed search=%s error=%s", search, exc)
         raise HTTPException(
@@ -225,17 +245,14 @@ async def list_odoo_clients(
 
 @router.get("/suppliers", dependencies=_read_deps)
 async def list_odoo_suppliers(
+    company: CurrentCompany,
     search: str = "",
     companies_only: bool = Query(False, description="true = entreprises uniquement, false = tous (entreprises + particuliers)"),
 ) -> list[OdooClientOut]:
-    """Retourne les fournisseurs Odoo (supplier_rank > 0).
-
-    Même structure que /customers : nom, type, email, téléphone, mobile, adresse.
-    Retourne 502 si Odoo est inaccessible ou retourne une erreur.
-    """
+    """Retourne les fournisseurs Odoo (supplier_rank > 0) filtrés par société active."""
     from app.infrastructure.ai.tools.odoo_client_list import list_odoo_clients as _odoo_partners
     try:
-        records = await _odoo_partners(search=search, companies_only=companies_only, suppliers=True)
+        records = await _odoo_partners(search=search, companies_only=companies_only, suppliers=True, erp_id=company.erp_id)
     except Exception as exc:
         logger.error("transport.suppliers.odoo_failed search=%s error=%s", search, exc)
         raise HTTPException(
@@ -355,7 +372,7 @@ async def validate_offer(
 # ── Envoi vers Odoo (action explicite) ───────────────────────────────────────
 
 @router.post("/{offer_id}/confirm", dependencies=_confirm_deps)
-async def send_offer_to_odoo(offer_id: UUID) -> OfferConfirmOut:
+async def send_offer_to_odoo(offer_id: UUID, company: CurrentCompany) -> OfferConfirmOut:
     """Crée le dossier transport dans Odoo via MCP et lie l'offre.
 
     Prérequis : l'offre doit être au statut `validated`.
@@ -381,7 +398,7 @@ async def send_offer_to_odoo(offer_id: UUID) -> OfferConfirmOut:
         doc["collected_data"] = offer.collected_data
 
     try:
-        odoo_id, odoo_name = await create_odoo_shipment_from_offer(doc)
+        odoo_id, odoo_name = await create_odoo_shipment_from_offer(doc, erp_id=company.erp_id)
     except Exception as exc:
         logger.error("offer.send_to_odoo.failed", offer_id=str(offer_id), error=str(exc))
         raise HTTPException(

@@ -1,0 +1,205 @@
+name: CI - SonarQube, Tests & Build
+
+on:
+  push:
+    branches: [staging, develop]
+  pull_request:
+    branches: [staging]
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════════════
+  # 1. SONARQUBE — Analyse statique du code (avant les tests)
+  # ═══════════════════════════════════════════════════════════════════════
+  sonarqube:
+    name: SonarQube Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v4.2.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # 2. TESTS UNITAIRES — Backend + Frontend (après SonarQube)
+  # ═══════════════════════════════════════════════════════════════════════
+  test-backend:
+    name: Test Backend
+    needs: sonarqube
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --all-extras 2>/dev/null || uv sync --all-extras --no-lock
+
+      - name: Run linter
+        run: uv run ruff check .
+
+      - name: Run type checker
+        run: uv run mypy app
+
+      - name: Run tests with coverage
+        run: uv run pytest --cov=app --cov-report=xml --cov-report=term-missing
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+
+  test-frontend:
+    name: Test Frontend
+    needs: sonarqube
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: ./front_web
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.3
+        with:
+          node-version: '20'
+          cache: 'yarn'
+          cache-dependency-path: ./front_web/yarn.lock
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Lint
+        run: yarn lint
+
+      - name: Type check
+        run: yarn type-check
+
+      - name: Run tests with coverage
+        run: yarn test --coverage --coverageReporters=lcov --coverageDirectory=coverage
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: front_web/coverage/lcov.info
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # 3. BUILD — Backend + Frontend (après les tests)
+  # ═══════════════════════════════════════════════════════════════════════
+  build-backend:
+    name: Build Backend
+    needs: test-backend
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sanitize image tag
+        id: sanitize
+        run: |
+          # Remplace les / par - pour créer un tag Docker valide (ex: 7/merge → 7-merge)
+          SANITIZED=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
+          echo "tag=$SANITIZED" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          target: prod
+          push: true
+          tags: ghcr.io/inov-consulting/daf_et_commercial__application/backend:${{ steps.sanitize.outputs.tag }}
+
+  build-frontend:
+    name: Build Frontend
+    needs: test-frontend
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sanitize image tag
+        id: sanitize
+        run: |
+          # Remplace les / par - pour créer un tag Docker valide (ex: 7/merge → 7-merge)
+          SANITIZED=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
+          echo "tag=$SANITIZED" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./front_web
+          target: runner
+          push: true
+          tags: ghcr.io/inov-consulting/daf_et_commercial__application/frontend:${{ steps.sanitize.outputs.tag }}
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # 4. DEPLOY — Staging (après les builds, uniquement sur la branche staging)
+  # ═══════════════════════════════════════════════════════════════════════
+  deploy-staging:
+    name: Deploy Staging
+    needs: [build-backend, build-frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/staging'
+    steps:
+      - name: Deploy PortaLis AI
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.STAGING_KEY }}
+
+      - name: Add server to known hosts
+        run: ssh-keyscan -H ${{ secrets.STAGING_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy on staging server
+        run: |
+          ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} << 'ENDSSH'
+            set -e
+            REPO_URL="https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/inov-consulting/daf_et_commercial__application.git"
+            PROJECT_DIR="/opt/portalis/daf_et_commercial__application"
+
+            if [ ! -d "$PROJECT_DIR/.git" ]; then
+              git clone --branch staging "$REPO_URL" "$PROJECT_DIR"
+            fi
+
+            cd "$PROJECT_DIR"
+            git fetch origin
+            git checkout staging
+            git pull origin staging
+
+            echo "${{ secrets.GH_TOKEN }}" | docker login ghcr.io -u x-access-token --password-stdin
+            docker compose -f docker-compose.staging.yml pull
+            docker compose -f docker-compose.staging.yml up -d --remove-orphans
+            docker compose -f docker-compose.staging.yml exec -T backend uv run aerich upgrade || true
+          ENDSSH

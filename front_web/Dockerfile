@@ -13,6 +13,12 @@ RUN yarn install --frozen-lockfile || yarn install
 # ───── Builder ──────────────────────────────────────────────────────────
 FROM base AS builder
 
+# Build avec des placeholders qui seront remplacés au runtime
+ENV NEXT_PUBLIC_API_BASE_URL=__NEXT_PUBLIC_API_BASE_URL__
+ENV NEXT_PUBLIC_KEYCLOAK_URL=__NEXT_PUBLIC_KEYCLOAK_URL__
+ENV NEXT_PUBLIC_KEYCLOAK_REALM=__NEXT_PUBLIC_KEYCLOAK_REALM__
+ENV NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=__NEXT_PUBLIC_KEYCLOAK_CLIENT_ID__
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
@@ -24,10 +30,17 @@ FROM base AS runner
 ENV NODE_ENV=production
 ENV PORT=3000
 
+# Installer sed pour l'injection runtime
+RUN apk add --no-cache sed
+
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
+# Copier et configurer l'entrypoint
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+ENTRYPOINT ["docker-entrypoint.sh"]

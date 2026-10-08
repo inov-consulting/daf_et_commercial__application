@@ -25,6 +25,8 @@ FROM base AS dev
 
 # Installer toutes les deps (prod + dev)
 COPY pyproject.toml uv.lock* ./
+
+
 RUN uv sync --frozen --no-install-project 2>/dev/null || uv sync --no-install-project
 
 RUN playwright install chromium
@@ -49,6 +51,7 @@ RUN playwright install chromium && \
     chown -R appuser:appuser /opt/playwright-browsers
 
 COPY . .
+
 RUN chown -R appuser:appuser /app
 
 USER appuser
